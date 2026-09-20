@@ -47,6 +47,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.androidx.activity.compose)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)

@@ -20,9 +20,9 @@
 ## 3. Platform code
 
 - [ ] 3.1 Add the Android `ImageCodec` (`ImageDecoder` with orientation and downsampling, crop and scale, `Bitmap.compress(WEBP_LOSSY, 80)`) and the Android picture root (`filesDir`), and verify it compiles and that a debug check on the emulator writes WebP files of the expected sizes (see 5.2)
-- [ ] 3.2 Add the photo picker (`expect`/`actual`: Android `PickVisualMedia` image only, reading the result into bytes with a size limit, no permission; iOS `PHPickerViewController`), and verify it compiles for Android and iOS
-- [ ] 3.3 Add the iOS `ImageCodec` (ImageIO decode with orientation, crop and scale, PNG encode) and the iOS picture root (Application Support), and verify it compiles for iOS (it cannot be run until the Xcode project exists)
-- [ ] 3.4 Provide the store and the codec from `AppGraph` (handed in by the shells like the driver and the device locale) and update the graph creation in the Android application, the iOS view controller and the tests
+- [x] 3.2 Add the photo picker (`expect`/`actual`: Android `PickVisualMedia` image only, reading the result into bytes with a size limit, no permission; iOS `PHPickerViewController`), and verify it compiles for Android and iOS
+- [x] 3.3 Add the iOS `ImageCodec` (ImageIO decode with orientation, crop and scale, PNG encode) and the iOS picture root (Application Support), and verify it compiles for iOS (it cannot be run until the Xcode project exists)
+- [x] 3.4 Provide the store and the codec from `AppGraph` (handed in by the shells like the driver and the device locale) and update the graph creation in the Android application, the iOS view controller and the tests
 
 ## 4. Screens
 

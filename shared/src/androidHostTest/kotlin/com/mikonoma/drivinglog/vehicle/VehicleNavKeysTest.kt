@@ -19,7 +19,7 @@ class VehicleNavKeysTest {
         createTestDriver(),
         FakeDeviceLocale(),
         kotlinx.io.files.Path(kotlinx.io.files.SystemTemporaryDirectory, "driving-log-nav-key-test-pictures"),
-        com.mikonoma.drivinglog.vehicle.picture.UnavailableImageCodec,
+        com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec(),
     )
 
     private val serialKeys = listOf("vehicle-list", "vehicle-add", "vehicle-details", "vehicle-edit", "vehicle-log", "vehicle-log-distance")
