@@ -42,7 +42,9 @@ class AddVehicleProcessorTest {
         for (d in digits) dispatch(AddVehicleIntent.OdometerEdited(state.entry.digits + d))
     }
 
-    private fun AddVehicleProcessor.shown() = state.entry.let { formatSteps(it.steps, it.unit.hasTenths, NumberSymbols.ENGLISH_US) }
+    /** What the odometer field shows: nothing at all while empty. */
+    private fun AddVehicleProcessor.shown() =
+        state.entry.let { entry -> entry.steps?.let { formatSteps(it, entry.unit.hasTenths, NumberSymbols.ENGLISH_US) } ?: "" }
 
     // The preselected unit.
 
@@ -62,12 +64,22 @@ class AddVehicleProcessorTest {
     }
 
     @Test
-    fun theFormStartsEmptyWithAZeroOdometer() {
+    fun theFormStartsEmptyWithNoOdometerAtAll() {
         val state = processor().state
         assertEquals("", state.name)
         assertEquals("", state.licensePlate)
-        assertEquals(0, state.entry.steps)
+        assertTrue(state.entry.isEmpty)
         assertFalse(state.nameError)
+        assertFalse(state.odometerError)
+    }
+
+    @Test
+    fun theOdometerFieldStartsEmptyInEveryUnit() {
+        for (unit in OdometerUnit.entries) {
+            val processor = processor()
+            processor.dispatch(AddVehicleIntent.UnitSelected(unit))
+            assertEquals("", processor.shown(), unit.name)
+        }
     }
 
     @Test
@@ -117,7 +129,7 @@ class AddVehicleProcessorTest {
     }
 
     @Test
-    fun typeDeleteToZeroAndTypeAgain() {
+    fun typeDeleteToEmptyAndTypeAgain() {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS))
         val shown = buildList {
@@ -129,7 +141,7 @@ class AddVehicleProcessorTest {
             processor.type(3); add(processor.shown())
             processor.type(0); add(processor.shown())
         }
-        assertEquals(listOf("0.1", "1.2", "0.1", "0.0", "0.2", "2.3", "23.0"), shown)
+        assertEquals(listOf("0.1", "1.2", "0.1", "", "0.2", "2.3", "23.0"), shown)
     }
 
     @Test
@@ -144,11 +156,31 @@ class AddVehicleProcessorTest {
     }
 
     @Test
-    fun clearResetsTheOdometer() {
+    fun clearEmptiesTheOdometer() {
         val processor = processor()
         processor.type(1, 2, 3)
         processor.dispatch(AddVehicleIntent.OdometerCleared)
-        assertEquals(0, processor.state.entry.steps)
+        assertTrue(processor.state.entry.isEmpty)
+        assertEquals("", processor.shown())
+    }
+
+    @Test
+    fun aTypedZeroIsShownAndNotEmpty() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS))
+        processor.dispatch(AddVehicleIntent.OdometerEdited("0"))
+        assertEquals("0.0", processor.shown())
+        assertFalse(processor.state.entry.isEmpty)
+        processor.dispatch(AddVehicleIntent.OdometerEdited(""))
+        assertEquals("", processor.shown())
+    }
+
+    @Test
+    fun changingTheUnitOfAnEmptyOdometerLeavesItEmpty() {
+        val processor = processor("US")
+        processor.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS))
+        assertEquals("", processor.shown())
+        assertTrue(processor.state.entry.isEmpty)
     }
 
     @Test
@@ -191,9 +223,10 @@ class AddVehicleProcessorTest {
     }
 
     @Test
-    fun savingWithOnlyANameUsesTheDefaultUnitAndZero() = runTest {
+    fun savingWithANameTheDefaultUnitAndATypedZeroSavesAZeroReading() = runTest {
         val processor = processor("US")
         processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.OdometerEdited("0"))
 
         processor.test {
             dispatch(AddVehicleIntent.Save)
@@ -223,6 +256,7 @@ class AddVehicleProcessorTest {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.NameChanged("  Family car "))
         processor.dispatch(AddVehicleIntent.LicensePlateChanged(" ABC-123  "))
+        processor.type(1)
 
         processor.test {
             dispatch(AddVehicleIntent.Save)
@@ -238,6 +272,7 @@ class AddVehicleProcessorTest {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.NameChanged("Van"))
         processor.dispatch(AddVehicleIntent.LicensePlateChanged("   "))
+        processor.type(1)
 
         processor.test {
             dispatch(AddVehicleIntent.Save)
@@ -250,17 +285,95 @@ class AddVehicleProcessorTest {
     @Test
     fun anEmptyNameIsRefusedAndNothingIsSaved() {
         val processor = processor()
+        processor.type(1)
 
         processor.dispatch(AddVehicleIntent.Save)
 
         assertTrue(processor.state.nameError)
+        assertFalse(processor.state.odometerError)
         assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun anEmptyOdometerIsRefusedAndNothingIsSaved() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertTrue(processor.state.odometerError)
+        assertFalse(processor.state.nameError)
+        assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun aMissingNameAndAMissingOdometerAreBothReported() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertTrue(processor.state.nameError)
+        assertTrue(processor.state.odometerError)
+        assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun theOdometerErrorClearsWhenADigitIsTyped() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.Save)
+        assertTrue(processor.state.odometerError)
+
+        processor.type(5)
+
+        assertFalse(processor.state.odometerError)
+    }
+
+    @Test
+    fun theOdometerErrorStaysWhileNothingIsEntered() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.Save)
+
+        processor.dispatch(AddVehicleIntent.OdometerEdited("."))
+        processor.dispatch(AddVehicleIntent.OdometerCleared)
+
+        assertTrue(processor.state.odometerError)
+    }
+
+    @Test
+    fun aRefusedSaveCanBeFixedAndSavedWithoutLeavingTheScreen() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.Save)
+        assertEquals(emptyList(), repository.addCalls)
+        processor.type(4, 2)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(1, repository.addCalls.size)
+    }
+
+    @Test
+    fun aTypedZeroSatisfiesTheRequiredOdometer() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.OdometerEdited("0"))
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertFalse(processor.state.odometerError)
+        assertEquals(Distance.ZERO, repository.addCalls.single().initialOdometer)
     }
 
     @Test
     fun aWhitespaceOnlyNameIsRefusedAndNothingIsSaved() {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.NameChanged("    "))
+        processor.type(1)
 
         processor.dispatch(AddVehicleIntent.Save)
 
@@ -283,6 +396,7 @@ class AddVehicleProcessorTest {
     fun aFailedSaveCanBeRetried() {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(1)
         repository.addFailure = IllegalStateException("disk full")
 
         processor.dispatch(AddVehicleIntent.Save)

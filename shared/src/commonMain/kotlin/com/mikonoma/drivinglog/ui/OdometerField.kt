@@ -28,7 +28,7 @@ import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
  * A microwave-style odometer field. It uses the system's number keyboard: the text underneath is just the
  * digits of the entry, and each digit typed enters at the right-hand end. The decimal (for the tenths units)
  * and thousands separators are drawn by [symbols], so the user never types one. The number is right-aligned
- * and the unit abbreviation stays fixed at the end of the field.
+ * and the unit abbreviation stays fixed at the end of the field. An empty entry shows nothing, only the label.
  */
 @Composable
 fun OdometerField(
@@ -38,6 +38,8 @@ fun OdometerField(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
     label: String = "Odometer",
+    isError: Boolean = false,
+    errorText: String? = null,
 ) {
     val digits = entry.digits
     OutlinedTextField(
@@ -47,6 +49,8 @@ fun OdometerField(
         modifier = modifier.fillMaxWidth().testTag("odo_field"),
         label = { Text(label) },
         singleLine = true,
+        isError = isError,
+        supportingText = if (isError && errorText != null) ({ Text(errorText) }) else null,
         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         visualTransformation = OdometerTransformation(entry.unit.hasTenths, symbols),
@@ -65,7 +69,8 @@ private class OdometerTransformation(
     private val symbols: NumberSymbols,
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        val shown = formatSteps(text.text.toLongOrNull() ?: 0L, hasTenths, symbols)
+        // An empty entry is drawn as nothing at all, not as 0 or 0.0.
+        val shown = text.text.toLongOrNull()?.let { formatSteps(it, hasTenths, symbols) } ?: ""
         val original = text.text.length
         return TransformedText(
             AnnotatedString(shown),

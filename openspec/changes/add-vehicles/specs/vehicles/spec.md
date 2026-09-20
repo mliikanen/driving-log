@@ -14,9 +14,9 @@ odometer field, so "entering the odometer 45200" means typing the digits 4, 5, 2
 
 ### Requirement: Add a vehicle
 The system SHALL allow the user to add a vehicle by entering a name (required), a license plate (optional), choosing
-the vehicle's odometer unit and entering its current odometer reading in the odometer field (optional, defaulting
-to 0). After a successful
-save the system SHALL return to the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
+the vehicle's odometer unit and entering its current odometer reading in the odometer field (required: the user
+SHALL type at least one digit, and a typed 0 is a valid reading). After a successful save the system SHALL return to
+the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
 share the same name or license plate.
 
 #### Scenario: Add a vehicle with all fields
@@ -24,10 +24,22 @@ share the same name or license plate.
 - **THEN** the vehicle "Family car" with plate "ABC-123" appears in the vehicle list
 - **AND** its details screen shows a current odometer of 45200 km
 
-#### Scenario: Add a vehicle with only a name
-- **WHEN** the user enters only the name "Van", leaves the preselected unit unchanged and saves
+#### Scenario: Add a vehicle with a name, the default unit and an odometer of zero
+- **WHEN** the user enters the name "Van", leaves the preselected unit unchanged, types 0 as the odometer and saves
 - **THEN** the vehicle "Van" appears in the vehicle list without a license plate
 - **AND** its details screen shows a current odometer of 0 in the preselected unit
+
+#### Scenario: Odometer is required
+- **WHEN** the user enters the name "Van" but types no digit in the odometer field and tries to save
+- **THEN** the system shows an error on the odometer field, stays on the add screen and does not save anything
+
+#### Scenario: The odometer error clears when the user types
+- **WHEN** the odometer error is shown and the user types a digit in the odometer field
+- **THEN** the odometer error is no longer shown
+
+#### Scenario: Name and odometer are both missing
+- **WHEN** the user tries to save with an empty name and no odometer digits
+- **THEN** the system shows the error on the name field and the error on the odometer field, and does not save anything
 
 #### Scenario: Name is required
 - **WHEN** the user tries to save a vehicle with an empty name
@@ -103,10 +115,11 @@ specified for odometer readings, so it SHALL show the decimal separator, and any
 current locale (for example a comma in Finnish and a period in English (United States)), even though the user never
 types a separator. The value SHALL be right-aligned in the field: new digits appear at the right edge of the field
 and push the earlier digits to the left, with the unit abbreviation kept fixed at the end of the field so that the
-right-hand end of the number does not move. The field starts at 0 (or 0.0 for the tenths units). Deleting a digit
-with the keyboard's backspace SHALL remove the last digit entered, so that typing then deleting a digit restores the
-earlier value, and a clear control in the field SHALL set the value back to 0. Typing 0 while the value is 0 SHALL
-leave it at 0. Characters that are not digits, such as a comma, a period or a minus sign, whether typed or pasted, SHALL
+right-hand end of the number does not move. The field starts empty: while no digit has been entered it SHALL NOT show
+0 or 0.0 or any other number, only its label. Deleting a digit with the keyboard's backspace SHALL remove the last digit
+entered, so that typing then deleting a digit restores the earlier value, and deleting the only digit SHALL make the
+field empty again. A clear control in the field SHALL make it empty. A typed 0 SHALL be shown as 0 (0.0 for the tenths
+units) and counts as an entered reading, and typing 0 again SHALL leave it at 0. Characters that are not digits, such as a comma, a period or a minus sign, whether typed or pasted, SHALL
 be ignored. The value SHALL have at most 7 whole digits, and digits that would exceed that SHALL be ignored. Because
 only digits can be entered, an invalid reading cannot be entered.
 
@@ -130,25 +143,33 @@ only digits can be entered, an invalid reading cannot be entered.
 - **WHEN** the user focuses the odometer field
 - **THEN** the device's number keyboard is shown, not the full text keyboard
 
-#### Scenario: Initial value
+#### Scenario: The field starts empty
 - **WHEN** the user opens the add vehicle screen
-- **THEN** the field shows 0 in the preselected unit, or 0.0 when that unit has tenths, and saving without typing anything saves a reading of 0
+- **THEN** the odometer field shows no number, neither 0 nor 0.0, whichever unit is preselected
+
+#### Scenario: A typed zero is a reading
+- **WHEN** the unit has tenths and the user types 0 in the empty field
+- **THEN** the field shows 0.0 (and 0 for a whole-number unit) and saving is allowed
+
+#### Scenario: Backspace on a typed zero
+- **WHEN** the field shows the typed zero and the user presses backspace
+- **THEN** the field is empty again
 
 #### Scenario: Backspace restores the earlier value
 - **WHEN** the unit has tenths, the field shows 1.2, the user types 3 and then presses backspace
 - **THEN** the field shows 12.3 and then 1.2 again
 
-#### Scenario: Typing, deleting to zero and typing again
+#### Scenario: Typing, deleting to empty and typing again
 - **WHEN** the unit has tenths and the user types 1, 2, presses backspace twice, then types 2, 3, 0
-- **THEN** after each key the field shows 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0
+- **THEN** after each key the field shows 0.1, 1.2, 0.1, (empty), 0.2, 2.3, 23.0
 
 #### Scenario: Backspace removes digits one at a time
 - **WHEN** the unit has tenths, the field shows 12.3, and the user presses backspace three times
-- **THEN** the field shows 1.2, then 0.1, then 0.0
+- **THEN** the field shows 1.2, then 0.1, then is empty
 
-#### Scenario: Backspace at zero
-- **WHEN** the field shows 0.0 (or 0) and the user presses backspace
-- **THEN** the field still shows 0.0 (or 0)
+#### Scenario: Backspace on an empty field
+- **WHEN** the field is empty and the user presses backspace
+- **THEN** the field is still empty
 
 #### Scenario: Backspace on a whole-number unit
 - **WHEN** the unit is "Kilometers", the field shows 123 km, and the user presses backspace
@@ -156,11 +177,11 @@ only digits can be entered, an invalid reading cannot be entered.
 
 #### Scenario: Clear
 - **WHEN** the field shows 12.3 and the user uses the clear control
-- **THEN** the field shows 0.0
+- **THEN** the field is empty
 
 #### Scenario: Zero at zero
-- **WHEN** the value is 0 and the user types 0 three times
-- **THEN** the field still shows 0
+- **WHEN** the user types 0 three times in the empty field of a whole-number unit
+- **THEN** the field shows 0
 
 #### Scenario: Maximum length
 - **WHEN** the unit is "Kilometers" and the field already shows 9999999 km, and the user types 1
@@ -171,13 +192,17 @@ only digits can be entered, an invalid reading cannot be entered.
 - **THEN** the field still shows 12.3
 
 #### Scenario: Pasting digits
-- **WHEN** the unit is "Kilometers with 100 m", the field shows 0.0 and the user pastes "123"
+- **WHEN** the unit is "Kilometers with 100 m", the field is empty and the user pastes "123"
 - **THEN** the field shows 12.3
 
 #### Scenario: Changing the unit keeps the value
 - **WHEN** the field shows 123 km and the user changes the unit to "Kilometers with 100 m"
 - **THEN** the field shows 123.0 km
 - **AND** changing the unit back to "Kilometers" shows 123 km
+
+#### Scenario: Changing the unit of an empty field
+- **WHEN** the field is empty and the user changes the unit
+- **THEN** the field is still empty
 
 #### Scenario: Changing to a whole-number unit rounds
 - **WHEN** the unit has tenths, the field shows 12.6, and the user changes the unit to "Kilometers"

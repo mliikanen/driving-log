@@ -1,5 +1,5 @@
 # Adds a vehicle from the vehicle list. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
-# unit_KILOMETERS), ODOMETER (digits, may be empty).
+# unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading).
 appId: com.mikonoma.drivinglog
 ---
 - tapOn:
@@ -17,14 +17,10 @@ appId: com.mikonoma.drivinglog
 - hideKeyboard
 - tapOn:
     id: ${UNIT}
-- runFlow:
-    when:
-      true: ${ODOMETER.length > 0}
-    commands:
-      - tapOn:
-          id: odo_field
-      - inputText: ${ODOMETER}
-      - hideKeyboard
+- tapOn:
+    id: odo_field
+- inputText: ${ODOMETER}
+- hideKeyboard
 - tapOn:
     id: save_vehicle
 # Wait for the list: the add screen is still on screen while it navigates away.

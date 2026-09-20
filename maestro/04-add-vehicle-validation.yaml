@@ -9,6 +9,7 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: save_vehicle
 - assertVisible: Enter a name
+- assertVisible: Enter the odometer reading
 - assertVisible: Add vehicle
 - tapOn:
     id: back
@@ -40,6 +41,9 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: vehicle_plate
 - inputText: " AB  12 "
+- tapOn:
+    id: odo_field
+- inputText: "1"
 - hideKeyboard
 - tapOn:
     id: save_vehicle
@@ -65,6 +69,9 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: vehicle_plate
 - inputText: "   "
+- tapOn:
+    id: odo_field
+- inputText: "1"
 - hideKeyboard
 - tapOn:
     id: save_vehicle
@@ -90,9 +97,16 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: unit_KILOMETERS_TENTHS
     checked: true
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+- tapOn:
+    id: odo_field
+- inputText: "0"
 - assertVisible:
     id: odo_field
     text: "0.0"
+- hideKeyboard
 - tapOn:
     id: save_vehicle
 - assertVisible:

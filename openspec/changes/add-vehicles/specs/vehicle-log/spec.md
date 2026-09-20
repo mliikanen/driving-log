@@ -12,15 +12,15 @@ locale rules of the `vehicles` capability.
 
 ### Requirement: Initial odometer event
 The system SHALL record exactly one "Initial odometer" event in a vehicle's log when the vehicle is added, holding the
-odometer reading entered in the vehicle's unit (0 when no digit was entered), kept exactly as entered and the date and time the vehicle was added. Adding a vehicle SHALL either
+odometer reading entered in the vehicle's unit (a typed 0 is a valid reading), kept exactly as entered and the date and time the vehicle was added. Adding a vehicle SHALL either
 save the vehicle together with this event or save neither. No other event type SHALL exist in this change.
 
 #### Scenario: Event created with the vehicle
 - **WHEN** the user adds a vehicle with the unit "Kilometers" and types 45200 in the odometer field
 - **THEN** the vehicle's log contains one "Initial odometer" event with 45200 km and the time of adding
 
-#### Scenario: Default odometer is logged
-- **WHEN** the user adds a vehicle with the unit "Miles" without entering an odometer
+#### Scenario: Zero odometer is logged
+- **WHEN** the user adds a vehicle with the unit "Miles" and types 0 in the odometer field
 - **THEN** the vehicle's log contains one "Initial odometer" event with 0 mi
 
 #### Scenario: Tenths reading is logged

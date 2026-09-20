@@ -119,6 +119,8 @@ fun AddVehicleContent(
                 onEdit = { onIntent(AddVehicleIntent.OdometerEdited(it)) },
                 onClear = { onIntent(AddVehicleIntent.OdometerCleared) },
                 label = "Current odometer",
+                isError = state.odometerError,
+                errorText = "Enter the odometer reading",
             )
         }
     }

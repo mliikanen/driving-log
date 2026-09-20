@@ -1,5 +1,6 @@
-# The microwave-style odometer field: digits enter from the right, backspace removes the last digit.
+# The microwave-style odometer field: it starts empty, digits enter from the right, backspace removes the last digit.
 # Run with the emulator locale English (United States): the decimal separator is ".".
+# "Empty" is asserted as: no text of one or more characters in the field (not 0, not 0.0).
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
@@ -10,9 +11,9 @@ appId: com.mikonoma.drivinglog
     id: unit_KILOMETERS_TENTHS
 - tapOn:
     id: odo_field
-- assertVisible:
+- assertNotVisible:
     id: odo_field
-    text: "0.0"
+    text: ".+"
 # 1, 2, 3 shows 0.1, 1.2, 12.3
 - inputText: "1"
 - assertVisible:
@@ -26,7 +27,7 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "12.3"
-# Backspace restores the earlier value: 12.3 -> 1.2 -> 0.1 -> 0.0 -> 0.0
+# Backspace restores the earlier value: 12.3 -> 1.2 -> 0.1 -> empty -> empty
 - eraseText: 1
 - assertVisible:
     id: odo_field
@@ -36,13 +37,13 @@ appId: com.mikonoma.drivinglog
     id: odo_field
     text: "0.1"
 - eraseText: 1
-- assertVisible:
+- assertNotVisible:
     id: odo_field
-    text: "0.0"
+    text: ".+"
 - eraseText: 1
-- assertVisible:
+- assertNotVisible:
     id: odo_field
-    text: "0.0"
+    text: ".+"
 # 1.2, then 3, then backspace: 12.3 and back to 1.2
 - inputText: "12"
 - assertVisible:
@@ -56,13 +57,13 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "1.2"
-# Clear
+# Clear empties the field
 - tapOn:
     id: odo_clear
-- assertVisible:
+- assertNotVisible:
     id: odo_field
-    text: "0.0"
-# 1, 2, BKSP, BKSP, 2, 3, 0 shows 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0
+    text: ".+"
+# 1, 2, BKSP, BKSP, 2, 3, 0 shows 0.1, 1.2, 0.1, (empty), 0.2, 2.3, 23.0
 - tapOn:
     id: odo_field
 - inputText: "1"
@@ -78,9 +79,9 @@ appId: com.mikonoma.drivinglog
     id: odo_field
     text: "0.1"
 - eraseText: 1
-- assertVisible:
+- assertNotVisible:
     id: odo_field
-    text: "0.0"
+    text: ".+"
 - inputText: "2"
 - assertVisible:
     id: odo_field
@@ -104,9 +105,28 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "23.0"
-# Whole-number units fill from the right too: 1, 12, 123
+# An empty field stays empty when the unit changes
 - tapOn:
     id: odo_clear
+- tapOn:
+    id: unit_MILES
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# A typed zero is a reading: 0.0 for a tenths unit, and backspace empties it again
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- tapOn:
+    id: odo_field
+- inputText: "0"
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# Whole-number units fill from the right too: 1, 12, 123
 - tapOn:
     id: unit_KILOMETERS
 - tapOn:
@@ -127,16 +147,20 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "12"
-# Zero at zero stays zero
-- tapOn:
-    id: odo_clear
-- tapOn:
+- eraseText: 2
+- assertNotVisible:
     id: odo_field
+    text: ".+"
+# Zero at zero stays zero
 - inputText: "000"
 - assertVisible:
     id: odo_field
     text: "0"
 # The maximum length: further digits are ignored
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
 - inputText: "99999999"
 - assertVisible:
     id: odo_field

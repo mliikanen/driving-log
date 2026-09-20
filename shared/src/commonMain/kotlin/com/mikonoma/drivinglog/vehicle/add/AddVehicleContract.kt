@@ -12,9 +12,14 @@ import org.fuusio.kide.presentation.ViewState
 data class AddVehicleState(
     val name: String = "",
     val licensePlate: String = "",
-    /** The odometer unit and the value typed so far; the unit starts at the default for the device region. */
+    /**
+     * The odometer unit and the value typed so far; the unit starts at the default for the device region and the
+     * entry starts empty.
+     */
     val entry: OdometerEntry,
     val nameError: Boolean = false,
+    /** Shown when the user tries to save without entering an odometer reading. */
+    val odometerError: Boolean = false,
     val isSaving: Boolean = false,
 ) : ViewState
 

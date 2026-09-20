@@ -5,22 +5,56 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.format.formatSteps
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class OdometerEntryTest {
 
     private val us = NumberSymbols.ENGLISH_US
 
-    private fun OdometerEntry.shown() = formatSteps(steps, unit.hasTenths, us)
+    /** What the field shows: nothing at all while empty, never 0 or 0.0. */
+    private fun OdometerEntry.shown() = steps?.let { formatSteps(it, unit.hasTenths, us) } ?: ""
 
     private fun tenths() = OdometerEntry(OdometerUnit.KILOMETERS_TENTHS)
     private fun whole() = OdometerEntry(OdometerUnit.KILOMETERS)
 
     private fun OdometerEntry.pressAll(vararg digits: Int) = digits.fold(this) { e, d -> e.press(d) }
 
+    // The field starts empty.
+
     @Test
-    fun startsAtZero() {
-        assertEquals("0.0", tenths().shown())
-        assertEquals("0", whole().shown())
+    fun startsEmpty() {
+        assertTrue(tenths().isEmpty)
+        assertTrue(whole().isEmpty)
+        assertEquals("", tenths().shown())
+        assertEquals("", whole().shown())
+        assertEquals("", tenths().digits)
+        assertNull(tenths().toDistance())
+    }
+
+    @Test
+    fun everyUnitStartsEmpty() {
+        for (unit in OdometerUnit.entries) {
+            val entry = OdometerEntry(unit)
+            assertTrue(entry.isEmpty, unit.name)
+            assertEquals("", entry.shown(), unit.name)
+        }
+    }
+
+    @Test
+    fun aTypedZeroIsNotEmptyAndIsAValidReading() {
+        val tenthsZero = tenths().press(0)
+        assertFalse(tenthsZero.isEmpty)
+        assertEquals("0.0", tenthsZero.shown())
+        assertEquals("0", whole().press(0).shown())
+        assertEquals(0, tenthsZero.toDistance()?.meters)
+    }
+
+    @Test
+    fun backspaceOnATypedZeroEmptiesIt() {
+        assertEquals("", tenths().press(0).backspace().shown())
+        assertTrue(whole().press(0).backspace().isEmpty)
     }
 
     @Test
@@ -52,7 +86,7 @@ class OdometerEntryTest {
     }
 
     @Test
-    fun backspaceRemovesDigitsOneAtATime() {
+    fun backspaceRemovesDigitsOneAtATimeDownToEmpty() {
         var entry = tenths().pressAll(1, 2, 3)
         val shown = buildList {
             repeat(3) {
@@ -60,43 +94,48 @@ class OdometerEntryTest {
                 add(entry.shown())
             }
         }
-        assertEquals(listOf("1.2", "0.1", "0.0"), shown)
+        assertEquals(listOf("1.2", "0.1", ""), shown)
     }
 
     @Test
-    fun backspaceAtZeroStaysAtZero() {
-        assertEquals("0.0", tenths().backspace().shown())
-        assertEquals("0", whole().backspace().backspace().shown())
+    fun backspaceOnAnEmptyEntryStaysEmpty() {
+        assertEquals("", tenths().backspace().shown())
+        assertEquals("", whole().backspace().backspace().shown())
+        assertTrue(tenths().backspace().isEmpty)
     }
 
     @Test
     fun backspaceOnAWholeUnit() {
         assertEquals("12", whole().pressAll(1, 2, 3).backspace().shown())
+        assertEquals("", whole().press(1).backspace().shown())
     }
 
     @Test
-    fun typeDeleteToZeroAndTypeAgainForTenths() {
+    fun typeDeleteToEmptyAndTypeAgainForTenths() {
         val steps = listOf<(OdometerEntry) -> OdometerEntry>(
             { it.press(1) }, { it.press(2) }, { it.backspace() }, { it.backspace() },
             { it.press(2) }, { it.press(3) }, { it.press(0) },
         )
         val shown = steps.runningFold(tenths()) { e, step -> step(e) }.drop(1).map { it.shown() }
-        assertEquals(listOf("0.1", "1.2", "0.1", "0.0", "0.2", "2.3", "23.0"), shown)
+        assertEquals(listOf("0.1", "1.2", "0.1", "", "0.2", "2.3", "23.0"), shown)
     }
 
     @Test
-    fun typeDeleteToZeroAndTypeAgainForWholeUnits() {
+    fun typeDeleteToEmptyAndTypeAgainForWholeUnits() {
         val steps = listOf<(OdometerEntry) -> OdometerEntry>(
             { it.press(1) }, { it.press(2) }, { it.backspace() }, { it.backspace() },
             { it.press(2) }, { it.press(3) }, { it.press(0) },
         )
         val shown = steps.runningFold(whole()) { e, step -> step(e) }.drop(1).map { it.shown() }
-        assertEquals(listOf("1", "12", "1", "0", "2", "23", "230"), shown)
+        assertEquals(listOf("1", "12", "1", "", "2", "23", "230"), shown)
     }
 
     @Test
-    fun clearResetsToZero() {
-        assertEquals("0.0", tenths().pressAll(1, 2, 3).clear().shown())
+    fun clearEmptiesTheEntry() {
+        val cleared = tenths().pressAll(1, 2, 3).clear()
+        assertEquals("", cleared.shown())
+        assertTrue(cleared.isEmpty)
+        assertNull(cleared.toDistance())
     }
 
     @Test
@@ -127,6 +166,31 @@ class OdometerEntryTest {
     // applyEdit: the system keyboard reports text, not key presses.
 
     @Test
+    fun editTypingIntoTheEmptyFieldEntersTheDigit() {
+        assertEquals("0.1", tenths().applyEdit("1").shown())
+        assertEquals("5", whole().applyEdit("5").shown())
+    }
+
+    @Test
+    fun editTypingAZeroIntoTheEmptyFieldIsATypedZero() {
+        val entry = tenths().applyEdit("0")
+        assertFalse(entry.isEmpty)
+        assertEquals("0.0", entry.shown())
+    }
+
+    @Test
+    fun editDeletingTheOnlyDigitEmptiesTheField() {
+        val entry = tenths().press(5).applyEdit("")
+        assertTrue(entry.isEmpty)
+        assertEquals("", entry.shown())
+    }
+
+    @Test
+    fun editDeletingTheTypedZeroEmptiesTheField() {
+        assertTrue(tenths().press(0).applyEdit("").isEmpty)
+    }
+
+    @Test
     fun editAppendingADigitPressesIt() {
         val entry = tenths().pressAll(1, 2)
         assertEquals("12.3", entry.applyEdit(entry.digits + "3").shown())
@@ -139,20 +203,15 @@ class OdometerEntryTest {
     }
 
     @Test
-    fun editDeletingTheLastDigitGoesToZero() {
-        assertEquals("0.0", tenths().press(5).applyEdit("").shown())
-    }
-
-    @Test
-    fun editTypingOnZeroReplacesTheZero() {
-        assertEquals("0.1", tenths().applyEdit("01").shown())
-        assertEquals("0.0", tenths().applyEdit("00").shown())
+    fun editTypingOnAZeroReplacesTheZero() {
+        assertEquals("0.1", tenths().press(0).applyEdit("01").shown())
+        assertEquals("0.0", tenths().press(0).applyEdit("00").shown())
     }
 
     @Test
     fun pastedDigitsAreAllEntered() {
-        assertEquals("12.3", tenths().applyEdit("0123").shown())
         assertEquals("12.3", tenths().applyEdit("123").shown())
+        assertEquals("12.3", tenths().press(0).applyEdit("0123").shown())
     }
 
     @Test
@@ -160,6 +219,13 @@ class OdometerEntryTest {
         val entry = tenths().pressAll(1, 2, 3)
         for (typed in listOf(",", ".", "-", " ", "a")) {
             assertEquals("12.3", entry.applyEdit(entry.digits + typed).shown(), typed)
+        }
+    }
+
+    @Test
+    fun nonDigitsIntoTheEmptyFieldLeaveItEmpty() {
+        for (typed in listOf(",", ".", "-", " ", "a")) {
+            assertTrue(tenths().applyEdit(typed).isEmpty, typed)
         }
     }
 
@@ -178,6 +244,7 @@ class OdometerEntryTest {
     fun unchangedTextChangesNothing() {
         val entry = tenths().pressAll(1, 2)
         assertEquals(entry, entry.applyEdit(entry.digits))
+        assertTrue(tenths().applyEdit("").isEmpty)
     }
 
     // Unit changes.
@@ -214,8 +281,23 @@ class OdometerEntryTest {
     }
 
     @Test
+    fun anEmptyEntryStaysEmptyWhateverTheUnitChange() {
+        for (from in OdometerUnit.entries) for (to in OdometerUnit.entries) {
+            val changed = OdometerEntry(from).withUnit(to)
+            assertTrue(changed.isEmpty, "$from -> $to")
+            assertEquals(to, changed.unit)
+        }
+    }
+
+    @Test
+    fun aTypedZeroStaysATypedZeroWhenTheUnitChanges() {
+        val changed = whole().press(0).withUnit(OdometerUnit.KILOMETERS_TENTHS)
+        assertFalse(changed.isEmpty)
+        assertEquals("0.0", changed.shown())
+    }
+
+    @Test
     fun toDistanceUsesTheUnit() {
-        assertEquals(45_200_300, tenths().pressAll(4, 5, 2, 0, 0, 3).toDistance().meters)
-        assertEquals(0, tenths().toDistance().meters)
+        assertEquals(45_200_300, tenths().pressAll(4, 5, 2, 0, 0, 3).toDistance()?.meters)
     }
 }

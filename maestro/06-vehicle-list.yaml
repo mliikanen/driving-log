@@ -12,21 +12,21 @@ appId: com.mikonoma.drivinglog
       NAME: van
       PLATE: ""
       UNIT: unit_KILOMETERS
-      ODOMETER: ""
+      ODOMETER: "1"
 - runFlow:
     file: subflows/add-vehicle.yaml
     env:
       NAME: Bike
       PLATE: ""
       UNIT: unit_KILOMETERS
-      ODOMETER: ""
+      ODOMETER: "1"
 - runFlow:
     file: subflows/add-vehicle.yaml
     env:
       NAME: Family car
       PLATE: ""
       UNIT: unit_KILOMETERS
-      ODOMETER: ""
+      ODOMETER: "1"
 - assertNotVisible: No vehicles yet
 - assertVisible:
     text: Family car
@@ -41,7 +41,7 @@ appId: com.mikonoma.drivinglog
       NAME: van
       PLATE: ""
       UNIT: unit_KILOMETERS
-      ODOMETER: ""
+      ODOMETER: "1"
 - assertVisible:
     id: vehicle_item
     index: 3

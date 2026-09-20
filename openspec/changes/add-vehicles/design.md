@@ -105,21 +105,24 @@ indirection. Revisit when logic spans repositories (for example, refueling that 
 
 - **Trimming:** `String.trim()` (Unicode whitespace) on name and plate, then: empty name is an error; empty plate is
   `null`. Inner whitespace is untouched. The same function serves add and edit.
-- **Odometer entry is a digit model, not text parsing.** `OdometerEntry` holds the unit and one non-negative `Long`, the
+- **Odometer entry is a digit model, not text parsing.** `OdometerEntry` holds the unit and one nullable `Long`, the
   value counted in the unit's step (whole kilometers or miles for the whole-number units; tenths for the tenths
-  units). `press(d)` sets `value = value * 10 + d` unless the result would exceed the cap (`9 999 999` steps for whole
-  units, `99 999 999` for tenths, that is 7 whole digits), in which case it is ignored; pressing 0 at 0 stays 0 for free.
-  `backspace()` sets `value = value / 10`; `clear()` sets 0. So the tenths digits 1, 2, 3 give 1, 12, 123 steps, shown
-  as 0.1, 1.2, 12.3, and from 12.3 backspace gives 1.2, 0.1, 0.0 (and stays 0.0), while 1.2, then 3, then backspace goes
-  12.3 and back to 1.2.
+  units). `null` means nothing has been entered yet: the field is empty and the form cannot be saved, which is what makes
+  the odometer required. A `0` is a typed zero and a valid reading, so "nothing entered" and "zero entered" are different
+  states. `press(d)` sets `value = (value ?: 0) * 10 + d` unless the result would exceed the cap (`9 999 999` steps for
+  whole units, `99 999 999` for tenths, that is 7 whole digits), in which case it is ignored; pressing 0 at 0 stays 0 for
+  free. `backspace()` on `null` stays `null`, on a value below 10 (a single digit, including a typed 0) gives `null`,
+  and otherwise sets `value = value / 10`; `clear()` gives `null`. So the tenths digits 1, 2, 3 give 1, 12, 123 steps,
+  shown as 0.1, 1.2, 12.3, and from 12.3 backspace gives 1.2, 0.1, then empty (and stays empty), while 1.2, then 3, then
+  backspace goes 12.3 and back to 1.2, and 1, 2, backspace, backspace, 2, 3, 0 shows 0.1, 1.2, 0.1, empty, 0.2, 2.3, 23.0.
 - **Applying a text edit:** the system IME reports the field's new text, not key presses, so `applyEdit(newText)`
   reduces the edit to the model. Take the digits of `newText` (dropping every non-digit, which ignores `,`, `.` and `-`,
-  typed or pasted). The field's previous digit text is the value's digits (`"0"` for zero). If the new digits start with
-  the previous ones, `press` each extra digit (a paste of "123" onto "0" presses 1, 2, 3); if the previous digits start
+  typed or pasted). The field's previous digit text is the value's digits (`""` when empty, `"0"` for a typed zero). If the new digits start
+  with the previous ones, `press` each extra digit (a paste of "123" onto an empty field presses 1, 2, 3); if the previous digits start
   with the new ones, `backspace` once per removed digit; otherwise (for example select-all then type) `clear()` and
   press every digit. The field is then re-rendered from the model, which also normalizes leading zeros. There is no
   parsing of separators, no locale, and no invalid state.
-- **Unit change keeps the number:** switching between a whole and a tenths unit rescales `value` (whole to tenths:
+- **Unit change keeps the number:** an empty entry stays empty. Switching between a whole and a tenths unit rescales `value` (whole to tenths:
   `* 10`; tenths to whole: `(value + 5) / 10`, rounding half up); switching within the same kind (for example
   Kilometers to Miles) keeps `value` as is, because a reading is a number read off a dial, not a distance to convert.
 - **Conversion to meters** uses integer arithmetic only, from `value` in steps. Kilometers: `meters = value * 1000`;
@@ -190,16 +193,20 @@ readings) wraps a Compose `BasicTextField` and lets the system keyboard do the t
   number pad on iOS, so no separator key is offered where the platform allows it. Some Android keyboards still show
   `.`, `,` and `-` in number mode, so non-digits are also dropped in `applyEdit` (decision 4). Hardware keyboards work the
   same way.
-- **State:** the field's text is the model's digits (`value` without leading zeros, `"0"` for zero); the selection is
-  always forced to the end. `onValueChange` passes the new text to the add screen's processor as one intent, which
+- **State:** the field's text is the model's digits (`value` without leading zeros, `""` when empty, `"0"` for a typed
+  zero); the selection is always forced to the end. `onValueChange` passes the new text to the add screen's processor as one intent, which
   calls `applyEdit`. The processor owns the `OdometerEntry`, so all the behavior is unit tested without Compose.
 - **Display:** a `VisualTransformation` renders the digits through the same locale-aware formatter as every reading
   (decision 4): the tenths units insert the locale's decimal separator before the last digit, padding to at least
   `0` + separator + digit, and integer digits get the locale's grouping separator. The offset mapping puts the cursor
-  at the end. So the user never types a separator and still sees the locale's one.
+  at the end. So the user never types a separator and still sees the locale's one. An empty entry is drawn as nothing at
+  all (no `0`, no `0.0`), so the field shows only its label as the prompt until the first digit.
 - **Right edge fill:** text alignment is end, and the unit abbreviation is a separate fixed trailing label at the field's
   right edge, so digits enter next to the label and push the earlier ones left, and the right end of the number does
-  not move. A small clear icon after the label resets the value to 0. Long values shrink or scroll rather than wrap.
+  not move. A small clear icon after the label empties the field. Long values shrink or scroll rather than wrap.
+- **Required:** the add form's `Save` checks the entry is not empty, next to the name check, and sets both errors when both
+  are missing. The odometer error is shown on the field (`isError` with the text "Enter the odometer reading") and clears
+  as soon as a digit is entered.
 - **Accessibility:** the field has a label ("Odometer" with the unit) and announces its formatted value; the clear
   icon has a content description.
 - **Test tags:** `odo_field` and `odo_clear`. Maestro drives it like a user: `tapOn` the field, `inputText` digits (a
@@ -221,9 +228,9 @@ call stays inside `shared`, where the Metro plugin is applied.
 ### 9. Tests
 
 - `commonTest`: name and plate validation; `OdometerEntry` (1, 2, 3 giving 1, 12, 123 and 0.1, 1.2, 12.3; backspace:
-  1.2 then 3 then backspace gives 12.3 then 1.2, 12.3 backspace three times gives 1.2, 0.1, 0.0, the sequence 1, 2,
-  backspace, backspace, 2, 3, 0 showing 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0, backspace at zero,
-  backspace on a whole unit 123 to 12; clear; zero at zero; the digit cap; `applyEdit` for appended digits, deletions,
+  1.2 then 3 then backspace gives 12.3 then 1.2, 12.3 backspace three times gives 1.2, 0.1, empty, the sequence 1, 2,
+  backspace, backspace, 2, 3, 0 showing 0.1, 1.2, 0.1, empty, 0.2, 2.3, 23.0, backspace on an empty entry, a typed zero
+  and backspace on it, backspace on a whole unit 123 to 12; clear to empty; zero at zero; the digit cap; `applyEdit` for appended digits, deletions,
   pasted digits, non-digits ignored and replacement; unit changes rescaling and rounding); conversion and formatting (English (US)
   and Finnish symbols, rounding of prepared meter values for whole-number units); `defaultOdometerUnit` for US, GB, FI
   and an unknown region; processors

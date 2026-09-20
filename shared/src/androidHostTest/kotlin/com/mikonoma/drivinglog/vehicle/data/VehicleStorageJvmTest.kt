@@ -84,7 +84,7 @@ class VehicleStorageJvmTest {
         try {
             val entry = OdometerEntry(OdometerUnit.KILOMETERS_TENTHS).applyEdit("1235")
             kotlinx.coroutines.runBlocking {
-                repository(driver).addVehicle("Van", "X1", entry.unit, entry.toDistance())
+                repository(driver).addVehicle("Van", "X1", entry.unit, checkNotNull(entry.toDistance()))
             }
             return rows(driver, "SELECT id, name, license_plate, odometer_unit, created_at, updated_at FROM vehicle", 6) +
                 rows(driver, "SELECT id, vehicle_id, type, occurred_at, odometer_meters, created_at FROM vehicle_event", 6)

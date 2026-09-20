@@ -10,7 +10,7 @@ offline-first and additive data model rules, until Firestore support arrives.
 ## What Changes
 
 - Users can add a vehicle with a name (required), a license plate (optional), an odometer unit and a current
-  odometer reading (defaults to 0). The odometer unit is a per-vehicle setting: kilometers, kilometers with a 100 m
+  odometer reading (required: the field starts empty, and a typed 0 is valid). The odometer unit is a per-vehicle setting: kilometers, kilometers with a 100 m
   indicator (one decimal), miles, or miles with tenths (one decimal). The tenths units keep the extra digit that
   such odometers show, which also suits readings captured by OCR later. The form preselects a default from the device region (miles in the US, UK, Liberia
   and Myanmar, kilometers elsewhere), the user can change it, and it is fixed once the vehicle is added.

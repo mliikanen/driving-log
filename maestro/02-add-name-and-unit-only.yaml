@@ -1,4 +1,4 @@
-# Add a vehicle with only a name: no plate, the preselected default unit, and an odometer of 0.
+# The odometer is required and starts empty. Add a vehicle with a name, the preselected default unit and a typed zero.
 # The emulator region is the United States, so the preselected unit is Miles.
 appId: com.mikonoma.drivinglog
 ---
@@ -9,12 +9,29 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: unit_MILES
     checked: true
+# The odometer field starts empty: no 0 and no 0.0 (a text of one or more characters must not be there).
 - assertVisible:
     id: odo_field
-    text: "0"
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# Saving without an odometer is refused and nothing is saved.
 - tapOn:
     id: vehicle_name
 - inputText: Van
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible: Enter the odometer reading
+- assertVisible: Add vehicle
+# A typed zero is a valid reading and clears the error.
+- tapOn:
+    id: odo_field
+- inputText: "0"
+- assertNotVisible: Enter the odometer reading
+- assertVisible:
+    id: odo_field
+    text: "0"
 - hideKeyboard
 - tapOn:
     id: save_vehicle
