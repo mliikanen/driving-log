@@ -72,6 +72,10 @@ context: |
   - Business logic lives in commonMain; platform code (location, storage
     drivers, permissions) goes behind `expect`/`actual` or interfaces
   - Specs describe observable behavior, not implementation
+  - Every place a user enters an odometer reading uses the shared `OdometerField` composable and `OdometerEntry` model,
+    so entry behavior is identical everywhere (empty start, right-edge fill, kept leading zero, backspace order, locale
+    separators). A screen's processor forwards the field's text to `OdometerEntry.applyEdit` and never re-implements a
+    rule; a screen only decides whether an empty entry may be saved.
   - MVI architecture.
 
 # Per-artifact rules.

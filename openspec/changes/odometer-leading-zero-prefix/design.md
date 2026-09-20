@@ -80,8 +80,10 @@ formatted reading, not the raw text.
 The behavior lives entirely in two shared pieces: `OdometerEntry` (all the rules: press, backspace, clear, prefix, cap,
 unit change, `applyEdit`) and `OdometerField` (the only composable that draws an odometer input). A screen's processor
 holds an `OdometerEntry` in its state and forwards the field's text to `applyEdit`; it never re-implements a rule. Audit
-of the code today: the add-vehicle form is the only odometer input, and it already works this way, so nothing needs to
-move. To keep it true for later inputs (refueling, trips, camera confirmation) the project context gains a convention:
+of the code (task 1.3): `KeyboardType.Number` is used only inside `OdometerField`; the other text fields are the vehicle
+name and plate; `OdometerField` has one call site, the add-vehicle form; and nothing outside `OdometerEntry` implements
+an entry rule (the field only reads `digits` to draw, and unit conversion lives in `OdometerUnit`). So the add-vehicle form
+is the only odometer input, it already works this way, and nothing needs to move. To keep it true for later inputs (refueling, trips, camera confirmation) the project context gains a convention:
 every odometer input uses `OdometerField` and `OdometerEntry`. What a screen still decides for itself is only whether an
 empty entry may be saved (required when adding a vehicle, possibly optional elsewhere).
 
