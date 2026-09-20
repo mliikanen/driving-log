@@ -1,0 +1,2 @@
+-- Version 2 to 3: the tenths choice remembered per vehicle for the log distance form.
+ALTER TABLE vehicle ADD COLUMN log_distance_tenths INTEGER;

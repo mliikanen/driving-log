@@ -74,21 +74,26 @@ class SqlDelightVehicleRepository(
         occurredAt: ZonedMoment,
         distance: Distance,
         loggedOdometer: Distance?,
+        tenthsIncluded: Boolean,
     ): String {
         require(distance.meters > 0) { "A distance entry must be above zero" }
         return withContext(dispatcher) {
             val eventId = newId()
             val zone = occurredAt.zone
-            events.insertDistanceEntry(
-                id = eventId,
-                vehicle_id = vehicleId,
-                occurred_at = occurredAt.instant.toEpochMilliseconds(),
-                created_at = clock.now().toEpochMilliseconds(),
-                distance_meters = distance.meters,
-                logged_odometer_meters = loggedOdometer?.meters,
-                occurred_zone = zone?.id,
-                occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
-            )
+            // One transaction: the entry and the remembered tenths choice are both saved, or neither.
+            database.transaction {
+                events.insertDistanceEntry(
+                    id = eventId,
+                    vehicle_id = vehicleId,
+                    occurred_at = occurredAt.instant.toEpochMilliseconds(),
+                    created_at = clock.now().toEpochMilliseconds(),
+                    distance_meters = distance.meters,
+                    logged_odometer_meters = loggedOdometer?.meters,
+                    occurred_zone = zone?.id,
+                    occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+                )
+                vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
+            }
             eventId
         }
     }
@@ -110,6 +115,7 @@ class SqlDelightVehicleRepository(
         licensePlate = license_plate,
         odometerUnit = OdometerUnit.fromCode(odometer_unit),
         createdAt = Instant.fromEpochMilliseconds(created_at),
+        logDistanceTenths = log_distance_tenths?.let { it != 0L },
     )
 
     private fun SelectVehicleDetails.toDomain() = VehicleDetails(
@@ -119,6 +125,7 @@ class SqlDelightVehicleRepository(
             licensePlate = license_plate,
             odometerUnit = OdometerUnit.fromCode(odometer_unit),
             createdAt = Instant.fromEpochMilliseconds(created_at),
+            logDistanceTenths = log_distance_tenths?.let { it != 0L },
         ),
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )

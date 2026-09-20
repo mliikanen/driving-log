@@ -232,6 +232,15 @@ class SqlDelightVehicleRepositoryTest {
         return repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(45_200_000))
     }
 
+    /** Adds a distance entry; the tenths choice only matters to the tests about it. */
+    private suspend fun addEntry(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        distance: Distance,
+        loggedOdometer: Distance?,
+        tenthsIncluded: Boolean = false,
+    ) = repository.addDistanceEntry(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
+
     private suspend fun assertCurrentOdometer(id: String, meters: Long) {
         val fromSql = repository.observeVehicle(id).first()?.currentOdometer
         assertEquals(Distance(meters), fromSql)
@@ -240,8 +249,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionTwo() {
-        assertEquals(2L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionThree() {
+        assertEquals(3L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -267,7 +276,7 @@ class SqlDelightVehicleRepositoryTest {
         val id = vehicleAtNoon()
         val moment = at(2.hours, newYork)
 
-        val entryId = repository.addDistanceEntry(id, moment, Distance(30_000), null)
+        val entryId = addEntry(id, moment, Distance(30_000), null)
 
         val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
         assertEquals(entryId, entry.id)
@@ -281,7 +290,7 @@ class SqlDelightVehicleRepositoryTest {
     fun anEntryLoggedByOdometerKeepsTheTypedCount() = runTest {
         val id = vehicleAtNoon()
 
-        repository.addDistanceEntry(id, at(1.hours), Distance(50_000), loggedOdometer = Distance(45_250_000))
+        addEntry(id, at(1.hours), Distance(50_000), loggedOdometer = Distance(45_250_000))
 
         val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
         assertEquals(Distance(50_000), entry.distance)
@@ -295,7 +304,7 @@ class SqlDelightVehicleRepositoryTest {
         val id = vehicleAtNoon()
         val moment = ZonedMoment(noon + 1.hours, EventZone("Mars/Olympus_Mons", 5 * 3600 + 1800))
 
-        repository.addDistanceEntry(id, moment, Distance(1_000), null)
+        addEntry(id, moment, Distance(1_000), null)
 
         assertEquals(moment, repository.observeLog(id).first().first().occurredAt)
     }
@@ -303,7 +312,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aMomentWithoutAZoneIsStoredWithoutOne() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, ZonedMoment(noon + 1.hours), Distance(1_000), null)
+        addEntry(id, ZonedMoment(noon + 1.hours), Distance(1_000), null)
         assertNull(repository.observeLog(id).first().first().occurredAt.zone)
     }
 
@@ -317,7 +326,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aDistanceEntryMustBeAboveZero() = runTest {
         val id = vehicleAtNoon()
-        assertFails { repository.addDistanceEntry(id, at(1.hours), Distance.ZERO, null) }
+        assertFails { addEntry(id, at(1.hours), Distance.ZERO, null) }
         assertEquals(1, repository.observeLog(id).first().size)
     }
 
@@ -325,8 +334,8 @@ class SqlDelightVehicleRepositoryTest {
     fun entriesAreOrderedByInstantWhateverTheZoneOrTheOrderTheyWereAdded() = runTest {
         val id = vehicleAtNoon()
         // 15:00 Helsinki is 12:00 UTC (noon); 08:30 New York is 12:30 UTC. Added in the opposite order.
-        val newYorkEntry = repository.addDistanceEntry(id, ZonedMoment.of(noon + 30.minutes, newYork), Distance(1_000), null)
-        val helsinkiEntry = repository.addDistanceEntry(id, ZonedMoment.of(noon + 1.minutes, helsinki), Distance(2_000), null)
+        val newYorkEntry = addEntry(id, ZonedMoment.of(noon + 30.minutes, newYork), Distance(1_000), null)
+        val helsinkiEntry = addEntry(id, ZonedMoment.of(noon + 1.minutes, helsinki), Distance(2_000), null)
 
         val ids = repository.observeLog(id).first().map { it.id }
 
@@ -336,8 +345,8 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aBackdatedEntryLandsInItsChronologicalPlace() = runTest {
         val id = vehicleAtNoon()
-        val today = repository.addDistanceEntry(id, at(5.hours), Distance(1_000), null)
-        val yesterday = repository.addDistanceEntry(id, at((-24).hours + 5.hours), Distance(2_000), null)
+        val today = addEntry(id, at(5.hours), Distance(1_000), null)
+        val yesterday = addEntry(id, at((-24).hours + 5.hours), Distance(2_000), null)
 
         val ids = repository.observeLog(id).first().map { it.id }
 
@@ -349,8 +358,8 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun entriesAtTheSameInstantComeLastAddedFirst() = runTest {
         val id = vehicleAtNoon()
-        val first = repository.addDistanceEntry(id, at(1.hours), Distance(1_000), null)
-        val second = repository.addDistanceEntry(id, at(1.hours), Distance(2_000), null)
+        val first = addEntry(id, at(1.hours), Distance(1_000), null)
+        val second = addEntry(id, at(1.hours), Distance(2_000), null)
 
         assertEquals(listOf(second, first), repository.observeRecentEvents(id, 2).first().map { it.id })
     }
@@ -358,7 +367,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun theRecentEventsIncludeDistanceEntries() = runTest {
         val id = vehicleAtNoon()
-        for (i in 1..6) repository.addDistanceEntry(id, at(i.hours), Distance(i * 1_000L), null)
+        for (i in 1..6) addEntry(id, at(i.hours), Distance(i * 1_000L), null)
 
         val recent = repository.observeRecentEvents(id, 5).first()
 
@@ -375,9 +384,9 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun currentOdometerAddsEntriesAfterTheInitialEvent() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null)
-        repository.addDistanceEntry(id, at(2.hours), Distance(20_000), null)
-        repository.addDistanceEntry(id, at(3.hours), Distance(500), null)
+        addEntry(id, at(1.hours), Distance(30_000), null)
+        addEntry(id, at(2.hours), Distance(20_000), null)
+        addEntry(id, at(3.hours), Distance(500), null)
 
         assertCurrentOdometer(id, 45_250_500)
     }
@@ -385,8 +394,8 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun anEntryBeforeTheInitialEventNeverChangesTheCurrentOdometer() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, at((-7).hours * 24), Distance(30_000), null)
-        repository.addDistanceEntry(id, at(-1.minutes), Distance(20_000), null)
+        addEntry(id, at((-7).hours * 24), Distance(30_000), null)
+        addEntry(id, at(-1.minutes), Distance(20_000), null)
 
         assertCurrentOdometer(id, 45_200_000)
         assertEquals(3, repository.observeLog(id).first().size)
@@ -395,7 +404,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun anEntryAtTheInitialInstantAddedAfterItCounts() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, at(0.minutes), Distance(30_000), null)
+        addEntry(id, at(0.minutes), Distance(30_000), null)
 
         assertCurrentOdometer(id, 45_230_000)
     }
@@ -403,10 +412,10 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aLaterOdometerSettingEventReplacesTheRunningTotalInSqlAndInTheFunction() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null)
+        addEntry(id, at(1.hours), Distance(30_000), null)
         insertEvent("second-baseline", id, "INITIAL_ODOMETER", (noon + 2.hours).toEpochMilliseconds(), 50_000_000)
-        repository.addDistanceEntry(id, at(3.hours), Distance(10_000), null)
-        repository.addDistanceEntry(id, at(90.minutes), Distance(7_000), null) // before the second baseline
+        addEntry(id, at(3.hours), Distance(10_000), null)
+        addEntry(id, at(90.minutes), Distance(7_000), null) // before the second baseline
 
         assertCurrentOdometer(id, 50_010_000)
     }
@@ -414,9 +423,69 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun theSameDistanceInAnotherZoneChangesNothingAboutTheOdometer() = runTest {
         val id = vehicleAtNoon()
-        repository.addDistanceEntry(id, at(1.hours, newYork), Distance(30_000), null)
-        repository.addDistanceEntry(id, at(2.hours, helsinki), Distance(20_000), null)
+        addEntry(id, at(1.hours, newYork), Distance(30_000), null)
+        addEntry(id, at(2.hours, helsinki), Distance(20_000), null)
 
         assertCurrentOdometer(id, 45_250_000)
+    }
+
+    // ---- The tenths choice remembered per vehicle
+
+    private suspend fun rememberedTenths(id: String) = repository.observeVehicle(id).first()?.vehicle?.logDistanceTenths
+
+    @Test
+    fun noTenthsChoiceIsRememberedBeforeAnEntryIsSaved() = runTest {
+        val id = vehicleAtNoon()
+        assertNull(rememberedTenths(id))
+        assertNull(repository.observeVehicles().first().single().logDistanceTenths)
+    }
+
+    @Test
+    fun savingAnEntryRemembersTheTenthsChoiceUsed() = runTest {
+        val id = vehicleAtNoon()
+
+        addEntry(id, at(1.hours), Distance(1_000), null, tenthsIncluded = true)
+        assertEquals(true, rememberedTenths(id))
+        assertEquals(true, repository.observeVehicles().first().single().logDistanceTenths)
+
+        addEntry(id, at(2.hours), Distance(1_000), null, tenthsIncluded = false)
+        assertEquals(false, rememberedTenths(id))
+    }
+
+    @Test
+    fun theChoiceOfOneVehicleDoesNotAffectAnother() = runTest {
+        val first = vehicleAtNoon()
+        val second = repository.addVehicle("Van", null, OdometerUnit.MILES, Distance.ZERO)
+
+        addEntry(first, at(1.hours), Distance(1_000), null, tenthsIncluded = true)
+
+        assertEquals(true, rememberedTenths(first))
+        assertNull(rememberedTenths(second))
+    }
+
+    @Test
+    fun aFailedEntryInsertLeavesTheRememberedChoiceUnchanged() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours), Distance(1_000), null, tenthsIncluded = false)
+        // Make the next insert fail: its event id is already taken.
+        insertEvent("id-4", "other-owner", "INITIAL_ODOMETER", 1, 0)
+        database.vehicleQueries.insertVehicle("other-owner", "Other", null, "KILOMETERS", 1, 1)
+
+        assertFails { addEntry(id, at(2.hours), Distance(2_000), null, tenthsIncluded = true) }
+
+        assertEquals(false, rememberedTenths(id))
+        assertEquals(2, repository.observeLog(id).first().size)
+    }
+
+    @Test
+    fun rememberingTheChoiceDoesNotTouchTheVehiclesUpdatedTimeOrLog() = runTest {
+        val id = vehicleAtNoon()
+        val logBefore = repository.observeLog(id).first()
+        val updatedBefore = database.vehicleQueries.selectVehicles().executeAsList().single()
+
+        addEntry(id, at(1.hours), Distance(1_000), null, tenthsIncluded = true)
+
+        assertEquals(updatedBefore.name, repository.observeVehicles().first().single().name)
+        assertEquals(logBefore.first(), repository.observeLog(id).first().last())
     }
 }

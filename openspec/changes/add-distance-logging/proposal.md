@@ -17,11 +17,13 @@ distances into spans) and refuelings are separate, upcoming changes that build o
   distance, while the user types.
 - Each entry has a **date and time and a time zone**, chosen with a picker. The moment defaults to when the form was
   opened and the time zone to the device's; the moment may be in the past and may not be in the future. The user can pick
-  any time zone, so an entry can be recorded in the zone where it happened. An entry dated before the vehicle's initial odometer is allowed: it is kept in the
+  any time zone, so an entry can be recorded in the zone where it happened. The date shows its day of the week, in the device's language,
+  and every time, on the form and in the log, follows the system's 12-hour or 24-hour setting. An entry dated before the vehicle's initial odometer is allowed: it is kept in the
   log at its time and does not change any odometer. There is no known odometer at such a time, so the new-odometer way is
   unavailable for it.
 - The **unit** of an entry is chosen on the form: kilometers or miles, defaulting to the vehicle's, with an optional
-  "include tenths" switch, also defaulting to the vehicle's. Whole-number trip meters and tenths trip meters are both
+  "include tenths" switch. The tenths choice is remembered per vehicle: saving an entry keeps the choice used for that vehicle,
+  and the next form for it starts with that choice; before any entry, both start as the vehicle's odometer unit. Whole-number trip meters and tenths trip meters are both
   possible whatever the vehicle's odometer unit. Entries are typed in the same microwave-style field as the initial
   odometer and shown in the vehicle's unit.
 - A saved entry becomes a **Distance** event in the vehicle's log. It shows in the recent events and the full log, newest
@@ -31,7 +33,8 @@ distances into spans) and refuelings are separate, upcoming changes that build o
   it was entered in and that zone's UTC offset at the moment, and it is shown in that zone, whatever the device's zone is
   now, until the user chooses otherwise (a way to choose is not part of this change). The zone is shown next to the time
   when it differs from the device's zone. The initial odometer event records the device's zone at the time of adding.
-- Storage moves to schema version 2 with a migration for existing databases: distance entries need a distance column,
+- Storage moves to schema version 3, in two migrations (1 to 2, 2 to 3) for existing databases: the tenths choice is one nullable column on the vehicle,
+  and distance entries need a distance column,
   entries made by odometer keep the count the user typed for provenance (never used to derive the odometer), and event
   moments gain their zone columns. Events written before this change carry no zone and are shown in the device's zone.
 
@@ -62,7 +65,7 @@ Out of scope (later changes):
   a `ZonedMoment` (instant, zone id, offset) used by every event,
   a `Distance` event type and a pure known-odometer function in the vehicle domain, repository additions, the details and
   full log rows, and the nav key registration.
-- Data: schema version 2 (migration `1.sqm`: four nullable columns on `vehicle_event`: the distance, the typed count, the
+- Data: schema version 3 (migration `2.sqm`: one nullable column on `vehicle` for the remembered tenths choice, and migration `1.sqm`: four nullable columns on `vehicle_event`: the distance, the typed count, the
   time zone id and the UTC offset), and the derived current-odometer query. Audit timestamps that users never see or enter
   (`created_at`, `updated_at`) stay plain UTC instants. Existing databases keep working and gain the columns.
 - Dependencies: none new. The Material 3 date and time pickers are already in the Compose Multiplatform material3 library, and kotlinx-datetime already

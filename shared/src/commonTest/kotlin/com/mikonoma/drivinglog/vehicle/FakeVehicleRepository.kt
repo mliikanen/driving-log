@@ -20,7 +20,13 @@ class FixedDeviceTimeZone(var zone: TimeZone = TimeZone.UTC) : DeviceTimeZone {
     override fun current(): TimeZone = zone
 }
 
-data class DistanceCall(val vehicleId: String, val occurredAt: ZonedMoment, val distance: Distance, val loggedOdometer: Distance?)
+data class DistanceCall(
+    val vehicleId: String,
+    val occurredAt: ZonedMoment,
+    val distance: Distance,
+    val loggedOdometer: Distance?,
+    val tenthsIncluded: Boolean,
+)
 
 data class AddCall(val name: String, val licensePlate: String?, val unit: OdometerUnit, val initialOdometer: Distance)
 data class UpdateCall(val id: String, val name: String, val licensePlate: String?)
@@ -44,8 +50,9 @@ class FakeVehicleRepository : VehicleRepository {
         plate: String? = null,
         unit: OdometerUnit = OdometerUnit.KILOMETERS,
         createdAtMillis: Long = counter++.toLong(),
+        logDistanceTenths: Boolean? = null,
     ) {
-        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis))
+        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths)
     }
 
     /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
@@ -81,9 +88,17 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
-    override suspend fun addDistanceEntry(vehicleId: String, occurredAt: ZonedMoment, distance: Distance, loggedOdometer: Distance?): String {
+    override suspend fun addDistanceEntry(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        distance: Distance,
+        loggedOdometer: Distance?,
+        tenthsIncluded: Boolean,
+    ): String {
         distanceFailure?.let { throw it }
-        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer)
+        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
+        // The choice is remembered with the entry, like the real repository does.
+        vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         val id = "d${++counter}"
         // Keep the log newest first by instant, the way the real repository returns it.
         val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer)

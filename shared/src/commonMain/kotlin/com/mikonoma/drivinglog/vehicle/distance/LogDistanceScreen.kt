@@ -1,20 +1,60 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.padding
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.format.formatOdometer
+import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
 
-/** Placeholder until the real form is built (task 4.1). */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogDistanceScreen(
     processor: LogDistanceProcessor,
@@ -22,6 +62,8 @@ fun LogDistanceScreen(
     deviceTimeZone: DeviceTimeZone,
     onBack: () -> Unit,
 ) {
+    val state by processor.states.collectAsState()
+
     LaunchedEffect(processor) {
         processor.sideEffects.collect { effect ->
             when (effect) {
@@ -29,7 +71,299 @@ fun LogDistanceScreen(
             }
         }
     }
+
+    LogDistanceContent(
+        state = state,
+        deviceLocale = deviceLocale,
+        deviceTimeZoneId = deviceTimeZone.current().id,
+        onIntent = processor::dispatch,
+        onBack = onBack,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LogDistanceContent(
+    state: LogDistanceState,
+    deviceLocale: DeviceLocale,
+    deviceTimeZoneId: String,
+    onIntent: (LogDistanceIntent) -> Unit,
+    onBack: () -> Unit,
+) {
+    // Read on every composition so a change of device locale shows the new separators.
+    val symbols = deviceLocale.numberSymbols()
+    var showDate by rememberSaveable { mutableStateOf(false) }
+    var showTime by rememberSaveable { mutableStateOf(false) }
+    var showZone by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Log distance") }, navigationIcon = { BackButton(onBack) }) },
-    ) { padding -> Text("Log distance form", Modifier.padding(padding).padding(16.dp)) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Log distance") },
+                navigationIcon = { BackButton(onBack) },
+                actions = {
+                    TextButton(
+                        onClick = { onIntent(LogDistanceIntent.Save) },
+                        enabled = !state.isLoading && !state.notFound && !state.isSaving,
+                        modifier = Modifier.testTag("save_entry"),
+                    ) { Text("Save") }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when {
+                state.isLoading -> Unit
+                state.notFound -> Text("This vehicle no longer exists.")
+                else -> {
+                    WayChoice(state.way) { onIntent(LogDistanceIntent.WayChanged(it)) }
+                    MomentRow(state, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
+                    if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
+                    UnitChoice(state, onIntent)
+                    if (state.way == LogWay.NEW_ODOMETER) KnownOdometerInfo(state, symbols)
+                    OdometerField(
+                        entry = state.activeEntry,
+                        symbols = symbols,
+                        onEdit = { onIntent(LogDistanceIntent.OdometerEdited(it)) },
+                        onClear = { onIntent(LogDistanceIntent.OdometerCleared) },
+                        label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance" else "New odometer",
+                        isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
+                        errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDate) {
+        DateDialog(
+            initialDateMillis = dateToPicker(state.localDateTime.date),
+            onDismiss = { showDate = false },
+            onPicked = { onIntent(LogDistanceIntent.DateChanged(dateFromPicker(it))) },
+        )
+    }
+    if (showTime) {
+        TimeDialog(
+            hour = state.localDateTime.hour,
+            minute = state.localDateTime.minute,
+            onDismiss = { showTime = false },
+            onPicked = { hour, minute -> onIntent(LogDistanceIntent.TimeChanged(hour, minute)) },
+        )
+    }
+    if (showZone) {
+        TimeZoneDialog(
+            at = state.moment.instant,
+            deviceZoneId = deviceTimeZoneId,
+            selectedId = state.zoneId,
+            onDismiss = { showZone = false },
+            onPicked = { onIntent(LogDistanceIntent.ZoneChanged(it)) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WayChoice(selected: LogWay, onSelect: (LogWay) -> Unit) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        SegmentedButton(
+            selected = selected == LogWay.TRIP_DISTANCE,
+            onClick = { onSelect(LogWay.TRIP_DISTANCE) },
+            shape = SegmentedButtonDefaults.itemShape(0, 2),
+            modifier = Modifier.testTag("log_way_distance"),
+        ) { Text("Trip distance") }
+        SegmentedButton(
+            selected = selected == LogWay.NEW_ODOMETER,
+            onClick = { onSelect(LogWay.NEW_ODOMETER) },
+            shape = SegmentedButtonDefaults.itemShape(1, 2),
+            modifier = Modifier.testTag("log_way_odometer"),
+        ) { Text("New odometer") }
+    }
+}
+
+@Composable
+private fun MomentRow(state: LogDistanceState, onDate: () -> Unit, onTime: () -> Unit, onZone: () -> Unit) {
+    val local = state.localDateTime
+    val offset = state.moment.zone?.offsetSeconds ?: 0
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Date, time and time zone", style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onDate, modifier = Modifier.testTag("log_date")) { Text(local.date.toString()) }
+            OutlinedButton(onClick = onTime, modifier = Modifier.testTag("log_time")) {
+                Text(local.hour.toString().padStart(2, '0') + ":" + local.minute.toString().padStart(2, '0'))
+            }
+            OutlinedButton(onClick = onZone, modifier = Modifier.testTag("log_zone")) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(state.zoneId)
+                    OffsetText(offset)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UnitChoice(state: LogDistanceState, onIntent: (LogDistanceIntent) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Unit", style = MaterialTheme.typography.titleSmall)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = !state.unit.isMiles,
+                onClick = { onIntent(LogDistanceIntent.UnitFamilySelected(miles = false)) },
+                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                modifier = Modifier.testTag("log_unit_km"),
+            ) { Text("Kilometers") }
+            SegmentedButton(
+                selected = state.unit.isMiles,
+                onClick = { onIntent(LogDistanceIntent.UnitFamilySelected(miles = true)) },
+                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                modifier = Modifier.testTag("log_unit_mi"),
+            ) { Text("Miles") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Text("Include tenths")
+            Switch(
+                checked = state.unit.hasTenths,
+                onCheckedChange = { onIntent(LogDistanceIntent.TenthsChanged(it)) },
+                modifier = Modifier.testTag("log_tenths"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun KnownOdometerInfo(state: LogDistanceState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols) {
+    val known = state.knownOdometer
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (known == null) {
+            Text(
+                "No odometer is known at this time. Enter the trip distance instead.",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("log_no_known_odometer"),
+            )
+        } else {
+            Text(
+                "Previous known odometer: " + formatOdometer(known, state.vehicleUnit, symbols),
+                modifier = Modifier.testTag("log_known_odometer"),
+            )
+            state.previewDistance?.let { distance ->
+                Text("Distance: " + formatOdometer(distance, state.vehicleUnit, symbols), modifier = Modifier.testTag("log_live_distance"))
+            }
+        }
+    }
+}
+
+/** The UTC offset on its own line: smaller and lighter than the zone name, so the name stays the first thing read. */
+@Composable
+private fun OffsetText(offsetSeconds: Int) {
+    Text(
+        formatUtcOffset(offsetSeconds),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+    )
+}
+
+@Composable
+private fun ErrorText(message: String) {
+    Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("log_error"))
+}
+
+private fun errorMessage(state: LogDistanceState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols): String =
+    when (val error = state.error) {
+        null -> ""
+        LogDistanceError.FieldEmpty ->
+            if (state.way == LogWay.TRIP_DISTANCE) "Enter the trip distance" else "Enter the odometer reading"
+        LogDistanceError.TimeInFuture -> "The time cannot be in the future"
+        LogDistanceError.DistanceNotPositive -> "The distance must be more than zero"
+        LogDistanceError.NoKnownOdometer -> "No odometer is known at this time. Enter the trip distance instead."
+        is LogDistanceError.OdometerNotHigher -> "Enter a reading higher than " + formatOdometer(error.known, state.vehicleUnit, symbols)
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateDialog(initialDateMillis: Long, onDismiss: () -> Unit, onPicked: (Long) -> Unit) {
+    val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    pickerState.selectedDateMillis?.let(onPicked)
+                    onDismiss()
+                },
+                modifier = Modifier.testTag("date_ok"),
+            ) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) { DatePicker(pickerState) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeDialog(hour: Int, minute: Int, onDismiss: () -> Unit, onPicked: (Int, Int) -> Unit) {
+    val pickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onPicked(pickerState.hour, pickerState.minute)
+                    onDismiss()
+                },
+                modifier = Modifier.testTag("time_ok"),
+            ) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) { TimePicker(pickerState) } },
+    )
+}
+
+@Composable
+private fun TimeZoneDialog(
+    at: Instant,
+    deviceZoneId: String,
+    selectedId: String,
+    onDismiss: () -> Unit,
+    onPicked: (String) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val choices = remember(query, at, deviceZoneId) { timeZoneChoices(TimeZone.availableZoneIds, deviceZoneId, at, query) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        title = { Text("Time zone") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth().testTag("zone_search"),
+                    label = { Text("Search") },
+                    singleLine = true,
+                )
+                if (choices.isEmpty()) Text("No time zone matches")
+                LazyColumn(Modifier.heightIn(max = 360.dp).testTag("zone_list")) {
+                    items(choices, key = { it.id }) { choice ->
+                        ListItem(
+                            headlineContent = { Text(choice.id) },
+                            supportingContent = { OffsetText(choice.offsetSeconds) },
+                            trailingContent = if (choice.id == selectedId) {
+                                { Icon(Icons.Filled.Check, contentDescription = "Selected") }
+                            } else null,
+                            modifier = Modifier
+                                .clickable {
+                                    onPicked(choice.id)
+                                    onDismiss()
+                                }
+                                .testTag("zone_item"),
+                        )
+                    }
+                }
+            }
+        },
+    )
 }

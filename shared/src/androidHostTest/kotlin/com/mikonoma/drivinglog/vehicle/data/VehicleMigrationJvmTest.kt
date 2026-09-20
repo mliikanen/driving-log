@@ -47,6 +47,14 @@ private val VERSION_1_SCHEMA = listOf(
     "CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC)",
 )
 
+/** The schema as it was in version 2: version 1 plus distance entries and time zones on events. */
+private val VERSION_2_SCHEMA = VERSION_1_SCHEMA + listOf(
+    "ALTER TABLE vehicle_event ADD COLUMN distance_meters INTEGER",
+    "ALTER TABLE vehicle_event ADD COLUMN logged_odometer_meters INTEGER",
+    "ALTER TABLE vehicle_event ADD COLUMN occurred_zone TEXT",
+    "ALTER TABLE vehicle_event ADD COLUMN occurred_offset_seconds INTEGER",
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleMigrationJvmTest {
 
@@ -90,7 +98,7 @@ class VehicleMigrationJvmTest {
     fun migratingKeepsTheExistingVehicleAndEvent() = runTest {
         val driver = versionOneDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 1, 2)
+        DrivingLogDatabase.Schema.migrate(driver, 1, 3)
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -106,7 +114,7 @@ class VehicleMigrationJvmTest {
     fun aMigratedEventHasNoZoneAndItsNewColumnsAreNull() = runTest {
         val driver = versionOneDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 1, 2)
+        DrivingLogDatabase.Schema.migrate(driver, 1, 3)
 
         val event = repository(driver).observeLog("v1").first().single()
         assertNull(event.occurredAt.zone)
@@ -125,7 +133,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun theCurrentOdometerOfAMigratedVehicleIsStillItsReading() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 2)
+        DrivingLogDatabase.Schema.migrate(driver, 1, 3)
 
         assertEquals(Distance(45_200_300), repository(driver).observeVehicle("v1").first()?.currentOdometer)
     }
@@ -133,11 +141,11 @@ class VehicleMigrationJvmTest {
     @Test
     fun aDistanceEntryWithAZoneCanBeAddedAfterMigrating() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 2)
+        DrivingLogDatabase.Schema.migrate(driver, 1, 3)
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("America/New_York"))
 
-        repository.addDistanceEntry("v1", moment, Distance(30_000), loggedOdometer = null)
+        repository.addDistanceEntry("v1", moment, Distance(30_000), loggedOdometer = null, tenthsIncluded = true)
 
         val entry = repository.observeLog("v1").first().first() as VehicleEvent.DistanceEntry
         assertEquals(EventZone("America/New_York", -4 * 3600), entry.occurredAt.zone)
@@ -147,7 +155,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun aMigratedVehicleCanAlsoGetANewVehicleWithTheDeviceZone() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 2)
+        DrivingLogDatabase.Schema.migrate(driver, 1, 3)
         val repository = repository(driver)
 
         val id = repository.addVehicle("Van", null, OdometerUnit.MILES, Distance(1_609_344))
@@ -157,7 +165,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedDatabaseHasTheSameTablesAsAFreshOne() {
-        val migrated = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 2) }
+        val migrated = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 3) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -165,10 +173,10 @@ class VehicleMigrationJvmTest {
     }
 
     @Test
-    fun aFreshDatabaseIsVersionTwoWithTheNewColumns() {
+    fun aFreshDatabaseIsVersionThreeWithTheNewColumns() {
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        assertEquals(2L, DrivingLogDatabase.Schema.version)
+        assertEquals(3L, DrivingLogDatabase.Schema.version)
         assertEquals(
             listOf(
                 "id", "vehicle_id", "type", "occurred_at", "odometer_meters", "created_at",
@@ -176,5 +184,69 @@ class VehicleMigrationJvmTest {
             ),
             columns(fresh, "vehicle_event"),
         )
+        assertEquals(
+            listOf("id", "name", "license_plate", "odometer_unit", "created_at", "updated_at", "log_distance_tenths"),
+            columns(fresh, "vehicle"),
+        )
+    }
+
+    // ---- Version 2 to 3: the remembered tenths choice
+
+    /** A database as the previous build left it: the version-2 schema with a vehicle and an event with a zone. */
+    private fun versionTwoDatabase(): SqlDriver {
+        val driver = memoryDriver()
+        VERSION_2_SCHEMA.forEach { driver.execute(null, it.trimIndent(), 0) }
+        driver.execute(null, "INSERT INTO vehicle VALUES ('v1', 'Family car', 'ABC-123', 'KILOMETERS', 1000, 1000)", 0)
+        driver.execute(
+            null,
+            "INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds) " +
+                "VALUES ('e1', 'v1', 'INITIAL_ODOMETER', 1785067200000, 45200000, 1785067200000, 'Europe/Helsinki', 10800)",
+            0,
+        )
+        return driver
+    }
+
+    @Test
+    fun migratingFromVersionTwoKeepsTheVehicleAndItsZonedEvent() = runTest {
+        val driver = versionTwoDatabase()
+
+        DrivingLogDatabase.Schema.migrate(driver, 2, 3)
+
+        val repository = repository(driver)
+        val vehicle = repository.observeVehicles().first().single()
+        assertEquals("Family car", vehicle.name)
+        assertNull(vehicle.logDistanceTenths)
+        val event = repository.observeLog("v1").first().single()
+        assertEquals(EventZone("Europe/Helsinki", 3 * 3600), event.occurredAt.zone)
+    }
+
+    @Test
+    fun aMigratedVehicleHasNoRememberedTenthsChoiceFromEitherOlderVersion() = runTest {
+        val fromOne = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 3) }
+        val fromTwo = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 3) }
+
+        assertNull(repository(fromOne).observeVehicles().first().single().logDistanceTenths)
+        assertNull(repository(fromTwo).observeVehicles().first().single().logDistanceTenths)
+    }
+
+    @Test
+    fun theTenthsChoiceCanBeRememberedAfterMigratingFromVersionTwo() = runTest {
+        val driver = versionTwoDatabase()
+        DrivingLogDatabase.Schema.migrate(driver, 2, 3)
+        val repository = repository(driver)
+        val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki"))
+
+        repository.addDistanceEntry("v1", moment, Distance(30_000), loggedOdometer = null, tenthsIncluded = true)
+
+        assertEquals(true, repository.observeVehicles().first().single().logDistanceTenths)
+    }
+
+    @Test
+    fun aVersionTwoDatabaseMigratedToThreeHasTheSameTablesAsAFreshOne() {
+        val migrated = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 3) }
+        val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
+
+        assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
+        assertEquals(columns(fresh, "vehicle_event"), columns(migrated, "vehicle_event"))
     }
 }

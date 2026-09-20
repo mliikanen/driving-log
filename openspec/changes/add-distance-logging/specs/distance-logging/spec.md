@@ -96,12 +96,15 @@ error on the field and SHALL NOT save the entry when the field is empty, or when
 
 ### Requirement: The unit of an entry is selectable
 The system SHALL let the user choose the unit of the entry on the form: kilometers or miles, and separately whether tenths are
-included. The form SHALL preselect the unit family and the tenths choice of the vehicle's odometer unit ("Kilometers" and
-"Kilometers with 100 m" are kilometers, "Miles" and "Miles with tenths" are miles; the two tenths units include tenths).
+included. The form SHALL preselect the unit family of the vehicle's odometer unit ("Kilometers" and "Kilometers with 100 m"
+are kilometers, "Miles" and "Miles with tenths" are miles) and the tenths choice remembered for the vehicle, or, when none
+was remembered yet, the tenths of the vehicle's odometer unit (the two tenths units include tenths).
 Both fields of the form SHALL be entered in the chosen unit, using the same microwave-style number field as the initial
 odometer, so whole-number entries and entries with one decimal are both possible whatever the vehicle's unit. Changing the
 unit SHALL keep the digits typed, as it does when adding a vehicle. An entry logged in another unit than the vehicle's SHALL
-be converted, and SHALL be shown in the vehicle's unit everywhere.
+be converted, and SHALL be shown in the vehicle's unit everywhere. The system SHALL remember the tenths choice per vehicle:
+saving an entry SHALL keep the tenths choice used for that vehicle, and the next form for that vehicle SHALL preselect it.
+The choice of kilometers or miles is not remembered and starts as the vehicle's.
 
 #### Scenario: Defaults follow the vehicle
 - **WHEN** the user opens the form for a vehicle with the unit "Miles with tenths"
@@ -119,6 +122,30 @@ be converted, and SHALL be shown in the vehicle's unit everywhere.
 - **WHEN** the user logs a trip distance of 10 miles for a vehicle with the unit "Kilometers with 100 m"
 - **THEN** the distance entry is shown as "+16.1 km" (with an English (United States) device locale)
 
+#### Scenario: The tenths choice is remembered for the vehicle
+- **WHEN** the user logs a distance for a vehicle with the unit "Kilometers" with tenths included and saves, and later opens the form for that vehicle again
+- **THEN** tenths are included on the new form, although the vehicle's odometer unit has no tenths
+
+#### Scenario: Turning tenths off is remembered too
+- **WHEN** the user logs a distance for a vehicle with the unit "Miles with tenths" with tenths not included and saves, and later opens the form for that vehicle again
+- **THEN** tenths are not included on the new form
+
+#### Scenario: Other vehicles are not affected
+- **WHEN** the tenths choice was remembered for one vehicle and the user opens the form for another vehicle
+- **THEN** the form for the other vehicle starts with the tenths of that vehicle's own odometer unit, unless one was remembered for it
+
+#### Scenario: A choice that is not saved is not remembered
+- **WHEN** the user turns tenths on, leaves the form without saving, and opens the form for the same vehicle again
+- **THEN** the form starts with the choice that was remembered before, or the tenths of the vehicle's odometer unit if there was none
+
+#### Scenario: The remembered choice survives a restart
+- **WHEN** a tenths choice was remembered for a vehicle, the app is closed completely and opened again
+- **THEN** the form for that vehicle still starts with that choice
+
+#### Scenario: The unit family is not remembered
+- **WHEN** the user logs a distance in miles for a vehicle with the unit "Kilometers" and saves, and later opens the form for it again
+- **THEN** kilometers is selected
+
 #### Scenario: Changing the unit keeps the digits
 - **WHEN** the user has typed 123 with kilometers selected and switches to miles
 - **THEN** the field still shows the digits 123, now in miles
@@ -130,7 +157,9 @@ zone. The user SHALL be able to choose any time zone from the list of available 
 The date and time picked are the wall-clock time in the chosen zone: changing the zone keeps the date and time shown and changes
 which instant they mean. The user SHALL be able to choose a moment in the past. The system SHALL refuse a moment later than the
 time of saving, showing an error and adding nothing. The entry SHALL be stored with the zone it was entered in, as the
-`vehicle-log` capability specifies.
+`vehicle-log` capability specifies. The date SHALL be shown with the day of the week of the selected date, named in the device's
+language, and the time SHALL be shown and picked in 12-hour form (with the device's AM and PM markers) or 24-hour form according
+to the system setting.
 
 #### Scenario: Default is when the form was opened, in the device's zone
 - **WHEN** the device time zone is Europe/Helsinki and the user opens the form at 10:15 and saves at 10:20
@@ -147,6 +176,22 @@ time of saving, showing an error and adding nothing. The entry SHALL be stored w
 #### Scenario: Changing the zone keeps the wall-clock time
 - **WHEN** the form shows 18:30 in Europe/Helsinki and the user selects America/New_York
 - **THEN** the form shows 18:30 in America/New_York
+
+#### Scenario: The day of the week is shown
+- **WHEN** the form shows the date 2026-09-20 and the device language is English
+- **THEN** the date shows "Sunday" as well, and after the date is changed to 2026-09-21 it shows "Monday"
+
+#### Scenario: The day of the week follows the device language
+- **WHEN** the form shows the date 2026-09-20 and the device language is Finnish
+- **THEN** the date shows "sunnuntai"
+
+#### Scenario: A 24-hour system setting
+- **WHEN** the system uses the 24-hour format and the form shows the time 16:30
+- **THEN** the time is shown as "16:30" and the time picker is a 24-hour picker
+
+#### Scenario: A 12-hour system setting
+- **WHEN** the system uses the 12-hour format and the form shows the time 16:30
+- **THEN** the time is shown as "4:30 PM" (with the device's PM marker) and the time picker is a 12-hour picker with AM and PM
 
 #### Scenario: Search the time zones
 - **WHEN** the user opens the time zone list and types "new_y"

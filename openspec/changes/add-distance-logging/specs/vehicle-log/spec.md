@@ -54,7 +54,8 @@ entry dated before the latest odometer-setting event SHALL NOT count.
 ### Requirement: Recent events on the details screen
 The system SHALL show at most the 5 most recent log events of the vehicle on its details screen, newest first by their date
 and time, each with its type and its date and time, shown in the time zone the event was entered in and followed by that zone's
-name when it is not the device's current time zone. An "Initial odometer" event SHALL show its reading in the vehicle's
+name when it is not the device's current time zone. The date is written year-month-day and the time follows the system's
+12-hour or 24-hour setting (the examples below use a 24-hour setting). An "Initial odometer" event SHALL show its reading in the vehicle's
 unit. A "Distance" event SHALL show its distance in the vehicle's unit with a plus sign and, when it was logged as a new
 odometer count, the count that was typed. When events share the same time, the one added last SHALL come first. The
 system SHALL provide an action to open the full log.
@@ -78,6 +79,10 @@ system SHALL provide an action to open the full log.
 #### Scenario: An entry from another time zone
 - **WHEN** the device time zone is Europe/Helsinki and the log has a distance entry entered as 08:30 on 2026-09-20 in America/New_York
 - **THEN** its row shows "2026-09-20 08:30 (America/New_York)"
+
+#### Scenario: A 12-hour system setting
+- **WHEN** the system uses the 12-hour format, the device time zone is Europe/Helsinki and the log has a distance entry entered as 15:30 on 2026-09-20 in Europe/Helsinki
+- **THEN** its row shows "2026-09-20 3:30 PM" and no zone name, and an entry entered as 08:30 in America/New_York shows "2026-09-20 8:30 AM (America/New_York)"
 
 #### Scenario: An entry from the device's zone shows no zone name
 - **WHEN** the device time zone is Europe/Helsinki and the log has a distance entry entered as 15:30 on 2026-09-20 in Europe/Helsinki

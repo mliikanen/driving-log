@@ -50,6 +50,12 @@ In Kotlin, `VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer)
 becomes "the reading this event sets" (null for a distance entry); rows are drawn by event type, no longer by `odometer`.
 Unknown types are already skipped when reading. Everything stored stays locale-agnostic (meters, epoch milliseconds, codes).
 
+**The remembered tenths choice** is a per-vehicle setting, not part of the log, so it lives on the vehicle row: a nullable column added by a second migration `2.sqm`
+(version 2 to 3), `ALTER TABLE vehicle ADD COLUMN log_distance_tenths INTEGER` (null: never chosen, 0: without tenths, 1: with tenths), read as `Vehicle.logDistanceTenths: Boolean?`.
+It is written in the same transaction as the distance entry it was used for (`addDistanceEntry` takes the choice), so it is only remembered when an entry is saved and a toggle that is
+abandoned changes nothing. It is a second migration, not an edit to `1.sqm`, because a development database may already be at version 2. The vehicle's `updated_at` is not touched: it
+tracks name and plate edits.
+
 ### 2. Ordering and the known odometer
 
 Events are ordered by `occurred_at`, then insertion order (`rowid`), as today. The **known odometer at a time T** is a pure
@@ -82,7 +88,8 @@ the host restores right after the processor is created and the repository data a
 covers that order.
 
 - **One unit for both fields.** The user chooses kilometers or miles (segmented control) and whether tenths are included (switch); the four
-  `OdometerUnit` values are the combinations, and the defaults are the vehicle's unit split into those two choices. Changing either
+  `OdometerUnit` values are the combinations. The family starts as the vehicle's unit's; the tenths choice starts as the vehicle's remembered `logDistanceTenths`, or, when
+  none was saved yet, the tenths of the vehicle's unit. The family is deliberately not remembered. Changing either
   applies `OdometerEntry.withUnit` to both entries, so digits are kept exactly as when adding a vehicle. The choice is not stored on the
   entry; only meters are.
 - **Conversion.** `distance = unit.stepsToMeters(steps)` (integer arithmetic, as for the initial odometer). Display is always in the vehicle's unit.
@@ -121,6 +128,15 @@ the Apple implementation, not checkable on this machine). That raw list mixes 48
 whatever it looks like. A search field filters by case-insensitive substring of the id; each row shows the id and its current UTC offset. The device zone is first
 when unfiltered. Any stored id still renders, because rendering uses the stored offset.
 
+**Time format, weekday and layout.** The device-level facts the screens need are grouped in `DeviceLocale`, which gains `weekdayName(DayOfWeek)` (Android: `java.time`'s
+localized full name; iOS: the current calendar's weekday symbols) and `timeFormat()` giving `TimeFormat(is24Hour, amMarker, pmMarker)` (Android: the system's 24-hour
+setting, read through a supplier the application provides, and the locale's AM and PM strings; iOS: whether the locale's time template uses a 12-hour clock, and the
+formatter's AM and PM symbols). Both are read on every call, so a changed setting or language is picked up. The interface has English and 24-hour defaults so fakes in tests stay small,
+and the platform implementation is handed to the graph as an input (the Android one needs the application `Context` for the 24-hour setting). Times are drawn by one function:
+24-hour `HH:mm`, 12-hour `h:mm` and the marker (`3:30 PM`); dates stay `yyyy-MM-dd`. `formatMoment`, the form's time button and `TimePicker(is24Hour = ...)` all use it.
+The form's date button is two lines, the date and below it the weekday, and the zone button is two lines, the id and below it the offset, both second lines smaller and lighter; the time
+button is one line. The three buttons have one fixed height and sit in a `FlowRow`, so they share a row whenever the width allows and wrap otherwise.
+
 ### 6. Validation
 
 At save, in this order, the first failing rule sets the error and nothing is saved:
@@ -152,7 +168,7 @@ recent events and the full log use the same row composable.
 
 ### 9. Migration and its test
 
-`1.sqm` holds the four `ALTER TABLE` statements; the generated schema version becomes 2 and the Android and native drivers run `migrate` on
+`1.sqm` holds the four `ALTER TABLE` statements for `vehicle_event` and `2.sqm` the one for `vehicle`; the generated schema version becomes 2 and the Android and native drivers run `migrate` on
 upgrade. A JVM test builds a version-1 database from the version-1 DDL kept as test data, inserts a vehicle and its initial event, runs
 `Schema.migrate(driver, 1, 2)`, and checks the data is intact, the new columns are null (a legacy event reads back with no zone and is drawn in the device zone), and a distance entry with a zone can then be added. A fresh
 database is created at version 2 with the same tables.

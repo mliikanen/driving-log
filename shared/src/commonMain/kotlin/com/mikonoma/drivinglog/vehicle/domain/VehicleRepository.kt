@@ -20,9 +20,17 @@ interface VehicleRepository {
 
     /**
      * Adds one distance entry to the log at [occurredAt] (in the zone it was entered in). [distance] must be above zero.
-     * [loggedOdometer] is the count the user typed when logging by odometer, for the log row only. Returns the new event id.
+     * [loggedOdometer] is the count the user typed when logging by odometer, for the log row only. [tenthsIncluded] is the tenths
+     * choice used for the entry: it is remembered for the vehicle in the same transaction, so both are saved or neither.
+     * Returns the new event id.
      */
-    suspend fun addDistanceEntry(vehicleId: String, occurredAt: ZonedMoment, distance: Distance, loggedOdometer: Distance?): String
+    suspend fun addDistanceEntry(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        distance: Distance,
+        loggedOdometer: Distance?,
+        tenthsIncluded: Boolean,
+    ): String
 
     /** Changes only the name and plate. The log and the unit are never touched. */
     suspend fun updateVehicle(id: String, name: String, licensePlate: String?)

@@ -35,6 +35,8 @@ class LogDistanceProcessor @AssistedInject constructor(
                 reduce { copy(isLoading = false, notFound = true) }
             } else {
                 val vehicleUnit = details.vehicle.odometerUnit
+                // The family starts as the vehicle's; the tenths choice as the one remembered for it, else the vehicle's own.
+                val startUnit = unitOf(vehicleUnit.isMiles, details.vehicle.logDistanceTenths ?: vehicleUnit.hasTenths)
                 reduce {
                     if (unitInitialized) {
                         copy(isLoading = false, notFound = false, vehicleUnit = vehicleUnit, log = log)
@@ -45,8 +47,8 @@ class LogDistanceProcessor @AssistedInject constructor(
                             notFound = false,
                             vehicleUnit = vehicleUnit,
                             log = log,
-                            tripDistance = OdometerEntry(vehicleUnit),
-                            newOdometer = OdometerEntry(vehicleUnit),
+                            tripDistance = OdometerEntry(startUnit),
+                            newOdometer = OdometerEntry(startUnit),
                             unitInitialized = true,
                         )
                     }
@@ -76,7 +78,7 @@ class LogDistanceProcessor @AssistedInject constructor(
             is LogDistanceResult.Valid -> async("save") {
                 reduce { copy(isSaving = true, error = null) }
                 try {
-                    repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer)
+                    repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths)
                 } catch (throwable: Throwable) {
                     // Let the user try again; Kide logs the rethrown error.
                     reduce { copy(isSaving = false) }

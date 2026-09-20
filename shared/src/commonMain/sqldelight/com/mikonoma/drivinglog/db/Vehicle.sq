@@ -7,7 +7,10 @@ CREATE TABLE vehicle (
     -- OdometerUnit.code: KILOMETERS, KILOMETERS_TENTHS, MILES or MILES_TENTHS. Written once, at creation.
     odometer_unit TEXT    NOT NULL,
     created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL
+    updated_at    INTEGER NOT NULL,
+    -- The "include tenths" choice last used when logging a distance for this vehicle: 1 with tenths, 0 without,
+    -- null when none was saved yet (the form then starts with the tenths of odometer_unit).
+    log_distance_tenths INTEGER
 );
 
 insertVehicle:
@@ -18,8 +21,12 @@ VALUES (?, ?, ?, ?, ?, ?);
 updateVehicle:
 UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
 
+-- The remembered tenths choice of the log distance form. It is not a name or plate edit, so updated_at is left alone.
+updateLogDistanceTenths:
+UPDATE vehicle SET log_distance_tenths = ? WHERE id = ?;
+
 selectVehicles:
-SELECT id, name, license_plate, odometer_unit, created_at
+SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths
 FROM vehicle
 ORDER BY created_at, rowid;
 
@@ -32,6 +39,7 @@ SELECT
     v.license_plate,
     v.odometer_unit,
     v.created_at,
+    v.log_distance_tenths,
     (
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)
