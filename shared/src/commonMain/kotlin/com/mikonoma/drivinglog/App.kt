@@ -1,4 +1,4 @@
-package dev.mliikanen.mileagetracker
+package com.mikonoma.drivinglog
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -7,6 +7,6 @@ import androidx.compose.runtime.Composable
 @Composable
 fun App() {
     MaterialTheme {
-        Text("Mileage Tracker")
+        Text("Driving Log")
     }
 }

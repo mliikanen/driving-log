@@ -1,4 +1,4 @@
-# Mileage Tracker
+# Driving Log
 
 Kotlin Multiplatform app for tracking trips and mileage, developed spec-first with OpenSpec.
 

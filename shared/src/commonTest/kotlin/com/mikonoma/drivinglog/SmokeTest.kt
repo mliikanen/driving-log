@@ -1,4 +1,4 @@
-package dev.mliikanen.mileagetracker
+package com.mikonoma.drivinglog
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

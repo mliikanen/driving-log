@@ -1,4 +1,4 @@
-package dev.mliikanen.mileagetracker
+package com.mikonoma.drivinglog
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

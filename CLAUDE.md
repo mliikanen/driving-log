@@ -1,4 +1,4 @@
-# Mileage Tracker
+# Driving Log
 
 Kotlin Multiplatform (Android + iOS) mileage tracking app, built with spec-driven
 development using [OpenSpec](https://github.com/Fission-AI/OpenSpec).

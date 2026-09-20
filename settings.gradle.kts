@@ -1,4 +1,4 @@
-rootProject.name = "mileage-tracker"
+rootProject.name = "driving-log"
 
 pluginManagement {
     repositories {

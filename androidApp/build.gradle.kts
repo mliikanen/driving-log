@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.mliikanen.mileagetracker"
+    namespace = "com.mikonoma.drivinglog"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "dev.mliikanen.mileagetracker"
+        applicationId = "com.mikonoma.drivinglog"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

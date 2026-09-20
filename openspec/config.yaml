@@ -2,21 +2,59 @@ schema: spec-driven
 
 # Project context shown to the AI when it creates proposals, specs, designs and tasks.
 context: |
-  Mileage Tracker: a Kotlin Multiplatform app (Android + iOS) for recording trips
-  and reporting mileage.
+  Driving Log: a Kotlin Multiplatform app (Android + iOS) for recording trips
+  and reporting mileage. Key feature is to allow using device camera for capturing
+  trip distances (either by looking at trip meter, or odometer) and refueling amounts,
+  again by pointing camera at fuel pump to identify amount refueled and cost of the refueling.
+  Also identify type of fuel, and unit cost of the fuel, if possible with the camera. Also
+  taking a picture of a receipt shall be possible to get this information. Whenever refueling
+  is being added, also prompt user to include mileage (either odo or trip) at the refueling time.
+
+  User can add any number of vehicles. History is associated independently to each vehicle.
+  When adding mileage/refueling info, app shall attempt to identify vehicle automatically
+  Odometer amount matching is primary method, fuzzy matching picture of dashboard or vehicle are
+  other potential methods for vehcile identification when odo is not reliablty available. 
+  Users shall be able to share vehicles with other users by inviting them to contribute to the vehicle, or revoke
+  this access. Vehicles can not be deleted from the system. Users can hide (and restore) vehicles they have access to.
+  Hidden vehicles are not to be used as candidates for automatically detecting vehicles, or included in any UIs
+  other than one used for restoring the access.
+
+  User must be able to select either US style (miles/gallons/mpg) or international style (km, liter, l/km). This is a per-user
+  setting which can be overridden per-vehicle for odometer/trip reading. gallon vs liter detection should attempted with fuel pump
+  or receipt pictures; if detection fails, user shall be able to toggle unit at the time of adding refueling event.
+
+  User shall be able to store also other contextual data to the diary (e.g. text, pictures, maintenance done, etc...)
+
+  Data storage should be uniform (in international units: meters for distances, liters for fuel amounts) and any unit conversions 
+  are to be done only at representation layer.
+
+  Use Material Design 3 as app design system.
+
+  Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
+  Whenever there are differences in the app behavior on platforms, note the differences in the relevant feature specifications.
+
+  Firebase app distribution is to be used to distribute app test builds. No real app stores are used yet for distribution.
 
   Tech stack:
   - Kotlin Multiplatform, Compose Multiplatform UI (shared in `shared/`)
   - Android app shell in `androidApp/`, iOS app shell in `iosApp/`
   - Gradle Kotlin DSL, version catalog in `gradle/libs.versions.toml`
-  - kotlinx-coroutines, kotlinx-datetime, Koin for DI
-  - Tests: kotlin.test in `commonTest`; keep business logic in common code
+  - kotlinx-coroutines, kotlinx-datetime
+  - Model-view-intent: fuusio-kide - https://github.com/Fuusio/kide
+  - Dependency injection: metro https://github.com/zacsweers/metro
+  - Firebase for user accounts and data storage.
+  - Tests: kotlin.test in `commonTest`; keep business logic in common code. Avoid tests requiring real device / emulator / simulator. 
+  - Robolectric for Android integration tests.
+  - Maestro for instrumentation tests.
+  - MLKit for OCR
+  - Github
 
   Conventions:
-  - Package root: `dev.mliikanen.mileagetracker`
+  - Package root: `com.mikonoma.drivinglog`
   - Business logic lives in commonMain; platform code (location, storage
     drivers, permissions) goes behind `expect`/`actual` or interfaces
   - Specs describe observable behavior, not implementation
+  - MVI architecture.
 
 # Per-artifact rules.
 rules:
