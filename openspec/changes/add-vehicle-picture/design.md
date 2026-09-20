@@ -50,7 +50,8 @@ code per platform, is more code to get wrong twice.
 Layout: `pictures/{id}-small.{ext}`, `pictures/{id}-large.{ext}` for pictures in use, and `pictures/pending/{pendingId}-source`, `-small.{ext}`, `-large.{ext}` for
 pictures the user is still working with. `ext` is the encoder's extension (`webp` or `png`, decision 4); `read` looks for either, so a file written by another platform or an
 older build is still found. Operations: `putPendingSource(bytes)`, `readPendingSource`, `putPending(small, large)`, `promote(pendingId): pictureId` (an atomic move into `pictures/` under a new
-id), `read(id, size): ByteArray?`, `delete(id)`, `discardPending(pendingId)`, and `sweep(referencedIds)`.
+id), `read(id, size): ByteArray?`, `delete(id)`, `discardPending(pendingId)`, and `sweep(referencedIds)`. The store also turns a picture into a **URI**: `uri(pictureId, size): String?` and `pendingUri(pendingId, size): String?`
+(`file://` plus the percent-encoded absolute path: the iOS Application Support directory has a space in its name), `null` when the file is not there. The store is the one place that knows where files live and in which format, so the processors never build a path.
 
 **Sweep** runs once when the app starts (from `App`, on the IO dispatcher): it deletes every picture in `pictures/` whose id no vehicle refers to, and pending files
 older than 24 hours. Pending files younger than that are kept because a restored form (process death) may still point at them.
@@ -60,7 +61,7 @@ older than 24 hours. Pending files younger than that are kept because a restored
 While the user works on the form, the picture is a **draft** in the serializable state:
 
 `PictureDraft = Unchanged | Removed | Pending(pendingId)` (`Unchanged` only on the edit screen; the add screen starts with "no picture", which is `Removed`-equivalent `None`) plus `cropSourceId: String?` while
-the crop screen is open. Picking a photo writes its bytes to `pending/{id}-source` and sets `cropSourceId`; the crop screen decodes from that file. Confirming the crop encodes both versions,
+the crop screen is open, and, for the view, `previewUri: String?` (`@Transient`, rebuilt from the draft by the processor whenever the draft changes and after a restore). Picking a photo writes its bytes to `pending/{id}-source` and sets `cropSourceId`; the crop screen decodes from that file. Confirming the crop encodes both versions,
 writes them as `pending/{pendingId}-...`, deletes the source and sets `Pending(pendingId)`. So a rotation or process death at any point restores the crop screen or the
 picture, because the state only holds ids and the bytes are on disk. Cancelling the crop deletes the source. Leaving the add or edit screen without saving discards
 the pending files (the processor's clean-up on leaving; the sweep is the backstop).
@@ -110,19 +111,29 @@ is read into bytes immediately (the picker's grant is short-lived) on the IO dis
 
 A crash between 1 and 2 leaves only unreferenced files, which the sweep removes. `Remove` sets `picture_id` to `NULL` then deletes the files. The repository never reads the image; it only moves files and writes an id.
 
-### 8. Showing the picture: Coil 3
+### 8. Showing the picture: a URI in the view state, loaded by Coil 3
 
-Pictures are shown with **Coil 3** (`io.coil-kt.coil3:coil-compose`, 3.6.3, published for Android and for iOS arm64 and simulator): coroutine-based, Kotlin Multiplatform, and Compose Multiplatform's `AsyncImage`. Glide was considered
-and rejected: it is Android-only (no iOS, nothing in commonMain). Alternatives with the same shape are Kamel and Landscapist; Coil is the most widely used and its custom-fetcher hook is what we need.
+**The processors' view states carry a picture URI, not an id and not bytes.** Each state that shows a picture has a `pictureUri: String?` (a plain string, so it serializes and compares) for the size that screen shows: the list items and the pickers the small
+version's URI, the details state the large version's, the add and edit forms the preview's (the small version of the pending or the saved picture). Today the URI points at the locally stored file (`file:///.../pictures/{id}-small.webp`); later the same field can hold an `https://` URI of an image
+behind HTTP, and no screen changes. The database still stores only the picture id (decision 1); the processors turn ids into URIs through the store (decision 2), and `null` means no picture (or a file that is gone).
 
-- **Model, keyer and fetcher.** A picture is requested with `PictureModel(source, size)`, where `source` is `Saved(pictureId)` or `Pending(pendingId)` and `size` is `Small` or `Large`. A Coil `Fetcher` reads the bytes from the `VehiclePictureStore` (on its IO dispatcher) and returns them as a
-  `SourceFetchResult` over an okio `Buffer` (okio is Coil's own dependency); Coil's decoder (BitmapFactory-based on Android, Skia on iOS) decodes WebP and PNG alike and downsamples to the size the composable is laid out at. A `Keyer` gives each request the key `picture:{id}:{size}`. A picture id's files never change (a changed picture has a new
-  id), so the **memory cache is always correct** and no disk cache is configured; no network fetcher is added. A missing file makes the fetcher fail and Coil shows the error painter.
-- **One `ImageLoader`** is created by the app (Android `Application`/iOS controller through the graph, as the other platform objects) with the fetcher and keyer registered and a bounded memory cache, and set as Coil's singleton loader so `AsyncImage` finds it.
-- **Composable.** `VehiclePicture(source, size, placeholderLabel)` wraps `AsyncImage`: while loading and on error (missing or unreadable files) it draws the placeholder, a rounded square in `surfaceVariant` with the first letter of the vehicle's name; for a vehicle without a picture it draws the placeholder
-  without a request. It is used by the list rows (56 dp square, small), the details screen (large, full width at a 1:1 aspect ratio, content scale `Crop`), and the form preview (96 dp, from the pending small version or the saved one). Test tags: `vehicle_picture` (list rows), `vehicle_picture_large` (details), `picture_preview`, `add_picture`,
-  `remove_picture`, `crop_frame`, `crop_confirm`, `crop_cancel`.
-- **What Coil does not do.** It does not crop or encode, and the crop screen needs the decoded pixels and the photo's dimensions, so the crop screen still decodes through our `ImageCodec` (decision 4); Coil is only the display path.
+Pictures are then shown with **Coil 3** (`io.coil-kt.coil3:coil-compose`, 3.6.3, published for Android and iOS arm64 and simulator): coroutine-based, Kotlin Multiplatform, Compose Multiplatform `AsyncImage`. Glide was considered and rejected: it is Android-only (no iOS, nothing in commonMain). Kamel and Landscapist are
+alternatives of the same shape; Coil is the most widely used. Because the model is just a URI, **no custom fetcher, model or keyer is needed**: Coil loads `file:` URIs natively (its decoders read WebP and PNG, downsampling to the size the composable is laid out at) and, once a network module is added
+(`coil-network-ktor3`, not now), `http(s)` URIs too. Coil's default cache key for a string model is the URI itself; a picture's id never changes what its files hold (a changed picture has a new id), so the **memory cache is always correct** and no disk cache is configured.
+
+- **Composable.** `VehiclePicture(uri: String?, modifier)` wraps `AsyncImage`: while loading, on error (an unreadable file) and for a `null` URI it draws the placeholder (a `null` URI makes no request), decision 12. It is used by the list rows
+  (56 dp square), the details screen (full width at a 1:1 aspect ratio, content scale `Crop`) and the form preview (96 dp). Test tags: `vehicle_picture` (list rows), `vehicle_picture_large` (details), `picture_preview`, `add_picture`, `remove_picture`, `crop_frame`, `crop_confirm`, `crop_cancel`.
+- **One `ImageLoader`** is created by the app and set as Coil's singleton (`setSingletonImageLoaderFactory`) with a bounded memory cache.
+- **What Coil does not do.** It does not crop or encode, and the crop screen needs the decoded pixels and the photo's dimensions, so the crop screen decodes through our `ImageCodec` (decision 4); Coil is only the display path.
+
+### 12. The placeholder: a generic car icon
+
+Until vehicles have a type, every vehicle without a picture shows the same **generic car icon**: a rounded square in `surfaceVariant` with the car glyph tinted `onSurfaceVariant`, scaled to the picture's size. The glyph is `car-fill` from the **Phosphor** icon set
+(github.com/phosphor-icons/core), a single filled path on a 256 x 256 view box, **MIT licensed**: the license text is kept beside the icon (`docs/icons/phosphor/LICENSE`, with the original `car-fill.svg`) and named in `THIRD_PARTY_NOTICES.md` at the repository root, which is what the MIT license asks for. Phosphor was chosen over CC0 collections
+(FreeSVG, SVG Silh: mixed styles and unclear per-file provenance) because it is one consistent, maintained set that also has the vehicle icons the later type change needs (van, truck, motorcycle, scooter, jeep, bus, tractor), also MIT, so that change adds icons without changing the style or the licensing.
+
+The SVG is drawn in the app as an `ImageVector` built from the SVG's path data (`PathParser`, plain common Compose code), not loaded as a file at run time: Compose Multiplatform resources render SVG on iOS and desktop but not on Android, and an SVG decoder module would be a
+dependency for one glyph. Building the vector from path data is tintable, has no loading step, and needs nothing per platform. The original `.svg` stays in `docs/icons/` as the source. A single `VehicleIcons.Car` is used everywhere; the vehicle type change replaces it by a lookup on the type.
 
 ### 9. The form
 

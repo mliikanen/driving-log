@@ -10,13 +10,17 @@ in full screen views such as the vehicle details.
 
 ### Requirement: A vehicle can have one optional picture
 The system SHALL let a vehicle have at most one picture, which is optional. A vehicle without a picture SHALL be shown
-with a neutral placeholder wherever its picture would be shown. The picture SHALL be offered on the add vehicle screen
+with a generic car icon as its placeholder wherever its picture would be shown; the icon is the same for every vehicle until vehicles have a type. The picture SHALL be offered on the add vehicle screen
 and on the edit vehicle screen as an "Add picture" action, which becomes "Change picture" together with a "Remove picture"
 action when the vehicle (or the form) has a picture, and the form SHALL show a preview of the picture it has.
 
 #### Scenario: A vehicle without a picture
 - **WHEN** the user opens the add vehicle screen
-- **THEN** the screen offers "Add picture", shows the placeholder as the preview and offers no "Remove picture"
+- **THEN** the screen offers "Add picture", shows the generic car icon as the preview and offers no "Remove picture"
+
+#### Scenario: The placeholder is a generic car icon
+- **WHEN** the vehicle list contains a vehicle without a picture
+- **THEN** its item shows the generic car icon in the place of the picture
 
 #### Scenario: A vehicle with a picture
 - **WHEN** the user opens the edit screen of a vehicle that has a picture

@@ -15,8 +15,17 @@ interface VehicleRepository {
     /** Every event of the vehicle, newest first by instant (ties: the one added last comes first). */
     fun observeLog(vehicleId: String): Flow<List<VehicleEvent>>
 
-    /** Saves the vehicle and its initial odometer event together, or neither. Returns the new vehicle id. */
-    suspend fun addVehicle(name: String, licensePlate: String?, unit: OdometerUnit, initialOdometer: Distance): String
+    /**
+     * Saves the vehicle, its initial odometer event and its [picture] (when it has one) together, or none of them: a failed save
+     * leaves no picture files behind. Returns the new vehicle id.
+     */
+    suspend fun addVehicle(
+        name: String,
+        licensePlate: String?,
+        unit: OdometerUnit,
+        initialOdometer: Distance,
+        picture: PendingPicture? = null,
+    ): String
 
     /**
      * Adds one distance entry to the log at [occurredAt] (in the zone it was entered in). [distance] must be above zero.
@@ -44,6 +53,10 @@ interface VehicleRepository {
         tenthsIncluded: Boolean,
     ): String
 
-    /** Changes only the name and plate. The log and the unit are never touched. */
-    suspend fun updateVehicle(id: String, name: String, licensePlate: String?)
+    /**
+     * Changes only the name, the plate and the picture. The log and the unit are never touched. The changes are applied together
+     * or not at all; the files of a replaced or removed picture are deleted once the change is saved, and a failed save leaves
+     * the vehicle's picture in use and no new files behind.
+     */
+    suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange = PictureChange.Keep)
 }

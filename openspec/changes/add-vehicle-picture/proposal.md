@@ -24,14 +24,16 @@ matching a vehicle by photo) it is the natural thing to show. Users can add it n
   device's photo library. The database only remembers which picture belongs to the vehicle (an id), so nothing that is
   stored depends on a file path. Replacing or removing the picture deletes the old files; files that no vehicle uses are
   cleaned up.
-- The pictures are **loaded asynchronously** (off the main thread, with a placeholder while loading and when a file is missing) and cached in memory, so lists scroll smoothly.
-- The **vehicle list** shows the small picture next to each vehicle (a neutral placeholder when there is none). The
+- The view states of the screens carry the picture as a **URI** (today a `file://` URI of the locally stored file; later it can be an `https://` URI of an image behind HTTP, without changing any screen). The pictures are **loaded asynchronously** (off the main thread, with a placeholder while loading and when a file is missing) and cached in memory, so lists scroll smoothly.
+- The **vehicle list** shows the small picture next to each vehicle (a generic car icon as the placeholder when there is none). The
   **vehicle details screen** shows the large picture at the top. Nothing else about either screen changes.
 - Saving a vehicle with a picture is **atomic**: the vehicle, its initial odometer event and its picture are saved
   together or not at all; a failed save leaves no files behind. Editing the picture does not touch the vehicle's log.
+- The placeholder is a **generic car icon** (the same for every vehicle for now, an MIT-licensed glyph from the Phosphor icon set, kept with its license in the repository). Choosing a vehicle type (car, van, motorcycle, ...) with an icon
+  per type is a separate, later change (`add-vehicle-type`).
 - Storage moves to **schema version 4** (migration `3.sqm`: one nullable `picture_id` column on the vehicle). Existing
   vehicles have no picture.
-- Out of scope: taking a photo with the camera (the system picker may offer it, the app adds nothing), rotating, filters
+- Out of scope: a vehicle type and per-type icons (`add-vehicle-type`), taking a photo with the camera (the system picker may offer it, the app adds nothing), rotating, filters
   or free-form cropping, several pictures per vehicle, a zoomable full screen viewer, pictures in the log or in
   distance entries, syncing pictures to a backend, and verifying the iOS side on a device (there is no Xcode project yet).
 
@@ -59,7 +61,7 @@ matching a vehicle by photo) it is the natural thing to show. Users can add it n
   is 33), `filesDir`. iOS: `PHPickerViewController`, `UIImage`/ImageIO, Application Support. **Platform difference:** ImageIO can read WebP but not write it, so
   on iOS the pictures are written as PNG until a WebP encoder (libwebp) is added; both platforms read both formats.
 - Two new dependencies: `kotlinx-io-core`, so the picture files are handled in common code, and **Coil 3** (`coil-compose`), the coroutine-based Kotlin Multiplatform image loader, which loads and
-  caches the pictures asynchronously wherever they are shown (a custom fetcher reads them from the picture store; no network module is added). No cropping library: the crop screen is a small Compose
+  caches the pictures asynchronously wherever they are shown (it loads the URIs from the view states directly; no custom fetcher and no network module is added). No cropping library: the crop screen is a small Compose
   composable over a pure, tested model.
 - `AppGraph` provides the picture store and codec; `maestro/` gets flows for adding, changing and removing a picture.
 - `openspec/config.yaml`: the project context notes that pictures are local files referenced by id and their sizes and format.

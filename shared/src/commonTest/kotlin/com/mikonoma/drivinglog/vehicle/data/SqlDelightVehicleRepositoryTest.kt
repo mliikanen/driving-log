@@ -1,17 +1,23 @@
 package com.mikonoma.drivinglog.vehicle.data
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.PictureChange
+import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
@@ -40,12 +46,14 @@ class SqlDelightVehicleRepositoryTest {
     private val clock = FakeClock()
     private var idCounter = 0
     private val deviceTimeZone = com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone()
+    private val pictureStore = FakeVehiclePictureStore()
     private val repository = SqlDelightVehicleRepository(
         database = database,
         clock = clock,
         newId = { "id-${++idCounter}" },
         dispatcher = UnconfinedTestDispatcher(),
         deviceTimeZone = deviceTimeZone,
+        pictures = pictureStore,
     )
 
     @AfterTest
@@ -137,7 +145,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aFailedAddCreatesNothing() = runTest {
         // Make the event insert fail: its id ("id-2") is already taken by another vehicle's event.
-        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1)
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null)
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
 
         assertFails { addFamilyCar() }
@@ -287,8 +295,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionThree() {
-        assertEquals(3L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionFour() {
+        assertEquals(4L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -636,7 +644,7 @@ class SqlDelightVehicleRepositoryTest {
         addEntry(id, at(1.hours), Distance(1_000), null, tenthsIncluded = false)
         // Make the next insert fail: its event id is already taken.
         insertEvent("id-4", "other-owner", "INITIAL_ODOMETER", 1, 0)
-        database.vehicleQueries.insertVehicle("other-owner", "Other", null, "KILOMETERS", 1, 1)
+        database.vehicleQueries.insertVehicle("other-owner", "Other", null, "KILOMETERS", 1, 1, null)
 
         assertFails { addEntry(id, at(2.hours), Distance(2_000), null, tenthsIncluded = true) }
 
@@ -654,5 +662,171 @@ class SqlDelightVehicleRepositoryTest {
 
         assertEquals(updatedBefore.name, repository.observeVehicles().first().single().name)
         assertEquals(logBefore.first(), repository.observeLog(id).first().last())
+    }
+
+    // ---- Pictures
+
+    private fun updatedAtOf(vehicleId: String): Long =
+        driver.executeQuery(
+            identifier = null,
+            sql = "SELECT updated_at FROM vehicle WHERE id = '$vehicleId'",
+            mapper = { cursor ->
+                cursor.next()
+                QueryResult.Value(cursor.getLong(0)!!)
+            },
+            parameters = 0,
+        ).value
+
+    private suspend fun pictureIdOf(vehicleId: String): String? = repository.observeVehicle(vehicleId).first()!!.vehicle.pictureId
+
+    private suspend fun addCarWithPicture(): Pair<String, String> {
+        val pending = pictureStore.addPending()
+        val id = repository.addVehicle("Family car", "ABC-123", OdometerUnit.KILOMETERS, Distance(45_200_000), PendingPicture(pending))
+        return id to pictureIdOf(id)!!
+    }
+
+    @Test
+    fun aVehicleAddedWithAPictureRefersToItsPromotedFiles() = runTest {
+        val small = FakeVehiclePictureStore.image(1, 1)
+        val large = FakeVehiclePictureStore.image(2, 2)
+        val pending = pictureStore.addPending(small, large)
+
+        val id = repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(45_200_000), PendingPicture(pending))
+
+        val pictureId = pictureIdOf(id)!!
+        assertEquals(pictureId, repository.observeVehicles().first().single().pictureId)
+        assertEquals(setOf(pictureId), pictureStore.everything()) // the pending files moved, nothing else is left
+        assertEquals(small, pictureStore.pictures.getValue(pictureId).small)
+        assertEquals(large, pictureStore.pictures.getValue(pictureId).large)
+    }
+
+    @Test
+    fun aVehicleAddedWithoutAPictureHasNoneAndTouchesNoFiles() = runTest {
+        val id = addFamilyCar()
+
+        assertNull(pictureIdOf(id))
+        assertEquals(emptySet(), pictureStore.everything())
+    }
+
+    @Test
+    fun theVehicleItsEventAndItsPictureAreSavedTogether() = runTest {
+        val (id, pictureId) = addCarWithPicture()
+
+        assertEquals(1, repository.observeLog(id).first().size)
+        assertEquals(pictureId, pictureIdOf(id))
+    }
+
+    @Test
+    fun aFailedAddWithAPictureDeletesTheFilesItMovedIntoUse() = runTest {
+        // The event insert fails: its id ("id-2") is already taken by another vehicle's event.
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null)
+        insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
+        val pending = pictureStore.addPending()
+
+        assertFails { repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending)) }
+
+        assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
+        assertEquals(emptySet(), pictureStore.everything())
+    }
+
+    @Test
+    fun aPendingPictureThatIsGoneFailsTheAddAndSavesNothing() = runTest {
+        assertFails { repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(1), PendingPicture("gone")) }
+
+        assertEquals(emptyList(), repository.observeVehicles().first())
+    }
+
+    @Test
+    fun aFailingDiskFailsTheAddAndSavesNothing() = runTest {
+        val pending = pictureStore.addPending()
+        pictureStore.promoteFailure = IllegalStateException("disk full")
+
+        assertFails { repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending)) }
+
+        assertEquals(emptyList(), repository.observeVehicles().first())
+    }
+
+    @Test
+    fun replacingThePictureUsesANewIdAndDeletesTheOldFiles() = runTest {
+        val (id, oldPictureId) = addCarWithPicture()
+        val replacement = pictureStore.addPending(FakeVehiclePictureStore.image(7), FakeVehiclePictureStore.image(8))
+
+        repository.updateVehicle(id, "Family car", "ABC-123", PictureChange.Replace(PendingPicture(replacement)))
+
+        val newPictureId = pictureIdOf(id)!!
+        assertNotEquals(oldPictureId, newPictureId)
+        assertEquals(setOf(newPictureId), pictureStore.everything())
+        assertContentEquals(byteArrayOf(7), pictureStore.pictures.getValue(newPictureId).small.bytes)
+    }
+
+    @Test
+    fun removingThePictureClearsTheIdAndDeletesTheFiles() = runTest {
+        val (id, _) = addCarWithPicture()
+
+        repository.updateVehicle(id, "Family car", "ABC-123", PictureChange.Remove)
+
+        assertNull(pictureIdOf(id))
+        assertEquals(emptySet(), pictureStore.everything())
+    }
+
+    @Test
+    fun removingAPictureThatIsNotThereIsHarmless() = runTest {
+        val id = addFamilyCar()
+
+        repository.updateVehicle(id, "Family car", "ABC-123", PictureChange.Remove)
+
+        assertNull(pictureIdOf(id))
+    }
+
+    @Test
+    fun keepingThePictureLeavesTheIdAndTheFiles() = runTest {
+        val (id, pictureId) = addCarWithPicture()
+
+        repository.updateVehicle(id, "Estate car", null, PictureChange.Keep)
+        repository.updateVehicle(id, "Estate car 2", null) // the default is to keep
+
+        assertEquals(pictureId, pictureIdOf(id))
+        assertEquals(setOf(pictureId), pictureStore.everything())
+        assertEquals("Estate car 2", repository.observeVehicles().first().single().name)
+    }
+
+    @Test
+    fun aFailedEditKeepsTheOldPictureInUseAndLeavesNoNewFiles() = runTest {
+        val (id, oldPictureId) = addCarWithPicture()
+        val replacement = pictureStore.addPending()
+        driver.execute(null, "CREATE TRIGGER fail_update BEFORE UPDATE ON vehicle BEGIN SELECT RAISE(ABORT, 'boom'); END", 0)
+
+        assertFails { repository.updateVehicle(id, "Changed", null, PictureChange.Replace(PendingPicture(replacement))) }
+
+        assertEquals(oldPictureId, pictureIdOf(id))
+        assertEquals("Family car", repository.observeVehicles().first().single().name)
+        assertEquals(setOf(oldPictureId), pictureStore.everything())
+    }
+
+    @Test
+    fun aFailedEditThatWouldRemoveThePictureKeepsIt() = runTest {
+        val (id, oldPictureId) = addCarWithPicture()
+        driver.execute(null, "CREATE TRIGGER fail_update BEFORE UPDATE ON vehicle BEGIN SELECT RAISE(ABORT, 'boom'); END", 0)
+
+        assertFails { repository.updateVehicle(id, "Changed", null, PictureChange.Remove) }
+
+        assertEquals(oldPictureId, pictureIdOf(id))
+        assertEquals(setOf(oldPictureId), pictureStore.everything())
+    }
+
+    @Test
+    fun aPictureEditMovesTheUpdatedTimeButAddsNoEventAndChangesNoOtherField() = runTest {
+        val (id, _) = addCarWithPicture()
+        val before = repository.observeLog(id).first()
+        val details = repository.observeVehicle(id).first()!!
+        clock.current += 1.hours
+
+        repository.updateVehicle(id, "Family car", "ABC-123", PictureChange.Remove)
+
+        assertEquals(before, repository.observeLog(id).first())
+        val after = repository.observeVehicle(id).first()!!
+        assertEquals(details.currentOdometer, after.currentOdometer)
+        assertEquals(details.vehicle.odometerUnit, after.vehicle.odometerUnit)
+        assertEquals(clock.current.toEpochMilliseconds(), updatedAtOf(id))
     }
 }

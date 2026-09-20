@@ -3,6 +3,8 @@ package com.mikonoma.drivinglog.vehicle
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
@@ -30,8 +32,14 @@ data class DistanceCall(
 
 data class AnchorCall(val vehicleId: String, val occurredAt: ZonedMoment, val reading: Distance, val tenthsIncluded: Boolean)
 
-data class AddCall(val name: String, val licensePlate: String?, val unit: OdometerUnit, val initialOdometer: Distance)
-data class UpdateCall(val id: String, val name: String, val licensePlate: String?)
+data class AddCall(
+    val name: String,
+    val licensePlate: String?,
+    val unit: OdometerUnit,
+    val initialOdometer: Distance,
+    val picture: PendingPicture? = null,
+)
+data class UpdateCall(val id: String, val name: String, val licensePlate: String?, val picture: PictureChange = PictureChange.Keep)
 
 /** An in-memory repository for processor tests. Events are kept newest first, as the real one returns them. */
 class FakeVehicleRepository : VehicleRepository {
@@ -54,8 +62,9 @@ class FakeVehicleRepository : VehicleRepository {
         unit: OdometerUnit = OdometerUnit.KILOMETERS,
         createdAtMillis: Long = counter++.toLong(),
         logDistanceTenths: Boolean? = null,
+        pictureId: String? = null,
     ) {
-        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths)
+        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId)
     }
 
     /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
@@ -82,9 +91,15 @@ class FakeVehicleRepository : VehicleRepository {
 
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.map { it[vehicleId].orEmpty() }
 
-    override suspend fun addVehicle(name: String, licensePlate: String?, unit: OdometerUnit, initialOdometer: Distance): String {
+    override suspend fun addVehicle(
+        name: String,
+        licensePlate: String?,
+        unit: OdometerUnit,
+        initialOdometer: Distance,
+        picture: PendingPicture?,
+    ): String {
         addFailure?.let { throw it }
-        addCalls += AddCall(name, licensePlate, unit, initialOdometer)
+        addCalls += AddCall(name, licensePlate, unit, initialOdometer, picture)
         val id = "v${++counter}"
         seedVehicle(id, name, licensePlate, unit)
         seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
@@ -125,9 +140,9 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange) {
         updateFailure?.let { throw it }
-        updateCalls += UpdateCall(id, name, licensePlate)
+        updateCalls += UpdateCall(id, name, licensePlate, picture)
         vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate) else it }
     }
 }

@@ -12,12 +12,15 @@ import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
+import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,6 +34,7 @@ class SqlDelightVehicleRepository(
     private val newId: () -> String,
     private val dispatcher: CoroutineDispatcher,
     private val deviceTimeZone: DeviceTimeZone,
+    private val pictures: VehiclePictureStore,
 ) : VehicleRepository {
 
     private val vehicles get() = database.vehicleQueries
@@ -55,6 +59,7 @@ class SqlDelightVehicleRepository(
         licensePlate: String?,
         unit: OdometerUnit,
         initialOdometer: Distance,
+        picture: PendingPicture?,
     ): String = withContext(dispatcher) {
         val instant = clock.now()
         val now = instant.toEpochMilliseconds()
@@ -64,10 +69,17 @@ class SqlDelightVehicleRepository(
         val zone = ZonedMoment.of(occurredAt, deviceTimeZone.current()).zone
         val vehicleId = newId()
         val eventId = newId()
-        // One transaction: the vehicle and its initial event are both saved, or neither.
-        database.transaction {
-            vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now)
-            events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
+        val pictureId = picture?.let { promoted(it) }
+        try {
+            // One transaction: the vehicle and its initial event are both saved, or neither.
+            database.transaction {
+                vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId)
+                events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
+            }
+        } catch (throwable: Throwable) {
+            // Nothing was saved, so the files that were just moved into use belong to no vehicle.
+            pictureId?.let { pictures.delete(it) }
+            throw throwable
         }
         vehicleId
     }
@@ -120,11 +132,32 @@ class SqlDelightVehicleRepository(
         eventId
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange) {
         withContext(dispatcher) {
-            vehicles.updateVehicle(name, licensePlate, clock.now().toEpochMilliseconds(), id)
+            val now = clock.now().toEpochMilliseconds()
+            val newPictureId = (picture as? PictureChange.Replace)?.let { promoted(it.picture) }
+            var oldPictureId: String? = null
+            try {
+                // One transaction: the name, the plate and the picture change together, or not at all.
+                database.transaction {
+                    vehicles.updateVehicle(name, licensePlate, now, id)
+                    if (picture !is PictureChange.Keep) {
+                        oldPictureId = vehicles.selectPictureId(id).executeAsOneOrNull()?.picture_id
+                        vehicles.updateVehiclePicture(newPictureId, now, id)
+                    }
+                }
+            } catch (throwable: Throwable) {
+                newPictureId?.let { pictures.delete(it) }
+                throw throwable
+            }
+            // Saved: the earlier picture is no longer used. A failure here only leaves files for the sweep.
+            oldPictureId?.takeIf { it != newPictureId }?.let { runCatching { pictures.delete(it) } }
         }
     }
+
+    /** Moves a pending picture into use. The pending files are gone or incomplete when the save cannot go on. */
+    private suspend fun promoted(picture: PendingPicture): String =
+        pictures.promote(picture.pendingId) ?: error("The picture ${picture.pendingId} is no longer available")
 
     private companion object {
         const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
@@ -139,6 +172,7 @@ class SqlDelightVehicleRepository(
         odometerUnit = OdometerUnit.fromCode(odometer_unit),
         createdAt = Instant.fromEpochMilliseconds(created_at),
         logDistanceTenths = log_distance_tenths?.let { it != 0L },
+        pictureId = picture_id,
     )
 
     private fun SelectVehicleDetails.toDomain() = VehicleDetails(
@@ -149,6 +183,7 @@ class SqlDelightVehicleRepository(
             odometerUnit = OdometerUnit.fromCode(odometer_unit),
             createdAt = Instant.fromEpochMilliseconds(created_at),
             logDistanceTenths = log_distance_tenths?.let { it != 0L },
+            pictureId = picture_id,
         ),
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )

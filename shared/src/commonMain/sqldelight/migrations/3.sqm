@@ -1,0 +1,2 @@
+-- Version 3 to 4: the vehicle's picture, an id naming files in the application's private storage (null: no picture).
+ALTER TABLE vehicle ADD COLUMN picture_id TEXT;

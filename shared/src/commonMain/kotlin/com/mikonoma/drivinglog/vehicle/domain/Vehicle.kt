@@ -10,6 +10,8 @@ data class Vehicle(
     val createdAt: Instant,
     /** The "include tenths" choice last used when logging a distance for this vehicle, or null when none was saved yet. */
     val logDistanceTenths: Boolean? = null,
+    /** The id naming the vehicle's picture files, or null when it has no picture. */
+    val pictureId: String? = null,
 )
 
 /** A vehicle with its current odometer, which is derived from the log and never stored. */

@@ -38,6 +38,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            api(libs.kotlinx.io.core)
             api(libs.kide)
             implementation(libs.kide.navigation)
             implementation(libs.kotlinx.serialization.core)

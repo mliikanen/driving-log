@@ -10,23 +10,32 @@ CREATE TABLE vehicle (
     updated_at    INTEGER NOT NULL,
     -- The "include tenths" choice last used when logging a distance for this vehicle: 1 with tenths, 0 without,
     -- null when none was saved yet (the form then starts with the tenths of odometer_unit).
-    log_distance_tenths INTEGER
+    log_distance_tenths INTEGER,
+    -- The id of the vehicle's picture: the files are named by it in the application's private storage, never a path. Null: no picture.
+    picture_id    TEXT
 );
 
 insertVehicle:
-INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- Only name and plate can change. The unit and the log are never touched.
 updateVehicle:
 UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
 
+-- Points the vehicle at another picture (or none). Editing the picture is a vehicle edit, so updated_at moves.
+updateVehiclePicture:
+UPDATE vehicle SET picture_id = ?, updated_at = ? WHERE id = ?;
+
 -- The remembered tenths choice of the log distance form. It is not a name or plate edit, so updated_at is left alone.
 updateLogDistanceTenths:
 UPDATE vehicle SET log_distance_tenths = ? WHERE id = ?;
 
+selectPictureId:
+SELECT picture_id FROM vehicle WHERE id = ?;
+
 selectVehicles:
-SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths
+SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id
 FROM vehicle
 ORDER BY created_at, rowid;
 
@@ -40,6 +49,7 @@ SELECT
     v.odometer_unit,
     v.created_at,
     v.log_distance_tenths,
+    v.picture_id,
     (
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)

@@ -13,6 +13,8 @@ import com.mikonoma.drivinglog.vehicle.domain.SystemDeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
+import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
@@ -22,12 +24,14 @@ import dev.zacsweers.metro.createGraphFactory
 import kotlin.time.Clock
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.io.files.Path
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
     val deviceLocale: DeviceLocale
     val deviceTimeZone: DeviceTimeZone
     val vehicleRepository: VehicleRepository
+    val vehiclePictureStore: VehiclePictureStore
 
     val vehicleListProcessor: VehicleListProcessor
     val addVehicleProcessor: AddVehicleProcessor
@@ -38,7 +42,7 @@ interface AppGraph {
 
     @DependencyGraph.Factory
     fun interface Factory {
-        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale): AppGraph
+        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path): AppGraph
     }
 
     @Provides
@@ -54,16 +58,28 @@ interface AppGraph {
     @OptIn(ExperimentalUuidApi::class)
     @Provides
     @SingleIn(AppScope::class)
-    fun provideVehicleRepository(database: DrivingLogDatabase, clock: Clock, deviceTimeZone: DeviceTimeZone): VehicleRepository =
+    fun provideVehiclePictureStore(picturesRoot: Path, clock: Clock): VehiclePictureStore =
+        FileVehiclePictureStore(picturesRoot, ioDispatcher, clock) { Uuid.random().toString() }
+
+    @OptIn(ExperimentalUuidApi::class)
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideVehicleRepository(
+        database: DrivingLogDatabase,
+        clock: Clock,
+        deviceTimeZone: DeviceTimeZone,
+        pictures: VehiclePictureStore,
+    ): VehicleRepository =
         SqlDelightVehicleRepository(
             database = database,
             clock = clock,
             newId = { Uuid.random().toString() },
             dispatcher = ioDispatcher,
             deviceTimeZone = deviceTimeZone,
+            pictures = pictures,
         )
 }
 
 // Metro only rewrites createGraphFactory() in modules with its plugin applied, so the platform shells call this.
-fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale): AppGraph =
-    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale)
+fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale, picturesRoot: Path): AppGraph =
+    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot)
