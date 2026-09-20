@@ -105,8 +105,8 @@ no license plate.
 - **THEN** the vehicle name is "My  old car", with both inner spaces intact
 
 ### Requirement: Odometer readings are entered in a microwave-style number field
-The system SHALL let the user enter the odometer reading of a new vehicle in a field that uses the device's number
-keyboard (digits only) and works like a microwave oven's timer: each digit typed enters at the right-hand end of the
+The system SHALL let the user enter an odometer reading, wherever the app asks for one (today when adding a vehicle),
+in a field that uses the device's number keyboard (digits only) and works like a microwave oven's timer: each digit typed enters at the right-hand end of the
 displayed value and shifts the earlier digits one place to the left. For the units "Kilometers" and "Miles" the last
 digit is a whole unit. For the units "Kilometers with 100 m" and "Miles with tenths" the last digit is a tenth, and
 the decimal separator is added automatically. The field SHALL always show the current value in the vehicle's unit as
@@ -118,9 +118,16 @@ right-hand end of the number does not move. The field starts empty: while no dig
 0 or 0.0 or any other number, only its label. Deleting a digit with the keyboard's backspace SHALL remove the last digit
 entered, so that typing then deleting a digit restores the earlier value, and deleting the only digit SHALL make the
 field empty again. A clear control in the field SHALL make it empty. A typed 0 SHALL be shown as 0 (0.0 for the tenths
-units) and counts as an entered reading, and typing 0 again SHALL leave it at 0. Characters that are not digits, such as a comma, a period or a minus sign, whether typed or pasted, SHALL
+units) and counts as an entered reading; in the tenths units that first 0 is the tenth. When more digits are typed after
+a first 0, that 0 SHALL be kept as a prefix digit that is not drawn as an extra digit (the reading shows 0.5, never 00.5),
+and backspace SHALL remove it only after the digits typed after it, so that backspace restores exactly the earlier
+value and the field goes back through the typed zero to empty. Typing 0 while the entry is only the typed 0 SHALL leave
+it unchanged, so an entry has at most one prefix zero. The prefix zero SHALL NOT count towards the digit limit.
+Characters that are not digits, such as a comma, a period or a minus sign, whether typed or pasted, SHALL
 be ignored. The value SHALL have at most 7 whole digits, and digits that would exceed that SHALL be ignored. Because
-only digits can be entered, an invalid reading cannot be entered.
+only digits can be entered, an invalid reading cannot be entered. Every field in the app where an odometer reading is
+entered, on any screen, SHALL follow every rule of this requirement, so that entering an odometer works identically
+everywhere; a screen MAY decide whether an empty field can be saved, but not how the field behaves.
 
 #### Scenario: Whole-number unit
 - **WHEN** the unit is "Kilometers" and the user types 1, then 2, then 3
@@ -153,6 +160,45 @@ only digits can be entered, an invalid reading cannot be entered.
 #### Scenario: Backspace on a typed zero
 - **WHEN** the field shows the typed zero and the user presses backspace
 - **THEN** the field is empty again
+
+#### Scenario: A first zero is kept when more digits follow in a tenths unit
+- **WHEN** the unit has tenths and the user types 0, then 5
+- **THEN** the field shows 0.0, then 0.5
+- **AND** pressing backspace shows 0.0 again, and pressing backspace once more makes the field empty
+
+#### Scenario: A first zero is kept under several later digits
+- **WHEN** the unit has tenths and the user types 0, 5, 3
+- **THEN** the field shows 0.0, 0.5, 5.3
+- **AND** three backspaces then show 0.5, then 0.0, then an empty field
+
+#### Scenario: A first zero is kept in a whole-number unit
+- **WHEN** the unit is "Kilometers" and the user types 0, then 5
+- **THEN** the field shows 0 km, then 5 km
+- **AND** pressing backspace shows 0 km again, and pressing backspace once more makes the field empty
+
+#### Scenario: Further leading zeros are ignored
+- **WHEN** the unit has tenths and the user types 0, 0, 0, then 5
+- **THEN** the field shows 0.0 after each of the zeros, then 0.5
+- **AND** pressing backspace shows 0.0, and one more makes the field empty
+
+#### Scenario: A zero that is not typed first is an ordinary digit
+- **WHEN** the unit has tenths and the user types 1, then 0
+- **THEN** the field shows 0.1, then 1.0
+- **AND** pressing backspace shows 0.1
+
+#### Scenario: A pasted leading zero is kept like a typed one
+- **WHEN** the unit has tenths, the field is empty and the user pastes "0123"
+- **THEN** the field shows 12.3
+- **AND** pressing backspace three times shows 1.2, then 0.1, then 0.0, and a fourth press makes the field empty
+
+#### Scenario: The prefix zero does not count towards the digit limit
+- **WHEN** the unit is "Kilometers" and the user types 0 followed by the seven digits 9999999
+- **THEN** the field shows 9999999 km
+- **AND** typing one more digit leaves it unchanged
+
+#### Scenario: Every odometer field behaves the same
+- **WHEN** the user enters an odometer reading on any screen of the app that has an odometer field
+- **THEN** the field starts empty, fills from the right edge, keeps a first typed zero as a prefix, removes digits with backspace in the order they were typed, and draws the device locale's separators, exactly as in the other scenarios of this requirement
 
 #### Scenario: Backspace restores the earlier value
 - **WHEN** the unit has tenths, the field shows 1.2, the user types 3 and then presses backspace
