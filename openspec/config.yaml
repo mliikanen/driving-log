@@ -42,6 +42,7 @@ context: |
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
   Whenever there are differences in the app behavior on platforms, note the differences in the relevant feature specifications.
+  The minimum supported Android version is Android 13 (API 33), which is what the Kide library requires.
 
   Firebase app distribution is to be used to distribute app test builds. No real app stores are used yet for distribution.
 

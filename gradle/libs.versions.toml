@@ -9,8 +9,8 @@ datetime = "0.8.0"
 kide = "2.2.0"
 metro = "1.4.4"
 
-android-compileSdk = "36"
-android-minSdk = "26"
+android-compileSdk = "37"
+android-minSdk = "33"
 android-targetSdk = "36"
 
 [libraries]
