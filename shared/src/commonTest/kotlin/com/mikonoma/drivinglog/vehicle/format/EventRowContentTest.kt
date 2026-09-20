@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.format
 
 import com.mikonoma.drivinglog.locale.NumberSymbols
+import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
@@ -77,5 +78,11 @@ class EventRowContentTest {
         val entered = ZonedMoment.of(Instant.parse("2026-09-20T15:30:00Z"), helsinki) // 18:30 in Helsinki
 
         assertEquals("2026-09-20 18:30 (Europe/Helsinki)", row(distance(1_000, moment = entered), zone = newYork).moment)
+    }
+
+    @Test
+    fun aTwelveHourSettingIsAppliedToTheRowsTime() {
+        val row = eventRowContent(distance(1_000), OdometerUnit.KILOMETERS, us, helsinki, TimeFormat(is24Hour = false))
+        assertEquals("2026-09-20 3:30 PM", row.moment)
     }
 }

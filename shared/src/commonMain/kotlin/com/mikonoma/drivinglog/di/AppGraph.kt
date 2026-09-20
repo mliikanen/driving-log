@@ -3,7 +3,6 @@ package com.mikonoma.drivinglog.di
 import app.cash.sqldelight.db.SqlDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.locale.DeviceLocale
-import com.mikonoma.drivinglog.locale.SystemDeviceLocale
 import com.mikonoma.drivinglog.vehicle.data.SqlDelightVehicleRepository
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleProcessor
@@ -39,7 +38,7 @@ interface AppGraph {
 
     @DependencyGraph.Factory
     fun interface Factory {
-        fun create(@Provides driver: SqlDriver): AppGraph
+        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale): AppGraph
     }
 
     @Provides
@@ -48,9 +47,6 @@ interface AppGraph {
 
     @Provides
     fun provideClock(): Clock = Clock.System
-
-    @Provides
-    fun provideDeviceLocale(): DeviceLocale = SystemDeviceLocale()
 
     @Provides
     fun provideDeviceTimeZone(): DeviceTimeZone = SystemDeviceTimeZone()
@@ -69,4 +65,5 @@ interface AppGraph {
 }
 
 // Metro only rewrites createGraphFactory() in modules with its plugin applied, so the platform shells call this.
-fun createAppGraph(driver: SqlDriver): AppGraph = createGraphFactory<AppGraph.Factory>().create(driver)
+fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale): AppGraph =
+    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale)

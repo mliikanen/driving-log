@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.format
 
 import com.mikonoma.drivinglog.locale.NumberSymbols
+import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.ui.label
@@ -17,17 +18,23 @@ data class EventRowContent(
     val loggedOdometer: String?,
 )
 
-fun eventRowContent(event: VehicleEvent, unit: OdometerUnit, symbols: NumberSymbols, deviceZone: TimeZone): EventRowContent =
+fun eventRowContent(
+    event: VehicleEvent,
+    unit: OdometerUnit,
+    symbols: NumberSymbols,
+    deviceZone: TimeZone,
+    timeFormat: TimeFormat = TimeFormat(),
+): EventRowContent =
     when (event) {
         is VehicleEvent.InitialOdometer -> EventRowContent(
             label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone),
+            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
             trailing = formatOdometer(event.reading, unit, symbols),
             loggedOdometer = null,
         )
         is VehicleEvent.DistanceEntry -> EventRowContent(
             label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone),
+            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
             trailing = "+" + formatOdometer(event.distance, unit, symbols),
             loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
         )

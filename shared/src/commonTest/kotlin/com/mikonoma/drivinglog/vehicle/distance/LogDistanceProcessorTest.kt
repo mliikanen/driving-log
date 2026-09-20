@@ -522,4 +522,128 @@ class LogDistanceProcessorTest {
         assertFalse(restored.state.isLoading)
         assertEquals(2, restored.state.log.size)
     }
+
+    // ---- The tenths choice remembered per vehicle
+
+    private fun seedRemembered(id: String, unit: OdometerUnit, remembered: Boolean?) {
+        repository.seedVehicle(id, id, unit = unit, logDistanceTenths = remembered)
+        repository.seedEvents(id, listOf(initialEvent("i-$id", initialAt, 45_200_000)))
+    }
+
+    @Test
+    fun theTenthsChoiceStartsAsTheRememberedOne() {
+        seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
+        seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
+
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+    }
+
+    @Test
+    fun withNoRememberedChoiceTheTenthsOfTheVehiclesUnitAreUsed() {
+        seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
+
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+    }
+
+    @Test
+    fun onlyTheTenthsChoiceIsRememberedNotTheUnitFamily() {
+        // A miles vehicle whose remembered choice is "without tenths" starts in miles, and a kilometer vehicle keeps kilometers.
+        seedRemembered("m", OdometerUnit.MILES, remembered = true)
+        seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
+
+        assertEquals(OdometerUnit.MILES_TENTHS, LogDistanceProcessor("m", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("k", repository, clock, deviceZone).state.unit)
+    }
+
+    @Test
+    fun savingHandsTheTenthsChoiceUsedToTheRepository() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        processor.type(1, 2, 3)
+
+        processor.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        assertEquals(true, repository.distanceCalls.single().tenthsIncluded)
+    }
+
+    @Test
+    fun savingWithoutTenthsHandsFalseEvenForAVehicleWithTenths() = runTest {
+        seedVehicle(OdometerUnit.KILOMETERS_TENTHS)
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.TenthsChanged(included = false))
+        processor.type(5)
+
+        processor.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        assertEquals(false, repository.distanceCalls.single().tenthsIncluded)
+    }
+
+    @Test
+    fun theNextFormForTheVehicleStartsWithTheChoiceThatWasSaved() = runTest {
+        seedVehicle()
+        val first = processor()
+        first.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        first.type(1, 2, 3)
+        first.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        val next = processor()
+
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, next.state.unit)
+        assertTrue(next.state.tripDistance.isEmpty)
+    }
+
+    @Test
+    fun aChoiceThatIsNotSavedIsNotRemembered() {
+        seedRemembered("a", OdometerUnit.KILOMETERS, remembered = false)
+        val left = LogDistanceProcessor("a", repository, clock, deviceZone)
+        left.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        left.type(1, 2)
+        // The form is left without saving.
+
+        val next = LogDistanceProcessor("a", repository, clock, deviceZone)
+
+        assertEquals(OdometerUnit.KILOMETERS, next.state.unit)
+        assertEquals(emptyList(), repository.distanceCalls)
+    }
+
+    @Test
+    fun aRefusedSaveDoesNotRememberTheChoice() {
+        seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
+        val processor = LogDistanceProcessor("a", repository, clock, deviceZone)
+        processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+
+        processor.dispatch(LogDistanceIntent.Save) // nothing typed
+
+        assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
+    }
+
+    @Test
+    fun theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm() = runTest {
+        seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("b", OdometerUnit.KILOMETERS, remembered = null)
+        val a = LogDistanceProcessor("a", repository, clock, deviceZone)
+        a.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        a.type(4)
+        a.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+    }
 }

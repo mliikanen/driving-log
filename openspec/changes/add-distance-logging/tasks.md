@@ -8,7 +8,7 @@
 - [x] 1.4 Verify the derived current odometer with tests: the SQL result equals `knownOdometerAt` at the end of the log on prepared logs (initial only, entries after, entries before the initial event, ties at the initial time, entries of 30 km, 20 km and 0.5 km), and entries before the initial event never change it
 - [x] 1.5 Add a JVM migration test that builds a version-1 database from the version-1 DDL, inserts a vehicle and its event, migrates to version 2, and verify the data is intact, the new columns are null, a legacy event reads back with no zone, and a distance entry with a zone can be added; verify a fresh database has the same tables
 
-- [ ] 1.6 Remember the tenths choice per vehicle: migration `2.sqm` (`vehicle.log_distance_tenths`, schema version 3), `Vehicle.logDistanceTenths`, and `addDistanceEntry` saving the choice with the entry in one transaction, and verify tests for null before any entry, true and false read back after saving, another vehicle unaffected, a failed entry insert leaving the choice unchanged, migrations 1 to 3 and 2 to 3 keeping data, and a fresh database at version 3 having the same tables as a migrated one
+- [x] 1.6 Remember the tenths choice per vehicle: migration `2.sqm` (`vehicle.log_distance_tenths`, schema version 3), `Vehicle.logDistanceTenths`, and `addDistanceEntry` saving the choice with the entry in one transaction, and verify tests for null before any entry, true and false read back after saving, another vehicle unaffected, a failed entry insert leaving the choice unchanged, migrations 1 to 3 and 2 to 3 keeping data, and a fresh database at version 3 having the same tables as a migrated one
 
 ## 2. Distance logic
 

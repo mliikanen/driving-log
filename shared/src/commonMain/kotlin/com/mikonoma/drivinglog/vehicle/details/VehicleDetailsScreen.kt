@@ -82,6 +82,7 @@ fun VehicleDetailsContent(
     // Read on every composition so a change of device locale shows the new separators.
     val symbols = deviceLocale.numberSymbols()
     val deviceZone = deviceTimeZone.current()
+    val timeFormat = deviceLocale.timeFormat()
 
     Scaffold(
         topBar = {
@@ -125,7 +126,7 @@ fun VehicleDetailsContent(
                         }
                     }
                     items(state.recentEvents, key = { it.id }) { event ->
-                        EventRow(event, state.unit, symbols, deviceZone, Modifier.testTag("recent_event"))
+                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("recent_event"))
                         HorizontalDivider()
                     }
                     item {

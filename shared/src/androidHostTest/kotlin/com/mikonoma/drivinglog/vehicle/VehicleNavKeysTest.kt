@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle
 
 import com.mikonoma.drivinglog.di.createAppGraph
+import com.mikonoma.drivinglog.locale.FakeDeviceLocale
 import com.mikonoma.drivinglog.vehicle.data.createTestDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,7 +18,7 @@ class VehicleNavKeysTest {
 
     @Test
     fun everyScreenIsRegistered() {
-        registerVehicleNavKeys(createAppGraph(createTestDriver()))
+        registerVehicleNavKeys(createAppGraph(createTestDriver(), FakeDeviceLocale()))
 
         for (key in serialKeys) assertNotNull(ScreenNavKeyRegistry.find(key), key)
     }
@@ -25,7 +26,7 @@ class VehicleNavKeysTest {
     /** Composition runs again when the activity is recreated, for example on rotation: that must not crash. */
     @Test
     fun registeringTwiceWithTheSameGraphIsHarmless() {
-        val graph = createAppGraph(createTestDriver())
+        val graph = createAppGraph(createTestDriver(), FakeDeviceLocale())
 
         registerVehicleNavKeys(graph)
         registerVehicleNavKeys(graph)
@@ -36,8 +37,8 @@ class VehicleNavKeysTest {
 
     @Test
     fun aNewGraphReplacesThePreviousRegistrations() {
-        registerVehicleNavKeys(createAppGraph(createTestDriver()))
-        val second = createAppGraph(createTestDriver())
+        registerVehicleNavKeys(createAppGraph(createTestDriver(), FakeDeviceLocale()))
+        val second = createAppGraph(createTestDriver(), FakeDeviceLocale())
 
         registerVehicleNavKeys(second)
 
@@ -46,7 +47,7 @@ class VehicleNavKeysTest {
 
     @Test
     fun aDetailsKeyIsRestoredWithItsVehicleId() {
-        registerVehicleNavKeys(createAppGraph(createTestDriver()))
+        registerVehicleNavKeys(createAppGraph(createTestDriver(), FakeDeviceLocale()))
 
         val restored = ScreenNavKeyRegistry.get("vehicle-details").restoreArgs("v42") as VehicleDetailsNavKey
 
@@ -59,8 +60,8 @@ class VehicleNavKeysTest {
 
     @Test
     fun keysWithoutArgumentsAreEqualAcrossInstances() {
-        val first = createAppGraph(createTestDriver())
-        val second = createAppGraph(createTestDriver())
+        val first = createAppGraph(createTestDriver(), FakeDeviceLocale())
+        val second = createAppGraph(createTestDriver(), FakeDeviceLocale())
 
         assertEquals(VehicleListNavKey(first), VehicleListNavKey(second))
         assertEquals(AddVehicleNavKey(first), AddVehicleNavKey(second))
@@ -70,7 +71,7 @@ class VehicleNavKeysTest {
 
     @Test
     fun keysWithAVehicleIdAreEqualByIdAndKind() {
-        val graph = createAppGraph(createTestDriver())
+        val graph = createAppGraph(createTestDriver(), FakeDeviceLocale())
 
         assertEquals(VehicleDetailsNavKey(graph, "v1"), VehicleDetailsNavKey(graph, "v1"))
         assertEquals(VehicleDetailsNavKey(graph, "v1").hashCode(), VehicleDetailsNavKey(graph, "v1").hashCode())
@@ -81,7 +82,7 @@ class VehicleNavKeysTest {
 
     @Test
     fun aRestoredKeyEqualsTheKeyItWasSavedFrom() {
-        val graph = createAppGraph(createTestDriver())
+        val graph = createAppGraph(createTestDriver(), FakeDeviceLocale())
         registerVehicleNavKeys(graph)
 
         val keys = listOf(VehicleDetailsNavKey(graph, "v7"), EditVehicleNavKey(graph, "v7"), VehicleLogNavKey(graph, "v7"))
@@ -93,7 +94,7 @@ class VehicleNavKeysTest {
 
     @Test
     fun logDistanceKeysAreEqualByVehicleAndRestoredKeysEqualTheOriginal() {
-        val graph = createAppGraph(createTestDriver())
+        val graph = createAppGraph(createTestDriver(), FakeDeviceLocale())
         registerVehicleNavKeys(graph)
 
         assertEquals(LogDistanceNavKey(graph, "v1"), LogDistanceNavKey(graph, "v1"))

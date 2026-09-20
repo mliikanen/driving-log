@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.mikonoma.drivinglog.locale.NumberSymbols
+import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
@@ -18,9 +19,10 @@ fun EventRow(
     unit: OdometerUnit,
     symbols: NumberSymbols,
     deviceZone: TimeZone,
+    timeFormat: TimeFormat,
     modifier: Modifier = Modifier,
 ) {
-    val content = eventRowContent(event, unit, symbols, deviceZone)
+    val content = eventRowContent(event, unit, symbols, deviceZone, timeFormat)
     ListItem(
         headlineContent = { Text(content.label) },
         supportingContent = {

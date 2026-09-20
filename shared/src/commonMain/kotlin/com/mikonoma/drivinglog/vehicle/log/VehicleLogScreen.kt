@@ -33,6 +33,7 @@ fun VehicleLogScreen(processor: VehicleLogProcessor, deviceLocale: DeviceLocale,
 fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
     val symbols = deviceLocale.numberSymbols()
     val deviceZone = deviceTimeZone.current()
+    val timeFormat = deviceLocale.timeFormat()
 
     Scaffold(
         topBar = {
@@ -48,7 +49,7 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
                 else -> LazyColumn(Modifier.fillMaxSize().testTag("log_list")) {
                     items(state.events, key = { it.id }) { event ->
-                        EventRow(event, state.unit, symbols, deviceZone, Modifier.testTag("log_event"))
+                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("log_event"))
                         HorizontalDivider()
                     }
                 }
