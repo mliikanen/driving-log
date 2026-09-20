@@ -28,6 +28,16 @@ context: |
   Data storage should be uniform (in international units: meters for distances, liters for fuel amounts) and any unit conversions
   are to be done only at the presentation layer.
 
+  The app shall be offline-first. After the initial login, the app MUST remain fully usable without a network
+  connection; all reads and writes go to local storage first and are synchronized with the backend when connectivity
+  is available. When synchronization finds conflicting data, the backend data always wins. The user with the
+  conflicting local data shall be prompted to either overwrite the local data with the backend version or delete the
+  conflicting local data.
+
+  The data model shall be additive, not accumulative: every trip, odometer reading, refueling and diary entry is stored
+  as its own record, and records are only added, never merged into running totals. Aggregates (totals, averages,
+  consumption) are derived from the records when needed and are not stored.
+
   Use Material Design 3 as app design system.
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
