@@ -1,0 +1,37 @@
+package com.mikonoma.drivinglog.vehicle.picture
+
+import androidx.compose.ui.graphics.ImageBitmap
+
+/**
+ * A codec for tests that never touches a bitmap: empty bytes are "not an image", any other bytes decode to an image of
+ * [width] x [height], and an encoded crop's bytes are the crop and the sides, so a test can see what was asked for.
+ */
+class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec {
+
+    class Encode(val bytes: ByteArray, val crop: CropRect, val sides: PictureSides)
+
+    val encodes = mutableListOf<Encode>()
+    var decodeCount = 0
+
+    /** When set, [encodeSquare] throws it. */
+    var encodeFailure: Throwable? = null
+
+    private class Decoded(override val width: Int, override val height: Int) : DecodedImage {
+        override fun toImageBitmap(): ImageBitmap = error("A fake image has no bitmap")
+    }
+
+    override suspend fun decode(bytes: ByteArray): DecodedImage? {
+        decodeCount++
+        return if (bytes.isEmpty()) null else Decoded(width, height)
+    }
+
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture? {
+        encodeFailure?.let { throw it }
+        if (bytes.isEmpty()) return null
+        encodes += Encode(bytes, crop, sides)
+        return EncodedPicture(version(crop, sides.small, 0), version(crop, sides.large, 1))
+    }
+
+    private fun version(crop: CropRect, side: Int, marker: Int) =
+        EncodedImage(byteArrayOf(marker.toByte(), crop.x.toByte(), crop.y.toByte(), crop.side.toByte()), "webp", side, side)
+}

@@ -1,10 +1,13 @@
 package com.mikonoma.drivinglog.vehicle.list
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,6 +21,7 @@ import org.fuusio.kide.test.test
 class VehicleListProcessorTest {
 
     private val repository = FakeVehicleRepository()
+    private val pictures = FakeVehiclePictureStore()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -29,7 +33,7 @@ class VehicleListProcessorTest {
 
     @Test
     fun anEmptyRepositoryShowsAnEmptyLoadedList() {
-        val processor = VehicleListProcessor(repository)
+        val processor = VehicleListProcessor(repository, pictures)
 
         assertEquals(false, processor.state.isLoading)
         assertEquals(emptyList(), processor.state.vehicles)
@@ -41,7 +45,7 @@ class VehicleListProcessorTest {
         repository.seedVehicle("2", "Bike")
         repository.seedVehicle("3", "Family car")
 
-        assertEquals(listOf("Bike", "Family car", "van"), names(VehicleListProcessor(repository)))
+        assertEquals(listOf("Bike", "Family car", "van"), names(VehicleListProcessor(repository, pictures)))
     }
 
     @Test
@@ -50,7 +54,7 @@ class VehicleListProcessorTest {
         repository.seedVehicle("2", "Yak")
         repository.seedVehicle("3", "apple")
 
-        assertEquals(listOf("apple", "Yak", "zebra"), names(VehicleListProcessor(repository)))
+        assertEquals(listOf("apple", "Yak", "zebra"), names(VehicleListProcessor(repository, pictures)))
     }
 
     @Test
@@ -59,7 +63,7 @@ class VehicleListProcessorTest {
         repository.seedVehicle("2", "van", createdAtMillis = 10)
         repository.seedVehicle("3", "VAN", createdAtMillis = 30)
 
-        assertEquals(listOf("2", "1", "3"), VehicleListProcessor(repository).state.vehicles.map { it.id })
+        assertEquals(listOf("2", "1", "3"), VehicleListProcessor(repository, pictures).state.vehicles.map { it.id })
     }
 
     @Test
@@ -67,7 +71,7 @@ class VehicleListProcessorTest {
         repository.seedVehicle("1", "Äiti", createdAtMillis = 2)
         repository.seedVehicle("2", "äiti", createdAtMillis = 1)
 
-        assertEquals(listOf("2", "1"), VehicleListProcessor(repository).state.vehicles.map { it.id })
+        assertEquals(listOf("2", "1"), VehicleListProcessor(repository, pictures).state.vehicles.map { it.id })
     }
 
     @Test
@@ -75,14 +79,14 @@ class VehicleListProcessorTest {
         repository.seedVehicle("1", "Family car", plate = "ABC-123")
         repository.seedVehicle("2", "Van", plate = null)
 
-        val items = VehicleListProcessor(repository).state.vehicles
+        val items = VehicleListProcessor(repository, pictures).state.vehicles
         assertEquals(VehicleListItem("1", "Family car", "ABC-123"), items[0])
         assertEquals(VehicleListItem("2", "Van", null), items[1])
     }
 
     @Test
     fun theListFollowsTheRepository() {
-        val processor = VehicleListProcessor(repository)
+        val processor = VehicleListProcessor(repository, pictures)
         assertEquals(emptyList(), names(processor))
 
         repository.seedVehicle("1", "Van")
@@ -92,7 +96,7 @@ class VehicleListProcessorTest {
 
     @Test
     fun openingAVehicleNavigatesToItsDetails() = runTest {
-        VehicleListProcessor(repository).test {
+        VehicleListProcessor(repository, pictures).test {
             dispatch(VehicleListIntent.OpenVehicle("v7"))
             expectSideEffect(VehicleListEffect.ShowDetails("v7"))
         }
@@ -100,7 +104,7 @@ class VehicleListProcessorTest {
 
     @Test
     fun addingNavigatesToTheAddScreen() = runTest {
-        VehicleListProcessor(repository).test {
+        VehicleListProcessor(repository, pictures).test {
             dispatch(VehicleListIntent.AddVehicle)
             expectSideEffect(VehicleListEffect.ShowAdd)
         }
@@ -109,5 +113,57 @@ class VehicleListProcessorTest {
     @Test
     fun theProcessorStartsLoadingBeforeTheFirstEmission() {
         assertTrue(VehicleListState().isLoading)
+    }
+
+    // ---- Pictures
+
+    @Test
+    fun aVehicleWithAPictureHasTheUriOfItsSmallVersion() {
+        val pictureId = pictures.addPicture()
+        repository.seedVehicle("v1", "Family car", pictureId = pictureId)
+
+        val item = VehicleListProcessor(repository, pictures).state.vehicles.single()
+
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), item.pictureUri)
+    }
+
+    @Test
+    fun aVehicleWithoutAPictureHasNoUri() {
+        repository.seedVehicle("v1", "Van")
+
+        assertNull(VehicleListProcessor(repository, pictures).state.vehicles.single().pictureUri)
+    }
+
+    @Test
+    fun aVehicleWhoseFileIsGoneHasNoUri() {
+        repository.seedVehicle("v1", "Van", pictureId = "gone")
+
+        assertNull(VehicleListProcessor(repository, pictures).state.vehicles.single().pictureUri)
+    }
+
+    @Test
+    fun eachVehicleHasItsOwnUriAndChangingThePictureChangesIt() {
+        val a = pictures.addPicture()
+        val b = pictures.addPicture()
+        repository.seedVehicle("v1", "A", pictureId = a)
+        repository.seedVehicle("v2", "B", pictureId = b)
+        val processor = VehicleListProcessor(repository, pictures)
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", a, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", b, PictureSize.SMALL), processor.state.vehicles[1].pictureUri)
+
+        val replacement = pictures.addPicture()
+        repository.setPicture("v1", replacement)
+
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", replacement, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
+    }
+
+    @Test
+    fun theItemHoldsOnlyAUriNeverAnIdOrBytes() {
+        val pictureId = pictures.addPicture()
+        repository.seedVehicle("v1", "A", pictureId = pictureId)
+
+        val text = VehicleListProcessor(repository, pictures).state.vehicles.single().toString()
+
+        assertEquals(false, pictureId in text.replace(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), ""))
     }
 }

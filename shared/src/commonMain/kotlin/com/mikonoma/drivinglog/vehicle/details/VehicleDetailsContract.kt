@@ -16,6 +16,8 @@ data class VehicleDetailsState(
     val notFound: Boolean = false,
     val name: String = "",
     val licensePlate: String? = null,
+    /** Where the large version of the vehicle's picture can be loaded from, or null when it has none (or its file is gone). */
+    val pictureUri: String? = null,
     val unit: OdometerUnit = OdometerUnit.KILOMETERS,
     val currentOdometer: Distance? = null,
     /** At most [VehicleDetailsProcessor.RECENT_EVENT_LIMIT] events, newest first. */

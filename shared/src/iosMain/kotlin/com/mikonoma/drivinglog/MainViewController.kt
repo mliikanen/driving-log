@@ -5,6 +5,7 @@ import com.mikonoma.drivinglog.di.AppGraph
 import com.mikonoma.drivinglog.di.createAppGraph
 import com.mikonoma.drivinglog.locale.SystemDeviceLocale
 import com.mikonoma.drivinglog.vehicle.data.DatabaseDriverFactory
+import com.mikonoma.drivinglog.vehicle.picture.UnavailableImageCodec
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.files.Path
 import platform.Foundation.NSApplicationSupportDirectory
@@ -20,7 +21,7 @@ private fun picturesRoot(): Path {
 }
 
 private val appGraph: AppGraph by lazy {
-    createAppGraph(DatabaseDriverFactory().createDriver(), SystemDeviceLocale(), picturesRoot())
+    createAppGraph(DatabaseDriverFactory().createDriver(), SystemDeviceLocale(), picturesRoot(), UnavailableImageCodec)
 }
 
 fun MainViewController(): UIViewController = ComposeUIViewController { App(appGraph) }

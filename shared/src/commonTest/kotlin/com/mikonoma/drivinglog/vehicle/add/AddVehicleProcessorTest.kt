@@ -6,12 +6,20 @@ import com.mikonoma.drivinglog.vehicle.AddCall
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.format.formatSteps
+import com.mikonoma.drivinglog.vehicle.picture.CropRect
+import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
+import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
+import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +37,8 @@ private class FakeLocale(override val regionCode: String?) : DeviceLocale {
 class AddVehicleProcessorTest {
 
     private val repository = FakeVehicleRepository()
+    private val pictures = FakeVehiclePictureStore()
+    private val codec = FakeImageCodec()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -36,7 +46,7 @@ class AddVehicleProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region))
+    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region), pictures, codec)
 
     private fun AddVehicleProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(AddVehicleIntent.OdometerEdited(state.entry.digits + d))
@@ -552,5 +562,186 @@ class AddVehicleProcessorTest {
 
         // Leaving the screen is navigation only: nothing reaches the repository.
         assertEquals(emptyList(), repository.addCalls)
+    }
+
+    // ---- The picture
+
+    private val photo = byteArrayOf(1, 2, 3)
+    private val crop = CropRect(500, 0, 3000)
+
+    private fun AddVehicleProcessor.pickAndCrop() {
+        dispatch(AddVehicleIntent.PhotoPicked(photo))
+        dispatch(AddVehicleIntent.CropConfirmed(crop))
+    }
+
+    @Test
+    fun theFormStartsWithNoPicture() {
+        val state = processor().state
+
+        assertEquals(PictureDraft.None, state.picture.draft)
+        assertNull(state.previewUri)
+        assertNull(state.cropImage)
+    }
+
+    @Test
+    fun aChosenPhotoOpensTheCropWithTheDecodedPhoto() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.PhotoPicked(photo))
+
+        assertTrue(processor.state.picture.isCropping)
+        assertEquals(4000, processor.state.cropImage!!.width)
+        assertEquals(3000, processor.state.cropImage!!.height)
+        assertEquals(PictureDraft.None, processor.state.picture.draft)
+    }
+
+    @Test
+    fun leavingThePickerChangesNothing() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.PhotoPicked(null))
+
+        assertEquals(PictureEditState(), processor.state.picture)
+    }
+
+    @Test
+    fun aPhotoThatCannotBeOpenedShowsTheErrorAndNoCrop() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.PhotoPicked(ByteArray(0)))
+
+        assertTrue(processor.state.picture.error)
+        assertFalse(processor.state.picture.isCropping)
+        assertNull(processor.state.cropImage)
+        processor.dispatch(AddVehicleIntent.PictureErrorDismissed)
+        assertFalse(processor.state.picture.error)
+    }
+
+    @Test
+    fun aConfirmedCropIsThePreviewAndClosesTheCrop() {
+        val processor = processor()
+
+        processor.pickAndCrop()
+
+        val draft = processor.state.picture.draft as PictureDraft.Pending
+        assertFalse(processor.state.picture.isCropping)
+        assertNull(processor.state.cropImage)
+        assertEquals(FakeVehiclePictureStore.fakeUri("pending", draft.pendingId, PictureSize.SMALL), processor.state.previewUri)
+    }
+
+    @Test
+    fun cancellingTheCropKeepsTheFormAsItWas() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.PhotoPicked(photo))
+
+        processor.dispatch(AddVehicleIntent.CropCancelled)
+
+        assertEquals(PictureEditState(), processor.state.picture)
+        assertNull(processor.state.cropImage)
+        assertEquals(emptySet(), pictures.everything())
+    }
+
+    @Test
+    fun removingThePictureClearsThePreviewAndDeletesItsFiles() {
+        val processor = processor()
+        processor.pickAndCrop()
+
+        processor.dispatch(AddVehicleIntent.PictureRemoved)
+
+        assertEquals(PictureDraft.None, processor.state.picture.draft)
+        assertNull(processor.state.previewUri)
+        assertEquals(emptySet(), pictures.everything())
+    }
+
+    @Test
+    fun aVehicleIsSavedWithItsPendingPicture() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Family car"))
+        processor.type(4, 5, 2, 0, 0)
+        processor.pickAndCrop()
+        val pendingId = (processor.state.picture.draft as PictureDraft.Pending).pendingId
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(PendingPicture(pendingId), repository.addCalls.single().picture)
+    }
+
+    @Test
+    fun aVehicleWithoutAPictureIsSavedWithNone() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(1)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertNull(repository.addCalls.single().picture)
+    }
+
+    @Test
+    fun aFailedSaveKeepsThePictureForAnotherTry() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(1)
+        processor.pickAndCrop()
+        val draft = processor.state.picture.draft
+        repository.addFailure = IllegalStateException("disk full")
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertEquals(draft, processor.state.picture.draft)
+        assertTrue(processor.state.previewUri != null)
+        assertEquals(1, pictures.pending.size)
+    }
+
+    @Test
+    fun leavingWithoutSavingDeletesThePendingFiles() {
+        val processor = processor()
+        processor.pickAndCrop()
+        processor.dispatch(AddVehicleIntent.PhotoPicked(byteArrayOf(9)))
+
+        processor.dispatch(AddVehicleIntent.Left)
+
+        assertEquals(emptySet(), pictures.everything())
+        assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun aRestoredPendingPictureShowsItsPreviewAfterARefresh() {
+        val pendingId = pictures.addPending()
+        val processor = processor()
+        processor.restoreState(processor.state.copy(picture = PictureEditState(draft = PictureDraft.Pending(pendingId))))
+        assertNull(processor.state.previewUri) // the preview is not saved, it is rebuilt
+
+        processor.dispatch(AddVehicleIntent.PictureRefresh)
+
+        assertEquals(FakeVehiclePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
+    }
+
+    @Test
+    fun aRestoredCropReopensWithTheDecodedPhotoAfterARefresh() = runTest {
+        val sourceId = pictures.putPendingSource(photo)
+        val processor = processor()
+        processor.restoreState(processor.state.copy(picture = PictureEditState(cropSourceId = sourceId)))
+        assertNull(processor.state.cropImage)
+
+        processor.dispatch(AddVehicleIntent.PictureRefresh)
+
+        assertEquals(4000, processor.state.cropImage!!.width)
+    }
+
+    @Test
+    fun aRestoredCropWhosePhotoIsGoneHasNoImage() {
+        val processor = processor()
+        processor.restoreState(processor.state.copy(picture = PictureEditState(cropSourceId = "gone")))
+
+        processor.dispatch(AddVehicleIntent.PictureRefresh)
+
+        assertNull(processor.state.cropImage)
     }
 }

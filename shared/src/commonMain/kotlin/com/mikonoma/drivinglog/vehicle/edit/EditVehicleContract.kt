@@ -1,6 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.picture.CropRect
+import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
+import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
+import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
@@ -15,12 +20,33 @@ data class EditVehicleState(
     val licensePlate: String = "",
     val nameError: Boolean = false,
     val isSaving: Boolean = false,
+    /** The picture: [PictureDraft.Unchanged] until the user changes or removes it. Names files, holds no pixels. */
+    val picture: PictureEditState = PictureEditState(draft = PictureDraft.Unchanged),
+    /** The id of the vehicle's saved picture, for the preview. Rebuilt from the repository. */
+    @Transient val savedPictureId: String? = null,
+    /** A URI of the small version of the picture the form shows; null for none. Rebuilt from [picture]. */
+    @Transient val previewUri: String? = null,
+    /** The photo being cropped, decoded for the crop screen. Rebuilt from [picture] after a restore. */
+    @Transient val cropImage: DecodedImage? = null,
 ) : ViewState
 
 sealed interface EditVehicleIntent : ViewIntent {
     data class NameChanged(val text: String) : EditVehicleIntent
     data class LicensePlateChanged(val text: String) : EditVehicleIntent
     data object Save : EditVehicleIntent
+
+    /** The photo picker returned [bytes], or null when the user left it without choosing. */
+    class PhotoPicked(val bytes: ByteArray?) : EditVehicleIntent
+
+    /** Rebuilds the preview and the crop image from the picture state, e.g. after a restore. */
+    data object PictureRefresh : EditVehicleIntent
+    data class CropConfirmed(val crop: CropRect) : EditVehicleIntent
+    data object CropCancelled : EditVehicleIntent
+    data object PictureRemoved : EditVehicleIntent
+    data object PictureErrorDismissed : EditVehicleIntent
+
+    /** The user left the screen without saving: the pending picture files are deleted. */
+    data object Left : EditVehicleIntent
 }
 
 sealed interface EditVehicleEffect : SideEffect {

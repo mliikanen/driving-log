@@ -72,6 +72,11 @@ class FakeVehicleRepository : VehicleRepository {
         events.value += vehicleId to newestFirst
     }
 
+    /** Changes a seeded vehicle's picture id, as another screen saving it would. */
+    fun setPicture(id: String, pictureId: String?) {
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(pictureId = pictureId) else it }
+    }
+
     fun observeVehicleOdometer(vehicleId: String): Distance? = currentOdometer(eventsOf(vehicleId).asReversed())
 
     fun eventsOf(vehicleId: String): List<VehicleEvent> = events.value[vehicleId].orEmpty()

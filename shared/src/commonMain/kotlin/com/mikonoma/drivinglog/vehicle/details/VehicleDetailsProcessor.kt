@@ -1,6 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.details
 
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
+import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -12,6 +14,7 @@ import org.fuusio.kide.presentation.sideEffect
 class VehicleDetailsProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     repository: VehicleRepository,
+    private val pictures: VehiclePictureStore,
 ) : PresentationProcessor<VehicleDetailsIntent, VehicleDetailsState, VehicleDetailsEffect>(VehicleDetailsState()) {
 
     @AssistedFactory
@@ -29,12 +32,14 @@ class VehicleDetailsProcessor @AssistedInject constructor(
             if (details == null) {
                 reduce { copy(isLoading = false, notFound = true) }
             } else {
+                val pictureUri = details.vehicle.pictureId?.let { pictures.uri(it, PictureSize.LARGE) }
                 reduce {
                     copy(
                         isLoading = false,
                         notFound = false,
                         name = details.vehicle.name,
                         licensePlate = details.vehicle.licensePlate,
+                        pictureUri = pictureUri,
                         unit = details.vehicle.odometerUnit,
                         currentOdometer = details.currentOdometer,
                         recentEvents = events,

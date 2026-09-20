@@ -14,6 +14,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
 import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
 import dev.zacsweers.metro.AppScope
@@ -42,7 +43,7 @@ interface AppGraph {
 
     @DependencyGraph.Factory
     fun interface Factory {
-        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path): AppGraph
+        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path, @Provides imageCodec: ImageCodec): AppGraph
     }
 
     @Provides
@@ -81,5 +82,5 @@ interface AppGraph {
 }
 
 // Metro only rewrites createGraphFactory() in modules with its plugin applied, so the platform shells call this.
-fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale, picturesRoot: Path): AppGraph =
-    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot)
+fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale, picturesRoot: Path, imageCodec: ImageCodec): AppGraph =
+    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot, imageCodec)

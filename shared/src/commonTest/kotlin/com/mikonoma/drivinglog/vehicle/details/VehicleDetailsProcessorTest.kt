@@ -1,6 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.details
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.distanceEvent
@@ -24,6 +26,7 @@ import org.fuusio.kide.test.test
 class VehicleDetailsProcessorTest {
 
     private val repository = FakeVehicleRepository()
+    private val pictures = FakeVehiclePictureStore()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -31,7 +34,7 @@ class VehicleDetailsProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor(id: String = "v1") = VehicleDetailsProcessor(id, repository)
+    private fun processor(id: String = "v1") = VehicleDetailsProcessor(id, repository, pictures)
 
     @Test
     fun showsNamePlateAndUnit() {
@@ -176,5 +179,43 @@ class VehicleDetailsProcessorTest {
         repository.seedEvents("v1", newestFirst)
 
         assertEquals(listOf("e5", "e4", "e3", "e2", "e1"), processor().state.recentEvents.map { it.id })
+    }
+
+    // ---- Pictures
+
+    @Test
+    fun aVehicleWithAPictureHasTheUriOfItsLargeVersion() {
+        val pictureId = pictures.addPicture()
+        repository.seedVehicle("v1", "Family car", pictureId = pictureId)
+
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.LARGE), processor().state.pictureUri)
+    }
+
+    @Test
+    fun aVehicleWithoutAPictureHasNoUri() {
+        repository.seedVehicle("v1", "Van")
+
+        assertNull(processor().state.pictureUri)
+    }
+
+    @Test
+    fun aVehicleWhoseFileIsGoneHasNoUri() {
+        repository.seedVehicle("v1", "Van", pictureId = "gone")
+
+        assertNull(processor().state.pictureUri)
+    }
+
+    @Test
+    fun changingOrRemovingThePictureChangesTheUri() {
+        val first = pictures.addPicture()
+        repository.seedVehicle("v1", "Van", pictureId = first)
+        val processor = processor()
+
+        val second = pictures.addPicture()
+        repository.setPicture("v1", second)
+        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", second, PictureSize.LARGE), processor.state.pictureUri)
+
+        repository.setPicture("v1", null)
+        assertNull(processor.state.pictureUri)
     }
 }
