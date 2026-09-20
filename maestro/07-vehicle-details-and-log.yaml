@@ -1,0 +1,39 @@
+# The details screen shows the recent events, the full log opens from it, and back navigation works.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+- tapOn: Family car
+- assertVisible: Recent activity
+- assertVisible:
+    id: recent_event
+    index: 0
+- assertVisible: Initial odometer
+- assertVisible:
+    text: 45,200.3 km
+    below: Initial odometer
+- tapOn:
+    id: view_log
+- assertVisible: Family car log
+- assertVisible:
+    id: log_event
+    index: 0
+- assertVisible: Initial odometer
+- assertVisible: 45,200.3 km
+# Back to the details, then back to the list.
+- tapOn:
+    id: back
+- assertVisible:
+    id: current_odometer
+- tapOn:
+    id: back
+- assertVisible:
+    id: add_vehicle
+- assertVisible: Family car

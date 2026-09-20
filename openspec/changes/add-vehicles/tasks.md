@@ -40,11 +40,11 @@
 
 ## 6. Maestro flows
 
-- [ ] 6.1 Add `maestro/` with a flow for adding a vehicle with all fields, one for adding with name and unit only, and one add per unit (kilometers, kilometers with 100 m, miles, miles with tenths, choosing the unit explicitly and entering the reading with `inputText` in the odometer field) checking the odometer shown on the details screen with the emulator's English (US) locale, and verify they pass with `maestro test maestro/` on the emulator
-- [ ] 6.2 Add flows for input validation (the preselected default unit on the English (US) emulator, changing the unit, empty name, whitespace-only name, trimming of name and plate) and for the odometer field (`inputText` 1, 2, 3 giving 1, 12, 123 for a whole unit and 0.1, 1.2, 12.3 for a tenths unit; the backspace cases with `eraseText`: 1.2, then 3, then backspace giving 12.3 then 1.2, 12.3 erased to 1.2, 0.1, 0.0, and 1, 2, erase, erase, 2, 3, 0 showing 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0 after each step; clear; zero at zero; maximum length; non-digits ignored; and the value following a unit change) and for the list (alphabetical order, empty state, add action), and verify they pass
-- [ ] 6.3 Add flows for the details screen and full log (recent events, open full log, back) and for editing (change, clear plate, empty name refused, cancel), and verify they pass
-- [ ] 6.4 Add a flow for offline use and persistence (airplane mode on, add a vehicle, stop and relaunch without clearing state, vehicle still listed) and verify it passes
-- [ ] 6.5 Document the Maestro command in `CLAUDE.md` and verify the whole suite passes from a clean app state
+- [x] 6.1 Add `maestro/` with a flow for adding a vehicle with all fields, one for adding with name and unit only, and one add per unit (kilometers, kilometers with 100 m, miles, miles with tenths, choosing the unit explicitly and entering the reading with `inputText` in the odometer field) checking the odometer shown on the details screen with the emulator's English (US) locale, and verify they pass with `maestro test maestro/` on the emulator
+- [x] 6.2 Add flows for input validation (the preselected default unit on the English (US) emulator, changing the unit, empty name, whitespace-only name, trimming of name and plate) and for the odometer field (`inputText` 1, 2, 3 giving 1, 12, 123 for a whole unit and 0.1, 1.2, 12.3 for a tenths unit; the backspace cases with `eraseText`: 1.2, then 3, then backspace giving 12.3 then 1.2, 12.3 erased to 1.2, 0.1, 0.0, and 1, 2, erase, erase, 2, 3, 0 showing 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0 after each step; clear; zero at zero; maximum length; non-digits ignored; and the value following a unit change) and for the list (alphabetical order, empty state, add action), and verify they pass
+- [x] 6.3 Add flows for the details screen and full log (recent events, open full log, back) and for editing (change, clear plate, empty name refused, cancel), and verify they pass
+- [x] 6.4 Add a flow for offline use and persistence (airplane mode on, add a vehicle, stop and relaunch without clearing state, vehicle still listed) and verify it passes
+- [x] 6.5 Document the Maestro command in `CLAUDE.md` and verify the whole suite passes from a clean app state
 
 ## 7. Final verification
 

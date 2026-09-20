@@ -27,3 +27,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
 
 - `./gradlew :shared:allTests`: run shared tests
 - `./gradlew :androidApp:assembleDebug`: build the Android app (needs Android SDK)
+- `maestro test maestro/`: run the UI flows on a running Android emulator or device with the debug app installed
+  (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). Each flow clears the app's data and
+  expects the device locale English (United States). Run a single flow with `maestro test maestro/05-odometer-field.yaml`.
+  `maestro/subflows/` holds shared steps and is not run on its own.

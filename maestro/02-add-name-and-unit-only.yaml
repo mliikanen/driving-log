@@ -1,0 +1,29 @@
+# Add a vehicle with only a name: no plate, the preselected default unit, and an odometer of 0.
+# The emulator region is the United States, so the preselected unit is Miles.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+- assertVisible:
+    id: unit_MILES
+    checked: true
+- assertVisible:
+    id: odo_field
+    text: "0"
+- tapOn:
+    id: vehicle_name
+- inputText: Van
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- assertVisible: Van
+- tapOn: Van
+- assertVisible:
+    id: current_odometer
+    text: 0 mi
+- assertNotVisible:
+    id: vehicle_plate

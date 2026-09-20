@@ -1,0 +1,115 @@
+# Name is required, whitespace is trimmed, and the unit can be changed from the preselected default.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+# An empty name is refused and nothing is saved.
+- tapOn:
+    id: save_vehicle
+- assertVisible: Enter a name
+- assertVisible: Add vehicle
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet
+# A whitespace-only name is refused too.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: "   "
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible: Enter a name
+# Typing a name clears the error.
+- tapOn:
+    id: vehicle_name
+- inputText: V
+- assertNotVisible: Enter a name
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet
+# Surrounding whitespace is trimmed from name and plate, inner whitespace is kept.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: "  My  old car "
+- tapOn:
+    id: vehicle_plate
+- inputText: " AB  12 "
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- assertVisible: My  old car
+- assertVisible: AB  12
+- tapOn: My  old car
+- assertVisible:
+    id: vehicle_title
+    text: My  old car
+- assertVisible:
+    id: vehicle_plate
+    text: AB  12
+- tapOn:
+    id: back
+# A whitespace-only plate means no plate.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Van
+- tapOn:
+    id: vehicle_plate
+- inputText: "   "
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- tapOn: Van
+- assertNotVisible:
+    id: vehicle_plate
+- tapOn:
+    id: back
+# Changing the unit before saving is respected.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Tenth
+- hideKeyboard
+- assertVisible:
+    id: unit_MILES
+    checked: true
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- assertVisible:
+    id: unit_KILOMETERS_TENTHS
+    checked: true
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- tapOn: Tenth
+- assertVisible:
+    id: current_odometer
+    text: 0.0 km
+# Leaving the add screen without saving adds nothing.
+- tapOn:
+    id: back
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Never saved
+- hideKeyboard
+- tapOn:
+    id: back
+- assertNotVisible: Never saved

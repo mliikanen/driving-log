@@ -1,0 +1,41 @@
+# Everything works without a network, and vehicles survive closing and reopening the app.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- setAirplaneMode: enabled
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS
+      ODOMETER: "45200"
+- tapOn: Family car
+- assertVisible:
+    id: current_odometer
+    text: 45,200 km
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: vehicle_name
+- eraseText: 20
+- inputText: Estate car
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: edit_vehicle
+- assertVisible:
+    id: vehicle_title
+    text: Estate car
+# Close the app completely and open it again, without clearing its data.
+- stopApp
+- launchApp
+- assertVisible: Estate car
+- assertVisible: ABC-123
+- tapOn: Estate car
+- assertVisible:
+    id: current_odometer
+    text: 45,200 km
+- setAirplaneMode: disabled

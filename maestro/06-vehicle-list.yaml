@@ -1,0 +1,47 @@
+# The vehicle list: empty state, add action, and alphabetical order that ignores letter case.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- assertVisible: No vehicles yet
+- assertVisible:
+    id: add_vehicle
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: van
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: ""
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Bike
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: ""
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: ""
+- assertNotVisible: No vehicles yet
+- assertVisible:
+    text: Family car
+    below: Bike
+- assertVisible:
+    text: van
+    below: Family car
+# Duplicate names are allowed.
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: van
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: ""
+- assertVisible:
+    id: vehicle_item
+    index: 3

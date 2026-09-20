@@ -1,0 +1,143 @@
+# The microwave-style odometer field: digits enter from the right, backspace removes the last digit.
+# Run with the emulator locale English (United States): the decimal separator is ".".
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- tapOn:
+    id: odo_field
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+# 1, 2, 3 shows 0.1, 1.2, 12.3
+- inputText: "1"
+- assertVisible:
+    id: odo_field
+    text: "0.1"
+- inputText: "2"
+- assertVisible:
+    id: odo_field
+    text: "1.2"
+- inputText: "3"
+- assertVisible:
+    id: odo_field
+    text: "12.3"
+# Backspace restores the earlier value: 12.3 -> 1.2 -> 0.1 -> 0.0 -> 0.0
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "1.2"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.1"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+# 1.2, then 3, then backspace: 12.3 and back to 1.2
+- inputText: "12"
+- assertVisible:
+    id: odo_field
+    text: "1.2"
+- inputText: "3"
+- assertVisible:
+    id: odo_field
+    text: "12.3"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "1.2"
+# Clear
+- tapOn:
+    id: odo_clear
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+# 1, 2, BKSP, BKSP, 2, 3, 0 shows 0.1, 1.2, 0.1, 0.0, 0.2, 2.3, 23.0
+- tapOn:
+    id: odo_field
+- inputText: "1"
+- assertVisible:
+    id: odo_field
+    text: "0.1"
+- inputText: "2"
+- assertVisible:
+    id: odo_field
+    text: "1.2"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.1"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- inputText: "2"
+- assertVisible:
+    id: odo_field
+    text: "0.2"
+- inputText: "3"
+- assertVisible:
+    id: odo_field
+    text: "2.3"
+- inputText: "0"
+- assertVisible:
+    id: odo_field
+    text: "23.0"
+# Changing the unit keeps the number: 23.0 -> Kilometers shows 23, back shows 23.0
+- tapOn:
+    id: unit_KILOMETERS
+- assertVisible:
+    id: odo_field
+    text: "23"
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- assertVisible:
+    id: odo_field
+    text: "23.0"
+# Whole-number units fill from the right too: 1, 12, 123
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: unit_KILOMETERS
+- tapOn:
+    id: odo_field
+- inputText: "1"
+- assertVisible:
+    id: odo_field
+    text: "1"
+- inputText: "2"
+- assertVisible:
+    id: odo_field
+    text: "12"
+- inputText: "3"
+- assertVisible:
+    id: odo_field
+    text: "123"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "12"
+# Zero at zero stays zero
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "000"
+- assertVisible:
+    id: odo_field
+    text: "0"
+# The maximum length: further digits are ignored
+- inputText: "99999999"
+- assertVisible:
+    id: odo_field
+    text: 9,999,999
