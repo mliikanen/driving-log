@@ -4,20 +4,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 
 class MainActivity : ComponentActivity() {
-    private val homeViewModel: HomeViewModel by viewModels {
-        viewModelFactory {
-            initializer { HomeViewModel((application as DrivingLogApplication).graph.homeProcessor) }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent { App(homeViewModel.processor) }
+        setContent {
+            // Lets UI tests (Maestro) find elements by their test tags, as resource ids.
+            App(
+                graph = (application as DrivingLogApplication).graph,
+                modifier = Modifier.semantics { testTagsAsResourceId = true },
+            )
+        }
     }
 }

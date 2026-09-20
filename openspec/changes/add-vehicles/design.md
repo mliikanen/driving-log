@@ -204,9 +204,9 @@ readings) wraps a Compose `BasicTextField` and lets the system keyboard do the t
 ### 8. Dependency injection
 
 `AppGraph` gains a singleton `VehicleRepository` and `Clock`, plus assisted factories for the id-carrying processors.
-It is created with `createAppGraph(driverFactory)`: `DatabaseDriverFactory` is an `expect class` (Android wraps
-`Context`; iOS has none) and is passed into the graph as a `@Provides` input, so the graph builds the `SqlDriver`
-and the database once. `DeviceLocale` is an interface (so tests can fake it) with a platform `expect class SystemDeviceLocale`, provided by the graph:
+It is created with `createAppGraph(driver)`: the platform entry point builds the `SqlDriver` from `DatabaseDriverFactory`
+(an `expect class`: Android wraps `Context`, iOS has none) and passes it in as a `@Provides` input, so the graph builds the
+database once and tests can pass an in-memory driver. `DeviceLocale` is an interface (so tests can fake it) with a platform `expect class SystemDeviceLocale`, provided by the graph:
 it reads the current locale on every call (Android: `Locale.getDefault()` and `DecimalFormatSymbols`; iOS:
 `NSLocale.currentLocale` for the region, decimal separator and grouping separator), so a locale change is picked up
 without restarting. Tests pass a fake `DeviceLocale`. `DrivingLogApplication` and `MainViewController` supply the platform factory. The `createGraph`

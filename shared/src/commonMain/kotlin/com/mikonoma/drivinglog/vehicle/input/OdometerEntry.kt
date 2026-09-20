@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.input
 
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import kotlinx.serialization.Serializable
 
 /**
  * A microwave-style odometer entry: digits enter at the right-hand end and shift the earlier digits left.
@@ -10,6 +11,7 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
  * So with a tenths unit the digits 1, 2, 3 give 1, 12, 123 steps, shown as 0.1, 1.2, 12.3. Only digits can
  * ever be entered, so an entry is never invalid.
  */
+@Serializable
 data class OdometerEntry(val unit: OdometerUnit, val steps: Long = 0) {
     init {
         require(steps in 0..unit.maxSteps) { "Entry out of range: $steps" }

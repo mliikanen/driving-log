@@ -1,9 +1,12 @@
 package com.mikonoma.drivinglog.vehicle.domain
 
+import kotlinx.serialization.Serializable
+
 /**
  * How a vehicle's odometer counts. [code] is what gets stored, so it must never be a translated label
  * and must never change once released.
  */
+@Serializable
 enum class OdometerUnit(
     val code: String,
     val isMiles: Boolean,
