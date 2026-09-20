@@ -43,6 +43,17 @@ context: |
   odometer is entered in a microwave-style number field (system number keyboard) where digits enter from the right, and
   numbers are rendered with the device locale's separators. Data storage stays locale-agnostic (meters, enum codes).
 
+  Driving is logged as distance entries on a vehicle: from the details screen the user records a trip distance, or a new
+  odometer count (the distance is the count minus the previous known odometer at that time). A vehicle's current odometer
+  is derived, never stored: it is the latest odometer-setting event (the initial odometer, or an odometer anchor, which is what
+  a new odometer count becomes when no odometer is known at its time) plus the distances logged after it. Trips (spans of
+  time with a start and an end that group distance and refueling entries) are a separate, upcoming change.
+
+  Every date and time a user enters or sees is stored with its time zone (the instant, the IANA zone id and the zone's UTC
+  offset then) and is shown in the zone it was entered in, whatever the device's zone is later, until the user chooses
+  otherwise. Wherever a screen lets the user choose a date and time it also lets them choose the time zone. Times and weekday
+  names follow the device: the system's 12-hour or 24-hour setting and the device language.
+
   Use Material Design 3 as app design system.
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.

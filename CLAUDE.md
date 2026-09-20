@@ -31,3 +31,4 @@ Project context and artifact rules live in `openspec/config.yaml`.
   (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). Each flow clears the app's data and
   expects the device locale English (United States). Run a single flow with `maestro test maestro/05-odometer-field.yaml`.
   `maestro/subflows/` holds shared steps and is not run on its own.
+  `maestro/clock/run.sh` runs the 12-hour/24-hour setting flow (it changes the device setting with `adb`, so it is not part of the plain suite).

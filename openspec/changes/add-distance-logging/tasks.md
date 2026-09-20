@@ -42,6 +42,6 @@
 
 ## 6. Project context and final verification
 
-- [ ] 6.1 Add to the project context in `openspec/config.yaml` what a distance entry is, that the current odometer is derived from the latest odometer-setting event plus the distances after it, that trips (spans) are a separate upcoming change, and the rule that every date and time a user enters or sees is stored with its time zone (instant, zone id and offset) and shown in the zone it was entered in unless the user chooses otherwise, and verify `openspec validate --all --strict` passes
-- [ ] 6.2 Check by hand on the emulator that an entry made in one time zone still reads the same after the emulator's time zone is changed with `adb`, and verify the rows show the stored zone
-- [ ] 6.3 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [x] 6.1 Add to the project context in `openspec/config.yaml` what a distance entry is, that the current odometer is derived from the latest odometer-setting event plus the distances after it, that trips (spans) are a separate upcoming change, and the rule that every date and time a user enters or sees is stored with its time zone (instant, zone id and offset) and shown in the zone it was entered in unless the user chooses otherwise, and verify `openspec validate --all --strict` passes
+- [x] 6.2 Check by hand on the emulator that an entry made in one time zone still reads the same after the emulator's time zone is changed with `adb`, and verify the rows show the stored zone
+- [x] 6.3 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
