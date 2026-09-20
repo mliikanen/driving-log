@@ -110,12 +110,19 @@ is read into bytes immediately (the picker's grant is short-lived) on the IO dis
 
 A crash between 1 and 2 leaves only unreferenced files, which the sweep removes. `Remove` sets `picture_id` to `NULL` then deletes the files. The repository never reads the image; it only moves files and writes an id.
 
-### 8. Showing the picture
+### 8. Showing the picture: Coil 3
 
-`VehiclePicture(pictureId, size: Small | Large, placeholderLabel)` is one composable used by the list, the details screen and the form preview. It loads the bytes with `produceState` keyed by the id and size on the
-IO dispatcher, decodes with `ImageCodec.decodeToBitmap`, and falls back to the placeholder while loading, when the id is null, and when the files are missing or unreadable (no crash, the rest works). Decoded small bitmaps are held in a small in-memory LRU cache
-so scrolling a list does not decode again (safe because an id's files never change). The placeholder is a rounded square in `surfaceVariant` with the first letter of the vehicle's name. The list row shows a 56 dp square; the details screen shows the large version full width at a 1:1 aspect ratio (content scale
-`Crop`, the file already being square). Test tags: `vehicle_picture` (list rows), `vehicle_picture_large` (details), `picture_preview`, `add_picture`, `remove_picture`, `crop_frame`, `crop_confirm`, `crop_cancel`.
+Pictures are shown with **Coil 3** (`io.coil-kt.coil3:coil-compose`, 3.6.3, published for Android and for iOS arm64 and simulator): coroutine-based, Kotlin Multiplatform, and Compose Multiplatform's `AsyncImage`. Glide was considered
+and rejected: it is Android-only (no iOS, nothing in commonMain). Alternatives with the same shape are Kamel and Landscapist; Coil is the most widely used and its custom-fetcher hook is what we need.
+
+- **Model, keyer and fetcher.** A picture is requested with `PictureModel(source, size)`, where `source` is `Saved(pictureId)` or `Pending(pendingId)` and `size` is `Small` or `Large`. A Coil `Fetcher` reads the bytes from the `VehiclePictureStore` (on its IO dispatcher) and returns them as a
+  `SourceFetchResult` over an okio `Buffer` (okio is Coil's own dependency); Coil's decoder (BitmapFactory-based on Android, Skia on iOS) decodes WebP and PNG alike and downsamples to the size the composable is laid out at. A `Keyer` gives each request the key `picture:{id}:{size}`. A picture id's files never change (a changed picture has a new
+  id), so the **memory cache is always correct** and no disk cache is configured; no network fetcher is added. A missing file makes the fetcher fail and Coil shows the error painter.
+- **One `ImageLoader`** is created by the app (Android `Application`/iOS controller through the graph, as the other platform objects) with the fetcher and keyer registered and a bounded memory cache, and set as Coil's singleton loader so `AsyncImage` finds it.
+- **Composable.** `VehiclePicture(source, size, placeholderLabel)` wraps `AsyncImage`: while loading and on error (missing or unreadable files) it draws the placeholder, a rounded square in `surfaceVariant` with the first letter of the vehicle's name; for a vehicle without a picture it draws the placeholder
+  without a request. It is used by the list rows (56 dp square, small), the details screen (large, full width at a 1:1 aspect ratio, content scale `Crop`), and the form preview (96 dp, from the pending small version or the saved one). Test tags: `vehicle_picture` (list rows), `vehicle_picture_large` (details), `picture_preview`, `add_picture`,
+  `remove_picture`, `crop_frame`, `crop_confirm`, `crop_cancel`.
+- **What Coil does not do.** It does not crop or encode, and the crop screen needs the decoded pixels and the photo's dimensions, so the crop screen still decodes through our `ImageCodec` (decision 4); Coil is only the display path.
 
 ### 9. The form
 
@@ -143,4 +150,4 @@ shows a short message under the preview (`pictureError` in the state, cleared on
 - **iOS stores PNG.** Larger files on iOS until an encoder is added, and the "well under 200 kilobytes" figure applies to Android. The spec says so.
 - **Lossy re-encoding.** A photo is compressed once (WebP quality 80); the small version is made from the decoded original crop, not from the large one, so it is not compressed twice.
 - **Files and rows can disagree** (a file deleted by the user through a file manager, a crash between steps). The rows are the truth: a missing file shows the placeholder, and unreferenced files are swept.
-- **A new dependency (kotlinx-io).** Small and maintained with kotlinx-datetime and serialization; kept to the one module `core`.
+- **Two new dependencies.** kotlinx-io is small and maintained with kotlinx-datetime and serialization (only `core`). Coil 3 is larger; it is used only for display, without its network modules, and its compatibility with Kotlin 2.4.20 and Compose Multiplatform 1.12.0 is confirmed by compiling first (task 4.1).
