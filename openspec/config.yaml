@@ -1,0 +1,30 @@
+schema: spec-driven
+
+# Project context shown to the AI when it creates proposals, specs, designs and tasks.
+context: |
+  Mileage Tracker: a Kotlin Multiplatform app (Android + iOS) for recording trips
+  and reporting mileage.
+
+  Tech stack:
+  - Kotlin Multiplatform, Compose Multiplatform UI (shared in `shared/`)
+  - Android app shell in `androidApp/`, iOS app shell in `iosApp/`
+  - Gradle Kotlin DSL, version catalog in `gradle/libs.versions.toml`
+  - kotlinx-coroutines, kotlinx-datetime, Koin for DI
+  - Tests: kotlin.test in `commonTest`; keep business logic in common code
+
+  Conventions:
+  - Package root: `dev.mliikanen.mileagetracker`
+  - Business logic lives in commonMain; platform code (location, storage
+    drivers, permissions) goes behind `expect`/`actual` or interfaces
+  - Specs describe observable behavior, not implementation
+
+# Per-artifact rules.
+rules:
+  proposal:
+    - State the user-visible problem and the scope, including what is out of scope
+  specs:
+    - Use "The system SHALL ..." requirements, each with at least one scenario
+    - Note platform differences (Android vs iOS) explicitly when behavior differs
+  tasks:
+    - Keep tasks small enough to complete and verify in one sitting
+    - Include test tasks for each requirement
