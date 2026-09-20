@@ -38,6 +38,11 @@ context: |
   as its own record, and records are only added, never merged into running totals. Aggregates (totals, averages,
   consumption) are derived from the records when needed and are not stored.
 
+  Each vehicle has its own odometer unit (kilometers, kilometers with 100 m, miles, or miles with tenths), chosen when the
+  vehicle is added. Until the user-level unit preference exists, the default is derived from the device region. The
+  odometer is entered in a microwave-style number field (system number keyboard) where digits enter from the right, and
+  numbers are rendered with the device locale's separators. Data storage stays locale-agnostic (meters, enum codes).
+
   Use Material Design 3 as app design system.
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
@@ -51,7 +56,9 @@ context: |
   - Android app shell in `androidApp/`, iOS app shell in `iosApp/`
   - Gradle Kotlin DSL, version catalog in `gradle/libs.versions.toml`
   - kotlinx-coroutines, kotlinx-datetime
-  - Model-view-intent: Kide (Fuusio) - https://github.com/Fuusio/kide
+  - Model-view-intent: Kide (Fuusio) - https://github.com/Fuusio/kide, with kide-navigation (Navigation 3) for screens
+  - Local storage: SQLDelight (SQLite) until Firestore sync exists; stored values are locale-agnostic
+  - kotlinx-serialization for persisted screen state
   - Dependency injection: Metro - https://github.com/zacsweers/metro
   - Firebase for user accounts and data storage.
   - Tests: kotlin.test in `commonTest`; keep business logic in common code. Avoid tests requiring real device / emulator / simulator.

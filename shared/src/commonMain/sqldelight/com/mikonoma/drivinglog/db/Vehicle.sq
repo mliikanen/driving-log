@@ -1,0 +1,6 @@
+CREATE TABLE vehicle (
+    id TEXT NOT NULL PRIMARY KEY
+);
+
+selectAllIds:
+SELECT id FROM vehicle;

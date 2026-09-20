@@ -148,16 +148,16 @@ Each screen gets a `ScreenNavKey` that ties the screen to its processor: `Vehicl
 Kide keeps the back stack and each screen's state across configuration changes and process death, which replaces the
 Android-only `HomeViewModel` from the stub (deleted, along with the `home` package: the vehicle list is the Home screen).
 
-- View states are `@Serializable` (Kide's state persistence needs it), so the kotlinx-serialization plugin is added.
-  Repository-backed data (the vehicle list, events) is `@Transient` and reloaded from the database on restore; form
-  fields are persisted.
-- Screens navigate through side effects handled with `ScreenContext.navigateTo(...)` and back, not by calling
-  navigation from processors.
-- Nav keys are constructed by Kide without dependency injection, so they need a way to reach the Metro graph. Decision:
-  a tiny `AppGraphProvider` holds the graph, set once by each platform entry point before the UI starts; a nav key's
-  `createProcessor()` asks the graph for its processor. Processors that take a vehicle id are built with Metro assisted
-  injection (`@AssistedInject` with an `@AssistedFactory`). Alternative: register key factories that capture the graph
-  with `ScreenNavKeyRegistry`, which avoids the global holder if Kide allows it; task 1.2 checks which is possible.
+- **Keys are registered prototypes that carry the graph.** Kide restores a screen after process death by finding the key in
+  `ScreenNavKeyRegistry` by its `serialKey` and calling `restoreArgs(savedArgs)`, which returns a new key. So each key
+  class takes the `AppGraph` in its constructor (no global holder), `createProcessor()` asks the graph for its processor
+  (an assisted factory for keys that carry a vehicle id), `saveArgs()` returns the vehicle id and `restoreArgs` builds a
+  new key with it. The keys are registered once at startup, from a function in `shared` that both platform entry points
+  call. Screens that open another screen build the next key from the graph they hold.
+- **State persistence is optional.** `stateSerializer` and `saveArgs` default to `null` in Kide 2.2.0. Only the add and edit
+  forms provide `@Serializable` state (so typed text survives process death; repository-backed data is `@Transient`),
+  which needs the kotlinx-serialization plugin. The list, details and log screens reload from the database.
+- Screens navigate through `ScreenContext.navigateTo(key)` and `onBack`, driven by side effects from the processor.
 
 ### 6. The unit is a per-vehicle setting, defaulted from the device region
 
@@ -244,16 +244,8 @@ call stays inside `shared`, where the Metro plugin is applied.
   with the user.
 - [iOS native driver needs `-lsqlite3` linked, and iOS code cannot be built into an app or run here] → Add the linker
   option, verify klib compilation for both iOS targets, and leave running it for when the Xcode project exists.
-- [Kide navigation API details (arguments, `saveArgs`/`restoreArgs`, how keys get dependencies) come from the guide,
-  not from compiled code] → Task 1.2 checks them against the real artifacts and updates this document.
-- [The `AppGraphProvider` holder is a global] → Confined to nav keys, set once at startup, and replaced by a captured
-  factory if task 1.2 shows Kide supports it. Tests do not use it.
-- [Driving one text field from the IME's edit events is subtle: composition, autocorrect and cursor moves can send
-  text that is not a simple append or delete, and keyboards differ on which characters number mode offers] →
-  `applyEdit` handles append, delete, paste and replacement generally, drops non-digits, and is unit tested; the field
-  is checked on the emulator with the real keyboard, `inputText` and `eraseText` (Maestro), light, dark and landscape.
-- [Persisting form state and the serializer requirement add ceremony for simple forms] → Accepted for the first
-  version: it is what the Kide navigation contract requires and it keeps process-death behavior uniform.
+- [Persisting form state adds a serializer for the two forms] → Small and optional in Kide; it keeps typed text across
+  process death.
 - [No `user_id` on vehicles, so data created now has no owner once login arrives] → Accepted: pre-login data is
   local test data; ownership arrives with a migration in the change that adds accounts.
 - [Dates use a fixed format and digits stay 0 to 9 in every locale, so the app is only partly localized] → Deliberate
