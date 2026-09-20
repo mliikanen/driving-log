@@ -10,7 +10,6 @@ appId: com.mikonoma.drivinglog
       PLATE: ABC-123
       UNIT: unit_KILOMETERS_TENTHS
       ODOMETER: "452003"
-- runFlow: subflows/wait-for-next-minute.yaml
 - tapOn: Family car
 - assertVisible:
     id: current_odometer

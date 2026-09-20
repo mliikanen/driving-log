@@ -17,6 +17,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
@@ -57,14 +58,16 @@ class SqlDelightVehicleRepository(
     ): String = withContext(dispatcher) {
         val instant = clock.now()
         val now = instant.toEpochMilliseconds()
-        // The initial odometer event happens now, in the zone the device is in now.
-        val zone = ZonedMoment.of(instant, deviceTimeZone.current()).zone
+        // The initial odometer event happens now, in the zone the device is in now. Like every time a user defines it is to
+        // the minute, so an entry logged in the same minute is not dated before it; created_at keeps the exact time.
+        val occurredAt = instant.truncatedToMinute()
+        val zone = ZonedMoment.of(occurredAt, deviceTimeZone.current()).zone
         val vehicleId = newId()
         val eventId = newId()
         // One transaction: the vehicle and its initial event are both saved, or neither.
         database.transaction {
             vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now)
-            events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, now, initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
+            events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
         }
         vehicleId
     }
@@ -85,7 +88,7 @@ class SqlDelightVehicleRepository(
                 events.insertDistanceEntry(
                     id = eventId,
                     vehicle_id = vehicleId,
-                    occurred_at = occurredAt.instant.toEpochMilliseconds(),
+                    occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
                     created_at = clock.now().toEpochMilliseconds(),
                     distance_meters = distance.meters,
                     logged_odometer_meters = loggedOdometer?.meters,
@@ -109,7 +112,7 @@ class SqlDelightVehicleRepository(
         // One transaction: the anchor and the remembered tenths choice are both saved, or neither.
         database.transaction {
             events.insertEvent(
-                eventId, vehicleId, ODOMETER_ANCHOR, occurredAt.instant.toEpochMilliseconds(), reading.meters,
+                eventId, vehicleId, ODOMETER_ANCHOR, occurredAt.instant.truncatedToMinute().toEpochMilliseconds(), reading.meters,
                 clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(),
             )
             vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)

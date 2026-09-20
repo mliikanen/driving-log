@@ -71,6 +71,13 @@ all of them, which is what the definition says.
 
 Entries dated before the latest odometer-setting event are ordered before it, so they are outside the sum and change nothing.
 
+The initial odometer event's time is truncated to the minute when the vehicle is added (`created_at` keeps the exact time). Times chosen on the log distance
+form are to the minute (the pickers have no seconds, and the default is the time the form was opened, to the minute), so an entry logged in the minute a vehicle was
+added would otherwise be dated seconds before the initial event and be ignored by the derivation. With both at minute precision they share an instant, and the
+insertion-order tie-break counts the entry added later after the initial event. This is a project convention (see the project context): timestamps a user defines have
+minute precision, and the repository applies `truncatedToMinute()` to the time of every event it stores (the initial odometer, distance entries and odometer anchors),
+so no caller can store seconds; `created_at` keeps its exact time.
+
 ### 3. The distance is calculated once, at entry
 
 By odometer, `distance = entered - knownOdometerAt(T)` is computed when the user saves and stored as `distance_meters` next to the typed count.

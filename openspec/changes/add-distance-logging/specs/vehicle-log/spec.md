@@ -5,13 +5,22 @@
 ### Requirement: Initial odometer event
 The system SHALL record exactly one "Initial odometer" event in a vehicle's log when the vehicle is added, holding the
 odometer reading entered in the vehicle's unit (a typed 0 is a valid reading), kept exactly as entered, and the date and
-time the vehicle was added together with the device's time zone at that moment. Adding a vehicle SHALL either save the vehicle together with this event or save neither. The
+time the vehicle was added, to the minute (the seconds are dropped, so the time is on the same footing as a time chosen with a
+picker), together with the device's time zone at that moment. Adding a vehicle SHALL either save the vehicle together with this event or save neither. The
 initial odometer event is an odometer-setting event: it establishes an odometer reading. Other kinds of log event are
 specified by the capabilities that create them.
 
 #### Scenario: Event created with the vehicle
 - **WHEN** the user adds a vehicle with the unit "Kilometers" and types 45200 in the odometer field
 - **THEN** the vehicle's log contains one "Initial odometer" event with 45200 km and the time of adding
+
+#### Scenario: The time of adding is to the minute
+- **WHEN** the user adds a vehicle at 12:00:40
+- **THEN** the "Initial odometer" event is dated 12:00, with no seconds
+
+#### Scenario: An entry in the minute the vehicle was added counts
+- **WHEN** the user adds a vehicle with an initial odometer of 45200 km at 12:00:40 and logs a trip distance of 30 km at 12:00, the time the form offers
+- **THEN** the entry counts after the initial odometer event and the vehicle's current odometer is 45230 km
 
 #### Scenario: Zero odometer is logged
 - **WHEN** the user adds a vehicle with the unit "Miles" and types 0 in the odometer field
@@ -132,7 +141,8 @@ NOT be modified or removed by any action; the log is only ever added to.
 ### Requirement: Event times keep the time zone they were entered in
 The system SHALL store the date and time of every log event together with the time zone it was entered in, and SHALL show it in
 that time zone, whatever the device's time zone is later, until the user chooses otherwise. The stored form SHALL NOT depend on
-the device locale. Events are ordered by the instant they mean, not by the wall-clock time shown. An event written before time
+the device locale. The date and time of every event SHALL have minute precision: the seconds are dropped, whether the time was
+chosen by the user or taken from the clock. Events are ordered by the instant they mean, not by the wall-clock time shown. An event written before time
 zones were stored has no zone and SHALL be shown in the device's current time zone.
 
 #### Scenario: The device zone changes later

@@ -10,6 +10,8 @@
 
 - [x] 1.6 Remember the tenths choice per vehicle: migration `2.sqm` (`vehicle.log_distance_tenths`, schema version 3), `Vehicle.logDistanceTenths`, and `addDistanceEntry` saving the choice with the entry in one transaction, and verify tests for null before any entry, true and false read back after saving, another vehicle unaffected, a failed entry insert leaving the choice unchanged, migrations 1 to 3 and 2 to 3 keeping data, and a fresh database at version 3 having the same tables as a migrated one
 
+- [x] 1.7 Give every stored event time minute precision (a helper on `Instant`; the repository truncates the time of the initial odometer event, distance entries and odometer anchors, `created_at` unchanged), record the convention in the project context, and verify unit tests for the helper (seconds and milliseconds dropped, exact minutes unchanged, times before 1970) and repository tests on real SQL that each kind of event is stored to the minute and that an entry at the form's default time in the minute of adding counts
+
 ## 2. Distance logic
 
 - [x] 2.1 Add the pure log-distance rules (conversion of an entry in any unit combination to meters, the distance by odometer as the entered count minus the known odometer, and the validation order from the design) and verify unit tests for every unit combination, "10 miles" logged for a kilometer-with-tenths vehicle giving 16 093 m shown "+16.1 km", 12.3 km for a whole-number vehicle shown "12 km", equal and lower counts refused, a zero distance refused, and an empty field refused

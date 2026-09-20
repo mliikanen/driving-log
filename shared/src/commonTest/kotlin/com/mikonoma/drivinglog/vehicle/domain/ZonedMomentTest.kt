@@ -48,4 +48,33 @@ class ZonedMomentTest {
         val b = ZonedMoment.of(noon, TimeZone.of("America/New_York"))
         assertEquals(a.instant, b.instant)
     }
+
+    @Test
+    fun truncatingToTheMinuteDropsSecondsAndMilliseconds() {
+        assertEquals(noon, Instant.parse("2026-09-20T12:00:59.999Z").truncatedToMinute())
+        assertEquals(noon, Instant.parse("2026-09-20T12:00:00.001Z").truncatedToMinute())
+        assertEquals(Instant.parse("2026-09-20T12:07:00Z"), Instant.parse("2026-09-20T12:07:31Z").truncatedToMinute())
+    }
+
+    @Test
+    fun aTimeThatIsAlreadyToTheMinuteIsUnchanged() {
+        assertEquals(noon, noon.truncatedToMinute())
+    }
+
+    @Test
+    fun truncatingRoundsDownBeforeTheEpochToo() {
+        assertEquals(Instant.parse("1969-12-31T23:59:00Z"), Instant.parse("1969-12-31T23:59:30Z").truncatedToMinute())
+    }
+
+    @Test
+    fun theTruncatedMinuteIsTheSameWallClockMinuteInEveryZone() {
+        val instant = Instant.parse("2026-09-20T12:34:56Z")
+        for (zone in listOf("Europe/Helsinki", "America/New_York", "Asia/Kolkata", "Asia/Kathmandu")) {
+            val truncated = ZonedMoment.of(instant.truncatedToMinute(), TimeZone.of(zone))
+            val exact = ZonedMoment.of(instant, TimeZone.of(zone))
+            assertEquals(0, truncated.localDateTime!!.second, zone)
+            assertEquals(exact.localDateTime!!.minute, truncated.localDateTime!!.minute, zone)
+            assertEquals(exact.localDateTime!!.hour, truncated.localDateTime!!.hour, zone)
+        }
+    }
 }

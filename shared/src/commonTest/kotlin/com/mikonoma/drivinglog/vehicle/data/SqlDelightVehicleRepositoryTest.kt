@@ -16,7 +16,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -25,7 +27,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 
-class FakeClock(var current: Instant = Instant.fromEpochMilliseconds(1_000)) : Clock {
+/** The default is on a whole minute, where a vehicle's initial event is dated exactly (see the minute precision tests). */
+class FakeClock(var current: Instant = Instant.fromEpochMilliseconds(60_000)) : Clock {
     override fun now(): Instant = current
 }
 
@@ -67,6 +70,41 @@ class SqlDelightVehicleRepositoryTest {
         val event = log.single() as VehicleEvent.InitialOdometer
         assertEquals(Distance(45_200_000), event.reading)
         assertEquals(clock.current, event.occurredAt.instant)
+    }
+
+    // ---- Minute precision: timestamps a user defines have no seconds
+
+    @Test
+    fun theInitialEventIsDatedToTheMinuteAndTheCreatedTimeIsExact() = runTest {
+        clock.current = Instant.parse("2026-09-20T12:00:40.123Z")
+        val id = addFamilyCar()
+
+        val event = repository.observeLog(id).first().single()
+        assertEquals(Instant.parse("2026-09-20T12:00:00Z"), event.occurredAt.instant)
+        assertEquals(clock.current, repository.observeVehicles().first().single().createdAt)
+    }
+
+    @Test
+    fun aDistanceEntryAndAnAnchorAreStoredToTheMinuteWhateverTheCallerPasses() = runTest {
+        val id = vehicleAtNoon()
+        val entry = addEntry(id, ZonedMoment.of(noon + 90.minutes + 45.seconds + 7.milliseconds, helsinki), Distance(1_000), null)
+        val anchor = repository.addOdometerAnchor(id, ZonedMoment.of(noon - 1.hours + 59.seconds, helsinki), Distance(44_000_000), false)
+
+        val log = repository.observeLog(id).first().associateBy { it.id }
+        assertEquals(noon + 90.minutes, log.getValue(entry).occurredAt.instant)
+        assertEquals(noon - 1.hours, log.getValue(anchor).occurredAt.instant)
+        // The zone it was entered in is kept.
+        assertEquals("Europe/Helsinki", log.getValue(entry).occurredAt.zone?.id)
+    }
+
+    @Test
+    fun anEntryInTheMinuteTheVehicleWasAddedCounts() = runTest {
+        clock.current = Instant.parse("2026-09-20T12:00:40Z")
+        val id = addFamilyCar()
+        // The form offers the time it was opened at, to the minute: 12:00.
+        addEntry(id, ZonedMoment.of(Instant.parse("2026-09-20T12:00:00Z"), helsinki), Distance(30_000), null)
+
+        assertCurrentOdometer(id, 45_230_000)
     }
 
     @Test

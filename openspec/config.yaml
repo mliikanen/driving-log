@@ -87,6 +87,11 @@ context: |
     so entry behavior is identical everywhere (empty start, right-edge fill, kept leading zero, backspace order, locale
     separators). A screen's processor forwards the field's text to `OdometerEntry.applyEdit` and never re-implements a
     rule; a screen only decides whether an empty entry may be saved.
+  - Timestamps the user defines (when a trip, refueling, odometer reading or other event happened, whether picked or taken
+    from the clock as a default) have minute precision: the seconds and milliseconds are dropped (`Instant.truncatedToMinute()`),
+    and repositories apply it before storing, so a caller cannot store more. This keeps every such time on the footing of a
+    picker and keeps events created within the same minute from being ordered by seconds nobody sees. A spec may state
+    another precision. Timestamps the system keeps for itself (`created_at`, `updated_at`) keep their exact time.
   - MVI architecture.
 
 # Per-artifact rules.

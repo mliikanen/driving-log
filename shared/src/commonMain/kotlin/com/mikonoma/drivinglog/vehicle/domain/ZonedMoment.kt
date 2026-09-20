@@ -8,6 +8,16 @@ import kotlinx.datetime.offsetAt
 import kotlinx.datetime.toLocalDateTime
 
 /**
+ * This instant with the seconds and milliseconds dropped. Minutes start at the same instant in every time zone, so the result is
+ * the start of the same wall-clock minute wherever it is shown. Times a user picks have no seconds; this puts a time taken from
+ * the clock on the same footing.
+ */
+fun Instant.truncatedToMinute(): Instant {
+    val millis = toEpochMilliseconds()
+    return Instant.fromEpochMilliseconds(millis - millis.mod(60_000L))
+}
+
+/**
  * The time zone a moment was entered in: the IANA [id] and that zone's UTC offset at the moment. The offset is what makes
  * the shown wall-clock time exact on every platform, whatever the device's time zone database says now.
  */
