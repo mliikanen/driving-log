@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.distance
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.data.FakeClock
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
@@ -284,18 +285,99 @@ class LogDistanceProcessorTest {
     }
 
     @Test
-    fun aNewOdometerBeforeTheInitialOdometerHasNoKnownOdometer() {
+    fun aNewOdometerBeforeTheInitialOdometerIsSavedAsAnAnchor() = runTest {
         seedVehicle()
         val processor = processor()
         processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
-        processor.type(4, 5, 3, 0, 0)
+        processor.type(4, 4, 0, 0, 0)
         processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
 
         assertNull(processor.state.knownOdometer)
+        assertNull(processor.state.previewDistance)
+        processor.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        assertNull(processor.error())
+        assertEquals(emptyList(), repository.distanceCalls)
+        val call = repository.anchorCalls.single()
+        assertEquals(Distance(44_000_000), call.reading)
+        // 16:30 Helsinki (UTC+3) on the 12th.
+        assertEquals(Instant.parse("2026-09-12T13:30:00Z"), call.occurredAt.instant)
+        assertEquals("Europe/Helsinki", call.occurredAt.zone?.id)
+        assertFalse(call.tenthsIncluded)
+    }
+
+    @Test
+    fun anAnchorSavedWithTenthsRemembersThem() = runTest {
+        seedVehicle(OdometerUnit.KILOMETERS_TENTHS)
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 4, 0, 0, 0, 5)
+        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+
+        processor.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        val call = repository.anchorCalls.single()
+        assertEquals(Distance(44_000_500), call.reading)
+        assertTrue(call.tenthsIncluded)
+    }
+
+    @Test
+    fun anAnchorWithNothingTypedIsRefused() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+
         processor.dispatch(LogDistanceIntent.Save)
 
-        assertEquals(LogDistanceError.NoKnownOdometer, processor.error())
-        assertEquals(emptyList(), repository.distanceCalls)
+        assertEquals(LogDistanceError.FieldEmpty, processor.error())
+        assertEquals(emptyList(), repository.anchorCalls)
+    }
+
+    @Test
+    fun aFailedAnchorSaveLetsTheUserTryAgain() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 4, 0, 0, 0)
+        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        repository.distanceFailure = IllegalStateException("disk full")
+
+        runCatching { processor.dispatch(LogDistanceIntent.Save) }
+
+        assertFalse(processor.state.isSaving)
+        assertEquals(emptyList(), repository.anchorCalls)
+    }
+
+    @Test
+    fun anAnchorIsTheKnownOdometerForLaterTimesBeforeTheInitialOdometer() {
+        seedVehicle()
+        // An anchor of 44 000 km a week before the initial odometer, and a 30 km trip three days before it.
+        val weekBefore = initialAt - 7 * 24.hours.inWholeMilliseconds
+        repository.seedEvents(
+            "v1",
+            // Newest first.
+            listOf(
+                initialEvent("i1", initialAt, 45_200_000),
+                distanceEvent("d0", initialAt - 3 * 24.hours.inWholeMilliseconds, 30_000),
+                anchorEvent("a0", weekBefore, 44_000_000),
+            ),
+        )
+        val processor = processor()
+        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 17))) // 16:30 Helsinki, after both
+
+        assertEquals(Distance(44_030_000), processor.state.knownOdometer)
+
+        // Before the anchor nothing is known again.
+        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 1)))
+        assertNull(processor.state.knownOdometer)
     }
 
     @Test

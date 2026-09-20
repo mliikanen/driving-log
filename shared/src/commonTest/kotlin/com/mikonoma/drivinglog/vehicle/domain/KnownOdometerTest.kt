@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.domain
 
+import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import kotlin.test.Test
@@ -105,5 +106,34 @@ class KnownOdometerTest {
         assertEquals(Distance(50_030_000), currentOdometer(listOf(initial, baseline, entry)))
         assertEquals(Distance(50_000_000), currentOdometer(listOf(initial, entry, baseline)))
         assertEquals(Distance(50_030_000), knownOdometerAt(listOf(initial, baseline, entry), at(2_000)))
+    }
+
+    @Test
+    fun anAnchorBeforeTheInitialEventIsTheBaselineUntilTheInitialEvent() {
+        val anchor = anchorEvent("a", 500, 44_000_000)
+        val log = listOf(anchor, distanceEvent("d", 700, 30_000), initial, distanceEvent("e", 2_000, 10_000))
+
+        assertNull(knownOdometerAt(log, at(499)))
+        assertEquals(Distance(44_000_000), knownOdometerAt(log, at(600)))
+        assertEquals(Distance(44_030_000), knownOdometerAt(log, at(999)))
+        // The initial event replaces the running total from its time on.
+        assertEquals(Distance(45_200_000), knownOdometerAt(log, at(1_000)))
+        assertEquals(Distance(45_210_000), currentOdometer(log))
+    }
+
+    @Test
+    fun aLaterAnchorReplacesTheRunningTotal() {
+        val log = listOf(initial, distanceEvent("d", 2_000, 30_000), anchorEvent("a", 3_000, 45_300_000))
+
+        assertEquals(Distance(45_230_000), knownOdometerAt(log, at(2_999)))
+        assertEquals(Distance(45_300_000), currentOdometer(log))
+    }
+
+    @Test
+    fun anAnchorAloneKnowsItsReadingFromItsTimeOn() {
+        val log = listOf(anchorEvent("a", 1_000, 0))
+
+        assertNull(knownOdometerAt(log, at(999)))
+        assertEquals(Distance(0), knownOdometerAt(log, at(1_000)))
     }
 }

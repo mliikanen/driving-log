@@ -12,7 +12,7 @@ data class EventRowContent(
     val label: String,
     /** When it happened, in the zone it was entered in (the zone name follows when it is not the device's zone). */
     val moment: String,
-    /** An initial odometer's reading, or a distance entry's distance with a plus sign. */
+    /** An initial odometer's or an anchor's reading, or a distance entry's distance with a plus sign. */
     val trailing: String,
     /** A distance entry logged by odometer: the count that was typed. */
     val loggedOdometer: String?,
@@ -27,6 +27,12 @@ fun eventRowContent(
 ): EventRowContent =
     when (event) {
         is VehicleEvent.InitialOdometer -> EventRowContent(
+            label = event.label,
+            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+            trailing = formatOdometer(event.reading, unit, symbols),
+            loggedOdometer = null,
+        )
+        is VehicleEvent.OdometerAnchor -> EventRowContent(
             label = event.label,
             moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
             trailing = formatOdometer(event.reading, unit, symbols),

@@ -98,6 +98,25 @@ class SqlDelightVehicleRepository(
         }
     }
 
+    override suspend fun addOdometerAnchor(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        reading: Distance,
+        tenthsIncluded: Boolean,
+    ): String = withContext(dispatcher) {
+        val eventId = newId()
+        val zone = occurredAt.zone
+        // One transaction: the anchor and the remembered tenths choice are both saved, or neither.
+        database.transaction {
+            events.insertEvent(
+                eventId, vehicleId, ODOMETER_ANCHOR, occurredAt.instant.toEpochMilliseconds(), reading.meters,
+                clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(),
+            )
+            vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
+        }
+        eventId
+    }
+
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?) {
         withContext(dispatcher) {
             vehicles.updateVehicle(name, licensePlate, clock.now().toEpochMilliseconds(), id)
@@ -107,6 +126,7 @@ class SqlDelightVehicleRepository(
     private companion object {
         const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
         const val DISTANCE = "DISTANCE"
+        const val ODOMETER_ANCHOR = "ODOMETER_ANCHOR"
     }
 
     private fun SelectVehicles.toDomain() = Vehicle(
@@ -155,6 +175,11 @@ class SqlDelightVehicleRepository(
                 id = id,
                 occurredAt = moment,
                 reading = Distance(requireNotNull(odometerMeters) { "Initial odometer event without a reading" }),
+            )
+            ODOMETER_ANCHOR -> VehicleEvent.OdometerAnchor(
+                id = id,
+                occurredAt = moment,
+                reading = Distance(requireNotNull(odometerMeters) { "Odometer anchor event without a reading" }),
             )
             DISTANCE -> VehicleEvent.DistanceEntry(
                 id = id,

@@ -85,4 +85,13 @@ class EventRowContentTest {
         val row = eventRowContent(distance(1_000), OdometerUnit.KILOMETERS, us, helsinki, TimeFormat(is24Hour = false))
         assertEquals("2026-09-20 3:30 PM", row.moment)
     }
+
+    @Test
+    fun anAnchorRowIsLabelledOdometerReadingAndShowsItsReadingWithoutAPlusSign() {
+        val row = row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000)))
+
+        assertEquals("Odometer reading", row.label)
+        assertEquals("44,000 km", row.trailing)
+        assertEquals(null, row.loggedOdometer)
+    }
 }

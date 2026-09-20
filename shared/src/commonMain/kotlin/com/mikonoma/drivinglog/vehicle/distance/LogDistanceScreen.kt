@@ -263,9 +263,9 @@ private fun KnownOdometerInfo(state: LogDistanceState, symbols: com.mikonoma.dri
     val known = state.knownOdometer
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (known == null) {
+            // Not an error: the count is saved as an odometer anchor, a new starting point for the odometer.
             Text(
-                "No odometer is known at this time. Enter the trip distance instead.",
-                color = MaterialTheme.colorScheme.error,
+                "No odometer is known at this time. The count will be saved as a new odometer starting point.",
                 modifier = Modifier.testTag("log_no_known_odometer"),
             )
         } else {
@@ -302,7 +302,6 @@ private fun errorMessage(state: LogDistanceState, symbols: com.mikonoma.drivingl
             if (state.way == LogWay.TRIP_DISTANCE) "Enter the trip distance" else "Enter the odometer reading"
         LogDistanceError.TimeInFuture -> "The time cannot be in the future"
         LogDistanceError.DistanceNotPositive -> "The distance must be more than zero"
-        LogDistanceError.NoKnownOdometer -> "No odometer is known at this time. Enter the trip distance instead."
         is LogDistanceError.OdometerNotHigher -> "Enter a reading higher than " + formatOdometer(error.known, state.vehicleUnit, symbols)
     }
 
@@ -328,7 +327,7 @@ private fun DateDialog(initialDateMillis: Long, onDismiss: () -> Unit, onPicked:
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimeDialog(hour: Int, minute: Int, is24Hour: Boolean, onDismiss: () -> Unit, onPicked: (Int, Int) -> Unit) {
-    val pickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
+    val pickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = is24Hour)
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {

@@ -32,6 +32,18 @@ interface VehicleRepository {
         tenthsIncluded: Boolean,
     ): String
 
+    /**
+     * Adds an odometer anchor at [occurredAt]: an odometer-setting event for a new odometer count logged where no odometer is
+     * known. [tenthsIncluded] is remembered for the vehicle in the same transaction, as for [addDistanceEntry].
+     * Returns the new event id.
+     */
+    suspend fun addOdometerAnchor(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        reading: Distance,
+        tenthsIncluded: Boolean,
+    ): String
+
     /** Changes only the name and plate. The log and the unit are never touched. */
     suspend fun updateVehicle(id: String, name: String, licensePlate: String?)
 }

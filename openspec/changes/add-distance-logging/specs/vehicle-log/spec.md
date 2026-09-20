@@ -56,7 +56,8 @@ The system SHALL show at most the 5 most recent log events of the vehicle on its
 and time, each with its type and its date and time, shown in the time zone the event was entered in and followed by that zone's
 name when it is not the device's current time zone. The date is written year-month-day and the time follows the system's
 12-hour or 24-hour setting (the examples below use a 24-hour setting). An "Initial odometer" event SHALL show its reading in the vehicle's
-unit. A "Distance" event SHALL show its distance in the vehicle's unit with a plus sign and, when it was logged as a new
+unit. An "Odometer reading" event (an odometer anchor) SHALL show its reading in the vehicle's unit, without a plus sign. A
+"Distance" event SHALL show its distance in the vehicle's unit with a plus sign and, when it was logged as a new
 odometer count, the count that was typed. When events share the same time, the one added last SHALL come first. The
 system SHALL provide an action to open the full log.
 
@@ -149,3 +150,22 @@ zones were stored has no zone and SHALL be shown in the device's current time zo
 #### Scenario: An event from before time zones were stored
 - **WHEN** the log holds an event that was written without a time zone and the device time zone is America/New_York
 - **THEN** the event is shown in America/New_York with no zone name
+
+### Requirement: Odometer anchor events
+The system SHALL support an odometer anchor event in a vehicle's log: an odometer-setting event, added after the vehicle,
+that sets the odometer to a reading at a date and time. It SHALL be ordered like every event, and SHALL count as an odometer-setting
+event wherever the log is derived from: the latest odometer-setting event at or before a time, whether the initial odometer event or an anchor, is
+the baseline of the odometer known at that time.
+
+#### Scenario: An anchor before the initial event does not change the current odometer
+- **WHEN** a vehicle's log contains an initial odometer event of 45200 km at 12:00 and an odometer anchor of 44000 km the day before
+- **THEN** the vehicle's current odometer is 45200 km, and the odometer known at a time between them is 44000 km
+
+#### Scenario: A later anchor replaces the running total
+- **WHEN** a vehicle's log contains an initial odometer event of 45200 km, a distance entry of 30 km after it, and then an odometer anchor of 45300 km
+- **THEN** the vehicle's current odometer is 45300 km
+
+#### Scenario: An anchor row in the log
+- **WHEN** the log contains an odometer anchor of 44000 km for a vehicle whose unit is "Kilometers", with an English (United States) device locale
+- **THEN** its row is labelled "Odometer reading" and shows "44,000 km"
+

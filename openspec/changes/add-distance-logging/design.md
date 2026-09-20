@@ -144,12 +144,11 @@ At save, in this order, the first failing rule sets the error and nothing is sav
 1. the active field is empty (`Enter the trip distance` or `Enter the odometer reading`);
 2. the chosen moment, as an instant in its own zone, is later than `clock.now()` (`The time cannot be in the future`); wall-clock times are never compared across zones;
 3. trip distance: the value is zero (`The distance must be more than zero`);
-4. new odometer: no known odometer at that time (`No odometer is known at this time. Enter the trip distance instead.`), or the count is not higher
-   than the known odometer (`Enter a reading higher than <known odometer>`, formatted in the vehicle's unit).
+4. new odometer with a known odometer at that time: the count is not higher than it (`Enter a reading higher than <known odometer>`, formatted in
+   the vehicle's unit). With no known odometer there is nothing to compare: the count is valid and becomes an odometer anchor (decision 11).
 
-While the way is "New odometer" the form already shows the known odometer, the live distance, and the no-known-odometer message
-(the save button stays enabled and the same message is the error, so the rule is one place). Errors clear when the user types, changes the
-time or switches the way.
+While the way is "New odometer" the form already shows the known odometer and the live distance, or, when none is known, a plain (not error) note that the count
+will be saved as a new odometer starting point. Errors clear when the user types, changes the time or switches the way.
 
 ### 7. Repository, processor, navigation
 
@@ -165,6 +164,20 @@ time or switches the way.
 A `Distance` row shows the label "Distance", the date and time in the zone it was entered in (with the zone id when it is not the device's zone), and the distance as "+30 km" in the vehicle's unit and locale; when
 `logged_odometer_meters` is set it adds the count the user typed ("Odometer 45,250 km"). An `Initial odometer` row is unchanged. The
 recent events and the full log use the same row composable.
+
+### 11. Odometer anchors
+
+A "New odometer" count with no known odometer at its time cannot become a distance, so it becomes an **odometer anchor**: a new
+`ODOMETER_ANCHOR` event type that stores the typed count in the existing `odometer_meters` column (no schema change, no migration). In the domain it
+is `VehicleEvent.OdometerAnchor(id, occurredAt, reading)` with `odometer = reading`, so it is an odometer-setting event exactly like `InitialOdometer`:
+`knownOdometerAt` and the current-odometer SQL already pick "the latest event with a reading" (`odometer_meters IS NOT NULL`), so the derivation needs
+`knownOdometerAt` to treat any event with an `odometer` as a baseline, and nothing else. `validateLogDistance` returns a third result, `Anchor(reading)`, for
+the way "New odometer" with `known == null`; the processor then calls `VehicleRepository.addOdometerAnchor(vehicleId, occurredAt, reading, tenthsIncluded)`, which inserts
+the event and remembers the tenths choice in one transaction, like `addDistanceEntry`. `LogDistanceError.NoKnownOdometer` is removed. A zero reading is accepted, as for the
+initial odometer. The log row is labelled "Odometer reading" and shows the reading without a plus sign; rows of unknown types are still skipped.
+
+An anchor dated before the initial odometer event is replaced by it for every time after the initial event, so the current odometer does not change; for times between
+the anchor and the initial event, the anchor is the baseline, so distances logged there count from it.
 
 ### 9. Migration and its test
 

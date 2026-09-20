@@ -14,5 +14,6 @@ val OdometerUnit.label: String
 val VehicleEvent.label: String
     get() = when (this) {
         is VehicleEvent.InitialOdometer -> "Initial odometer"
+        is VehicleEvent.OdometerAnchor -> "Odometer reading"
         is VehicleEvent.DistanceEntry -> "Distance"
     }

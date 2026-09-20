@@ -1,0 +1,32 @@
+# The time on the log distance form follows the system's 12-hour or 24-hour setting, in the button and in the time picker.
+# Not part of the plain suite: it needs the setting changed with adb. Run it with maestro/clock/run.sh.
+# Env: TIME_PATTERN (a regex for the time button's text), TWELVE_HOUR ("true" or "false").
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "1000"
+- tapOn: Family car
+- tapOn:
+    id: log_distance
+- assertVisible: ${TIME_PATTERN}
+- tapOn:
+    id: log_time
+- runFlow:
+    when:
+      true: ${TWELVE_HOUR == "true"}
+    commands:
+      - assertVisible: AM
+      - assertVisible: PM
+- runFlow:
+    when:
+      true: ${TWELVE_HOUR == "false"}
+    commands:
+      - assertNotVisible: AM
+      - assertNotVisible: PM

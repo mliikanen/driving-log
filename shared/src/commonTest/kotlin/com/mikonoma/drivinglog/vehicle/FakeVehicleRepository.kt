@@ -28,6 +28,8 @@ data class DistanceCall(
     val tenthsIncluded: Boolean,
 )
 
+data class AnchorCall(val vehicleId: String, val occurredAt: ZonedMoment, val reading: Distance, val tenthsIncluded: Boolean)
+
 data class AddCall(val name: String, val licensePlate: String?, val unit: OdometerUnit, val initialOdometer: Distance)
 data class UpdateCall(val id: String, val name: String, val licensePlate: String?)
 
@@ -40,6 +42,7 @@ class FakeVehicleRepository : VehicleRepository {
     val addCalls = mutableListOf<AddCall>()
     val updateCalls = mutableListOf<UpdateCall>()
     val distanceCalls = mutableListOf<DistanceCall>()
+    val anchorCalls = mutableListOf<AnchorCall>()
     var distanceFailure: Throwable? = null
     var addFailure: Throwable? = null
     var updateFailure: Throwable? = null
@@ -107,6 +110,21 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
+    override suspend fun addOdometerAnchor(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        reading: Distance,
+        tenthsIncluded: Boolean,
+    ): String {
+        distanceFailure?.let { throw it }
+        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded)
+        vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
+        val id = "a${++counter}"
+        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading)
+        seedEvents(vehicleId, (listOf(anchor) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
+        return id
+    }
+
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?) {
         updateFailure?.let { throw it }
         updateCalls += UpdateCall(id, name, licensePlate)
@@ -119,3 +137,6 @@ fun initialEvent(id: String, atMillis: Long, meters: Long) =
 
 fun distanceEvent(id: String, atMillis: Long, meters: Long, loggedOdometer: Long? = null) =
     VehicleEvent.DistanceEntry(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters), loggedOdometer?.let { Distance(it) })
+
+fun anchorEvent(id: String, atMillis: Long, meters: Long) =
+    VehicleEvent.OdometerAnchor(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters))

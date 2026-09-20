@@ -23,6 +23,19 @@ sealed interface VehicleEvent {
     }
 
     /**
+     * An odometer reading set after the vehicle was added: a new odometer count logged for a time when no odometer was known
+     * (before the initial odometer, say). Like [InitialOdometer] it sets the odometer, so it is a baseline for the odometer
+     * known at later times.
+     */
+    data class OdometerAnchor(
+        override val id: String,
+        override val occurredAt: ZonedMoment,
+        val reading: Distance,
+    ) : VehicleEvent {
+        override val odometer: Distance get() = reading
+    }
+
+    /**
      * A distance driven, logged as a trip distance or as a new odometer count. [distance] is always what was added to the
      * odometer. [loggedOdometer] is the count the user typed when logging by odometer, kept for the log row only: it is
      * never used to derive an odometer.

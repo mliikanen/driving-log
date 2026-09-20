@@ -29,7 +29,7 @@ odometer includes it. Leaving the form without saving SHALL add nothing.
 The system SHALL let the user choose, on the log distance form, between "Trip distance" and "New odometer". "Trip distance"
 SHALL be preselected. With "Trip distance" the number entered is the distance travelled. With "New odometer" the number
 entered is the odometer count now, and the distance logged is that count minus the previous known odometer at the entry's
-date and time. Each way SHALL keep its own typed number when the user switches between them.
+date and time (or, when no odometer is known at that time, an odometer anchor is saved instead). Each way SHALL keep its own typed number when the user switches between them.
 
 #### Scenario: Log by trip distance
 - **WHEN** a vehicle's current odometer is 45200 km and the user logs a trip distance of 30 km and saves
@@ -67,8 +67,8 @@ logged, and SHALL update them as the number or the date and time change.
 - **THEN** the form shows a previous known odometer of 45230 km
 
 ### Requirement: The new odometer must be higher than the previous known odometer
-The system SHALL refuse a new odometer count that is not higher than the previous known odometer at the entry's date and
-time, showing an error on the odometer field that names the previous known odometer, and SHALL NOT save the entry.
+When a previous known odometer exists at the entry's date and time, the system SHALL refuse a new odometer count that is not
+higher than it, showing an error on the odometer field that names the previous known odometer, and SHALL NOT save the entry.
 
 #### Scenario: Lower count
 - **WHEN** the previous known odometer is 45230 km and the user types 45100 as the new odometer and saves
@@ -210,17 +210,44 @@ to the system setting.
 ### Requirement: Entries before the initial odometer
 The system SHALL accept a distance entry dated before the vehicle's initial odometer event when it is logged as a trip
 distance. Such an entry SHALL appear in the log at its time and SHALL NOT change the vehicle's current odometer, nor any
-previous known odometer at a later time. There is no known odometer before the initial odometer event, so for such a time
-the form SHALL make "New odometer" unavailable, telling the user that no odometer is known at that time and that the trip
-distance can be entered instead, and SHALL NOT save an entry logged that way.
+previous known odometer at a later time, unless an odometer anchor precedes it (see below).
 
 #### Scenario: Trip distance before the initial odometer
 - **WHEN** a vehicle was added with an initial odometer of 45200 km and the user logs a trip distance of 30 km dated a week before the initial odometer event
 - **THEN** the log contains the entry at that earlier time and the vehicle's current odometer is still 45200 km
 
+### Requirement: A new odometer count without a known odometer is saved as an odometer anchor
+When the user chooses "New odometer" and no odometer is known at the entry's date and time, the system SHALL save the typed
+count as an odometer anchor event, and SHALL NOT save a distance event. An odometer anchor is an odometer-setting event: it
+sets the odometer to the typed count at the entry's time, and it takes part in the previous known odometer and the current
+odometer like the initial odometer event does (the latest odometer-setting event wins, and distances after it add to it). The
+form SHALL say that no odometer is known at that time and that the count will be saved as a new odometer starting point, SHALL
+show no distance, and SHALL allow saving. The count SHALL be entered and unit-converted like any other, the empty and future
+checks SHALL apply, and a count of zero SHALL be accepted. The tenths choice used SHALL be remembered like for a distance entry.
+
 #### Scenario: New odometer before the initial odometer
+- **WHEN** a vehicle was added with an initial odometer of 45200 km, and the user chooses "New odometer", a time a week before the initial odometer event, types 44000 and saves
+- **THEN** the log contains an odometer anchor of 44,000 km at that time and no distance event, and the vehicle's current odometer is still 45200 km
+
+#### Scenario: The form explains it
 - **WHEN** the user chooses "New odometer" and a time before the initial odometer event
-- **THEN** the form says no odometer is known at that time, and saving is not possible until the time or the way is changed
+- **THEN** the form says that no odometer is known at that time and that the count will be saved as a new odometer starting point, shows no distance, and saving is possible
+
+#### Scenario: Later entries build on the anchor
+- **WHEN** an odometer anchor of 44000 km exists a week before the initial odometer event, and the user chooses "New odometer" for a time three days before the initial odometer event
+- **THEN** the form shows a previous known odometer of 44,000 km
+
+#### Scenario: Trip distances after the anchor count up to the initial odometer
+- **WHEN** an odometer anchor of 44000 km exists a week before the initial odometer event, a trip distance of 30 km is logged three days before it, and the user chooses "New odometer" for two days before it
+- **THEN** the form shows a previous known odometer of 44,030 km
+
+#### Scenario: An anchor at a time where an odometer is known is not created
+- **WHEN** an odometer is known at the entry's time and the user chooses "New odometer" and types a higher count
+- **THEN** a distance event is saved, as usual
+
+#### Scenario: Nothing typed
+- **WHEN** the user chooses "New odometer" with no odometer known at the time and saves with nothing typed
+- **THEN** the system shows an error on the field and adds nothing
 
 ### Requirement: Logging only adds to the log
 The system SHALL record each saved distance entry as a new event and SHALL NOT change or remove any existing event, nor any

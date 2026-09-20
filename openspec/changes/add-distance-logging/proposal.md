@@ -19,8 +19,13 @@ distances into spans) and refuelings are separate, upcoming changes that build o
   opened and the time zone to the device's; the moment may be in the past and may not be in the future. The user can pick
   any time zone, so an entry can be recorded in the zone where it happened. The date shows its day of the week, in the device's language,
   and every time, on the form and in the log, follows the system's 12-hour or 24-hour setting. An entry dated before the vehicle's initial odometer is allowed: it is kept in the
-  log at its time and does not change any odometer. There is no known odometer at such a time, so the new-odometer way is
-  unavailable for it.
+  log at its time and does not change any odometer. There is no known odometer at such a time, so a new odometer count
+  entered for it cannot be turned into a distance: it is saved as an **odometer anchor** instead (see below).
+- When "New odometer" is chosen and **no odometer is known** at the entry's time (before the initial odometer, or before
+  any anchor), the count is saved as an **odometer anchor** event, not a distance event: an odometer-setting event that says
+  the odometer read that count at that time. Later times up to the next odometer-setting event build on it, so the previous
+  known odometer exists there. The form says so instead of refusing the entry. An anchor dated before the initial odometer does
+  not change the current odometer.
 - The **unit** of an entry is chosen on the form: kilometers or miles, defaulting to the vehicle's, with an optional
   "include tenths" switch. The tenths choice is remembered per vehicle: saving an entry keeps the choice used for that vehicle,
   and the next form for it starts with that choice; before any entry, both start as the vehicle's odometer unit. Whole-number trip meters and tenths trip meters are both

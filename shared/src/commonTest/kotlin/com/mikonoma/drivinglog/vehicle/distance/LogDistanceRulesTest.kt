@@ -146,9 +146,35 @@ class LogDistanceRulesTest {
         assertEquals(LogDistanceError.OdometerNotHigher(Distance(0)), error)
     }
 
+    private fun anchor(result: LogDistanceResult) = (result as LogDistanceResult.Anchor).reading
+
     @Test
-    fun aNewOdometerWithNoKnownOdometerIsRefused() {
-        assertEquals(LogDistanceError.NoKnownOdometer, errorOf(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45250))))
+    fun aNewOdometerWithNoKnownOdometerBecomesAnAnchorAtTheTypedCount() {
+        assertEquals(Distance(45_250_000), anchor(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45250))))
+    }
+
+    @Test
+    fun anAnchorCountIsConvertedFromTheUnitItWasTypedIn() {
+        assertEquals(Distance(16_093), anchor(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.MILES, 10))))
+        assertEquals(Distance(12_300), anchor(validate(LogWay.NEW_ODOMETER, entry(OdometerUnit.KILOMETERS_TENTHS, 1, 2, 3))))
+    }
+
+    @Test
+    fun anAnchorOfZeroIsAccepted() {
+        assertEquals(Distance(0), anchor(validate(LogWay.NEW_ODOMETER, entry(OdometerUnit.KILOMETERS, 0))))
+    }
+
+    @Test
+    fun anAnchorNeedsSomethingTypedAndATimeThatIsNotInTheFuture() {
+        assertEquals(LogDistanceError.FieldEmpty, errorOf(validate(LogWay.NEW_ODOMETER, OdometerEntry(OdometerUnit.KILOMETERS))))
+        val future = ZonedMoment(now + kotlin.time.Duration.parse("1h"))
+        assertEquals(LogDistanceError.TimeInFuture, errorOf(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45250), future)))
+    }
+
+    @Test
+    fun aKnownOdometerStillMakesADistanceNotAnAnchor() {
+        val result = validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45250), known = Distance(45_200_000))
+        assertEquals(Distance(50_000), valid(result).distance)
     }
 
     @Test

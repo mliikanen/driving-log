@@ -75,18 +75,25 @@ class LogDistanceProcessor @AssistedInject constructor(
         val moment = form.moment
         return when (val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer)) {
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
-            is LogDistanceResult.Valid -> async("save") {
-                reduce { copy(isSaving = true, error = null) }
-                try {
-                    repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths)
-                } catch (throwable: Throwable) {
-                    // Let the user try again; Kide logs the rethrown error.
-                    reduce { copy(isSaving = false) }
-                    throw throwable
-                }
-                emit(LogDistanceEffect.Saved)
+            is LogDistanceResult.Valid -> saving {
+                repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths)
+            }
+            is LogDistanceResult.Anchor -> saving {
+                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths)
             }
         }
+    }
+
+    private fun saving(write: suspend () -> Unit): Action<LogDistanceState, LogDistanceEffect> = async("save") {
+        reduce { copy(isSaving = true, error = null) }
+        try {
+            write()
+        } catch (throwable: Throwable) {
+            // Let the user try again; Kide logs the rethrown error.
+            reduce { copy(isSaving = false) }
+            throw throwable
+        }
+        emit(LogDistanceEffect.Saved)
     }
 
     private companion object {

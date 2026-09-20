@@ -3,7 +3,7 @@ package com.mikonoma.drivinglog.vehicle.domain
 import kotlin.time.Instant
 
 /**
- * The odometer known at [at]: the reading of the latest odometer-setting event at or before [at], plus the distance of every
+ * The odometer known at [at]: the reading of the latest odometer-setting event (the initial odometer or an odometer anchor) at or before [at], plus the distance of every
  * distance entry after it up to and including [at]. Null when no odometer-setting event is at or before [at].
  *
  * [eventsOldestFirst] must be ordered by instant and, for the same instant, by when the events were added. Events at the same
@@ -14,9 +14,11 @@ fun knownOdometerAt(eventsOldestFirst: List<VehicleEvent>, at: Instant): Distanc
     var meters: Long? = null
     for (event in eventsOldestFirst) {
         if (event.occurredAt.instant > at) break
-        when (event) {
-            is VehicleEvent.InitialOdometer -> meters = event.reading.meters
-            is VehicleEvent.DistanceEntry -> meters = meters?.plus(event.distance.meters)
+        val reading = event.odometer
+        when {
+            // Any event that sets the odometer is a baseline: the initial odometer or an odometer anchor.
+            reading != null -> meters = reading.meters
+            event is VehicleEvent.DistanceEntry -> meters = meters?.plus(event.distance.meters)
         }
     }
     return meters?.let { Distance(it) }

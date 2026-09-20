@@ -485,6 +485,79 @@ class SqlDelightVehicleRepositoryTest {
         assertCurrentOdometer(id, 45_250_000)
     }
 
+    // ---- Odometer anchors
+
+    @Test
+    fun anAnchorIsAddedAndReadBackWithItsZone() = runTest {
+        val id = vehicleAtNoon()
+        val eventId = repository.addOdometerAnchor(id, at((-24).hours, newYork), Distance(44_000_000), tenthsIncluded = false)
+
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        assertEquals(Distance(44_000_000), anchor.reading)
+        assertEquals(noon - 24.hours, anchor.occurredAt.instant)
+        assertEquals("America/New_York", anchor.occurredAt.zone?.id)
+    }
+
+    @Test
+    fun anAnchorBeforeTheInitialEventDoesNotChangeTheCurrentOdometer() = runTest {
+        val id = vehicleAtNoon()
+        repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        assertCurrentOdometer(id, 45_200_000)
+    }
+
+    @Test
+    fun anEntryBetweenAnAnchorAndTheInitialEventDoesNotChangeTheCurrentOdometer() = runTest {
+        val id = vehicleAtNoon()
+        repository.addOdometerAnchor(id, at((-48).hours), Distance(44_000_000), tenthsIncluded = false)
+        addEntry(id, at((-24).hours), Distance(30_000), null)
+
+        assertCurrentOdometer(id, 45_200_000)
+    }
+
+    @Test
+    fun anAnchorAfterTheInitialEventReplacesTheRunningTotalInSqlAndInTheFunction() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours), Distance(30_000), null)
+        repository.addOdometerAnchor(id, at(2.hours), Distance(46_000_000), tenthsIncluded = false)
+        addEntry(id, at(3.hours), Distance(10_000), null)
+
+        assertCurrentOdometer(id, 46_010_000)
+    }
+
+    @Test
+    fun anAnchorAtTheSameInstantAsAnEntryCountsInTheOrderAddedWhateverTheZones() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours, helsinki), Distance(30_000), null)
+        repository.addOdometerAnchor(id, at(1.hours, newYork), Distance(50_000_000), tenthsIncluded = false)
+        addEntry(id, at(1.hours, TimeZone.UTC), Distance(10_000), null)
+
+        assertCurrentOdometer(id, 50_010_000)
+        val newestFirst = repository.observeLog(id).first()
+        assertTrue(newestFirst[0] is VehicleEvent.DistanceEntry)
+        assertTrue(newestFirst[1] is VehicleEvent.OdometerAnchor)
+        assertTrue(newestFirst[2] is VehicleEvent.DistanceEntry)
+    }
+
+    @Test
+    fun savingAnAnchorRemembersTheTenthsChoiceInTheSameTransaction() = runTest {
+        val id = vehicleAtNoon()
+        repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = true)
+
+        assertEquals(true, rememberedTenths(id))
+    }
+
+    @Test
+    fun anAnchorIsOnlyEverAdded() = runTest {
+        val id = vehicleAtNoon()
+        val before = repository.observeLog(id).first()
+        repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        val after = repository.observeLog(id).first()
+        assertEquals(before.size + 1, after.size)
+        assertTrue(after.containsAll(before))
+    }
+
     // ---- The tenths choice remembered per vehicle
 
     private suspend fun rememberedTenths(id: String) = repository.observeVehicle(id).first()?.vehicle?.logDistanceTenths

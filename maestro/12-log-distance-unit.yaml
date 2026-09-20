@@ -1,0 +1,113 @@
+# The unit of an entry: the defaults follow the vehicle, the tenths choice is remembered per vehicle when an entry is saved.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Whole car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "1000"
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Tenths car
+      PLATE: ""
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+# A whole-number kilometer vehicle: kilometers without tenths.
+- tapOn: Whole car
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_unit_km
+    checked: true
+- assertVisible:
+    id: log_tenths
+    checked: false
+# Tenths can be included on a whole-number vehicle; saving remembers the choice.
+- tapOn:
+    id: log_tenths
+- tapOn:
+    id: odo_field
+- inputText: "105"
+- assertVisible:
+    id: odo_field
+    text: "10.5"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: log_distance
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: true
+# The unit family can be changed for one entry: miles for a kilometer vehicle.
+- tapOn:
+    id: log_unit_mi
+- assertVisible:
+    id: log_unit_mi
+    checked: true
+- assertVisible:
+    id: log_tenths
+    checked: true
+- tapOn:
+    id: back
+- tapOn:
+    id: back
+# A tenths vehicle starts with tenths on; a choice that is not saved is not remembered.
+- tapOn: Tenths car
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: true
+- tapOn:
+    id: log_tenths
+- tapOn:
+    id: back
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: true
+# Turning tenths off and saving is remembered too.
+- tapOn:
+    id: log_tenths
+- tapOn:
+    id: odo_field
+- inputText: "5"
+- assertVisible:
+    id: odo_field
+    text: "5"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: log_distance
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: false
+- tapOn:
+    id: back
+- tapOn:
+    id: back
+# The other vehicle is not affected, and the choice survives a restart.
+- tapOn: Whole car
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: true
+- stopApp
+- launchApp
+- tapOn: Tenths car
+- tapOn:
+    id: log_distance
+- assertVisible:
+    id: log_tenths
+    checked: false

@@ -18,9 +18,6 @@ sealed interface LogDistanceError {
     /** A trip distance of zero. */
     data object DistanceNotPositive : LogDistanceError
 
-    /** New odometer: no odometer-setting event is at or before the chosen moment. */
-    data object NoKnownOdometer : LogDistanceError
-
     /** New odometer: the count is not higher than the [known] odometer at the chosen moment. */
     data class OdometerNotHigher(val known: Distance) : LogDistanceError
 }
@@ -28,6 +25,9 @@ sealed interface LogDistanceError {
 sealed interface LogDistanceResult {
     /** [distance] is what is added to the odometer; [loggedOdometer] is the typed count, only when logging by odometer. */
     data class Valid(val distance: Distance, val loggedOdometer: Distance?) : LogDistanceResult
+
+    /** A new odometer count where no odometer is known: saved as an odometer anchor that sets the odometer to [reading]. */
+    data class Anchor(val reading: Distance) : LogDistanceResult
 
     data class Invalid(val error: LogDistanceError) : LogDistanceResult
 }
@@ -41,7 +41,7 @@ fun distanceByOdometer(entered: Distance, known: Distance): Distance? =
 
 /**
  * Checks a log distance form. The first failing rule wins, in this order: an empty field, a moment in the future, then the
- * rules of the way: a trip distance must be above zero; a new odometer needs a known odometer and must be higher than it.
+ * rules of the way: a trip distance must be above zero; a new odometer must be higher than the known odometer, or, when none is known, becomes an odometer anchor.
  * Wall-clock times are never compared across zones: the future check is on instants.
  *
  * [known] is the previous known odometer at the chosen moment, as `knownOdometerAt` gives it.
@@ -61,7 +61,8 @@ fun validateLogDistance(
             else LogDistanceResult.Invalid(LogDistanceError.DistanceNotPositive)
 
         LogWay.NEW_ODOMETER -> {
-            if (known == null) return LogDistanceResult.Invalid(LogDistanceError.NoKnownOdometer)
+            // Nothing to compare with: the count itself becomes the odometer at that time.
+            if (known == null) return LogDistanceResult.Anchor(typed)
             val distance = distanceByOdometer(typed, known)
                 ?: return LogDistanceResult.Invalid(LogDistanceError.OdometerNotHigher(known))
             LogDistanceResult.Valid(distance, loggedOdometer = typed)
