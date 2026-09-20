@@ -30,7 +30,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.kide)
+            api(libs.kide)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
