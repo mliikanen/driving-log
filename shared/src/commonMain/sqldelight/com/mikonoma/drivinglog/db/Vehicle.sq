@@ -1,6 +1,42 @@
+-- Everything stored here is locale-agnostic: whole meters, epoch milliseconds, UUIDs and enum codes.
+
 CREATE TABLE vehicle (
-    id TEXT NOT NULL PRIMARY KEY
+    id            TEXT    NOT NULL PRIMARY KEY,
+    name          TEXT    NOT NULL,
+    license_plate TEXT,
+    -- OdometerUnit.code: KILOMETERS, KILOMETERS_TENTHS, MILES or MILES_TENTHS. Written once, at creation.
+    odometer_unit TEXT    NOT NULL,
+    created_at    INTEGER NOT NULL,
+    updated_at    INTEGER NOT NULL
 );
 
-selectAllIds:
-SELECT id FROM vehicle;
+insertVehicle:
+INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- Only name and plate can change. The unit and the log are never touched.
+updateVehicle:
+UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
+
+selectVehicles:
+SELECT id, name, license_plate, odometer_unit, created_at
+FROM vehicle
+ORDER BY created_at, rowid;
+
+-- The current odometer is derived from the log: the newest event that carries a reading.
+selectVehicleDetails:
+SELECT
+    v.id,
+    v.name,
+    v.license_plate,
+    v.odometer_unit,
+    v.created_at,
+    (
+        SELECT e.odometer_meters
+        FROM vehicle_event e
+        WHERE e.vehicle_id = v.id AND e.odometer_meters IS NOT NULL
+        ORDER BY e.occurred_at DESC, e.rowid DESC
+        LIMIT 1
+    ) AS current_odometer_meters
+FROM vehicle v
+WHERE v.id = ?;

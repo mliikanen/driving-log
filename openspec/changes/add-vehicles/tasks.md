@@ -16,12 +16,12 @@
 
 ## 3. Storage
 
-- [ ] 3.1 Write the version 1 schema (`vehicle` with its `odometer_unit`, `vehicle_event`, index) and queries (insert vehicle, insert event, update vehicle, select vehicles with derived current odometer, select vehicle, recent events with limit, full log) and verify SQLDelight generates the database interface
-- [ ] 3.2 Add `DatabaseDriverFactory` (`expect` in common, `actual` for Android with `Context` and for iOS with `-lsqlite3` linked) and verify `:shared:compileAndroidMain` and both iOS klib compilations succeed
-- [ ] 3.3 Implement `SqlDelightVehicleRepository` with injected `Clock`, id generator and dispatcher, adding a vehicle and its initial event in one transaction, and verify it compiles
-- [ ] 3.4 Add the in-memory test driver factory (`expect` in `commonTest`, JDBC `actual` in `androidHostTest`, native `actual` in `iosTest`) and repository tests, and verify `:shared:allTests` passes for: add creates vehicle and one initial event, the unit stored and returned for each of the four units, a tenths reading such as 45200.3 km kept exactly in meters, default odometer 0, failed add creates nothing, current odometer derived from a prepared newer event, 5 newest of 7 events, same-time tie order, full log newest first, edit changes name and plate and leaves the log untouched, plate cleared to none
-- [ ] 3.5 Add a JVM test that writes to a temporary database file, reopens it, and verify the vehicle and its event are still there
-- [ ] 3.6 Add a JVM test that adds the same vehicle (typing 1, 2, 3, 5 with a tenths unit) under the default locales Finnish and English (US) and verify the stored rows are identical, and that only integers, UUIDs and enum codes are stored
+- [x] 3.1 Write the version 1 schema (`vehicle` with its `odometer_unit`, `vehicle_event`, index) and queries (insert vehicle, insert event, update vehicle, select vehicles with derived current odometer, select vehicle, recent events with limit, full log) and verify SQLDelight generates the database interface
+- [x] 3.2 Add `DatabaseDriverFactory` (`expect` in common, `actual` for Android with `Context` and for iOS with `-lsqlite3` linked) and verify `:shared:compileAndroidMain` and both iOS klib compilations succeed
+- [x] 3.3 Implement `SqlDelightVehicleRepository` with injected `Clock`, id generator and dispatcher, adding a vehicle and its initial event in one transaction, and verify it compiles
+- [x] 3.4 Add the in-memory test driver factory (`expect` in `commonTest`, JDBC `actual` in `androidHostTest`, native `actual` in `iosTest`) and repository tests, and verify `:shared:allTests` passes for: add creates vehicle and one initial event, the unit stored and returned for each of the four units, a tenths reading such as 45200.3 km kept exactly in meters, default odometer 0, failed add creates nothing, current odometer derived from a prepared newer event, 5 newest of 7 events, same-time tie order, full log newest first, edit changes name and plate and leaves the log untouched, plate cleared to none
+- [x] 3.5 Add a JVM test that writes to a temporary database file, reopens it, and verify the vehicle and its event are still there
+- [x] 3.6 Add a JVM test that adds the same vehicle (typing 1, 2, 3, 5 with a tenths unit) under the default locales Finnish and English (US) and verify the stored rows are identical, and that only integers, UUIDs and enum codes are stored
 
 ## 4. Dependency injection and navigation plumbing
 

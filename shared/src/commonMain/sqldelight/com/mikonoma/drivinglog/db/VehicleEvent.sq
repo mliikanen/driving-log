@@ -1,0 +1,31 @@
+CREATE TABLE vehicle_event (
+    id              TEXT    NOT NULL PRIMARY KEY,
+    vehicle_id      TEXT    NOT NULL REFERENCES vehicle(id),
+    -- INITIAL_ODOMETER is the only type for now.
+    type            TEXT    NOT NULL,
+    occurred_at     INTEGER NOT NULL,
+    -- Nullable: future event types may not carry a reading.
+    odometer_meters INTEGER,
+    created_at      INTEGER NOT NULL
+);
+
+CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
+
+-- The log is append-only: there is deliberately no update or delete query for events.
+insertEvent:
+INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- Newest first; events with the same time: the one added last comes first.
+selectRecentEvents:
+SELECT id, vehicle_id, type, occurred_at, odometer_meters
+FROM vehicle_event
+WHERE vehicle_id = ?
+ORDER BY occurred_at DESC, rowid DESC
+LIMIT ?;
+
+selectLog:
+SELECT id, vehicle_id, type, occurred_at, odometer_meters
+FROM vehicle_event
+WHERE vehicle_id = ?
+ORDER BY occurred_at DESC, rowid DESC;
