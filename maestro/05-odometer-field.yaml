@@ -165,3 +165,121 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: 9,999,999
+# A first typed zero is kept as an unshown prefix, so backspace undoes exactly what was typed.
+# Tenths unit: 0, 5, 3 shows 0.0, 0.5, 5.3 and backspace goes 0.5, 0.0, empty
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- tapOn:
+    id: odo_field
+- inputText: "0"
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- inputText: "5"
+- assertVisible:
+    id: odo_field
+    text: "0.5"
+- inputText: "3"
+- assertVisible:
+    id: odo_field
+    text: "5.3"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.5"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# Further leading zeros are ignored: 0, 0, 0, 5 shows 0.0, 0.0, 0.0, 0.5 and backspace goes 0.0, empty
+- inputText: "000"
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- inputText: "5"
+- assertVisible:
+    id: odo_field
+    text: "0.5"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# A zero that is not typed first is an ordinary digit: 1, 0 shows 0.1, 1.0 and backspace goes 0.1
+- inputText: "10"
+- assertVisible:
+    id: odo_field
+    text: "1.0"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.1"
+# A leading zero typed in one go (like a paste) behaves the same: 053 shows 5.3, then 0.5, 0.0, empty
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "053"
+- assertVisible:
+    id: odo_field
+    text: "5.3"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.5"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.0"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# Whole-number unit: 0, 5 shows 0, 5 (no extra zero drawn) and backspace goes 0, empty
+- tapOn:
+    id: unit_KILOMETERS
+- tapOn:
+    id: odo_field
+- inputText: "0"
+- assertVisible:
+    id: odo_field
+    text: "0"
+- inputText: "5"
+- assertVisible:
+    id: odo_field
+    text: "5"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"
+# Changing the unit drops the prefix: 0, 5 in Kilometers becomes 5.0, then backspace goes 0.5, empty
+- inputText: "05"
+- assertVisible:
+    id: odo_field
+    text: "5"
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- assertVisible:
+    id: odo_field
+    text: "5.0"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "0.5"
+- eraseText: 1
+- assertNotVisible:
+    id: odo_field
+    text: ".+"

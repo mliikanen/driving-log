@@ -9,10 +9,10 @@
 
 ## 2. Add screen and field
 
-- [ ] 2.1 Add add-screen processor tests for the new sequences through the keyboard's text edits (0 then 5 then backspace twice, 0, 5, 3 with backspaces, extra zeros ignored, a typed zero still satisfying the required odometer and a prefixed entry saving its value) and verify `./gradlew :shared:allTests` passes
-- [ ] 2.2 Verify on the emulator with the real number keyboard, in a tenths unit and a whole-number unit, that 0 then 5 draws 0.0 then 0.5 (0 then 5) and that backspace draws 0.0 (0) and then an empty field, and that the field never draws a doubled zero
+- [x] 2.1 Add add-screen processor tests for the new sequences through the keyboard's text edits (0 then 5 then backspace twice, 0, 5, 3 with backspaces, extra zeros ignored, a typed zero still satisfying the required odometer and a prefixed entry saving its value) and verify `./gradlew :shared:allTests` passes
+- [x] 2.2 Verify on the emulator with the real number keyboard, in a tenths unit and a whole-number unit, that 0 then 5 draws 0.0 then 0.5 (0 then 5) and that backspace draws 0.0 (0) and then an empty field, and that the field never draws a doubled zero
 
 ## 3. Maestro and final verification
 
-- [ ] 3.1 Extend the odometer Maestro flow with the zero-prefix sequences (`inputText` and `eraseText`) for a tenths unit and a whole-number unit, and verify the flow passes
-- [ ] 3.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [x] 3.1 Extend the odometer Maestro flow with the zero-prefix sequences (`inputText` and `eraseText`) for a tenths unit and a whole-number unit, and verify the flow passes
+- [x] 3.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
