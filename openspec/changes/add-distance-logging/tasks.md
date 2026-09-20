@@ -30,7 +30,7 @@
 
 ## 5. Maestro flows
 
-- [ ] 5.1 Add flows for logging by trip distance and by new odometer (the details screen shows the new odometer, the recent events and the full log show the entry) and for the validation errors (empty, zero, a lower and an equal count, the message naming the known odometer), and verify they pass
+- [x] 5.1 Add flows for logging by trip distance and by new odometer (the details screen shows the new odometer, the recent events and the full log show the entry) and for the validation errors (empty, zero, a lower and an equal count, the message naming the known odometer), and verify they pass
 - [ ] 5.2 Add flows for the unit choice (defaults for a whole-number vehicle and a tenths vehicle, the tenths choice remembered for one vehicle and not another, kept after a restart and not remembered when the form is left unsaved, tenths on a whole-number vehicle, miles for a kilometer vehicle) and for the date picker (the weekday shown on the date button, the time shown in the 12-hour and the 24-hour system setting (set with `adb`), choose yesterday by typing the date into the picker, a future date refused, another time zone chosen from the searchable list and shown in the log row with its zone name, and an entry dated before the initial odometer that leaves the odometer unchanged and makes the new-odometer way unavailable), and verify they pass
 - [ ] 5.3 Add a flow for offline use and persistence (airplane mode on, log a distance, restart without clearing the data, the entry and the odometer are still there) and a rotation check on the form (typed numbers, way, unit and time survive), and verify they pass
 

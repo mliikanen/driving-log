@@ -93,4 +93,17 @@ class KnownOdometerTest {
         val b = listOf(initial, VehicleEvent.DistanceEntry("a", newYork, Distance(30_000)))
         assertEquals(currentOdometer(a), currentOdometer(b))
     }
+
+    @Test
+    fun eventsAtTheSameInstantInDifferentZonesCountInTheOrderOfTheList() {
+        val helsinki = ZonedMoment.of(at(2_000), TimeZone.of("Europe/Helsinki"))
+        val newYork = ZonedMoment.of(at(2_000), TimeZone.of("America/New_York"))
+        val baseline = VehicleEvent.InitialOdometer("b", newYork, Distance(50_000_000))
+        val entry = VehicleEvent.DistanceEntry("e", helsinki, Distance(30_000))
+
+        // The entry after the baseline in the list counts; the same entry before it is replaced by it.
+        assertEquals(Distance(50_030_000), currentOdometer(listOf(initial, baseline, entry)))
+        assertEquals(Distance(50_000_000), currentOdometer(listOf(initial, entry, baseline)))
+        assertEquals(Distance(50_030_000), knownOdometerAt(listOf(initial, baseline, entry), at(2_000)))
+    }
 }

@@ -365,6 +365,62 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
+    fun entriesAtTheSameInstantInDifferentZonesComeLastAddedFirst() = runTest {
+        val id = vehicleAtNoon()
+        // The same instant written in three zones: 15:00 in Helsinki, 08:00 in New York and 12:00 UTC.
+        val first = addEntry(id, at(0.hours, helsinki), Distance(1_000), null)
+        val second = addEntry(id, at(0.hours, newYork), Distance(2_000), null)
+        val third = addEntry(id, at(0.hours, TimeZone.UTC), Distance(3_000), null)
+
+        val newestFirst = repository.observeLog(id).first().map { it.id }
+        // The initial event (the vehicle's first row) is last; the entries follow their order of adding, not their zones.
+        assertEquals(listOf(third, second, first), newestFirst.take(3))
+        assertEquals(listOf(third, second, first), repository.observeRecentEvents(id, 3).first().map { it.id })
+        // Each keeps the zone it was entered in.
+        assertEquals(
+            listOf("UTC", "America/New_York", "Europe/Helsinki"),
+            repository.observeLog(id).first().take(3).map { it.occurredAt.zone?.id },
+        )
+    }
+
+    @Test
+    fun theOrderOfTheSameInstantFollowsRowOrderNotTheCreatedTime() = runTest {
+        val id = vehicleAtNoon()
+        clock.current = noon + 10.hours
+        val first = addEntry(id, at(1.hours, helsinki), Distance(1_000), null)
+        // The clock steps back (a corrected device clock, say): the entry added later has the earlier created time.
+        clock.current = noon + 1.hours
+        val second = addEntry(id, at(1.hours, newYork), Distance(2_000), null)
+
+        assertEquals(listOf(second, first), repository.observeRecentEvents(id, 2).first().map { it.id })
+    }
+
+    @Test
+    fun anEntryAtTheInitialInstantInAnotherZoneCountsWhenAddedAfterIt() = runTest {
+        val id = vehicleAtNoon() // the initial event: noon UTC, entered in the device zone
+        addEntry(id, at(0.minutes, newYork), Distance(30_000), null)
+        addEntry(id, at(0.minutes, helsinki), Distance(20_000), null)
+
+        assertCurrentOdometer(id, 45_250_000)
+    }
+
+    @Test
+    fun anEntryAtTheSameInstantAddedBeforeAnOdometerSettingEventInAnotherZoneIsReplacedByIt() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours, newYork), Distance(30_000), null)
+        // A second baseline for the same instant, entered in Helsinki, added after the entry.
+        database.vehicleEventQueries.insertEvent(
+            "second-baseline", id, "INITIAL_ODOMETER", (noon + 1.hours).toEpochMilliseconds(), 50_000_000,
+            (noon + 1.hours).toEpochMilliseconds(), "Europe/Helsinki", 3 * 3600L,
+        )
+        assertCurrentOdometer(id, 50_000_000)
+
+        // An entry at that instant in yet another zone, added after the baseline, counts.
+        addEntry(id, at(1.hours, TimeZone.UTC), Distance(10_000), null)
+        assertCurrentOdometer(id, 50_010_000)
+    }
+
+    @Test
     fun theRecentEventsIncludeDistanceEntries() = runTest {
         val id = vehicleAtNoon()
         for (i in 1..6) addEntry(id, at(i.hours), Distance(i * 1_000L), null)

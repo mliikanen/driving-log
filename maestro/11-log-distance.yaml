@@ -1,0 +1,109 @@
+# Logging a distance by trip distance and by new odometer, and the validation messages.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+- runFlow: subflows/wait-for-next-minute.yaml
+- tapOn: Family car
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+- tapOn:
+    id: log_distance
+- assertVisible: Log distance
+# The trip distance way is preselected; an empty field cannot be saved.
+- assertVisible:
+    id: log_way_distance
+    checked: true
+- tapOn:
+    id: save_entry
+- assertVisible: Enter the trip distance
+# A zero distance is refused; typing clears the message.
+- tapOn:
+    id: odo_field
+- inputText: "0"
+- tapOn:
+    id: save_entry
+- assertVisible: The distance must be more than zero
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "1"
+- assertNotVisible: The distance must be more than zero
+# Log 100.5 km by trip distance.
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "1005"
+- hideKeyboard
+- assertVisible:
+    id: odo_field
+    text: "100.5"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 45,300.8 km
+- assertVisible:
+    id: recent_event
+    index: 0
+- assertVisible: Distance
+- assertVisible: +100.5 km
+# Log by new odometer: the known odometer includes the distance just logged.
+- tapOn:
+    id: log_distance
+- tapOn:
+    id: log_way_odometer
+- assertVisible:
+    id: log_known_odometer
+    text: "Previous known odometer: 45,300.8 km"
+- tapOn:
+    id: save_entry
+- assertVisible: Enter the odometer reading
+# A lower count and an equal count are both refused, naming the known odometer.
+- tapOn:
+    id: odo_field
+- inputText: "453000"
+- tapOn:
+    id: save_entry
+- assertVisible: Enter a reading higher than 45,300.8 km
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "453008"
+- tapOn:
+    id: save_entry
+- assertVisible: Enter a reading higher than 45,300.8 km
+# A higher count shows the live distance and is saved.
+- tapOn:
+    id: odo_clear
+- tapOn:
+    id: odo_field
+- inputText: "453208"
+- hideKeyboard
+- assertVisible:
+    id: log_live_distance
+    text: "Distance: 20.0 km"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 45,320.8 km
+- assertVisible: +20.0 km
+- assertVisible: Odometer 45,320.8 km
+# The full log lists both entries and the initial odometer.
+- tapOn:
+    id: view_log
+- assertVisible: +20.0 km
+- assertVisible: +100.5 km
+- assertVisible: Initial odometer

@@ -1,0 +1,4 @@
+# Run after adding a vehicle and before logging a distance that must change the odometer (see the script).
+appId: com.mikonoma.drivinglog
+---
+- runScript: wait-for-next-minute.js
