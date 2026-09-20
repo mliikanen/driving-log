@@ -82,6 +82,10 @@ Kide requires non-empty hierarchies; otherwise they are empty sealed interfaces.
 `isSystemInDarkTheme()`. Default Material colors and typography for now; no dynamic color (Android-only,
 would make Android and iOS differ). A brand palette is a later design change.
 
+On Android the activity uses a `DayNight` window theme with the framework action bar disabled, and calls
+`enableEdgeToEdge()`. Without this the default theme shows a second native title bar above the Compose top bar,
+and status bar text is hard to read. The Compose `Scaffold` handles the insets.
+
 ### 7. Tests
 
 `HomeProcessorTest` in `commonTest` uses `kide-test` to assert the initial state. Compose UI tests need a

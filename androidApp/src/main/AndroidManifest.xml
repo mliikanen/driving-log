@@ -3,7 +3,8 @@
     <application
         android:name=".DrivingLogApplication"
         android:label="Driving Log"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DrivingLog">
         <activity
             android:name=".MainActivity"
             android:exported="true">

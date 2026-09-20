@@ -16,7 +16,7 @@
 ## 3. Dependency injection and lifetime
 
 - [x] 3.1 Add `AppGraph` (Metro) providing `HomeProcessor` and verify it compiles for Android and iOS targets (`:shared:compileKotlinIosSimulatorArm64` if the host supports it, otherwise Android only, noting the limit)
-- [ ] 3.2 Hold the processor so it survives rotation, adding any needed dependency to `libs.versions.toml`, and verify on an emulator or device that rotation keeps the Home screen content
+- [x] 3.2 Hold the processor so it survives rotation, adding any needed dependency to `libs.versions.toml`, and verify on an emulator or device that rotation keeps the Home screen content
 
 ## 4. Entry points
 
@@ -26,5 +26,5 @@
 ## 5. Tests and verification
 
 - [x] 5.1 Replace `SmokeTest` with `HomeProcessorTest` using `kide-test` covering the initial empty state, and verify `./gradlew :shared:allTests` passes
-- [ ] 5.2 Run the app on an emulator or device in light and dark mode, offline, and rotate it, checking each scenario in `specs/app-shell/spec.md`
+- [x] 5.2 Run the app on an emulator or device in light and dark mode, offline, and rotate it, checking each scenario in `specs/app-shell/spec.md`
 - [x] 5.3 Run `openspec validate --all` and verify it passes
