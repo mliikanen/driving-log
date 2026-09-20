@@ -21,4 +21,9 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        (application as DrivingLogApplication).resumeCount.intValue++
+    }
 }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -52,6 +54,7 @@ import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
+import com.mikonoma.drivinglog.vehicle.format.formatTimeOfDay
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 
@@ -120,7 +123,7 @@ fun LogDistanceContent(
                 state.notFound -> Text("This vehicle no longer exists.")
                 else -> {
                     WayChoice(state.way) { onIntent(LogDistanceIntent.WayChanged(it)) }
-                    MomentRow(state, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
+                    MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
                     if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
                     UnitChoice(state, onIntent)
                     if (state.way == LogWay.NEW_ODOMETER) KnownOdometerInfo(state, symbols)
@@ -149,6 +152,7 @@ fun LogDistanceContent(
         TimeDialog(
             hour = state.localDateTime.hour,
             minute = state.localDateTime.minute,
+            is24Hour = deviceLocale.timeFormat().is24Hour,
             onDismiss = { showTime = false },
             onPicked = { hour, minute -> onIntent(LogDistanceIntent.TimeChanged(hour, minute)) },
         )
@@ -184,23 +188,43 @@ private fun WayChoice(selected: LogWay, onSelect: (LogWay) -> Unit) {
 }
 
 @Composable
-private fun MomentRow(state: LogDistanceState, onDate: () -> Unit, onTime: () -> Unit, onZone: () -> Unit) {
+private fun MomentRow(
+    state: LogDistanceState,
+    deviceLocale: DeviceLocale,
+    onDate: () -> Unit,
+    onTime: () -> Unit,
+    onZone: () -> Unit,
+) {
     val local = state.localDateTime
     val offset = state.moment.zone?.offsetSeconds ?: 0
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Date, time and time zone", style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onDate, modifier = Modifier.testTag("log_date")) { Text(local.date.toString()) }
-            OutlinedButton(onClick = onTime, modifier = Modifier.testTag("log_time")) {
-                Text(local.hour.toString().padStart(2, '0') + ":" + local.minute.toString().padStart(2, '0'))
+        // Wraps only when the three buttons do not fit on one row; all share one height either way.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MomentButton(onDate, "log_date") {
+                Text(local.date.toString())
+                SubtleText(deviceLocale.weekdayName(local.date.dayOfWeek))
             }
-            OutlinedButton(onClick = onZone, modifier = Modifier.testTag("log_zone")) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.zoneId)
-                    OffsetText(offset)
-                }
+            MomentButton(onTime, "log_time") {
+                Text(formatTimeOfDay(local.hour, local.minute, deviceLocale.timeFormat()))
+            }
+            MomentButton(onZone, "log_zone") {
+                Text(state.zoneId)
+                SubtleText(formatUtcOffset(offset))
             }
         }
+    }
+}
+
+private val MomentButtonHeight = 64.dp
+
+@Composable
+private fun MomentButton(onClick: () -> Unit, testTag: String, content: @Composable ColumnScope.() -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.height(MomentButtonHeight).testTag(testTag)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, content = content)
     }
 }
 
@@ -256,11 +280,11 @@ private fun KnownOdometerInfo(state: LogDistanceState, symbols: com.mikonoma.dri
     }
 }
 
-/** The UTC offset on its own line: smaller and lighter than the zone name, so the name stays the first thing read. */
+/** A secondary line under a button's main text: smaller and lighter, so the main text stays the first thing read. */
 @Composable
-private fun OffsetText(offsetSeconds: Int) {
+private fun SubtleText(text: String) {
     Text(
-        formatUtcOffset(offsetSeconds),
+        text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
     )
@@ -303,7 +327,7 @@ private fun DateDialog(initialDateMillis: Long, onDismiss: () -> Unit, onPicked:
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDialog(hour: Int, minute: Int, onDismiss: () -> Unit, onPicked: (Int, Int) -> Unit) {
+private fun TimeDialog(hour: Int, minute: Int, is24Hour: Boolean, onDismiss: () -> Unit, onPicked: (Int, Int) -> Unit) {
     val pickerState = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -350,7 +374,7 @@ private fun TimeZoneDialog(
                     items(choices, key = { it.id }) { choice ->
                         ListItem(
                             headlineContent = { Text(choice.id) },
-                            supportingContent = { OffsetText(choice.offsetSeconds) },
+                            supportingContent = { SubtleText(formatUtcOffset(choice.offsetSeconds)) },
                             trailingContent = if (choice.id == selectedId) {
                                 { Icon(Icons.Filled.Check, contentDescription = "Selected") }
                             } else null,
