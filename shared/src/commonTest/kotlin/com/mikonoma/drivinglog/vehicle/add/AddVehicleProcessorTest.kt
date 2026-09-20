@@ -202,6 +202,141 @@ class AddVehicleProcessorTest {
         assertEquals("13", processor.shown())
     }
 
+    // A first typed zero is kept as an unshown prefix, so backspace undoes exactly what was typed.
+
+    private fun AddVehicleProcessor.edit(text: String) = dispatch(AddVehicleIntent.OdometerEdited(text))
+
+    private fun tenthsProcessor(): AddVehicleProcessor =
+        processor().also { it.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS)) }
+
+    @Test
+    fun aFirstZeroIsKeptWhileTypingMoreDigits() {
+        val processor = tenthsProcessor()
+        val shown = buildList {
+            processor.type(0); add(processor.shown())
+            processor.type(5); add(processor.shown())
+            processor.type(3); add(processor.shown())
+        }
+        assertEquals(listOf("0.0", "0.5", "5.3"), shown)
+    }
+
+    @Test
+    fun backspaceGoesBackThroughThePrefixZero() {
+        val processor = tenthsProcessor()
+        processor.type(0, 5, 3)
+
+        val shown = buildList {
+            processor.edit("05"); add(processor.shown())
+            processor.edit("0"); add(processor.shown())
+            processor.edit(""); add(processor.shown())
+        }
+
+        assertEquals(listOf("0.5", "0.0", ""), shown)
+    }
+
+    @Test
+    fun backspaceOnAPrefixedEntryLeavesTheTypedZeroThatCanBeSaved() = runTest {
+        val processor = tenthsProcessor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(0, 5)
+        processor.edit("0")
+        assertEquals("0.0", processor.shown())
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(Distance.ZERO, repository.addCalls.single().initialOdometer)
+    }
+
+    @Test
+    fun backspacingTheWholePrefixedEntryBlocksSavingAgain() {
+        val processor = tenthsProcessor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(0, 5)
+        processor.edit("0")
+        processor.edit("")
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertEquals("", processor.shown())
+        assertTrue(processor.state.odometerError)
+        assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun extraLeadingZerosFromTheKeyboardAreIgnored() {
+        val processor = tenthsProcessor()
+        processor.type(0)
+        processor.edit("00")
+        assertEquals("0.0", processor.shown())
+        assertEquals("0", processor.state.entry.digits)
+        processor.edit("000")
+        assertEquals("0", processor.state.entry.digits)
+
+        processor.type(5)
+        assertEquals("0.5", processor.shown())
+        assertEquals("05", processor.state.entry.digits)
+    }
+
+    @Test
+    fun aPrefixedEntrySavesItsValue() = runTest {
+        val processor = tenthsProcessor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.type(0, 5, 3)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(Distance(5_300), repository.addCalls.single().initialOdometer)
+    }
+
+    @Test
+    fun aPastedLeadingZeroBehavesLikeATypedOne() {
+        val processor = tenthsProcessor()
+        processor.edit("0123")
+        assertEquals("12.3", processor.shown())
+
+        val shown = buildList {
+            for (text in listOf("012", "01", "0", "")) {
+                processor.edit(text)
+                add(processor.shown())
+            }
+        }
+        assertEquals(listOf("1.2", "0.1", "0.0", ""), shown)
+    }
+
+    @Test
+    fun changingTheUnitDropsThePrefixButKeepsTheNumber() {
+        val processor = processor()
+        processor.type(0, 5)
+        assertEquals("5", processor.shown())
+
+        processor.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS))
+
+        assertEquals("5.0", processor.shown())
+        assertFalse(processor.state.entry.zeroPrefix)
+    }
+
+    @Test
+    fun aPrefixedEntrySurvivesTheRestoredState() {
+        val processor = tenthsProcessor()
+        processor.type(0, 5)
+        val saved = checkNotNull(processor.stateToSave())
+
+        // restoreState must come before any intent, so restore into a fresh processor.
+        val restored = processor()
+        restored.restoreState(saved)
+
+        assertEquals("0.5", restored.shown())
+        assertTrue(restored.state.entry.zeroPrefix)
+        restored.edit("0")
+        assertEquals("0.0", restored.shown())
+    }
+
     // Saving.
 
     @Test
