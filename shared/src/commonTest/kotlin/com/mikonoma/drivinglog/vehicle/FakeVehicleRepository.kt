@@ -8,6 +8,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,8 @@ class FakeVehicleRepository : VehicleRepository {
         events.value += vehicleId to newestFirst
     }
 
+    fun observeVehicleOdometer(vehicleId: String): Distance? = currentOdometer(eventsOf(vehicleId).asReversed())
+
     fun eventsOf(vehicleId: String): List<VehicleEvent> = events.value[vehicleId].orEmpty()
 
     override fun observeVehicles(): Flow<List<Vehicle>> = vehicles
@@ -59,8 +62,8 @@ class FakeVehicleRepository : VehicleRepository {
     override fun observeVehicle(id: String): Flow<VehicleDetails?> =
         vehicles.map { list ->
             list.firstOrNull { it.id == id }?.let { vehicle ->
-                val current = events.value[id].orEmpty().firstNotNullOfOrNull { it.odometer }
-                VehicleDetails(vehicle, current)
+                // Events are kept newest first; the current odometer is derived from them oldest first, like the real one.
+                VehicleDetails(vehicle, currentOdometer(events.value[id].orEmpty().asReversed()))
             }
         }
 

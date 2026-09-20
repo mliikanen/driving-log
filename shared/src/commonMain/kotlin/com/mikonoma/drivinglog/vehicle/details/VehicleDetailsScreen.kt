@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ fun VehicleDetailsScreen(
     deviceTimeZone: DeviceTimeZone,
     onShowEdit: (String) -> Unit,
     onShowLog: (String) -> Unit,
+    onShowLogDistance: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
@@ -50,6 +52,7 @@ fun VehicleDetailsScreen(
             when (effect) {
                 is VehicleDetailsEffect.ShowEdit -> onShowEdit(effect.vehicleId)
                 is VehicleDetailsEffect.ShowLog -> onShowLog(effect.vehicleId)
+                is VehicleDetailsEffect.ShowLogDistance -> onShowLogDistance(effect.vehicleId)
             }
         }
     }
@@ -60,6 +63,7 @@ fun VehicleDetailsScreen(
         deviceTimeZone = deviceTimeZone,
         onEdit = { processor.dispatch(VehicleDetailsIntent.EditClicked) },
         onViewLog = { processor.dispatch(VehicleDetailsIntent.ViewLogClicked) },
+        onLogDistance = { processor.dispatch(VehicleDetailsIntent.LogDistanceClicked) },
         onBack = onBack,
     )
 }
@@ -72,6 +76,7 @@ fun VehicleDetailsContent(
     deviceTimeZone: DeviceTimeZone,
     onEdit: () -> Unit,
     onViewLog: () -> Unit,
+    onLogDistance: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Read on every composition so a change of device locale shows the new separators.
@@ -108,6 +113,10 @@ fun VehicleDetailsContent(
                                 style = MaterialTheme.typography.headlineMedium,
                                 modifier = Modifier.testTag("current_odometer"),
                             )
+                            Button(
+                                onClick = onLogDistance,
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("log_distance"),
+                            ) { Text("Log distance") }
                             Text(
                                 "Recent activity",
                                 style = MaterialTheme.typography.titleMedium,

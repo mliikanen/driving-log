@@ -25,9 +25,11 @@ data class VehicleDetailsState(
 sealed interface VehicleDetailsIntent : ViewIntent {
     data object EditClicked : VehicleDetailsIntent
     data object ViewLogClicked : VehicleDetailsIntent
+    data object LogDistanceClicked : VehicleDetailsIntent
 }
 
 sealed interface VehicleDetailsEffect : SideEffect {
     data class ShowEdit(val vehicleId: String) : VehicleDetailsEffect
     data class ShowLog(val vehicleId: String) : VehicleDetailsEffect
+    data class ShowLogDistance(val vehicleId: String) : VehicleDetailsEffect
 }

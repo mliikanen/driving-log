@@ -3,6 +3,8 @@ package com.mikonoma.drivinglog.vehicle.details
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.distanceEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -125,5 +127,54 @@ class VehicleDetailsProcessorTest {
             dispatch(VehicleDetailsIntent.ViewLogClicked)
             expectSideEffect(VehicleDetailsEffect.ShowLog("v1"))
         }
+    }
+
+    @Test
+    fun logDistanceNavigatesToTheLogDistanceForm() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        processor().test {
+            dispatch(VehicleDetailsIntent.LogDistanceClicked)
+            expectSideEffect(VehicleDetailsEffect.ShowLogDistance("v1"))
+        }
+    }
+
+    @Test
+    fun theCurrentOdometerIncludesDistanceEntries() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(distanceEvent("d2", 300, 20_000), distanceEvent("d1", 200, 30_000), initialEvent("i", 100, 45_200_000)),
+        )
+
+        assertEquals(Distance(45_250_000), processor().state.currentOdometer)
+    }
+
+    @Test
+    fun theRecentEventsMixDistanceEntriesAndTheInitialEventNewestFirst() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(distanceEvent("d2", 300, 20_000, loggedOdometer = 45_250_000), distanceEvent("d1", 200, 30_000), initialEvent("i", 100, 45_200_000)),
+        )
+
+        val recent = processor().state.recentEvents
+
+        assertEquals(listOf("d2", "d1", "i"), recent.map { it.id })
+        assertTrue(recent[0] is VehicleEvent.DistanceEntry)
+        assertEquals(Distance(45_250_000), (recent[0] as VehicleEvent.DistanceEntry).loggedOdometer)
+    }
+
+    @Test
+    fun aBackdatedEntryIsShownInItsChronologicalPlaceWithinTheFiveNewest() {
+        repository.seedVehicle("v1", "Family car")
+        // The repository returns the log newest first by time: the backdated entry "old" (time 150) was added last.
+        val newestFirst = listOf(
+            distanceEvent("e5", 600, 1_000), distanceEvent("e4", 500, 1_000), distanceEvent("e3", 400, 1_000),
+            distanceEvent("e2", 300, 1_000), distanceEvent("e1", 200, 1_000), distanceEvent("old", 150, 1_000),
+            initialEvent("i", 100, 45_200_000),
+        )
+        repository.seedEvents("v1", newestFirst)
+
+        assertEquals(listOf("e5", "e4", "e3", "e2", "e1"), processor().state.recentEvents.map { it.id })
     }
 }

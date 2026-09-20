@@ -77,7 +77,9 @@ entries are inserted before it. That is accepted: the count is what the user typ
 
 State (persisted for rotation and process death): the way (`TRIP_DISTANCE` or `NEW_ODOMETER`), the unit, one `OdometerEntry` per way,
 `occurredAtMillis`, and the current error. Kept out of the saved state (`@Transient`, rebuilt from the repository): the log events
-and the vehicle's unit. The known odometer and the live distance are computed from those on demand, not stored.
+and the vehicle's unit. The known odometer and the live distance are computed from those on demand, not stored. Kide's `restoreState` replaces the whole state, which would wipe the repository-derived fields if it ran after they loaded. In the app it does not:
+the host restores right after the processor is created and the repository data arrives asynchronously afterwards, and a processor test that defers the collection
+covers that order.
 
 - **One unit for both fields.** The user chooses kilometers or miles (segmented control) and whether tenths are included (switch); the four
   `OdometerUnit` values are the combinations, and the defaults are the vehicle's unit split into those two choices. Changing either

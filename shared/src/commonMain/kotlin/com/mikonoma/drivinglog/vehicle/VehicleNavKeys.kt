@@ -7,6 +7,9 @@ import com.mikonoma.drivinglog.vehicle.add.AddVehicleScreen
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleState
 import com.mikonoma.drivinglog.vehicle.details.VehicleDetailsProcessor
 import com.mikonoma.drivinglog.vehicle.details.VehicleDetailsScreen
+import com.mikonoma.drivinglog.vehicle.distance.LogDistanceProcessor
+import com.mikonoma.drivinglog.vehicle.distance.LogDistanceScreen
+import com.mikonoma.drivinglog.vehicle.distance.LogDistanceState
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleScreen
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleState
@@ -88,6 +91,7 @@ class VehicleDetailsNavKey(private val graph: AppGraph, val vehicleId: String = 
             deviceTimeZone = graph.deviceTimeZone,
             onShowEdit = { id -> ctx.navigateTo(EditVehicleNavKey(graph, id)) },
             onShowLog = { id -> ctx.navigateTo(VehicleLogNavKey(graph, id)) },
+            onShowLogDistance = { id -> ctx.navigateTo(LogDistanceNavKey(graph, id)) },
             onBack = ctx.onBack,
         )
     }
@@ -135,6 +139,28 @@ class VehicleLogNavKey(private val graph: AppGraph, val vehicleId: String = "") 
     }
 }
 
+class LogDistanceNavKey(private val graph: AppGraph, val vehicleId: String = "") : ScreenNavKey<LogDistanceProcessor> {
+    override val serialKey: String = "vehicle-log-distance"
+
+    override fun equals(other: Any?): Boolean = other is LogDistanceNavKey && other.vehicleId == vehicleId
+
+    override fun hashCode(): Int = 31 * serialKey.hashCode() + vehicleId.hashCode()
+
+    override fun toString(): String = "LogDistanceNavKey(" + vehicleId + ")"
+
+    override fun createProcessor(): LogDistanceProcessor = graph.logDistanceProcessorFactory.create(vehicleId)
+
+    override val stateSerializer: KSerializer<out ViewState> get() = LogDistanceState.serializer()
+
+    override fun saveArgs(): String = vehicleId
+
+    override fun restoreArgs(args: String): ScreenNavKey<LogDistanceProcessor> = LogDistanceNavKey(graph, args)
+
+    override val screen: @Composable (ScreenContext<LogDistanceProcessor>) -> Unit = { ctx ->
+        LogDistanceScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
+    }
+}
+
 private var registeredFor: AppGraph? = null
 
 /**
@@ -151,5 +177,6 @@ fun registerVehicleNavKeys(graph: AppGraph) {
     ScreenNavKeyRegistry.register(VehicleDetailsNavKey(graph))
     ScreenNavKeyRegistry.register(EditVehicleNavKey(graph))
     ScreenNavKeyRegistry.register(VehicleLogNavKey(graph))
+    ScreenNavKeyRegistry.register(LogDistanceNavKey(graph))
     registeredFor = graph
 }
