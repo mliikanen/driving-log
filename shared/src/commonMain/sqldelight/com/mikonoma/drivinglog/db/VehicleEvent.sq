@@ -1,31 +1,43 @@
 CREATE TABLE vehicle_event (
     id              TEXT    NOT NULL PRIMARY KEY,
     vehicle_id      TEXT    NOT NULL REFERENCES vehicle(id),
-    -- INITIAL_ODOMETER is the only type for now.
+    -- INITIAL_ODOMETER sets the odometer; DISTANCE adds a distance to it.
     type            TEXT    NOT NULL,
+    -- The instant, in epoch milliseconds. All ordering and derivation use it.
     occurred_at     INTEGER NOT NULL,
-    -- Nullable: future event types may not carry a reading.
+    -- The reading this event sets. Null unless the event sets the odometer (INITIAL_ODOMETER).
     odometer_meters INTEGER,
-    created_at      INTEGER NOT NULL
+    created_at      INTEGER NOT NULL,
+    -- DISTANCE: the distance, in whole meters, added to the odometer.
+    distance_meters INTEGER,
+    -- DISTANCE logged by odometer: the count the user typed. Provenance for the log row only, never used to derive an odometer.
+    logged_odometer_meters INTEGER,
+    -- The IANA time zone the moment was entered in and its UTC offset then. Null for events from before zones were stored.
+    occurred_zone   TEXT,
+    occurred_offset_seconds INTEGER
 );
 
 CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
 
 -- The log is append-only: there is deliberately no update or delete query for events.
 insertEvent:
-INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
--- Newest first; events with the same time: the one added last comes first.
+insertDistanceEntry:
+INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, created_at, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
+VALUES (?, ?, 'DISTANCE', ?, ?, ?, ?, ?, ?);
+
+-- Newest first by instant; events with the same instant: the one added last comes first.
 selectRecentEvents:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds
 FROM vehicle_event
 WHERE vehicle_id = ?
 ORDER BY occurred_at DESC, rowid DESC
 LIMIT ?;
 
 selectLog:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds
 FROM vehicle_event
 WHERE vehicle_id = ?
 ORDER BY occurred_at DESC, rowid DESC;

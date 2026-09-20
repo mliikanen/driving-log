@@ -85,6 +85,7 @@ class VehicleDetailsNavKey(private val graph: AppGraph, val vehicleId: String = 
         VehicleDetailsScreen(
             processor = ctx.processor,
             deviceLocale = graph.deviceLocale,
+            deviceTimeZone = graph.deviceTimeZone,
             onShowEdit = { id -> ctx.navigateTo(EditVehicleNavKey(graph, id)) },
             onShowLog = { id -> ctx.navigateTo(VehicleLogNavKey(graph, id)) },
             onBack = ctx.onBack,
@@ -130,7 +131,7 @@ class VehicleLogNavKey(private val graph: AppGraph, val vehicleId: String = "") 
     override fun restoreArgs(args: String): ScreenNavKey<VehicleLogProcessor> = VehicleLogNavKey(graph, args)
 
     override val screen: @Composable (ScreenContext<VehicleLogProcessor>) -> Unit = { ctx ->
-        VehicleLogScreen(ctx.processor, graph.deviceLocale, onBack = ctx.onBack)
+        VehicleLogScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
     }
 }
 

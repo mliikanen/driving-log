@@ -23,7 +23,8 @@ SELECT id, name, license_plate, odometer_unit, created_at
 FROM vehicle
 ORDER BY created_at, rowid;
 
--- The current odometer is derived from the log: the newest event that carries a reading.
+-- The current odometer is derived from the log: the latest event that sets the odometer (ordered by instant, then insertion),
+-- plus the distance of every DISTANCE event after it. Distance entries dated before that event do not count.
 selectVehicleDetails:
 SELECT
     v.id,
@@ -32,10 +33,16 @@ SELECT
     v.odometer_unit,
     v.created_at,
     (
-        SELECT e.odometer_meters
-        FROM vehicle_event e
-        WHERE e.vehicle_id = v.id AND e.odometer_meters IS NOT NULL
-        ORDER BY e.occurred_at DESC, e.rowid DESC
+        SELECT CAST(b.odometer_meters + COALESCE((
+            SELECT SUM(d.distance_meters)
+            FROM vehicle_event d
+            WHERE d.vehicle_id = v.id
+              AND d.type = 'DISTANCE'
+              AND (d.occurred_at > b.occurred_at OR (d.occurred_at = b.occurred_at AND d.rowid > b.rowid))
+        ), 0) AS INTEGER)
+        FROM vehicle_event b
+        WHERE b.vehicle_id = v.id AND b.odometer_meters IS NOT NULL
+        ORDER BY b.occurred_at DESC, b.rowid DESC
         LIMIT 1
     ) AS current_odometer_meters
 FROM vehicle v

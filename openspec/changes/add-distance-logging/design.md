@@ -112,9 +112,12 @@ time that does not exist (a daylight saving gap) is resolved forward and one tha
 the stored offset records what was chosen.
 
 **Pickers.** Material 3 `DatePicker` in a `DatePickerDialog`, and `TimePicker` in an `AlertDialog`, both in common code. The date picker reports midnight UTC of the
-chosen day, read as a `LocalDate` in UTC and combined with the picked hour and minute. The time zone is chosen from a dialog that lists
-`TimeZone.availableZoneIds` sorted, with a search field that filters by case-insensitive substring of the id; each row shows the id and its current UTC
-offset. The picker shows the device zone first when unfiltered.
+chosen day, read as a `LocalDate` in UTC and combined with the picked hour and minute. The time zone is chosen from a dialog listing the
+zones from kotlinx-datetime's `TimeZone.availableZoneIds` (common code; on Android it is the runtime's `java.time` list, 604 ids on the JDK used here, and on iOS
+the Apple implementation, not checkable on this machine). That raw list mixes 488 `Continent/City` names with about 116 legacy aliases and abbreviations
+(`Brazil/East`, `CET`, `CST6CDT`, `Canada/Eastern`, `Etc/...`), so the dialog shows only ids of the form `Continent/City` plus `UTC`, plus the device's own zone id
+whatever it looks like. A search field filters by case-insensitive substring of the id; each row shows the id and its current UTC offset. The device zone is first
+when unfiltered. Any stored id still renders, because rendering uses the stored offset.
 
 ### 6. Validation
 
@@ -175,7 +178,7 @@ database is created at version 2 with the same tables.
   and fall back to processor-level tests if a picker cannot be driven reliably.
 - [Time zone and daylight saving edge cases when combining a picked day and time] → One conversion function with tests around a daylight saving change;
   stored values are epoch milliseconds either way.
-- [The zone list is long, and platforms can differ in which zone ids they know] → Searchable list of `TimeZone.availableZoneIds`; a stored id that a device does not know still renders, because rendering uses the stored offset, not the id.
+- [The zone list is long, platforms can differ in which zone ids they know, and the raw list has legacy aliases] → Filter to `Continent/City` plus UTC and the device zone, searchable; a stored id that a device does not know still renders, because rendering uses the stored offset, not the id.
 - [Storing both an id and an offset could disagree after a time zone rules update] → They are both facts about the moment when it was entered; rendering uses only the offset, so nothing changes silently.
 - [Events written before this change have no zone] → Shown in the device's zone with no zone name; only test builds have such data.
 - [A typed count in an older entry can differ from the odometer derived at its time after earlier entries are added] → Accepted, documented in decision 3.

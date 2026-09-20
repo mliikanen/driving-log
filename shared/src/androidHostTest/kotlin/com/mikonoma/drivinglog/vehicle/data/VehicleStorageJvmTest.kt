@@ -37,6 +37,7 @@ class VehicleStorageJvmTest {
         clock = FakeClock(Instant.fromEpochMilliseconds(1_700_000_000_000)),
         newId = generateSequence(1) { it + 1 }.map { "id-$it" }.iterator().let { ids -> { ids.next() } },
         dispatcher = UnconfinedTestDispatcher(),
+        deviceTimeZone = com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone(),
     )
 
     @Test

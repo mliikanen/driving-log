@@ -8,12 +8,15 @@ import com.mikonoma.drivinglog.db.SelectLog
 import com.mikonoma.drivinglog.db.SelectRecentEvents
 import com.mikonoma.drivinglog.db.SelectVehicleDetails
 import com.mikonoma.drivinglog.db.SelectVehicles
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,6 +29,7 @@ class SqlDelightVehicleRepository(
     private val clock: Clock,
     private val newId: () -> String,
     private val dispatcher: CoroutineDispatcher,
+    private val deviceTimeZone: DeviceTimeZone,
 ) : VehicleRepository {
 
     private val vehicles get() = database.vehicleQueries
@@ -51,15 +55,42 @@ class SqlDelightVehicleRepository(
         unit: OdometerUnit,
         initialOdometer: Distance,
     ): String = withContext(dispatcher) {
-        val now = clock.now().toEpochMilliseconds()
+        val instant = clock.now()
+        val now = instant.toEpochMilliseconds()
+        // The initial odometer event happens now, in the zone the device is in now.
+        val zone = ZonedMoment.of(instant, deviceTimeZone.current()).zone
         val vehicleId = newId()
         val eventId = newId()
         // One transaction: the vehicle and its initial event are both saved, or neither.
         database.transaction {
             vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now)
-            events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, now, initialOdometer.meters, now)
+            events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, now, initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
         }
         vehicleId
+    }
+
+    override suspend fun addDistanceEntry(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        distance: Distance,
+        loggedOdometer: Distance?,
+    ): String {
+        require(distance.meters > 0) { "A distance entry must be above zero" }
+        return withContext(dispatcher) {
+            val eventId = newId()
+            val zone = occurredAt.zone
+            events.insertDistanceEntry(
+                id = eventId,
+                vehicle_id = vehicleId,
+                occurred_at = occurredAt.instant.toEpochMilliseconds(),
+                created_at = clock.now().toEpochMilliseconds(),
+                distance_meters = distance.meters,
+                logged_odometer_meters = loggedOdometer?.meters,
+                occurred_zone = zone?.id,
+                occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+            )
+            eventId
+        }
     }
 
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?) {
@@ -70,6 +101,7 @@ class SqlDelightVehicleRepository(
 
     private companion object {
         const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
+        const val DISTANCE = "DISTANCE"
     }
 
     private fun SelectVehicles.toDomain() = Vehicle(
@@ -91,18 +123,39 @@ class SqlDelightVehicleRepository(
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )
 
-    private fun SelectRecentEvents.toDomain(): VehicleEvent? = eventOf(id, type, occurred_at, odometer_meters)
+    private fun SelectRecentEvents.toDomain(): VehicleEvent? =
+        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
 
-    private fun SelectLog.toDomain(): VehicleEvent? = eventOf(id, type, occurred_at, odometer_meters)
+    private fun SelectLog.toDomain(): VehicleEvent? =
+        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
 
     /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. */
-    private fun eventOf(id: String, type: String, occurredAt: Long, odometerMeters: Long?): VehicleEvent? =
-        when (type) {
+    private fun eventOf(
+        id: String,
+        type: String,
+        occurredAt: Long,
+        odometerMeters: Long?,
+        distanceMeters: Long?,
+        loggedOdometerMeters: Long?,
+        zoneId: String?,
+        offsetSeconds: Long?,
+    ): VehicleEvent? {
+        // Events from before time zones were stored have neither column and are shown in the device's zone.
+        val zone = if (zoneId != null && offsetSeconds != null) EventZone(zoneId, offsetSeconds.toInt()) else null
+        val moment = ZonedMoment(Instant.fromEpochMilliseconds(occurredAt), zone)
+        return when (type) {
             INITIAL_ODOMETER -> VehicleEvent.InitialOdometer(
                 id = id,
-                occurredAt = Instant.fromEpochMilliseconds(occurredAt),
+                occurredAt = moment,
                 reading = Distance(requireNotNull(odometerMeters) { "Initial odometer event without a reading" }),
+            )
+            DISTANCE -> VehicleEvent.DistanceEntry(
+                id = id,
+                occurredAt = moment,
+                distance = Distance(requireNotNull(distanceMeters) { "Distance event without a distance" }),
+                loggedOdometer = loggedOdometerMeters?.let { Distance(it) },
             )
             else -> null
         }
+    }
 }

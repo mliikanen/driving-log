@@ -8,6 +8,8 @@ import com.mikonoma.drivinglog.vehicle.data.SqlDelightVehicleRepository
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.details.VehicleDetailsProcessor
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.domain.SystemDeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
@@ -24,6 +26,7 @@ import kotlin.uuid.Uuid
 @DependencyGraph(AppScope::class)
 interface AppGraph {
     val deviceLocale: DeviceLocale
+    val deviceTimeZone: DeviceTimeZone
     val vehicleRepository: VehicleRepository
 
     val vehicleListProcessor: VehicleListProcessor
@@ -47,15 +50,19 @@ interface AppGraph {
     @Provides
     fun provideDeviceLocale(): DeviceLocale = SystemDeviceLocale()
 
+    @Provides
+    fun provideDeviceTimeZone(): DeviceTimeZone = SystemDeviceTimeZone()
+
     @OptIn(ExperimentalUuidApi::class)
     @Provides
     @SingleIn(AppScope::class)
-    fun provideVehicleRepository(database: DrivingLogDatabase, clock: Clock): VehicleRepository =
+    fun provideVehicleRepository(database: DrivingLogDatabase, clock: Clock, deviceTimeZone: DeviceTimeZone): VehicleRepository =
         SqlDelightVehicleRepository(
             database = database,
             clock = clock,
             newId = { Uuid.random().toString() },
             dispatcher = ioDispatcher,
+            deviceTimeZone = deviceTimeZone,
         )
 }
 

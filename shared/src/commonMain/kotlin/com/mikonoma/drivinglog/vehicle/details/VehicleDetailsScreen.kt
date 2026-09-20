@@ -28,16 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.vehicle.domain.Distance
-import com.mikonoma.drivinglog.vehicle.format.formatDateTime
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
-import com.mikonoma.drivinglog.vehicle.ui.label
+import com.mikonoma.drivinglog.vehicle.ui.EventRow
 
 @Composable
 fun VehicleDetailsScreen(
     processor: VehicleDetailsProcessor,
     deviceLocale: DeviceLocale,
+    deviceTimeZone: DeviceTimeZone,
     onShowEdit: (String) -> Unit,
     onShowLog: (String) -> Unit,
     onBack: () -> Unit,
@@ -56,6 +57,7 @@ fun VehicleDetailsScreen(
     VehicleDetailsContent(
         state = state,
         deviceLocale = deviceLocale,
+        deviceTimeZone = deviceTimeZone,
         onEdit = { processor.dispatch(VehicleDetailsIntent.EditClicked) },
         onViewLog = { processor.dispatch(VehicleDetailsIntent.ViewLogClicked) },
         onBack = onBack,
@@ -67,12 +69,14 @@ fun VehicleDetailsScreen(
 fun VehicleDetailsContent(
     state: VehicleDetailsState,
     deviceLocale: DeviceLocale,
+    deviceTimeZone: DeviceTimeZone,
     onEdit: () -> Unit,
     onViewLog: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Read on every composition so a change of device locale shows the new separators.
     val symbols = deviceLocale.numberSymbols()
+    val deviceZone = deviceTimeZone.current()
 
     Scaffold(
         topBar = {
@@ -112,14 +116,7 @@ fun VehicleDetailsContent(
                         }
                     }
                     items(state.recentEvents, key = { it.id }) { event ->
-                        ListItem(
-                            headlineContent = { Text(event.label) },
-                            supportingContent = { Text(formatDateTime(event.occurredAt)) },
-                            trailingContent = event.odometer?.let { reading ->
-                                { Text(formatOdometer(reading, state.unit, symbols)) }
-                            },
-                            modifier = Modifier.testTag("recent_event"),
-                        )
+                        EventRow(event, state.unit, symbols, deviceZone, Modifier.testTag("recent_event"))
                         HorizontalDivider()
                     }
                     item {

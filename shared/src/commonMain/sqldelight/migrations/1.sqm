@@ -1,0 +1,5 @@
+-- Version 1 to 2: distance entries and the time zone a moment was entered in.
+ALTER TABLE vehicle_event ADD COLUMN distance_meters INTEGER;
+ALTER TABLE vehicle_event ADD COLUMN logged_odometer_meters INTEGER;
+ALTER TABLE vehicle_event ADD COLUMN occurred_zone TEXT;
+ALTER TABLE vehicle_event ADD COLUMN occurred_offset_seconds INTEGER;

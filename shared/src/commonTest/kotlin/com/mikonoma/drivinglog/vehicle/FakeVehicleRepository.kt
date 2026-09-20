@@ -1,15 +1,25 @@
 package com.mikonoma.drivinglog.vehicle
 
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.TimeZone
+
+/** A device time zone tests can set. */
+class FixedDeviceTimeZone(var zone: TimeZone = TimeZone.UTC) : DeviceTimeZone {
+    override fun current(): TimeZone = zone
+}
+
+data class DistanceCall(val vehicleId: String, val occurredAt: ZonedMoment, val distance: Distance, val loggedOdometer: Distance?)
 
 data class AddCall(val name: String, val licensePlate: String?, val unit: OdometerUnit, val initialOdometer: Distance)
 data class UpdateCall(val id: String, val name: String, val licensePlate: String?)
@@ -22,6 +32,8 @@ class FakeVehicleRepository : VehicleRepository {
 
     val addCalls = mutableListOf<AddCall>()
     val updateCalls = mutableListOf<UpdateCall>()
+    val distanceCalls = mutableListOf<DistanceCall>()
+    var distanceFailure: Throwable? = null
     var addFailure: Throwable? = null
     var updateFailure: Throwable? = null
 
@@ -62,7 +74,18 @@ class FakeVehicleRepository : VehicleRepository {
         addCalls += AddCall(name, licensePlate, unit, initialOdometer)
         val id = "v${++counter}"
         seedVehicle(id, name, licensePlate, unit)
-        seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", Instant.fromEpochMilliseconds(counter.toLong()), initialOdometer)))
+        seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
+        return id
+    }
+
+    override suspend fun addDistanceEntry(vehicleId: String, occurredAt: ZonedMoment, distance: Distance, loggedOdometer: Distance?): String {
+        distanceFailure?.let { throw it }
+        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer)
+        val id = "d${++counter}"
+        // Keep the log newest first by instant, the way the real repository returns it.
+        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer)
+        val updated = (listOf(entry) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant }
+        seedEvents(vehicleId, updated)
         return id
     }
 
@@ -74,4 +97,7 @@ class FakeVehicleRepository : VehicleRepository {
 }
 
 fun initialEvent(id: String, atMillis: Long, meters: Long) =
-    VehicleEvent.InitialOdometer(id, Instant.fromEpochMilliseconds(atMillis), Distance(meters))
+    VehicleEvent.InitialOdometer(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters))
+
+fun distanceEvent(id: String, atMillis: Long, meters: Long, loggedOdometer: Long? = null) =
+    VehicleEvent.DistanceEntry(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters), loggedOdometer?.let { Distance(it) })

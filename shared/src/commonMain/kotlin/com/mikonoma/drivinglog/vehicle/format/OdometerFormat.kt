@@ -3,7 +3,9 @@ package com.mikonoma.drivinglog.vehicle.format
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import kotlin.time.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -34,9 +36,23 @@ fun formatSteps(steps: Long, hasTenths: Boolean, symbols: NumberSymbols): String
 fun formatOdometer(distance: Distance, unit: OdometerUnit, symbols: NumberSymbols): String =
     formatSteps(unit.metersToSteps(distance.meters), unit.hasTenths, symbols) + " " + unit.abbreviation
 
-/** A fixed, locale-independent format: yyyy-MM-dd HH:mm in [zone]. */
-fun formatDateTime(instant: Instant, zone: TimeZone = TimeZone.currentSystemDefault()): String {
-    val t = instant.toLocalDateTime(zone)
+/** A fixed, locale-independent format: yyyy-MM-dd HH:mm. */
+fun formatLocalDateTime(t: LocalDateTime): String {
     fun two(n: Int) = n.toString().padStart(2, '0')
     return "${t.year}-${two(t.month.number)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}"
+}
+
+/** An instant as yyyy-MM-dd HH:mm in [zone]. */
+fun formatDateTime(instant: Instant, zone: TimeZone = TimeZone.currentSystemDefault()): String =
+    formatLocalDateTime(instant.toLocalDateTime(zone))
+
+/**
+ * A moment as it was entered: the wall-clock time in the zone it was entered in (the stored offset applied, so it reads the
+ * same whatever the device's zone is now), with that zone's id appended when it is not the device's current zone. A moment
+ * from before zones were stored is shown in the device zone, with no zone id.
+ */
+fun formatMoment(moment: ZonedMoment, deviceZone: TimeZone): String {
+    val zone = moment.zone ?: return formatDateTime(moment.instant, deviceZone)
+    val text = formatLocalDateTime(checkNotNull(moment.localDateTime))
+    return if (zone.id == deviceZone.id) text else "$text (${zone.id})"
 }

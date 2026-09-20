@@ -19,20 +19,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
-import com.mikonoma.drivinglog.vehicle.format.formatDateTime
-import com.mikonoma.drivinglog.vehicle.format.formatOdometer
-import com.mikonoma.drivinglog.vehicle.ui.label
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.ui.EventRow
 
 @Composable
-fun VehicleLogScreen(processor: VehicleLogProcessor, deviceLocale: DeviceLocale, onBack: () -> Unit) {
+fun VehicleLogScreen(processor: VehicleLogProcessor, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
     val state by processor.states.collectAsState()
-    VehicleLogContent(state, deviceLocale, onBack)
+    VehicleLogContent(state, deviceLocale, deviceTimeZone, onBack)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, onBack: () -> Unit) {
+fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
     val symbols = deviceLocale.numberSymbols()
+    val deviceZone = deviceTimeZone.current()
 
     Scaffold(
         topBar = {
@@ -48,14 +48,7 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, onBack
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
                 else -> LazyColumn(Modifier.fillMaxSize().testTag("log_list")) {
                     items(state.events, key = { it.id }) { event ->
-                        ListItem(
-                            headlineContent = { Text(event.label) },
-                            supportingContent = { Text(formatDateTime(event.occurredAt)) },
-                            trailingContent = event.odometer?.let { reading ->
-                                { Text(formatOdometer(reading, state.unit, symbols)) }
-                            },
-                            modifier = Modifier.testTag("log_event"),
-                        )
+                        EventRow(event, state.unit, symbols, deviceZone, Modifier.testTag("log_event"))
                         HorizontalDivider()
                     }
                 }

@@ -3,20 +3,27 @@ package com.mikonoma.drivinglog.vehicle.data
 import app.cash.sqldelight.db.SqlDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
 
 class FakeClock(var current: Instant = Instant.fromEpochMilliseconds(1_000)) : Clock {
     override fun now(): Instant = current
@@ -29,18 +36,20 @@ class SqlDelightVehicleRepositoryTest {
     private val database = DrivingLogDatabase(driver)
     private val clock = FakeClock()
     private var idCounter = 0
+    private val deviceTimeZone = com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone()
     private val repository = SqlDelightVehicleRepository(
         database = database,
         clock = clock,
         newId = { "id-${++idCounter}" },
         dispatcher = UnconfinedTestDispatcher(),
+        deviceTimeZone = deviceTimeZone,
     )
 
     @AfterTest
     fun close() = driver.close()
 
     private fun insertEvent(id: String, vehicleId: String, type: String, at: Long, meters: Long?) =
-        database.vehicleEventQueries.insertEvent(id, vehicleId, type, at, meters, at)
+        database.vehicleEventQueries.insertEvent(id, vehicleId, type, at, meters, at, null, null)
 
     private suspend fun addFamilyCar(unit: OdometerUnit = OdometerUnit.KILOMETERS, meters: Long = 45_200_000) =
         repository.addVehicle("Family car", "ABC-123", unit, Distance(meters))
@@ -57,7 +66,7 @@ class SqlDelightVehicleRepositoryTest {
         val log = repository.observeLog(id).first()
         val event = log.single() as VehicleEvent.InitialOdometer
         assertEquals(Distance(45_200_000), event.reading)
-        assertEquals(clock.current, event.occurredAt)
+        assertEquals(clock.current, event.occurredAt.instant)
     }
 
     @Test
@@ -207,5 +216,207 @@ class SqlDelightVehicleRepositoryTest {
         }
         repository.updateVehicle(id, "Estate car", null)
         assertEquals(listOf<String?>("Family car", "Estate car"), names)
+    }
+
+    // ---- Distance entries, time zones and the derived odometer
+
+    private val noon = Instant.parse("2026-09-20T12:00:00Z")
+    private val helsinki = TimeZone.of("Europe/Helsinki")
+    private val newYork = TimeZone.of("America/New_York")
+
+    private fun at(delta: kotlin.time.Duration, zone: TimeZone = TimeZone.UTC) = ZonedMoment.of(noon + delta, zone)
+
+    /** A vehicle whose initial odometer (45 200 km) happens at noon UTC. */
+    private suspend fun vehicleAtNoon(): String {
+        clock.current = noon
+        return repository.addVehicle("Family car", null, OdometerUnit.KILOMETERS, Distance(45_200_000))
+    }
+
+    private suspend fun assertCurrentOdometer(id: String, meters: Long) {
+        val fromSql = repository.observeVehicle(id).first()?.currentOdometer
+        assertEquals(Distance(meters), fromSql)
+        // The SQL derivation and the pure function must agree on the same log.
+        assertEquals(currentOdometer(repository.observeLog(id).first().reversed()), fromSql)
+    }
+
+    @Test
+    fun theSchemaIsVersionTwo() {
+        assertEquals(2L, DrivingLogDatabase.Schema.version)
+    }
+
+    @Test
+    fun theInitialEventTakesTheDeviceZoneAtTheTimeOfAdding() = runTest {
+        deviceTimeZone.zone = helsinki
+        val id = vehicleAtNoon()
+
+        val event = repository.observeLog(id).first().single()
+
+        assertEquals(EventZone("Europe/Helsinki", 3 * 3600), event.occurredAt.zone)
+        assertEquals(noon, event.occurredAt.instant)
+    }
+
+    @Test
+    fun theInitialEventFollowsTheDeviceZoneOfTheDayItIsAdded() = runTest {
+        deviceTimeZone.zone = newYork
+        val id = vehicleAtNoon()
+        assertEquals(EventZone("America/New_York", -4 * 3600), repository.observeLog(id).first().single().occurredAt.zone)
+    }
+
+    @Test
+    fun aDistanceEntryIsAddedAndReadBackWithItsZone() = runTest {
+        val id = vehicleAtNoon()
+        val moment = at(2.hours, newYork)
+
+        val entryId = repository.addDistanceEntry(id, moment, Distance(30_000), null)
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertEquals(entryId, entry.id)
+        assertEquals(Distance(30_000), entry.distance)
+        assertEquals(null, entry.loggedOdometer)
+        assertEquals(moment, entry.occurredAt)
+        assertEquals(EventZone("America/New_York", -4 * 3600), entry.occurredAt.zone)
+    }
+
+    @Test
+    fun anEntryLoggedByOdometerKeepsTheTypedCount() = runTest {
+        val id = vehicleAtNoon()
+
+        repository.addDistanceEntry(id, at(1.hours), Distance(50_000), loggedOdometer = Distance(45_250_000))
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertEquals(Distance(50_000), entry.distance)
+        assertEquals(Distance(45_250_000), entry.loggedOdometer)
+        // The typed count is provenance only: the odometer is still the baseline plus the distance.
+        assertCurrentOdometer(id, 45_250_000)
+    }
+
+    @Test
+    fun aZoneTheDeviceDoesNotKnowIsStoredAndReadBackExactly() = runTest {
+        val id = vehicleAtNoon()
+        val moment = ZonedMoment(noon + 1.hours, EventZone("Mars/Olympus_Mons", 5 * 3600 + 1800))
+
+        repository.addDistanceEntry(id, moment, Distance(1_000), null)
+
+        assertEquals(moment, repository.observeLog(id).first().first().occurredAt)
+    }
+
+    @Test
+    fun aMomentWithoutAZoneIsStoredWithoutOne() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, ZonedMoment(noon + 1.hours), Distance(1_000), null)
+        assertNull(repository.observeLog(id).first().first().occurredAt.zone)
+    }
+
+    @Test
+    fun aLegacyEventWithoutAZoneReadsBackWithoutOne() = runTest {
+        val id = vehicleAtNoon()
+        insertEvent("legacy", id, "INITIAL_ODOMETER", noon.toEpochMilliseconds() - 1, 5)
+        assertNull(repository.observeLog(id).first().last().occurredAt.zone)
+    }
+
+    @Test
+    fun aDistanceEntryMustBeAboveZero() = runTest {
+        val id = vehicleAtNoon()
+        assertFails { repository.addDistanceEntry(id, at(1.hours), Distance.ZERO, null) }
+        assertEquals(1, repository.observeLog(id).first().size)
+    }
+
+    @Test
+    fun entriesAreOrderedByInstantWhateverTheZoneOrTheOrderTheyWereAdded() = runTest {
+        val id = vehicleAtNoon()
+        // 15:00 Helsinki is 12:00 UTC (noon); 08:30 New York is 12:30 UTC. Added in the opposite order.
+        val newYorkEntry = repository.addDistanceEntry(id, ZonedMoment.of(noon + 30.minutes, newYork), Distance(1_000), null)
+        val helsinkiEntry = repository.addDistanceEntry(id, ZonedMoment.of(noon + 1.minutes, helsinki), Distance(2_000), null)
+
+        val ids = repository.observeLog(id).first().map { it.id }
+
+        assertEquals(listOf(newYorkEntry, helsinkiEntry), ids.take(2))
+    }
+
+    @Test
+    fun aBackdatedEntryLandsInItsChronologicalPlace() = runTest {
+        val id = vehicleAtNoon()
+        val today = repository.addDistanceEntry(id, at(5.hours), Distance(1_000), null)
+        val yesterday = repository.addDistanceEntry(id, at((-24).hours + 5.hours), Distance(2_000), null)
+
+        val ids = repository.observeLog(id).first().map { it.id }
+
+        // Newest first: today's entry, the initial event (noon), then yesterday's entry that was added last.
+        assertEquals(today, ids[0])
+        assertEquals(yesterday, ids.last())
+    }
+
+    @Test
+    fun entriesAtTheSameInstantComeLastAddedFirst() = runTest {
+        val id = vehicleAtNoon()
+        val first = repository.addDistanceEntry(id, at(1.hours), Distance(1_000), null)
+        val second = repository.addDistanceEntry(id, at(1.hours), Distance(2_000), null)
+
+        assertEquals(listOf(second, first), repository.observeRecentEvents(id, 2).first().map { it.id })
+    }
+
+    @Test
+    fun theRecentEventsIncludeDistanceEntries() = runTest {
+        val id = vehicleAtNoon()
+        for (i in 1..6) repository.addDistanceEntry(id, at(i.hours), Distance(i * 1_000L), null)
+
+        val recent = repository.observeRecentEvents(id, 5).first()
+
+        assertEquals(5, recent.size)
+        assertTrue(recent.all { it is VehicleEvent.DistanceEntry })
+        assertEquals(Distance(6_000), (recent.first() as VehicleEvent.DistanceEntry).distance)
+    }
+
+    @Test
+    fun currentOdometerOfAnInitialEventAlone() = runTest {
+        assertCurrentOdometer(vehicleAtNoon(), 45_200_000)
+    }
+
+    @Test
+    fun currentOdometerAddsEntriesAfterTheInitialEvent() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null)
+        repository.addDistanceEntry(id, at(2.hours), Distance(20_000), null)
+        repository.addDistanceEntry(id, at(3.hours), Distance(500), null)
+
+        assertCurrentOdometer(id, 45_250_500)
+    }
+
+    @Test
+    fun anEntryBeforeTheInitialEventNeverChangesTheCurrentOdometer() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, at((-7).hours * 24), Distance(30_000), null)
+        repository.addDistanceEntry(id, at(-1.minutes), Distance(20_000), null)
+
+        assertCurrentOdometer(id, 45_200_000)
+        assertEquals(3, repository.observeLog(id).first().size)
+    }
+
+    @Test
+    fun anEntryAtTheInitialInstantAddedAfterItCounts() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, at(0.minutes), Distance(30_000), null)
+
+        assertCurrentOdometer(id, 45_230_000)
+    }
+
+    @Test
+    fun aLaterOdometerSettingEventReplacesTheRunningTotalInSqlAndInTheFunction() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null)
+        insertEvent("second-baseline", id, "INITIAL_ODOMETER", (noon + 2.hours).toEpochMilliseconds(), 50_000_000)
+        repository.addDistanceEntry(id, at(3.hours), Distance(10_000), null)
+        repository.addDistanceEntry(id, at(90.minutes), Distance(7_000), null) // before the second baseline
+
+        assertCurrentOdometer(id, 50_010_000)
+    }
+
+    @Test
+    fun theSameDistanceInAnotherZoneChangesNothingAboutTheOdometer() = runTest {
+        val id = vehicleAtNoon()
+        repository.addDistanceEntry(id, at(1.hours, newYork), Distance(30_000), null)
+        repository.addDistanceEntry(id, at(2.hours, helsinki), Distance(20_000), null)
+
+        assertCurrentOdometer(id, 45_250_000)
     }
 }
