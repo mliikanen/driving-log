@@ -1,0 +1,93 @@
+# Rotating the device recreates the activity: every screen must survive it, keeping what the user typed.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+# The list.
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Family car
+- setOrientation: PORTRAIT
+- assertVisible: Family car
+# The details screen.
+- tapOn: Family car
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: vehicle_title
+    text: Family car
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+# The full log.
+- tapOn:
+    id: view_log
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Initial odometer
+- setOrientation: PORTRAIT
+- assertVisible: Initial odometer
+- tapOn:
+    id: back
+- tapOn:
+    id: back
+# The add form keeps what was typed, including the odometer entry and the chosen unit.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Half typed
+- hideKeyboard
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- tapOn:
+    id: odo_field
+- inputText: "123"
+- hideKeyboard
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: vehicle_name
+    text: Half typed
+- scrollUntilVisible:
+    element:
+      id: odo_field
+- assertVisible:
+    id: odo_field
+    text: "12.3"
+- assertVisible:
+    id: unit_KILOMETERS_TENTHS
+    checked: true
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: vehicle_name
+    text: Half typed
+- assertVisible:
+    id: odo_field
+    text: "12.3"
+# The edit form too.
+- tapOn:
+    id: back
+- tapOn: Family car
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: vehicle_name
+- eraseText: 20
+- inputText: Rotated name
+- hideKeyboard
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: vehicle_name
+    text: Rotated name
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: vehicle_name
+    text: Rotated name

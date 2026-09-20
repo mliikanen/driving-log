@@ -154,6 +154,12 @@ Android-only `HomeViewModel` from the stub (deleted, along with the `home` packa
   (an assisted factory for keys that carry a vehicle id), `saveArgs()` returns the vehicle id and `restoreArgs` builds a
   new key with it. The keys are registered once at startup, from a function in `shared` that both platform entry points
   call. Screens that open another screen build the next key from the graph they hold.
+- **Keys must be equal by value.** Kide keeps a screen's processor in a store keyed by the nav key, and after a rotation the
+  back stack is restored into new key instances. Keys with identity equality never match the old ones, so every rotation
+  would build a fresh processor and lose what the user typed (found in final verification). Each key therefore implements
+  `equals`, `hashCode` and `toString` from its `serialKey` and vehicle id, never the graph. Registration of the prototypes is
+  once per graph, because composition (and so registration) runs again whenever the activity is recreated and the registry
+  rejects a duplicate `serialKey`.
 - **State persistence is optional.** `stateSerializer` and `saveArgs` default to `null` in Kide 2.2.0. Only the add and edit
   forms provide `@Serializable` state (so typed text survives process death; repository-backed data is `@Transient`),
   which needs the kotlinx-serialization plugin. The list, details and log screens reload from the database.

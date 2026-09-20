@@ -48,5 +48,6 @@
 
 ## 7. Final verification
 
-- [ ] 7.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the Maestro suite and `openspec validate --all --strict`, and verify all pass
-- [ ] 7.2 Capture screenshots of every screen in light and dark mode and in landscape on the emulator and check for overlap, contrast, the number keyboard covering the odometer field or the form not scrolling, and status bar problems, fixing what is found; also set a Finnish per-app locale (`adb shell cmd locale set-app-locales com.mikonoma.drivinglog --locales fi-FI`) and verify the add screen preselects kilometers and readings show a comma decimal separator, then restore the locale
+- [x] 7.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [x] 7.2 Capture screenshots of every screen in light and dark mode and in landscape on the emulator and check for overlap, contrast, the number keyboard covering the odometer field or the form not scrolling, and status bar problems, fixing what is found; also set a Finnish per-app locale (`adb shell cmd locale set-app-locales com.mikonoma.drivinglog --locales fi-FI`) and verify the add screen preselects kilometers and readings show a comma decimal separator, then restore the locale
+- [x] 7.3 Fix the crash on rotation found in 7.2 (the nav keys were registered again each time the activity was recreated, and Kide rejects a duplicate `serialKey`) and add regression coverage: a JVM test that registers twice, and a Maestro flow that rotates the device on the details screen and on the add screen with typed values, and verify the rotation flow and the whole suite pass
