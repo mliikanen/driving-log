@@ -48,7 +48,7 @@ fun PictureField(
     color: Rgb,
     cropImage: DecodedImage?,
     onPhotoPicked: (PhotoResult) -> Unit,
-    onCropConfirmed: (CropRect) -> Unit,
+    onCropConfirmed: (CropRect, Int) -> Unit,
     onCropCancelled: () -> Unit,
     onRemove: () -> Unit,
     onRefresh: () -> Unit,

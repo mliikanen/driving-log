@@ -190,4 +190,135 @@ class CropStateTest {
         assertEquals(a, b)
         assertEquals(a.hashCode(), b.hashCode())
     }
+
+    // ---- The buttons: steps, moves, turning and saving
+
+    private fun aZoomedFrame() = landscape().zoomBy(2f, 2000f, 1500f).panBy(300f, 100f)
+
+    private fun assertNear(expected: Int, actual: Int) = assertTrue(kotlin.math.abs(expected - actual) <= 1, "$actual is $expected within a pixel")
+
+    private fun assertRectsWithinAPixel(expected: CropRect, actual: CropRect) {
+        assertTrue(kotlin.math.abs(expected.x - actual.x) <= 1 && kotlin.math.abs(expected.y - actual.y) <= 1 && kotlin.math.abs(expected.side - actual.side) <= 1, "$actual is $expected within a pixel")
+    }
+
+    @Test
+    fun aZoomInStepMakesTheFrameAFifthSmaller() {
+        assertEquals(3000f / CropState.ZOOM_STEP, landscape().zoomInStep().side, 0.01f)
+        assertEquals(CropRect(500 + 300, 0 + 300, 2400), landscape().zoomInStep().rect())
+    }
+
+    @Test
+    fun aZoomStepAndItsInverseReturnToTheSameFrameOnEveryShapeOfPhoto() {
+        for (start in listOf(landscape(), portrait(), square(), aZoomedFrame())) {
+            val zoomedIn = start.zoomInStep()
+            assertRectsWithinAPixel(start.rect(), zoomedIn.zoomOutStep().rect())
+        }
+    }
+
+    @Test
+    fun theZoomButtonsStopAtTheZoomLimits() {
+        var state = landscape()
+        repeat(60) { state = state.zoomInStep() }
+        assertEquals(state.maxZoom, state.zoom)
+        assertEquals(state, state.zoomInStep())
+        repeat(60) { state = state.zoomOutStep() }
+        assertEquals(1f, state.zoom)
+        assertEquals(state, state.zoomOutStep())
+        assertInside(state)
+    }
+
+    @Test
+    fun aPhotoSmallerThanTheLimitHasNoZoomButtonsEffect() {
+        val tiny = CropState.initial(100, 100)
+        assertEquals(tiny, tiny.zoomInStep())
+        assertEquals(tiny, tiny.zoomOutStep())
+    }
+
+    @Test
+    fun aMoveButtonMovesThePhotoAStepUnderTheFrame() {
+        val start = aZoomedFrame()
+        val step = start.side * CropState.MOVE_STEP
+        // The photo moves left, so the frame is further right over it.
+        assertNear(start.rect().x + step.toInt(), start.movePhoto(CropMove.Left).rect().x)
+        assertNear(start.rect().x - step.toInt(), start.movePhoto(CropMove.Right).rect().x)
+        assertNear(start.rect().y + step.toInt(), start.movePhoto(CropMove.Up).rect().y)
+        assertNear(start.rect().y - step.toInt(), start.movePhoto(CropMove.Down).rect().y)
+    }
+
+    @Test
+    fun theMoveButtonsStopAtEveryEdgeOnEveryShapeOfPhoto() {
+        for (start in listOf(landscape().zoomInStep(), portrait().zoomInStep(), square().zoomInStep(), landscape(), CropState.initial(100, 100))) {
+            for (direction in CropMove.values()) {
+                var state = start
+                repeat(200) { state = state.movePhoto(direction); assertInside(state) }
+            }
+        }
+    }
+
+    @Test
+    fun aLandscapePhotoAtTheSmallestZoomCannotBeMovedUpOrDownByTheButtons() {
+        assertEquals(landscape(), landscape().movePhoto(CropMove.Up))
+        assertEquals(landscape(), landscape().movePhoto(CropMove.Down))
+    }
+
+    @Test
+    fun aQuarterTurnSwapsTheSizeAndKeepsTheFrameOverTheSameContent() {
+        for (start in listOf(landscape(), portrait(), square(), aZoomedFrame(), portrait().zoomBy(3f, 500f, 3500f))) {
+            val before = start.rect()
+            val turned = start.rotatedClockwise()
+            assertEquals(start.imageHeight, turned.imageWidth)
+            assertEquals(start.imageWidth, turned.imageHeight)
+            // A point (x, y) of the photo is at (height - y, x) once it is turned: the square that began at x, y ends at height - y - side, x.
+            assertRectsWithinAPixel(CropRect(start.imageHeight - before.y - before.side, before.x, before.side), turned.rect())
+            assertInside(turned)
+        }
+    }
+
+    @Test
+    fun fourQuarterTurnsReturnTheFrame() {
+        for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(3f, 500f, 3500f))) {
+            val back = start.rotatedClockwise().rotatedClockwise().rotatedClockwise().rotatedClockwise()
+            assertEquals(start.imageWidth, back.imageWidth)
+            assertEquals(start.imageHeight, back.imageHeight)
+            assertRectsWithinAPixel(start.rect(), back.rect())
+        }
+    }
+
+    @Test
+    fun aTurnedFrameCanBeMovedAndZoomedAndStaysInside() {
+        var state = aZoomedFrame().rotatedClockwise()
+        for (direction in CropMove.values()) { state = state.movePhoto(direction).zoomInStep(); assertInside(state) }
+    }
+
+    @Test
+    fun aSavedFrameRestoresToAnEqualOne() {
+        for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(3f, 500f, 3500f).rotatedClockwise())) {
+            assertEquals(start, CropState.restore(start.toSaved(), start.imageWidth, start.imageHeight))
+        }
+    }
+
+    @Test
+    fun aSavedFrameIsRefusedForAPhotoOfAnotherSize() {
+        val saved = aZoomedFrame().toSaved()
+        assertEquals(null, CropState.restore(saved, 3000, 4000))
+        assertEquals(null, CropState.restore(saved, 4000, 3001))
+    }
+
+    @Test
+    fun nothingSavedOrAnUnreadableSavedValueGivesNoFrame() {
+        assertEquals(null, CropState.restore(null, 4000, 3000))
+        assertEquals(null, CropState.restore(listOf(1f, 2f), 4000, 3000))
+    }
+
+    @Test
+    fun aSavedFrameWithValuesOutsideTheLimitsIsBroughtInsideThem() {
+        val restored = CropState.restore(listOf(4000f, 3000f, 99999f, -50f, 99999f), 4000, 3000)!!
+        assertInside(restored)
+    }
+
+    @Test
+    fun resetIsTheStartAgain() {
+        assertEquals(landscape(), CropState.initial(4000, 3000))
+        assertTrue(aZoomedFrame() != landscape())
+    }
 }

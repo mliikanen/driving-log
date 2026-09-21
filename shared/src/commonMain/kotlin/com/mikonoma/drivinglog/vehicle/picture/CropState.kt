@@ -4,6 +4,9 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** The four ways the move buttons move the photo under the frame. */
+enum class CropMove { Left, Right, Up, Down }
+
 /** The part of an image a crop keeps: a square of [side] pixels whose top-left corner is ([x], [y]), in the image's pixels. */
 data class CropRect(val x: Int, val y: Int, val side: Int)
 
@@ -47,6 +50,33 @@ class CropState private constructor(
         return of(imageWidth, imageHeight, newZoom, left + newSide / 2, top + newSide / 2)
     }
 
+    /** Zooms in by one step, around the centre of the frame (the button "Zoom in"). Stops at [maxZoom]. */
+    fun zoomInStep(): CropState = zoomBy(ZOOM_STEP)
+
+    /** Zooms out by one step, around the centre of the frame (the button "Zoom out"). Stops at the smallest zoom. */
+    fun zoomOutStep(): CropState = zoomBy(1f / ZOOM_STEP)
+
+    /** Moves the photo under the frame by one step ([MOVE_STEP] of the frame's side) in [direction], stopping at the photo's edges. */
+    fun movePhoto(direction: CropMove): CropState {
+        val step = side * MOVE_STEP
+        // The photo moves one way, so the frame moves the other way over it.
+        return when (direction) {
+            CropMove.Left -> panBy(step, 0f)
+            CropMove.Right -> panBy(-step, 0f)
+            CropMove.Up -> panBy(0f, step)
+            CropMove.Down -> panBy(0f, -step)
+        }
+    }
+
+    /**
+     * The state for the photo turned a quarter turn clockwise, with the frame over the same part of it: the photo is then
+     * [imageHeight] wide and [imageWidth] high, the frame is the same size, and a point (x, y) of the photo is at (height - y, x).
+     */
+    fun rotatedClockwise(): CropState = of(imageHeight, imageWidth, zoom, imageHeight - centerY, centerX)
+
+    /** What [restore] needs to rebuild this state: the size of the photo, the zoom and the centre. */
+    fun toSaved(): List<Float> = listOf(imageWidth.toFloat(), imageHeight.toFloat(), zoom, centerX, centerY)
+
     /** The whole pixels the frame covers. Always inside the photo. */
     fun rect(): CropRect {
         val whole = side.roundToInt().coerceIn(1, shorterSide)
@@ -66,6 +96,23 @@ class CropState private constructor(
     companion object {
         /** The frame is never smaller than this many pixels of the photo (unless the photo is smaller). */
         const val MIN_SIDE = 128
+
+        /** One tap of "Zoom in" makes the frame's side 1/1.25 of what it was (a fifth smaller); "Zoom out" is the inverse. */
+        const val ZOOM_STEP = 1.25f
+
+        /** One tap of a move button moves the photo by a tenth of the frame's side. */
+        const val MOVE_STEP = 0.1f
+
+        /**
+         * The state [saved] (from [toSaved]) describes, or null when there is none or it is for a photo other than [imageWidth] by [imageHeight]
+         * (a saved crop means nothing on another photo). The values are brought back inside their limits, so a state never leaves them.
+         */
+        fun restore(saved: List<Float>?, imageWidth: Int, imageHeight: Int): CropState? {
+            if (saved == null || saved.size != 5) return null
+            if (saved[0].toInt() != imageWidth || saved[1].toInt() != imageHeight) return null
+            val start = initial(imageWidth, imageHeight)
+            return of(imageWidth, imageHeight, saved[2].coerceIn(1f, start.maxZoom), saved[3], saved[4])
+        }
 
         /** The start: the largest square, in the middle of the photo. */
         fun initial(imageWidth: Int, imageHeight: Int): CropState {

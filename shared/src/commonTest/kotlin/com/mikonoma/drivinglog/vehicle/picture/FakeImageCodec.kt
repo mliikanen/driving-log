@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.ImageBitmap
  */
 class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec {
 
-    class Encode(val bytes: ByteArray, val crop: CropRect, val sides: PictureSides)
+    class Encode(val bytes: ByteArray, val crop: CropRect, val sides: PictureSides, val quarterTurns: Int = 0)
 
     val encodes = mutableListOf<Encode>()
     var decodeCount = 0
@@ -22,6 +22,8 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
 
     private class Decoded(override val width: Int, override val height: Int) : DecodedImage {
         override fun toImageBitmap(): ImageBitmap = error("A fake image has no bitmap")
+        override fun turnedClockwise(quarterTurns: Int): DecodedImage =
+            if (quarterTurns.mod(2) == 0) this else Decoded(height, width)
     }
 
     override suspend fun decode(bytes: ByteArray): DecodedImage? {
@@ -29,10 +31,10 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
         return if (bytes.isEmpty()) null else Decoded(width, height)
     }
 
-    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture? {
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? {
         encodeFailure?.let { throw it }
         if (bytes.isEmpty()) return null
-        encodes += Encode(bytes, crop, sides)
+        encodes += Encode(bytes, crop, sides, quarterTurns)
         return EncodedPicture(version(crop, sides.small, 0), version(crop, sides.large, 1))
     }
 

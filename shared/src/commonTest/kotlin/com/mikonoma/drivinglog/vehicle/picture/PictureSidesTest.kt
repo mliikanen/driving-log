@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.vehicle.picture
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class PictureSidesTest {
 
@@ -50,5 +51,37 @@ class PictureSidesTest {
     fun aCropWithNoSizeIsRefused() {
         assertFailsWith<IllegalArgumentException> { pictureSides(0) }
         assertFailsWith<IllegalArgumentException> { pictureSides(-5) }
+    }
+
+    // ---- The scaling steps
+
+    @Test
+    fun aBigReductionIsMadeInHalvingSteps() {
+        assertEquals(listOf(1500, 750, 375, 256), downscaleSteps(3000, 256))
+        assertEquals(listOf(1024), downscaleSteps(2048, 1024))
+        assertEquals(listOf(512, 256), downscaleSteps(1024, 256))
+    }
+
+    @Test
+    fun noStepIsMoreThanAHalvingAndTheLastIsTheSizeWanted() {
+        for (from in listOf(257, 300, 511, 512, 513, 1000, 1023, 1024, 2047, 3072)) {
+            for (to in listOf(128, 256, 1024)) {
+                val steps = downscaleSteps(from, to)
+                if (from <= to) { assertEquals(emptyList(), steps); continue }
+                assertEquals(to, steps.last(), "$from to $to ends at the size wanted")
+                var before = from
+                for (step in steps) {
+                    assertTrue(step >= before / 2, "$before to $step is at most a halving")
+                    assertTrue(step < before, "$before to $step is a reduction")
+                    before = step
+                }
+            }
+        }
+    }
+
+    @Test
+    fun aPictureIsNeverEnlargedAndAnEqualSizeNeedsNoStep() {
+        assertEquals(emptyList(), downscaleSteps(200, 256))
+        assertEquals(emptyList(), downscaleSteps(256, 256))
     }
 }

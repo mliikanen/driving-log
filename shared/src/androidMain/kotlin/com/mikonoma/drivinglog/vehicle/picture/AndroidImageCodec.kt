@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.picture
 
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
@@ -23,14 +24,15 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
         override val width: Int get() = bitmap.width
         override val height: Int get() = bitmap.height
         override fun toImageBitmap(): ImageBitmap = bitmap.asImageBitmap()
+        override fun turnedClockwise(quarterTurns: Int): DecodedImage = if (quarterTurns.mod(4) == 0) this else Decoded(turned(bitmap, quarterTurns))
     }
 
     override suspend fun decode(bytes: ByteArray): DecodedImage? =
         withContext(dispatcher) { decodeBitmap(bytes)?.let(::Decoded) }
 
-    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture? =
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? =
         withContext(dispatcher) {
-            val bitmap = decodeBitmap(bytes) ?: return@withContext null
+            val bitmap = decodeBitmap(bytes)?.let { turned(it, quarterTurns) } ?: return@withContext null
             val side = crop.side.coerceIn(1, minOf(bitmap.width, bitmap.height))
             val x = crop.x.coerceIn(0, bitmap.width - side)
             val y = crop.y.coerceIn(0, bitmap.height - side)
@@ -81,13 +83,21 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
     /** Halves while at least twice the size wanted remains (a single big step aliases), then makes the last, smooth step. */
     private fun scaledTo(square: Bitmap, side: Int): Bitmap {
         var current = square
-        while (current.width >= side * 2) {
-            current = Bitmap.createScaledBitmap(current, current.width / 2, current.height / 2, true)
+        for (step in downscaleSteps(square.width, side)) {
+            current = Bitmap.createScaledBitmap(current, step, step, true)
         }
-        return if (current.width == side) current else Bitmap.createScaledBitmap(current, side, side, true)
+        return current
     }
 
     private companion object {
         const val WEBP_QUALITY = 80
+
+        /** [bitmap] turned [quarterTurns] quarter turns clockwise (the bitmap itself for none). */
+        fun turned(bitmap: Bitmap, quarterTurns: Int): Bitmap {
+            val turns = quarterTurns.mod(4)
+            if (turns == 0) return bitmap
+            val matrix = Matrix().apply { postRotate(90f * turns) }
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        }
     }
 }

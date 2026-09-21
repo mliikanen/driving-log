@@ -53,7 +53,7 @@ sealed interface EditVehicleIntent : ViewIntent {
 
     /** Rebuilds the preview and the crop image from the picture state, e.g. after a restore. */
     data object PictureRefresh : EditVehicleIntent
-    data class CropConfirmed(val crop: CropRect) : EditVehicleIntent
+    data class CropConfirmed(val crop: CropRect, val quarterTurns: Int = 0) : EditVehicleIntent
     data object CropCancelled : EditVehicleIntent
     data object PictureRemoved : EditVehicleIntent
     data object PictureErrorDismissed : EditVehicleIntent

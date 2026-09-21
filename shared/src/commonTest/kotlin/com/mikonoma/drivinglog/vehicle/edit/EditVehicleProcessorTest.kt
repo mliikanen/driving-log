@@ -217,6 +217,17 @@ class EditVehicleProcessorTest {
     }
 
     @Test
+    fun aTurnedCropReachesTheCodec() {
+        val processor = processor()
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+
+        processor.dispatch(EditVehicleIntent.CropConfirmed(crop, quarterTurns = 2))
+
+        assertEquals(2, codec.encodes.single().quarterTurns)
+        assertTrue(processor.state.picture.draft is PictureDraft.Pending)
+    }
+
+    @Test
     fun theFormStartsWithTheSavedPictureUnchangedAndItsPreview() {
         val pictureId = seedPicture()
 

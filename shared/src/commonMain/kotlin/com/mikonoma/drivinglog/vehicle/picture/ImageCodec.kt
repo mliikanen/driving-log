@@ -21,6 +21,24 @@ fun pictureSides(cropSide: Int): PictureSides {
     return PictureSides(min(SMALL_SIDE, cropSide), min(LARGE_SIDE, cropSide))
 }
 
+/**
+ * The sizes a square of [from] pixels is scaled through to reach [to] without aliasing: it is halved while at least twice the size wanted remains
+ * (a single big step samples too few source pixels and aliases), then made [to] in one last, smooth step. Empty when [from] is not larger than [to]
+ * (a picture is never enlarged). For 3000 to 256 that is 1500, 750, 375 and 256.
+ */
+fun downscaleSteps(from: Int, to: Int): List<Int> {
+    require(from > 0 && to > 0) { "A picture has a size" }
+    if (from <= to) return emptyList()
+    val steps = mutableListOf<Int>()
+    var current = from
+    while (current >= to * 2) {
+        current /= 2
+        steps += current
+    }
+    if (current != to) steps += to
+    return steps
+}
+
 /** The two encoded versions of one crop. */
 class EncodedPicture(val small: EncodedImage, val large: EncodedImage)
 
@@ -29,6 +47,9 @@ interface DecodedImage {
     val width: Int
     val height: Int
     fun toImageBitmap(): ImageBitmap
+
+    /** The photo turned [quarterTurns] quarter turns clockwise (0 gives this photo; a multiple of 4 too), so that a point (x, y) is at (height - y, x) after one turn. */
+    fun turnedClockwise(quarterTurns: Int): DecodedImage
 }
 
 /**
@@ -41,10 +62,11 @@ interface ImageCodec {
     suspend fun decode(bytes: ByteArray): DecodedImage?
 
     /**
-     * The [crop] of the photo scaled to each of [sides] and encoded in the platform's size-efficient format (lossy WebP where
+     * The [crop] of the photo, as turned [quarterTurns] quarter turns clockwise (the crop is in the pixels of the turned photo, which is
+     * what the crop screen showed), scaled to each of [sides] and encoded in the platform's size-efficient format (lossy WebP where
      * the platform can write it), or null when the bytes cannot be decoded.
      */
-    suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture?
+    suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int = 0): EncodedPicture?
 
     /**
      * The image reduced to at most [maxSide] pixels on its longer side, as ARGB pixels (the photo's orientation applied), for taking a color from it;

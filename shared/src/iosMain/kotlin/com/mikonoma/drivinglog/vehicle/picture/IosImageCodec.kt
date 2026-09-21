@@ -12,17 +12,22 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import platform.CoreGraphics.CGAffineTransformMake
 import platform.CoreGraphics.CGBitmapContextCreate
 import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
 import platform.CoreGraphics.CGColorSpaceRelease
+import platform.CoreGraphics.CGContextConcatCTM
 import platform.CoreGraphics.CGContextDrawImage
 import platform.CoreGraphics.CGContextRelease
+import platform.CoreGraphics.CGContextSetInterpolationQuality
+import platform.CoreGraphics.kCGInterpolationHigh
 import platform.CoreGraphics.CGImageAlphaInfo
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.UIKit.UIGraphicsImageRenderer
+import platform.UIKit.UIGraphicsImageRendererContext
 import platform.UIKit.UIGraphicsImageRendererFormat
 import platform.UIKit.UIImage
 import platform.UIKit.UIImagePNGRepresentation
@@ -40,6 +45,13 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
         // Skia decodes the PNG of the upright image; it applies no orientation of its own.
         override fun toImageBitmap(): ImageBitmap =
             Image.makeFromEncoded(requireNotNull(UIImagePNGRepresentation(image)).toByteArray()).toComposeImageBitmap()
+
+        override fun turnedClockwise(quarterTurns: Int): DecodedImage {
+            val turns = quarterTurns.mod(4)
+            if (turns == 0) return this
+            val turned = turnedImage(image, turns)
+            return Decoded(turned, turned.size.useContents { width.roundToInt() }, turned.size.useContents { height.roundToInt() })
+        }
     }
 
     override suspend fun decode(bytes: ByteArray): DecodedImage? = withContext(dispatcher) {
@@ -47,9 +59,9 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
         Decoded(upright, upright.size.useContents { width.roundToInt() }, upright.size.useContents { height.roundToInt() })
     }
 
-    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture? =
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? =
         withContext(dispatcher) {
-            val image = upright(bytes) ?: return@withContext null
+            val image = upright(bytes)?.let { if (quarterTurns.mod(4) == 0) it else turnedImage(it, quarterTurns) } ?: return@withContext null
             EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
         }
 
@@ -96,19 +108,39 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
     private fun encode(image: UIImage, crop: CropRect, side: Int): EncodedImage {
         val scale = side.toDouble() / crop.side
         val (width, height) = image.size.useContents { width to height }
-        val scaled = render(side.toDouble(), side.toDouble()) {
+        // High interpolation quality: a reduction from up to 3072 pixels to 256 aliases with the default one.
+        val scaled = renderImage(side.toDouble(), side.toDouble()) { context ->
+            CGContextSetInterpolationQuality(context?.CGContext, kCGInterpolationHigh)
             image.drawInRect(CGRectMake(-crop.x * scale, -crop.y * scale, width * scale, height * scale))
         }
         return EncodedImage(requireNotNull(UIImagePNGRepresentation(scaled)).toByteArray(), "png", side, side)
     }
 
-    private fun render(width: Double, height: Double, draw: () -> Unit): UIImage {
-        val format = UIGraphicsImageRendererFormat.defaultFormat().apply {
-            scale = 1.0 // pixels, not points
-            opaque = false
-        }
-        return UIGraphicsImageRenderer(size = CGSizeMake(width, height), format = format).imageWithActions { draw() }
+    private fun render(width: Double, height: Double, draw: () -> Unit): UIImage = renderImage(width, height) { draw() }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun renderImage(width: Double, height: Double, draw: (UIGraphicsImageRendererContext?) -> Unit): UIImage {
+    val format = UIGraphicsImageRendererFormat.defaultFormat().apply {
+        scale = 1.0 // pixels, not points
+        opaque = false
     }
+    return UIGraphicsImageRenderer(size = CGSizeMake(width, height), format = format).imageWithActions { draw(it) }
+}
+
+/** [image] turned [quarterTurns] quarter turns clockwise, one turn at a time: a point (x, y) goes to (height - y, x). */
+@OptIn(ExperimentalForeignApi::class)
+private fun turnedImage(image: UIImage, quarterTurns: Int): UIImage {
+    var current = image
+    repeat(quarterTurns.mod(4)) {
+        val (width, height) = current.size.useContents { width to height }
+        val source = current
+        current = renderImage(height, width) { context ->
+            CGContextConcatCTM(context?.CGContext, CGAffineTransformMake(0.0, 1.0, -1.0, 0.0, height, 0.0))
+            source.drawInRect(CGRectMake(0.0, 0.0, width, height))
+        }
+    }
+    return current
 }
 
 @OptIn(ExperimentalForeignApi::class)

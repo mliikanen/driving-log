@@ -71,12 +71,13 @@ class PictureDraftEditor(
     /**
      * The crop was confirmed: encode the two versions of [crop] into the pending area under the photo's pending id, drop the
      * photo and any earlier pending picture, and make the pending picture the draft. When the photo is gone or cannot be
-     * encoded the crop closes with the error and the draft is as it was.
+     * encoded the crop closes with the error and the draft is as it was. The [crop] is in the pixels of the photo turned [quarterTurns]
+     * quarter turns clockwise, which is how the crop screen showed it.
      */
-    suspend fun cropConfirmed(state: PictureEditState, crop: CropRect): PictureEditState {
+    suspend fun cropConfirmed(state: PictureEditState, crop: CropRect, quarterTurns: Int = 0): PictureEditState {
         val pendingId = state.cropSourceId ?: return state
         val source = store.readPendingSource(pendingId)
-        val encoded = source?.let { codec.encodeSquare(it, crop, pictureSides(crop.side)) }
+        val encoded = source?.let { codec.encodeSquare(it, crop, pictureSides(crop.side), quarterTurns) }
         if (encoded == null) {
             store.discardPending(pendingId)
             return state.copy(cropSourceId = null, error = PictureError.COULD_NOT_OPEN)

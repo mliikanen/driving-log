@@ -48,7 +48,7 @@ class AddVehicleProcessor(
         AddVehicleIntent.Save -> save()
         is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
         AddVehicleIntent.PictureRefresh -> pictureStep { it }
-        is AddVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop) }
+        is AddVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop, intent.quarterTurns) }
         AddVehicleIntent.CropCancelled -> pictureStep { editor.cropCancelled(it) }
         AddVehicleIntent.PictureRemoved -> pictureStep(ColorStep.ClearPictureColor) { editor.removed(it) }
         AddVehicleIntent.PictureErrorDismissed -> pictureStep { editor.errorDismissed(it) }

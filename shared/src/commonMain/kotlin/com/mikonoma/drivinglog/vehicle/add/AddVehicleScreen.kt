@@ -118,7 +118,7 @@ fun AddVehicleContent(
                 color = animatedColor,
                 cropImage = state.cropImage,
                 onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
-                onCropConfirmed = { onIntent(AddVehicleIntent.CropConfirmed(it)) },
+                onCropConfirmed = { crop, turns -> onIntent(AddVehicleIntent.CropConfirmed(crop, turns)) },
                 onCropCancelled = { onIntent(AddVehicleIntent.CropCancelled) },
                 onRemove = { onIntent(AddVehicleIntent.PictureRemoved) },
                 onRefresh = { onIntent(AddVehicleIntent.PictureRefresh) },

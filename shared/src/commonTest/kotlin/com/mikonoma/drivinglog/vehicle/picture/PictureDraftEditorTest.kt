@@ -145,6 +145,28 @@ class PictureDraftEditorTest {
     }
 
     @Test
+    fun theTurnsOfAConfirmedCropReachTheCodecAndNoTurnsMeansNone() = runTest {
+        val cropping = adding.photoPicked(start, PhotoResult.Chosen(photo))
+        adding.cropConfirmed(cropping, crop, quarterTurns = 3)
+        assertEquals(3, codec.encodes.single().quarterTurns)
+
+        codec.encodes.clear()
+        adding.cropConfirmed(adding.photoPicked(start, PhotoResult.Chosen(photo)), crop)
+        assertEquals(0, codec.encodes.single().quarterTurns)
+    }
+
+    @Test
+    fun aTurnedPhotoHasTheTurnedSizeForTheCropScreen() = runTest {
+        val decoded = codec.decode(photo)!!
+
+        assertEquals(codec.width, decoded.width)
+        assertEquals(codec.height, decoded.turnedClockwise(1).width)
+        assertEquals(codec.width, decoded.turnedClockwise(1).height)
+        assertEquals(codec.width, decoded.turnedClockwise(2).width)
+        assertEquals(codec.width, decoded.turnedClockwise(4).width)
+    }
+
+    @Test
     fun theVersionsAreEncodedFromTheCropAtTheSidesForItsSize() = runTest {
         val cropping = adding.photoPicked(start, PhotoResult.Chosen(photo))
 

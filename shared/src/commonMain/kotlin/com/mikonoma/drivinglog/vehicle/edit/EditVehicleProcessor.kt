@@ -70,7 +70,7 @@ class EditVehicleProcessor @AssistedInject constructor(
         EditVehicleIntent.Save -> save()
         is EditVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
         EditVehicleIntent.PictureRefresh -> pictureStep { it }
-        is EditVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop) }
+        is EditVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop, intent.quarterTurns) }
         EditVehicleIntent.CropCancelled -> pictureStep { editor.cropCancelled(it) }
         EditVehicleIntent.PictureRemoved -> pictureStep(ColorStep.ClearPictureColor) { editor.removed(it) }
         EditVehicleIntent.PictureErrorDismissed -> pictureStep { editor.errorDismissed(it) }

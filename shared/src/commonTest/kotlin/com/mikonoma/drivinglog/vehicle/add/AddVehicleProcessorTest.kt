@@ -582,6 +582,19 @@ class AddVehicleProcessorTest {
     }
 
     @Test
+    fun aTurnedCropReachesTheCodecAndItsPictureGivesTheColor() {
+        val processor = processor()
+        colors.color = Rgb(0x123456)
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+
+        processor.dispatch(AddVehicleIntent.CropConfirmed(crop, quarterTurns = 1))
+
+        assertEquals(1, codec.encodes.single().quarterTurns)
+        assertTrue(processor.state.picture.draft is PictureDraft.Pending)
+        assertEquals(Rgb(0x123456), processor.state.pictureColor)
+    }
+
+    @Test
     fun theFormStartsWithNoPicture() {
         val state = processor().state
 

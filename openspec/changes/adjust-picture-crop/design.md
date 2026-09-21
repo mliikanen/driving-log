@@ -6,6 +6,8 @@
 and `maxZoom` (a frame of at least 128 px) and the frame inside the photo, and `rect()` gives the `CropRect` the codec crops. `ImageCodec.encodeSquare` crops that square and scales it to 256 px and 1024 px (Android: halve while at least twice the size wanted
 remains, then one smooth step; iOS: one `drawInRect`). The crop screen's `crop` is a plain `remember(image)`.
 
+**Verified on the emulator (task 1.1):** with the crop screen open, panning the photo changes the frame area (mean pixel difference 22.9), and after rotating the device to landscape and back the frame area is identical to the start (difference 0.0): the crop is reset by a rotation.
+
 ## Decisions
 
 1. **Interaction: the photo moves and zooms behind a fixed square (kept; decided by the developer).** One model, one on-screen frame size, so the maths stays pixel-exact and testable; touch targets are the whole screen (no small handles on a phone); it is the pattern users know from avatar croppers, and it
