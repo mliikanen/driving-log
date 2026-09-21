@@ -31,7 +31,7 @@ workspace (`onFlowStart` runs before every flow), and a workspace directory has 
 
 ## Decisions
 
-**A manifest is a Maestro workspace directory.** `maestro/<area>/config.yaml` with `flows` and `executionOrder.flowsOrder` (setup first), and `tags` on flows for `--include-tags`. Alternatives: one root
+**A manifest is a Maestro workspace directory** (confirmed: Maestro's own way of grouping flows into a suite). `maestro/<area>/config.yaml` with `flows` and `executionOrder.flowsOrder` (setup first), and `tags` on flows for `--include-tags`. Alternatives: one root
 `config.yaml` with tags (no per-area setup, and one setup would upload every photo for every area: rejected), or a shell script per area that lists flows (the existing `run.sh` pattern; kept only for the areas that need
 `adb`). The first task is a spike that proves on Maestro 2.10.0 that `flowsOrder` runs a setup flow first, that `../subflows` and `../assets` paths resolve from a flow in a manifest directory, and that `maestro test maestro/<area>`
 reads `maestro/<area>/config.yaml`; if a piece does not work, the fallback is `run.sh` running `maestro test <area>/setup.yaml <area>/…` as one command (`maestro test` takes several flow files).
@@ -82,7 +82,3 @@ iOS has no counterpart of these tiers yet: its screens are covered by the shared
 
 Do the spike first. Write the document and the policy before deleting anything. Then move one manifest at a time: create its flows, run the manifest, delete the flows it replaces, and commit. The old `maestro test maestro/` command stops meaning "everything" when the flows move, so
 `CLAUDE.md` changes in the same step as the last move. Rollback is a revert of the moving commits.
-
-## Open Questions
-
-- Are the manifests as Maestro workspace directories what was meant by "manifests"? Assumed so (the closest thing Maestro has); a named list in one file would be the alternative and changes only the layout tasks.
