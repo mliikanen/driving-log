@@ -33,4 +33,4 @@
 ## 6. Finish
 
 - [x] 6.1 Update `maestro/assets/README.md` (which manifest's setup uploads which photo) and the layout description in `CLAUDE.md`; verify the documented commands by running each once
-- [ ] 6.2 Run `maestro/run.sh --all` and `picture theme clock` once (this change restructures the whole suite, so it is a major refactoring by the document's own definition), record the run time against the earlier 42 minutes, and run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`; verify all pass
+- [x] 6.2 Run `maestro/run.sh --all` and `picture theme clock` once (this change restructures the whole suite, so it is a major refactoring by the document's own definition), record the run time against the earlier 42 minutes, and run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`; verify all pass
