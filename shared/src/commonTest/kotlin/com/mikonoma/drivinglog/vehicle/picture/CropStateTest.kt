@@ -321,4 +321,111 @@ class CropStateTest {
         assertEquals(landscape(), CropState.initial(4000, 3000))
         assertTrue(aZoomedFrame() != landscape())
     }
+
+    // ---- Gestures: what a drag and a pinch do (the screen only passes what the fingers did)
+
+    /** A frame of 800 pixels at (140, 500), like a phone's crop screen. */
+    private val frame = CropFrame(left = 140f, top = 500f, side = 800f)
+
+    /** The point of the photo under the screen point ([x], [y]), for [state] drawn in [frame]. */
+    private fun photoPointAt(state: CropState, x: Float, y: Float): Pair<Float, Float> {
+        val scale = frame.side / state.side
+        return (state.centerX - state.side / 2 + (x - frame.left) / scale) to (state.centerY - state.side / 2 + (y - frame.top) / scale)
+    }
+
+    @Test
+    fun aDragMovesThePhotoWithTheFingers() {
+        val start = aZoomedFrame()
+        val scale = frame.side / start.side
+
+        val dragged = start.transformedBy(frame, 500f, 900f, panX = 100f, panY = -60f, zoom = 1f)
+
+        // The photo goes right and up with the fingers, so the frame goes left and down over it, by the drag divided by the scale.
+        assertEquals(start.centerX - 100f / scale, dragged.centerX, 0.01f)
+        assertEquals(start.centerY + 60f / scale, dragged.centerY, 0.01f)
+        assertEquals(start.zoom, dragged.zoom)
+    }
+
+    @Test
+    fun aDragFarBeyondThePhotoStopsAtItsEdges() {
+        for (start in listOf(aZoomedFrame(), portrait().zoomInStep(), landscape().zoomInStep())) {
+            for ((dx, dy) in listOf(5000f to 0f, -5000f to 0f, 0f to 5000f, 0f to -5000f, 5000f to 5000f)) {
+                assertInside(start.transformedBy(frame, 500f, 900f, dx, dy, 1f))
+            }
+        }
+    }
+
+    @Test
+    fun aPinchKeepsThePointUnderTheFingersUnderThem() {
+        for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(2f, 1500f, 2000f))) {
+            for (zoom in listOf(1.5f, 0.8f)) {
+                val x = 300f; val y = 800f
+                val before = photoPointAt(start, x, y)
+                val pinched = start.transformedBy(frame, x, y, 0f, 0f, zoom)
+                // Unless a limit stopped the zoom (or the photo's edge stopped the frame), the same point of the photo is still there.
+                if (pinched.zoom == start.zoom * zoom) {
+                    val after = photoPointAt(pinched, x, y)
+                    assertEquals(before.first, after.first, 1f)
+                    assertEquals(before.second, after.second, 1f)
+                }
+                assertInside(pinched)
+            }
+        }
+    }
+
+    @Test
+    fun aPinchInMakesTheFrameSmallerAndAPinchOutLarger() {
+        val start = aZoomedFrame()
+        assertTrue(start.transformedBy(frame, 500f, 900f, 0f, 0f, 1.5f).side < start.side)
+        assertTrue(start.transformedBy(frame, 500f, 900f, 0f, 0f, 0.8f).side > start.side)
+    }
+
+    @Test
+    fun aPinchStopsAtTheZoomLimits() {
+        var state = landscape()
+        repeat(40) { state = state.transformedBy(frame, 500f, 900f, 0f, 0f, 2f) }
+        assertEquals(state.maxZoom, state.zoom)
+        repeat(40) { state = state.transformedBy(frame, 500f, 900f, 0f, 0f, 0.5f) }
+        assertEquals(1f, state.zoom)
+        assertInside(state)
+    }
+
+    @Test
+    fun aGestureIsAppliedToTheStateItIsGivenSoAButtonBeforeItIsNotLost() {
+        val start = landscape()
+        val afterButton = start.zoomInStep()
+
+        val dragged = afterButton.transformedBy(frame, 500f, 900f, panX = 50f, panY = 0f, zoom = 1f)
+
+        // The drag starts from the zoomed frame the button made: it is still zoomed in, and it moved from where the button left it.
+        assertEquals(afterButton.zoom, dragged.zoom)
+        assertTrue(dragged.zoom > start.zoom)
+        assertTrue(dragged.centerX != afterButton.centerX)
+    }
+
+    @Test
+    fun aGestureThatDoesNothingChangesNothing() {
+        val start = aZoomedFrame()
+        assertEquals(start, start.transformedBy(frame, 500f, 900f, 0f, 0f, 1f))
+    }
+
+    @Test
+    fun theFrameIsTheLargestSquareInTheMiddleOfTheFreeSpaceKeepingTheMarginClear() {
+        // A free space of 1080 by 1500 pixels from (0, 200): the frame is limited by the width.
+        val portraitFrame = cropFrame(0f, 200f, 1080f, 1700f, margin = 60f)
+        assertEquals(960f, portraitFrame.side)
+        assertEquals(60f, portraitFrame.left)
+        assertEquals(200f + (1500f - 960f) / 2, portraitFrame.top)
+        // A wide, short free space (landscape): limited by the height, in the middle of the width.
+        val landscapeFrame = cropFrame(0f, 100f, 2000f, 700f, margin = 60f)
+        assertEquals(480f, landscapeFrame.side)
+        assertEquals(1000f - 240f, landscapeFrame.left)
+        assertEquals(100f + 60f, landscapeFrame.top)
+    }
+
+    @Test
+    fun theFrameIsNeverSmallerThanAPixelWhateverTheFreeSpace() {
+        assertEquals(1f, cropFrame(0f, 0f, 100f, 100f, margin = 60f).side)
+        assertEquals(1f, cropFrame(0f, 0f, 0f, 0f, margin = 60f).side)
+    }
 }

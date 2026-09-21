@@ -4,7 +4,21 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** The four ways the move buttons move the photo under the frame. */
+/** Where the frame is drawn on the screen: a square of [side] pixels whose top-left corner is ([left], [top]). */
+class CropFrame(val left: Float, val top: Float, val side: Float)
+
+/**
+ * The frame for a screen whose free space (what the controls leave) is the rectangle from ([spaceLeft], [spaceTop]) to ([spaceRight], [spaceBottom]): the
+ * largest square that keeps [margin] pixels clear of the space's edges, in the middle of it (never smaller than a pixel, so a tiny space cannot break the maths).
+ */
+fun cropFrame(spaceLeft: Float, spaceTop: Float, spaceRight: Float, spaceBottom: Float, margin: Float): CropFrame {
+    val side = max(1f, min(spaceRight - spaceLeft, spaceBottom - spaceTop) - 2 * margin)
+    val centerX = (spaceLeft + spaceRight) / 2
+    val centerY = (spaceTop + spaceBottom) / 2
+    return CropFrame(centerX - side / 2, centerY - side / 2, side)
+}
+
+/** The four ways the move buttons and the arrow keys move the photo under the frame. */
 enum class CropMove { Left, Right, Up, Down }
 
 /** The part of an image a crop keeps: a square of [side] pixels whose top-left corner is ([x], [y]), in the image's pixels. */
@@ -48,6 +62,19 @@ class CropState private constructor(
         val left = focusX - relativeX * newSide
         val top = focusY - relativeY * newSide
         return of(imageWidth, imageHeight, newZoom, left + newSide / 2, top + newSide / 2)
+    }
+
+    /**
+     * What a drag and a pinch do: the gesture moved the fingers' centre to ([centroidX], [centroidY]) on the screen, by ([panX], [panY]) pixels of the screen since
+     * the last event, and scaled by [zoom] (above 1 is fingers apart). The photo follows the fingers: it moves by the pan, in the photo's pixels the pan divided by
+     * the scale of [frame] (screen pixels per pixel of the photo), and the point of the photo under the fingers stays under them while zooming. This is the state the
+     * gesture is applied to, so a change by a button is never lost; the limits of [panBy] and [zoomBy] hold.
+     */
+    fun transformedBy(frame: CropFrame, centroidX: Float, centroidY: Float, panX: Float, panY: Float, zoom: Float): CropState {
+        val scale = frame.side / side // screen pixels per pixel of the photo
+        val focusX = centerX - side / 2 + (centroidX - frame.left) / scale
+        val focusY = centerY - side / 2 + (centroidY - frame.top) / scale
+        return panBy(-panX / scale, -panY / scale).zoomBy(zoom, focusX, focusY)
     }
 
     /** Zooms in by one step, around the centre of the frame (the button "Zoom in"). Stops at [maxZoom]. */

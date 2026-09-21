@@ -25,6 +25,9 @@
 - [x] 3.2 Add `maestro/picture/crop-controls.yaml` (a step of `picture/run.sh`): on the crop screen zoom in with the button, move with the buttons, rotate the photo, Reset, confirm, and rotate the device with the crop screen open (the crop screen stays open); verify it passes
 - [x] 3.3 Check by hand on the emulator (light and dark, portrait and landscape, with a large photo, with a tall photo and with a photo smaller than the minimum frame) that the buttons, the turn, the dimmed context and the saved crop after a device rotation work and look right, and that a tight crop of a photo with a small vehicle gives the picture and (with `add-vehicle-color`) the color the user expects; fix what looks wrong
 
+- [x] 3.4 Found by the developer's manual test: drag and pinch did nothing (the Scaffold's surface, laid over the canvas, took the touches). Move the gesture detector to the layer that holds both, and put the maths the gestures use in pure, tested functions (`CropState.transformedBy`, `cropFrame`): a drag moves the photo with the fingers by the drag over the scale, and stops at the edges; a pinch keeps the point under the fingers under them and stops at the zoom limits; a gesture applies to the state it is given (so a button's change is not lost); the frame is the largest square in the middle of the free space; verify by the unit tests in `CropStateTest`
+- [x] 3.5 Check the touch path on the emulator: `maestro/run.sh picture` step 7 opens the crop screen, swipes over the photo with `adb` and compares screenshots (the photo moved), then rotates the device and compares again (the dragged frame survived); verified to fail before the fix (difference 0.0) and pass after (80.3 and 0.0)
+
 ## 4. Final verification
 
 - [x] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (Maestro is not part of the final regression run; the `picture` group was run in 3.1 and 3.2)

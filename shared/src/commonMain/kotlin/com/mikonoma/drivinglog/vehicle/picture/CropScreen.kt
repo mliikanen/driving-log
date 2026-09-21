@@ -117,12 +117,29 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
     )
     // The free space the controls leave, in window coordinates: the frame is centred in it. The photo itself is drawn over the whole window.
     var freeSpace by remember { mutableStateOf<Rect?>(null) }
+    val latestCrop by rememberUpdatedState(crop)
+    val latestSpace by rememberUpdatedState(freeSpace)
+    val margin = with(LocalDensity.current) { 24.dp.toPx() }
+    /** Where the frame is drawn on a screen of [width] by [height]: in the free space (the whole screen until the controls have been measured). */
+    val frameFor: (Float, Float) -> CropFrame = { width, height ->
+        val space = latestSpace
+        if (space == null) cropFrame(0f, 0f, width, height, margin) else cropFrame(space.left, space.top, space.right, space.bottom, margin)
+    }
 
     // Two layers: the canvas fills the whole window (its black background and the photo reach every edge, behind the system bars), and above it a Scaffold
     // like every screen's: the app bar in the app's theme (back navigation cancels the crop, "Use photo" confirms it) and the buttons, kept clear of the
     // system bars and display cutouts by the safe drawing insets.
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        CropCanvas(Modifier.fillMaxSize(), bitmap, crop, frameColor, focus, controls, freeSpace, onGesture = ::update)
+    // The gestures are detected here, on the layer that holds both: the Scaffold's surface takes the touches that reach it before the canvas below could, but a parent still
+    // sees the ones no child consumed (a button consumes its own tap). The frame a gesture is applied to is read at each event, so a button's change is never lost.
+    Box(
+        Modifier.fillMaxSize().background(Color.Black).pointerInput(bitmap) {
+            detectTransformGestures { centroid, pan, zoom, _ ->
+                val frame = frameFor(size.width.toFloat(), size.height.toFloat())
+                update(latestCrop.transformedBy(frame, centroid.x, centroid.y, pan.x, pan.y, zoom))
+            }
+        },
+    ) {
+        CropCanvas(Modifier.fillMaxSize(), bitmap, crop, frameColor, focus, controls, frameFor)
         Scaffold(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets.safeDrawing,
@@ -179,18 +196,8 @@ private fun CropCanvas(
     frameColor: Color,
     focus: FocusRequester,
     controls: CropControls,
-    freeSpace: Rect?,
-    onGesture: (CropState) -> Unit,
+    frameFor: (Float, Float) -> CropFrame,
 ) {
-    val latest by rememberUpdatedState(crop)
-    val latestSpace by rememberUpdatedState(freeSpace)
-    val margin = with(LocalDensity.current) { 24.dp.toPx() }
-    /** The frame: a square centred in the free space (the whole canvas until the controls have been measured), [margin] clear of its edges. */
-    fun frameIn(canvas: Size): Rect {
-        val space = latestSpace ?: Rect(0f, 0f, canvas.width, canvas.height)
-        val side = max(1f, min(space.width, space.height) - 2 * margin)
-        return Rect(space.center.x - side / 2, space.center.y - side / 2, space.center.x + side / 2, space.center.y + side / 2)
-    }
     Canvas(
         modifier.testTag("crop_frame")
             .focusRequester(focus)
@@ -207,24 +214,12 @@ private fun CropCanvas(
                     else -> return@onKeyEvent false
                 }
                 true
-            }
-            .pointerInput(bitmap) {
-                detectTransformGestures { centroid, pan, zoom, _ ->
-                    // The frame as it is now: a button may have changed it since the gesture began.
-                    val current = latest
-                    val frame = frameIn(Size(size.width.toFloat(), size.height.toFloat()))
-                    val scale = frame.width / current.side // screen pixels per pixel of the photo
-                    // The photo point under the fingers stays under them while zooming.
-                    val focusX = current.centerX - current.side / 2 + (centroid.x - frame.left) / scale
-                    val focusY = current.centerY - current.side / 2 + (centroid.y - frame.top) / scale
-                    onGesture(current.panBy(-pan.x / scale, -pan.y / scale).zoomBy(zoom, focusX, focusY))
-                }
             },
     ) {
-        val frame = frameIn(size)
+        val frame = frameFor(size.width, size.height)
         val left = frame.left
         val top = frame.top
-        val side = frame.width
+        val side = frame.side
         val scale = side / crop.side // screen pixels per pixel of the photo
         val cropLeft = crop.centerX - crop.side / 2
         val cropTop = crop.centerY - crop.side / 2

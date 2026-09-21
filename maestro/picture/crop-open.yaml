@@ -1,0 +1,12 @@
+# Step 7 of run.sh: opens the crop screen and zooms in twice, so the photo can be dragged (run.sh then swipes over it with adb and compares screenshots).
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- setOrientation: PORTRAIT
+- tapOn:
+    id: add_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- assertVisible: Crop the photo
+- tapOn: Zoom in
+- tapOn: Zoom in

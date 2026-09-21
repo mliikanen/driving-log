@@ -1,0 +1,7 @@
+# Step 7 of run.sh: rotates the device to landscape and back with the crop screen open.
+appId: com.mikonoma.drivinglog
+---
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Crop the photo
+- setOrientation: PORTRAIT
+- assertVisible: Crop the photo

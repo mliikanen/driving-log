@@ -2,7 +2,7 @@
 # Runs the picture flows one step at a time and checks the files the app keeps in its private storage after each, over adb:
 # two files per picture (a small and a large one), both WebP, the small one 256 x 256 pixels and the large one at most
 # 1024 x 1024 and under 200 kB, the files of a replaced or removed picture gone, and nothing left after leaving the add screen
-# without saving; then the camera flow and the crop screen's controls. The photo they choose is uploaded once, by setup.yaml, at the start. Needs a running Android emulator or device with the debug
+# without saving; then the camera flow, the crop screen's controls and dragging on it. The photo they choose is uploaded once, by setup.yaml, at the start. Needs a running Android emulator or device with the debug
 # app installed (run it through ../run.sh picture, which also removes the photos of earlier runs).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -78,5 +78,20 @@ run_flow camera
 
 echo "== 6. the crop screen's controls"
 run_flow crop-controls
+
+echo "== 7. dragging the photo on the crop screen (needs a 1080 x 2400 screen: the swipe is in pixels)"
+shots="$(mktemp -d)"; trap 'rm -f "$config"; rm -rf "$shots"' EXIT
+run_flow crop-open
+$ADB exec-out screencap -p > "$shots/before.png"
+$ADB shell input swipe 200 1000 800 1000 300; sleep 1
+$ADB exec-out screencap -p > "$shots/dragged.png"
+moved="$(python3 png_diff.py "$shots/before.png" "$shots/dragged.png")"
+python3 -c "import sys; sys.exit(0 if float('$moved') > 5 else 1)" || { echo "FAIL: a drag did not move the photo (difference $moved)"; exit 1; }
+echo "ok   a drag moved the photo (difference $moved)"
+run_flow crop-rotate-device; sleep 1
+$ADB exec-out screencap -p > "$shots/rotated.png"
+kept="$(python3 png_diff.py "$shots/dragged.png" "$shots/rotated.png")"
+python3 -c "import sys; sys.exit(0 if float('$kept') < 1 else 1)" || { echo "FAIL: the dragged frame did not survive a rotation of the device (difference $kept)"; exit 1; }
+echo "ok   the dragged frame survived a rotation of the device (difference $kept)"
 
 echo "picture files: all checks passed"
