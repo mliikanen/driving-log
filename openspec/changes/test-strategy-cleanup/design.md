@@ -64,8 +64,11 @@ That leaves twelve journey flows in place of 23 (`vehicles` 2, `distance` 1, `re
 **The regression policy is written in three places, and they agree.** `docs/test-strategy.md` (the reasoning), `CLAUDE.md` (the commands and the instruction), and `openspec/config.yaml` under `rules.tasks` (so future `/opsx:propose` tasks do not ask for the whole suite). The existing bullet in
 `CLAUDE.md` ("run the full suite only when getting ready to archive") is replaced. A major refactoring is one that the developer names as such; the agent does not decide alone that a change is major.
 
-**Jupiter.** The request names "Jupiter Unit". The shared logic is tested with `kotlin.test` in `commonTest` so it also runs on iOS, and Jupiter is JVM-only. The document therefore says: pure unit tests are `kotlin.test` (running on JUnit under Android host tests); JUnit Jupiter is allowed
-in JVM-only source sets where a test needs its features, and nothing is migrated. See Open Questions.
+**Jupiter: not used in shared code.** Decided: the shared logic is tested with `kotlin.test` in `commonTest`, so it also runs on iOS (Jupiter is JVM-only). The document says pure unit tests are `kotlin.test` (running on JUnit under the Android host tests); nothing is migrated.
+
+**The platform split of the test kinds is written into the document.** Pure unit tests are shared (`commonTest`, run on Android host and iOS). Robolectric, Compose UI test and Roborazzi are Android/JVM-only tools, so the tiers that use them are Android tests, never `commonTest`.
+The composables and processors they exercise live in `shared`, which already has an `androidHostTest` source set, so the expected home of Compose integration and screenshot tests is `shared/src/androidHostTest` (they reach the shared screens directly); `androidApp` holds only tests of the shell (the activity, DI wiring), if any.
+iOS has no counterpart of these tiers yet: its screens are covered by the shared unit tests and, when an Xcode project exists, by an iOS-specific tier that its own change decides. Maestro flows are Android flows today. The document states this as the expected layout, to be confirmed by `add-compose-integration-tests`, which owns the actual source-set and dependency choices; none of it is added by this change.
 
 ## Risks / Trade-offs
 
@@ -83,4 +86,3 @@ Do the spike first. Write the document and the policy before deleting anything. 
 ## Open Questions
 
 - Are the manifests as Maestro workspace directories what was meant by "manifests"? Assumed so (the closest thing Maestro has); a named list in one file would be the alternative and changes only the layout tasks.
-- Jupiter: is `kotlin.test` for shared logic acceptable, with Jupiter allowed only in JVM-only source sets? Assumed so because the shared tests must also run on iOS.

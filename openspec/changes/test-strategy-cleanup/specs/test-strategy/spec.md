@@ -20,6 +20,10 @@ SHALL check the happy path of a feature end to end. The document SHALL state whi
 - **WHEN** a screen's reaction to an intent is checked (a field's error appears, a choice is kept)
 - **THEN** it is checked with the screen's processor (a Compose integration test once that kind exists, the processor's unit test until then), not by a flow
 
+#### Scenario: The document states the platform split
+- **WHEN** a developer reads where each kind of test lives
+- **THEN** the document says that pure unit tests are shared and run on every platform, that Robolectric-based tests (Compose integration and screenshot tests) are Android-only, and where they go in the source tree, even if no such tests exist yet
+
 #### Scenario: The document names what is not there yet
 - **WHEN** a kind of test is described in the document but is not yet part of the build
 - **THEN** the document says so and names the change that adds it
