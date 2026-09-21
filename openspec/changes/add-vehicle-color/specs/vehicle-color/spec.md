@@ -30,14 +30,16 @@ colors existed SHALL be given the default color when the app is updated; the sys
 - **THEN** the vehicle is shown with the default color and nothing fails
 
 ### Requirement: The color is chosen from a set of presets
-The system SHALL show the color choice on the add and edit vehicle screens as a group of selectable color swatches: twelve preset colors in a fixed order,
-the first being the default color, each with a name that is also its accessibility label. Exactly one swatch SHALL be selected at all times: the one of the
-vehicle's current color. The choice SHALL have no "none" option, and choosing another swatch SHALL replace the color. The edit screen SHALL start with
-the vehicle's saved color selected. The color is applied when the form is saved; leaving the form without saving SHALL keep the saved color.
+The system SHALL show the color choice on the add and edit vehicle screens as a palette of twelve preset colors, selectable swatches in a fixed order, the first being the
+default color, each with a name that is also its accessibility label. Beneath the palette the choice MAY show one full-width row of segments for colors that are not presets
+(see the requirement about the picture and the one about the edit screen); when it has more than one segment they share the row's width equally. Exactly one swatch or
+segment SHALL be selected at all times: the one of the vehicle's current color (a preset's swatch when the current color is that preset, otherwise the segment of that
+color). The choice SHALL have no "none" option, and choosing another swatch or segment SHALL replace the color. The edit screen SHALL start with the vehicle's saved color
+selected. The color is applied when the form is saved; leaving the form without saving SHALL keep the saved color.
 
 #### Scenario: The presets are offered
 - **WHEN** the user opens the color choice on the add vehicle screen
-- **THEN** it offers twelve named preset colors in a fixed order, the first being the default color, and the default color is the only one selected
+- **THEN** it offers twelve named preset colors in a fixed order, the first being the default color, the default color is the only one selected, and there is no row of segments
 
 #### Scenario: Choose a preset
 - **WHEN** the user taps the swatch "Red"
@@ -47,10 +49,6 @@ the vehicle's saved color selected. The color is applied when the form is saved;
 - **WHEN** the user opens the edit screen of a vehicle whose color is "Teal"
 - **THEN** "Teal" is the selected swatch
 
-#### Scenario: A color that is not a preset is still shown
-- **WHEN** the user opens the edit screen of a vehicle whose color is not one of the presets
-- **THEN** the choice shows an extra swatch named "Current color", selected, next to the presets
-
 #### Scenario: Cancel editing the color
 - **WHEN** the user chooses another color on the edit screen and leaves without saving
 - **THEN** the vehicle keeps its saved color
@@ -59,37 +57,60 @@ the vehicle's saved color selected. The color is applied when the form is saved;
 - **WHEN** the user chooses a color on the add screen and rotates the device
 - **THEN** the same color is still selected
 
+### Requirement: The edit screen shows the old color
+On the edit vehicle screen the color choice SHALL show, in the row beneath the palette, a segment named "Old color" filled with the vehicle's saved color and labelled with that
+name in text on it, so that the user can always go back to what the vehicle had. It SHALL be selected when the current color is the saved color and is not a preset. Its color
+SHALL NOT change while the form is open.
+
+#### Scenario: A saved color that is a preset
+- **WHEN** the user opens the edit screen of a vehicle whose color is "Teal"
+- **THEN** the palette shows "Teal" selected and the row beneath it shows the segment "Old color" in teal, not selected
+
+#### Scenario: A saved color that is not a preset
+- **WHEN** the user opens the edit screen of a vehicle whose color is not one of the presets
+- **THEN** the segment "Old color" shows that color and is the selected one, and no preset is selected
+
+#### Scenario: Going back to the old color
+- **WHEN** the user has chosen another color on the edit screen and taps "Old color"
+- **THEN** the current color is the saved color again
+
 ### Requirement: A picture sets the color
-When the user confirms the crop of a picture on the add or edit vehicle screen, the system SHALL extract one representative color from the cropped photo, make it
-the form's current color and show it in the color choice as an extra swatch named "Picture color", selected, so that the user can see what happened, choose a preset
-instead and choose the picture color again. The extraction SHALL be deterministic (the same photo always gives the same color), SHALL use the central part of
-the photo more than its border, SHALL ignore transparent pixels, and SHALL keep whites, blacks and greys as colors (a white car gives white). A photo
-without any opaque pixel SHALL leave the color as it was. Cancelling a crop SHALL NOT change the color, and neither SHALL removing the picture: the current color
-stays, and the "Picture color" swatch goes with the picture. Opening the edit screen of a vehicle that has a picture SHALL NOT extract a color.
+When the user confirms the crop of a picture on the add or edit vehicle screen, the system SHALL extract one representative color from the cropped photo and make it the form's
+current color. It SHALL show that color in the row beneath the palette as a segment named "Photo color", labelled with that name in text on it and selected, so that the user can
+see what happened, choose a preset instead and choose the photo color again. The row SHALL change in real time only when a photo is added: the "Photo color" segment takes the
+color of the newest confirmed crop, and nothing else about the row changes while the user chooses presets. The extraction SHALL be deterministic (the same photo always gives the
+same color), SHALL use the central part of the photo more than its border, SHALL favor vivid colors over grey ones (a red car on grey asphalt gives red) and SHALL still give
+white, black or grey for a photo that has nothing vivid in it (a white car gives white). A photo without any opaque pixel SHALL leave the color as it was. Cancelling a crop
+SHALL NOT change the color, and neither SHALL removing the picture: the current color stays, and the "Photo color" segment goes with the picture. Opening the edit screen of a
+vehicle that has a picture SHALL NOT extract a color.
 
 #### Scenario: Confirming a crop sets the color
 - **WHEN** the user confirms the crop of a photo that is a solid red
-- **THEN** the current color is that red, shown as a selected swatch "Picture color", and the form's icons are drawn from it
+- **THEN** the current color is that red, the row beneath the palette shows the segment "Photo color" in it, selected, and the form's icons are drawn from it
 
 #### Scenario: A white photo gives white
 - **WHEN** the user confirms the crop of a photo that is white with a little dark grey
-- **THEN** the picture color is white (or the nearest color of the photo's main area), not a colorful one
+- **THEN** the photo color is white, not a colorful one
+
+#### Scenario: A vivid color wins over a larger area of grey
+- **WHEN** the user confirms the crop of a photo of a red car on grey asphalt, where the asphalt covers more of the middle than the car
+- **THEN** the photo color is red
 
 #### Scenario: Choose a preset after the picture
 - **WHEN** the user has confirmed a crop and then taps the swatch "Blue"
-- **THEN** "Blue" is selected, the swatch "Picture color" is still offered, and tapping it selects the picture color again
+- **THEN** "Blue" is selected, the segment "Photo color" is still there and unchanged, and tapping it selects the photo color again
 
-#### Scenario: Another crop replaces the picture color
+#### Scenario: Another crop replaces the photo color
 - **WHEN** the user confirms the crop of another photo
-- **THEN** the picture color and the current color are the new photo's color
+- **THEN** the "Photo color" segment and the current color are the new photo's color
 
 #### Scenario: Cancelling a crop keeps the color
 - **WHEN** the user chooses a photo, cancels its crop and the form has the color "Green"
-- **THEN** the color is still "Green" and no "Picture color" swatch is offered
+- **THEN** the color is still "Green" and no "Photo color" segment is shown
 
 #### Scenario: Removing the picture keeps the color
 - **WHEN** the user removes the picture of a form whose current color came from it
-- **THEN** the current color stays, is shown as an extra swatch named "Current color", and the "Picture color" swatch is gone
+- **THEN** the current color stays, is shown as a selected segment named "Current color" in the row beneath the palette, and the "Photo color" segment is gone
 
 #### Scenario: A photo without opaque pixels
 - **WHEN** the user confirms the crop of an image that is fully transparent
@@ -97,7 +118,11 @@ stays, and the "Picture color" swatch goes with the picture. Opening the edit sc
 
 #### Scenario: Opening the edit screen changes nothing
 - **WHEN** the user opens the edit screen of a vehicle that has a picture and the color "Teal"
-- **THEN** the color is still "Teal" and no "Picture color" swatch is offered until a new crop is confirmed
+- **THEN** the color is still "Teal", no "Photo color" segment is shown until a new crop is confirmed, and the row shows "Old color" alone at the full width
+
+#### Scenario: Old color and photo color share the row
+- **WHEN** the user is on the edit screen and confirms the crop of a photo
+- **THEN** the row beneath the palette shows two segments of equal width, "Old color" and "Photo color"
 
 ### Requirement: The vehicle's icons are drawn from its color
 The system SHALL draw the vehicle icons (the icon of the type shown for a vehicle without a picture, in the vehicle list, on the details screen and in the form's picture

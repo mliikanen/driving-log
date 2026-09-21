@@ -611,4 +611,30 @@ class EditVehicleProcessorTest {
         assertEquals(VehicleType.CAR, call.type)
         assertEquals(PictureChange.Keep, call.picture)
     }
+
+    @Test
+    fun theSavedColorIsKeptAsTheOldColorWhileTheFormIsOpen() {
+        colors.color = red
+        val processor = seedColored(Rgb(0x00796B))
+        assertEquals(Rgb(0x00796B), processor.state.savedColor)
+
+        processor.dispatch(EditVehicleIntent.ColorSelected(blue))
+        processor.pickAndCrop()
+        processor.dispatch(EditVehicleIntent.PictureRemoved)
+
+        assertEquals(Rgb(0x00796B), processor.state.savedColor)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheOldColor() {
+        val first = seedColored(Rgb(0x00796B))
+        first.dispatch(EditVehicleIntent.ColorSelected(blue))
+        val saved = checkNotNull(first.stateToSave())
+
+        val restored = EditVehicleProcessor("c1", repository, pictures, codec, colors)
+        restored.restoreState(saved)
+
+        assertEquals(Rgb(0x00796B), restored.state.savedColor)
+        assertEquals(blue, restored.state.color)
+    }
 }

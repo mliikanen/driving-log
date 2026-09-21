@@ -54,6 +54,7 @@ class EditVehicleProcessor @AssistedInject constructor(
                             licensePlate = details.vehicle.licensePlate.orEmpty(),
                             type = details.vehicle.type,
                             color = details.vehicle.color,
+                            savedColor = details.vehicle.color,
                         )
                     }
                 }

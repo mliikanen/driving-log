@@ -66,6 +66,12 @@ context: |
   existed before types were added are Cars. The placeholder shown for a vehicle without a picture follows its type; the icons are Phosphor
   glyphs (MIT, noted in THIRD_PARTY_NOTICES.md).
 
+  Every vehicle also has a color, mandatory in the data model (a NOT NULL RRGGBB column, the default being the application's main theme color) and chosen from twelve
+  presets or taken from the vehicle's photo (the vivid color of the middle of the confirmed crop, shown as an editable "Photo color"). It is the one stored color:
+  everything vehicle-specific (icon tints and containers today, screen themes later) is derived from it when drawn, by HCT tones, and never stored. Any real-time
+  change of a color is animated as one animation: a screen calls rememberAnimatedColor once and passes the animated color down, so everything derived from it moves
+  together and nothing animates a color of its own.
+
   Use Material Design 3 as app design system. The default theme is Petroleum, from the palette in `docs/color-palette.md`, in a light and a dark
   scheme that follow the device. Every screen's app bar is a dark Petroleum Deep header; logged distances are drawn in the Road Trip Emerald accent
   (a deeper shade in light mode) and fuel is reserved for Fuel Gauge Gold. Where a raw palette color fails contrast for a role, the scheme uses a derived

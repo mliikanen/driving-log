@@ -9,6 +9,9 @@ appId: com.mikonoma.drivinglog
     id: add_vehicle
 - tapOn:
     id: unit_KILOMETERS_TENTHS
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - assertNotVisible:
@@ -64,6 +67,9 @@ appId: com.mikonoma.drivinglog
     id: odo_field
     text: ".+"
 # 1, 2, BKSP, BKSP, 2, 3, 0 shows 0.1, 1.2, 0.1, (empty), 0.2, 2.3, 23.0
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "1"
@@ -116,6 +122,9 @@ appId: com.mikonoma.drivinglog
 # A typed zero is a reading: 0.0 for a tenths unit, and backspace empties it again
 - tapOn:
     id: unit_KILOMETERS_TENTHS
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "0"
@@ -129,6 +138,9 @@ appId: com.mikonoma.drivinglog
 # Whole-number units fill from the right too: 1, 12, 123
 - tapOn:
     id: unit_KILOMETERS
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "1"
@@ -159,6 +171,9 @@ appId: com.mikonoma.drivinglog
 # The maximum length: further digits are ignored
 - tapOn:
     id: odo_clear
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "99999999"
@@ -171,6 +186,9 @@ appId: com.mikonoma.drivinglog
     id: odo_clear
 - tapOn:
     id: unit_KILOMETERS_TENTHS
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "0"
@@ -226,6 +244,9 @@ appId: com.mikonoma.drivinglog
 # A leading zero typed in one go (like a paste) behaves the same: 053 shows 5.3, then 0.5, 0.0, empty
 - tapOn:
     id: odo_clear
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "053"
@@ -247,6 +268,9 @@ appId: com.mikonoma.drivinglog
 # Whole-number unit: 0, 5 shows 0, 5 (no extra zero drawn) and backspace goes 0, empty
 - tapOn:
     id: unit_KILOMETERS
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "0"

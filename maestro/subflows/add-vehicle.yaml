@@ -1,6 +1,7 @@
 # Adds a vehicle from the vehicle list. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
 # unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading),
-# TYPE (optional, a vehicle type code such as MOTORCYCLE; when not given the preselected Car is kept).
+# TYPE (optional, a vehicle type code such as MOTORCYCLE; when not given the preselected Car is kept),
+# COLOR (optional, a preset's RRGGBB code such as E53935; when not given the preselected default color is kept).
 appId: com.mikonoma.drivinglog
 ---
 - tapOn:
@@ -23,8 +24,25 @@ appId: com.mikonoma.drivinglog
     commands:
       - tapOn:
           id: vehicle_type_${output.vehicleType}
+- evalScript: "${output.vehicleColor = (typeof COLOR === 'undefined') ? '' : COLOR}"
+- runFlow:
+    when:
+      true: ${output.vehicleColor.length > 0}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: vehicle_color_${output.vehicleColor}
+      - tapOn:
+          id: vehicle_color_${output.vehicleColor}
+# The unit choice is below the type and color choices: bring it into view before tapping it.
+- scrollUntilVisible:
+    element:
+      id: ${UNIT}
 - tapOn:
     id: ${UNIT}
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: ${ODOMETER}

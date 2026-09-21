@@ -35,9 +35,33 @@ class ColorExtractorTest {
 
     @Test
     fun aTieGoesToTheLowerColorValue() {
-        val samples = image { x, _ -> if (x < 50) red else blue }
+        // Two greys of the same chroma on a mirrored layout weigh exactly the same, so the lower color value wins.
+        val samples = image { x, _ -> if (x < 50) 0xFFC0C0C0.toInt() else 0xFF404040.toInt() }
 
-        assertEquals(Rgb(0x1E88E5), extractor.extract(samples))
+        assertEquals(Rgb(0x404040), extractor.extract(samples))
+    }
+
+    @Test
+    fun aVividColorBeatsALargerAreaOfGrey() {
+        // A red car on grey asphalt: the asphalt covers 60% of the middle and the car 40%, and the car is what the color should be.
+        val samples = image { x, _ -> if (x in 30..69) red else 0xFF808080.toInt() }
+
+        assertEquals(Rgb(0xE53935), extractor.extract(samples))
+    }
+
+    @Test
+    fun theMiddleWeighsMoreThanTheEdgeOfTheCountedRegion() {
+        // Equal areas of two equally vivid colors: the one in the middle wins over the one split between the two edges.
+        val samples = image { x, _ -> if (x in 30..69) red else blue }
+
+        assertEquals(Rgb(0xE53935), extractor.extract(samples))
+    }
+
+    @Test
+    fun aMostlyGreyPhotoStillGivesGreyWhenNothingVividCompetes() {
+        val samples = image { x, y -> if (x in 46..53 && y in 46..53) 0xFF303030.toInt() else 0xFFC8C8C8.toInt() }
+
+        assertEquals(Rgb(0xC8C8C8), extractor.extract(samples))
     }
 
     @Test

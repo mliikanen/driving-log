@@ -149,6 +149,7 @@ fun AddVehicleContent(
             VehicleColorChoice(
                 color = state.color,
                 pictureColor = state.pictureColor,
+                savedColor = null,
                 onSelect = { onIntent(AddVehicleIntent.ColorSelected(it)) },
             )
             UnitChoice(

@@ -25,6 +25,8 @@ data class EditVehicleState(
     val type: VehicleType? = null,
     /** The vehicle's color: null only until the saved vehicle has loaded, its saved color from then on. It can be changed but never cleared. */
     val color: Rgb? = null,
+    /** The vehicle's color when the form loaded (the "Old color" of the color choice): null until then, and it never changes while the form is open. */
+    val savedColor: Rgb? = null,
     /** The color taken from a crop confirmed in this form, offered as a swatch of its own; null until then (and after the picture is removed). */
     val pictureColor: Rgb? = null,
     val nameError: Boolean = false,

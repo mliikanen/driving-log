@@ -60,14 +60,16 @@ and give neutral tones (a white vehicle is a neutral icon, not a colorful one). 
 (at most 256 px) of the confirmed crop, so the color is tied to what the user confirmed and the work is small (at most 16 K pixels). `ColorExtractor.extract(samples): Rgb?` (an interface, the library behind it):
 1. Only the central 80% of the square is used (a 10% margin each side), a deterministic stand-in for "the middle counts more".
 2. Pixels with alpha below 128 are dropped; fewer than 1% opaque gives `null` (the color stays as it was).
-3. The opaque pixels are counted in a **histogram of 16 levels per channel** (4096 bins), **no chroma filter** (so white, black and grey vehicles keep their color); the **most populated bin** wins (ties go to the lower `RRGGBB` bin, so the result is deterministic) and the color is
-   the **average of the pixels in that bin**, which is exactly the color for a flat one.
+3. The opaque pixels are counted in a **histogram of 16 levels per channel** (4096 bins), each pixel with a **weight**: a Gaussian around the middle of the counted region (`exp(-2 (dx^2 + dy^2))`, about 0.135 at the middle of an edge) times `1 + 6 x chroma` (chroma is `(max - min) / 255` of the pixel's channels, 0 for
+   a grey), so the middle counts more and a vivid pixel weighs up to seven times a grey one; the **heaviest bin** wins (ties go to the lower `RRGGBB` bin, so the result is deterministic) and the color is the **average of the pixels in that bin**, which is exactly the color for a flat one. The weights are summed as whole numbers, so equal weights are exactly equal and a tie is a tie.
 
 The library's `QuantizerCelebi` was tried first and left out: measured while applying this change, for an image with few distinct colors and a lopsided split (75/25 or 90/10 of two colors, 1000 pixels or more) it merged both into one in-between color, which is wrong for "the
 most common color". The histogram is short, exact and deterministic; real photos with gradients spread a paint color over several neighbouring bins, which is one reason the result is shown and can be changed, and a neighbourhood-weighted bin is the first refinement to try.
 
-The rule is deliberately simple: a photo of a red car on grey asphalt may give the grey. The user sees the result as the selected "Picture color" swatch and can change it in one tap, which is why the result is shown and never silently applied. Better
-selection (chroma-weighted, background-aware) is a later refinement that changes no storage or spec. Extraction runs in the processor right after the crop is confirmed (`PictureDraftEditor.sampleColor` reads the pending small version, samples it through the codec, which works off the main thread on Android, and extracts): it is a single pass over at most 16 K pixels, about a millisecond, so it needs no dispatcher of its own, and it stays synchronous in tests. Its result is a serializable `Rgb` in the state.
+**Tuned on real photos.** The plain histogram (the most populated bin) was tried on nine street photos of cars and motorcycles (a centered square, as the crop starts) and gave the background for six of them (asphalt, sky, shadow; three of nine were right). Weighting the middle (Gaussian, falloff 2) and vivid
+colors (boost 6) gave the right color for the red car, the blue car, the grey car, the white car and a black motorcycle, and it is what is used; a parameter sweep (falloff 0 to 3, boost 0 to 20, a dark-pixel penalty) showed a wide plateau around it, so the values are not fragile. The photos where the vehicle is a small part of the
+frame (a motorcycle at the edge, a rider in front of the bike) still give the background; a tighter crop, which the user makes on the crop screen, fixes it, and in every case the result is shown as the selected "Photo color" segment and can be changed in one tap, which is why the result is shown and never silently applied. Better
+selection (background-aware, a neighbourhood-weighted bin) is a later refinement that changes no storage or spec. Extraction runs in the processor right after the crop is confirmed (`PictureDraftEditor.sampleColor` reads the pending small version, samples it through the codec, which works off the main thread on Android, and extracts): it is a single pass over at most 16 K pixels, about a millisecond, so it needs no dispatcher of its own, and it stays synchronous in tests. Its result is a serializable `Rgb` in the state.
 
 ### 6. State, processors and the picker
 
@@ -75,9 +77,14 @@ Add and edit states gain `color: Rgb` (the add state starts with the default; th
 the processor samples and extracts off the main thread and then reduces `pictureColor` and `color` together (a non-null result; `null` changes nothing); cancelling a crop or removing the picture changes neither `color`, and removing the picture sets `pictureColor = null`.
 `save` passes `color` to the repository. The list and details view states carry `color: Rgb` next to `type` and `pictureUri`.
 
-`VehicleColorChoice(color, pictureColor, onSelect)` is one composable used by both forms: a `FlowRow` of 44 dp circular swatches (the presets, preceded by up to two extra swatches: "Picture color" when `pictureColor` is set, and "Current color" when `color` is
-neither a preset nor the picture color), `selectableGroup` with radio semantics, the selected swatch with a ring and a check, `contentDescription` = the name. Test tags `vehicle_color_<HEX>` (`vehicle_color_203A43`), and `vehicle_color_picture` and `vehicle_color_current` for the extras.
-It sits after the type choice and before the odometer unit on the add form, and after the type choice on the edit form.
+The edit state also has `savedColor: Rgb?` (the vehicle's color when the form loaded, null until then; it never changes while the form is open), which is the "Old color".
+
+`VehicleColorChoice(color, pictureColor, savedColor, onSelect)` is one composable used by both forms, in two parts under the title "Vehicle color":
+1. the **palette**: a `FlowRow` of 44 dp circular swatches, the twelve presets (`selectableGroup`, radio semantics, the selected swatch with a ring and a check, `contentDescription` = the name), test tags `vehicle_color_<HEX>` (`vehicle_color_203A43`);
+2. beneath it, **one full-width row of segments** (a `Row` of equal `weight(1f)` boxes, 56 dp high, 12 dp rounded, with a 1 dp outline and, when selected, a 3 dp primary ring and a check), each filled with its color and carrying its **label as text on the color** in black or white (whichever reads better on that color, at least 4.5:1). In order: **"Old color"**
+   (edit screen only: `savedColor`, tag `vehicle_color_old`), **"Photo color"** (`pictureColor`, tag `vehicle_color_picture`) and **"Current color"** (`color` when it is not a preset and equals neither of the others, tag `vehicle_color_current`). With no segment the row is absent. The number of segments is 0 to 3, all the same width.
+`colorChoice(color, pictureColor, savedColor)` is the pure function that builds both parts and the **selection rule**: exactly one element is selected, a preset's swatch when `color` is that preset, otherwise the first of the segments Photo, Old, Current whose color is `color`. (When a saved or photo color equals a preset, the preset is the one shown selected.)
+The segment of the photo color animates its own color through `rememberAnimatedColor` only when a newer photo replaces it, so it changes in real time only when a photo is added, and the vehicle color it sets moves in the same 300 ms as the rest of the screen. The whole choice sits after the type choice and before the odometer unit on both forms.
 
 ### 7. The single animated color
 
@@ -92,9 +99,8 @@ animates a color of its own, which is what keeps everything in step (the theme c
 - commonTest: `Rgb` parse and hex (strict), presets (distinct, first is the default, all legible), `VehicleTones` contrast sweep, `lerpHct`, the extractor through the real library on synthetic pixels (solid, two halves, white with a little dark grey, a red square in a blue border,
   transparent, fully transparent, twice for determinism) and a fake `ColorExtractor` for the processors; repository on real SQL (each color read back, an edit changes it, an invalid stored value reads as the default, the log unchanged, a failed save changes nothing); JVM migration tests
   (1 to 4 to 6: the vehicle is intact and has the default color, the database rejects a null color, a fresh version-6 schema, the literal default equals `VehicleColors.default`); processors with kide-test (choose, the picture color appears and is selected, choosing a preset keeps the picture color offered, cancel and removal
-  keep the color, rotation restore, save arguments, leaving without saving).
-- Maestro on the emulator: choose a preset (checked swatch, the icon preview changes), a generated solid-color picture (`addMedia`) shows the "Picture color" swatch selected, choosing a preset and going back to the picture color, save and reopen the edit screen (the color is selected, an extra
-  "Current color" swatch when it is not a preset), restart, rotation. Colors themselves are not readable by Maestro; the tint is checked in the unit tests and by screenshots.
+  keep the color, the edit state's saved color, rotation restore, save arguments, leaving without saving); the extractor on synthetic images (a vivid color over a larger area of grey, the middle over the edge) and, as a recorded check rather than a test, on the street photos.
+- Maestro on the emulator: choose a preset (checked swatch, the icon preview changes), a generated solid-color picture (`addMedia`) shows the "Photo color" segment selected, choosing a preset and going back to the photo color, save and reopen the edit screen ("Old color" shows the saved color and is selected when it is not a preset, "Old color" and "Photo color" side by side after a new photo), restart, rotation. Colors themselves are not readable by Maestro; the tint is checked in the unit tests and by screenshots.
 
 ## Risks / Trade-offs
 

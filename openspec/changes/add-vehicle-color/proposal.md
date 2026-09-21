@@ -23,9 +23,13 @@ so nothing derived is stored.
 - The add and edit screens offer a **color picker: a set of twelve preset colors** chosen as good bases for derived palettes, the first
   being the default. The current color is marked. On the add screen the default is selected at first. (No sliders or hex entry yet.)
 - **A picture sets the color.** When the user confirms the crop of a picture, the app extracts **one representative color** from the cropped
-  photo and makes it the current color. The picker then shows it as an extra swatch labelled "Picture color", selected, so the user can see what
-  happened and can pick a preset instead (and come back to the picture color). A color that is not a preset (the picture's, or one saved earlier)
-  is shown as an extra swatch, so the picker always shows the current color. Cancelling a crop or removing the picture does not change the color.
+  photo and makes it the current color. The picker shows it beneath the palette as a **full-width segment labelled "Photo color"** (the label is text on
+  the color), selected, so the user can see what happened and can pick a preset instead and come back to it. That row changes in real time only when a photo
+  is added. On the **edit screen** the row is split in two, **"Old color"** (the saved color, always there) and **"Photo color"**; a current color that is none of
+  them (the photo color after the picture was removed) is shown as a **"Current color"** segment, so the picker always shows the current color. Cancelling a
+  crop or removing the picture does not change the color.
+- The photo color is **the vivid color of the middle of the photo**: the middle of the crop counts more than its border and a vivid color more than a grey one,
+  so a red car on grey asphalt gives red, while a white car with nothing vivid around it gives white. It was tuned on a set of street photos of cars and motorcycles.
 - **Icons follow the color.** The SVG-based vehicle icons (list rows, the details header, the form's picture preview and the type tiles) are
   drawn in a tint derived from the vehicle's color, on a container derived from it too, legible (contrast of at least 3:1) in both light and dark for any color.
 - **Color changes are animated, as one animation.** Wherever a vehicle's color changes while it is on screen, one animated color drives

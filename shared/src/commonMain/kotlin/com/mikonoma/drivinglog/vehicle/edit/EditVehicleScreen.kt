@@ -136,6 +136,7 @@ fun EditVehicleContent(
                 VehicleColorChoice(
                     color = color,
                     pictureColor = state.pictureColor,
+                    savedColor = state.savedColor,
                     onSelect = { onIntent(EditVehicleIntent.ColorSelected(it)) },
                 )
             }

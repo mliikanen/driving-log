@@ -1,0 +1,130 @@
+# A picture sets the color: confirming the crop of a solid purple photo (which is not a preset) shows a full-width "Photo color" segment under the palette, selected, a preset
+# can be chosen instead and the photo color chosen again, the saved vehicle shows its color as "Old color" on the edit screen (opening it extracts nothing), cancelling a crop
+# or removing the picture keeps the color, and a new photo splits the row into "Old color" and "Photo color".
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- addMedia:
+    - assets/photo-solid-purple.png
+- tapOn:
+    id: add_vehicle
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_203A43
+- assertNotVisible:
+    id: vehicle_color_picture
+- scrollUntilVisible:
+    element:
+      id: picture_preview
+    direction: UP
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+# The picture's color is the selected one, in a swatch of its own, and the default is not.
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: false
+# Choosing a preset keeps the picture color offered; choosing it again selects it.
+- tapOn:
+    id: vehicle_color_43A047
+- assertVisible:
+    id: vehicle_color_43A047
+    checked: true
+- assertVisible:
+    id: vehicle_color_picture
+    checked: false
+- tapOn:
+    id: vehicle_color_picture
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_43A047
+    checked: false
+# Save the vehicle.
+- scrollUntilVisible:
+    element:
+      id: vehicle_name
+    direction: UP
+- tapOn:
+    id: vehicle_name
+- inputText: Purple car
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: unit_KILOMETERS
+- tapOn:
+    id: unit_KILOMETERS
+- scrollUntilVisible:
+    element:
+      id: odo_field
+- tapOn:
+    id: odo_field
+- inputText: "1"
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- tapOn: Purple car
+- tapOn:
+    id: edit_vehicle
+# The saved color is not a preset, so the old color is the selected element, and nothing was taken from the picture on opening.
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_old
+- assertVisible:
+    id: vehicle_color_old
+    checked: true
+- assertNotVisible:
+    id: vehicle_color_picture
+# Cancelling a crop keeps the color.
+- scrollUntilVisible:
+    element:
+      id: picture_preview
+    direction: UP
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Cancel
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_old
+- assertVisible:
+    id: vehicle_color_old
+    checked: true
+- assertNotVisible:
+    id: vehicle_color_picture
+# Removing the picture keeps the color.
+- scrollUntilVisible:
+    element:
+      id: remove_picture
+    direction: UP
+- tapOn:
+    id: remove_picture
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_old
+- assertVisible:
+    id: vehicle_color_old
+    checked: true
+# A new photo splits the row: the old color stays, the photo color joins it and is the selected one.
+- scrollUntilVisible:
+    element:
+      id: picture_preview
+    direction: UP
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_old
+    checked: false
