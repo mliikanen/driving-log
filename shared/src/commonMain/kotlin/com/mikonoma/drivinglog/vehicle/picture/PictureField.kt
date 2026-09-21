@@ -28,7 +28,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.VehiclePicture
 
@@ -97,7 +96,7 @@ fun PictureField(
     if (picture.isCropping) {
         // A restored form has the photo's name but not its decoded pixels: ask for them once.
         LaunchedEffect(picture.cropSourceId, cropImage == null) { if (cropImage == null) onRefresh() }
-        Dialog(onDismissRequest = onCropCancelled, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Dialog(onDismissRequest = onCropCancelled, properties = cropDialogProperties()) {
             if (cropImage != null) {
                 CropScreen(cropImage, onConfirm = onCropConfirmed, onCancel = onCropCancelled)
             } else {

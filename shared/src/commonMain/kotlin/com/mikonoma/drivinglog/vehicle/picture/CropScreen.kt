@@ -5,15 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -28,10 +32,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -42,6 +48,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -50,8 +58,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mikonoma.drivinglog.ui.theme.AsphaltText
-import com.mikonoma.drivinglog.ui.theme.CoolPlatinum
+import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -71,10 +81,11 @@ private val CropViewSaver = listSaver<CropView, Any>(
 
 /**
  * The crop screen: the photo under a fixed square frame, the part of it outside the frame dimmed. Dragging moves the photo, pinching zooms it,
- * and buttons (or the keyboard) do the same in steps, turn the photo a quarter turn clockwise and reset the frame; the frame never leaves the
- * photo (the [CropState] keeps it inside). "Use photo" confirms the crop, with the turns it was made at, and "Cancel" discards the photo;
- * nothing else leaves the screen, so a photo cannot be used without being cropped. The frame and the turns survive a rotation of the device.
+ * * and buttons zoom in steps (the keyboard also moves it), turn the photo a quarter turn clockwise and reset the frame; the frame never leaves the
+ * photo (the [CropState] keeps it inside). The app bar's "Use photo" confirms the crop, with the turns it was made at, and back navigation (its arrow or
+ * the system's) discards the photo; nothing else leaves the screen, so a photo cannot be used without being cropped. The frame and the turns survive a rotation of the device.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel: () -> Unit) {
     var view by rememberSaveable(stateSaver = CropViewSaver) { mutableStateOf(CropView(0, null)) }
@@ -104,38 +115,49 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
         rotate = ::turn,
         reset = { update(CropState.initial(shown.width, shown.height)) },
     )
+    // The free space the controls leave, in window coordinates: the frame is centred in it. The photo itself is drawn over the whole window.
+    var freeSpace by remember { mutableStateOf<Rect?>(null) }
 
-    Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
-        Text(
-            "Crop the photo",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-            modifier = Modifier.padding(16.dp),
-        )
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val sideBySide = maxWidth > maxHeight
-            val canvas = @Composable { modifier: Modifier ->
-                CropCanvas(modifier, bitmap, crop, frameColor, focus, controls, onGesture = ::update)
-            }
-            if (sideBySide) {
-                Row(Modifier.fillMaxSize()) {
-                    canvas(Modifier.weight(1f).fillMaxSize())
-                    CropButtons(controls, sideBySide = true)
+    // Two layers: the canvas fills the whole window (its black background and the photo reach every edge, behind the system bars), and above it a Scaffold
+    // like every screen's: the app bar in the app's theme (back navigation cancels the crop, "Use photo" confirms it) and the buttons, kept clear of the
+    // system bars and display cutouts by the safe drawing insets.
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        CropCanvas(Modifier.fillMaxSize(), bitmap, crop, frameColor, focus, controls, freeSpace, onGesture = ::update)
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets.safeDrawing,
+            topBar = {
+                Column {
+                    TopAppBar(
+                        colors = drivingLogTopAppBarColors(),
+                        title = { Text("Crop the photo") },
+                        navigationIcon = { BackButton(onCancel) },
+                        actions = {
+                            TextButton(
+                                colors = headerTextButtonColors(),
+                                onClick = { onConfirm(crop.rect(), view.quarterTurns) },
+                                modifier = Modifier.testTag("use_photo"),
+                            ) { Text("Use photo") }
+                        },
+                    )
+                    HeaderDivider()
                 }
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    canvas(Modifier.weight(1f).fillMaxWidth())
-                    CropButtons(controls, sideBySide = false)
+            },
+        ) { padding ->
+            BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+                val space = Modifier.onGloballyPositioned { freeSpace = it.boundsInRoot() }
+                if (maxWidth > maxHeight) {
+                    Row(Modifier.fillMaxSize()) {
+                        Spacer(space.weight(1f).fillMaxSize())
+                        CropButtons(controls, sideBySide = true)
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        Spacer(space.weight(1f).fillMaxWidth())
+                        CropButtons(controls, sideBySide = false)
+                    }
                 }
             }
-        }
-        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onCancel) { Text("Cancel", color = Color.White) }
-            // Fixed colors like the rest of this screen: the theme's primary is Oil Slick Blue in light mode, which is lost on black.
-            Button(
-                onClick = { onConfirm(crop.rect(), view.quarterTurns) },
-                colors = ButtonDefaults.buttonColors(containerColor = CoolPlatinum, contentColor = AsphaltText),
-            ) { Text("Use photo") }
         }
     }
 }
@@ -157,104 +179,93 @@ private fun CropCanvas(
     frameColor: Color,
     focus: FocusRequester,
     controls: CropControls,
+    freeSpace: Rect?,
     onGesture: (CropState) -> Unit,
 ) {
     val latest by rememberUpdatedState(crop)
-    BoxWithConstraints(modifier) {
-        val margin = with(LocalDensity.current) { 24.dp.toPx() }
-        val frame = min(constraints.maxWidth, constraints.maxHeight) - 2 * margin
-        Canvas(
-            Modifier.fillMaxSize().testTag("crop_frame")
-                .focusRequester(focus)
-                .focusable()
-                .onKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    when (event.key) {
-                        Key.DirectionLeft -> controls.move(CropMove.Left)
-                        Key.DirectionRight -> controls.move(CropMove.Right)
-                        Key.DirectionUp -> controls.move(CropMove.Up)
-                        Key.DirectionDown -> controls.move(CropMove.Down)
-                        Key.Plus, Key.Equals, Key.NumPadAdd -> controls.zoomIn()
-                        Key.Minus, Key.NumPadSubtract -> controls.zoomOut()
-                        else -> return@onKeyEvent false
-                    }
-                    true
+    val latestSpace by rememberUpdatedState(freeSpace)
+    val margin = with(LocalDensity.current) { 24.dp.toPx() }
+    /** The frame: a square centred in the free space (the whole canvas until the controls have been measured), [margin] clear of its edges. */
+    fun frameIn(canvas: Size): Rect {
+        val space = latestSpace ?: Rect(0f, 0f, canvas.width, canvas.height)
+        val side = max(1f, min(space.width, space.height) - 2 * margin)
+        return Rect(space.center.x - side / 2, space.center.y - side / 2, space.center.x + side / 2, space.center.y + side / 2)
+    }
+    Canvas(
+        modifier.testTag("crop_frame")
+            .focusRequester(focus)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> controls.move(CropMove.Left)
+                    Key.DirectionRight -> controls.move(CropMove.Right)
+                    Key.DirectionUp -> controls.move(CropMove.Up)
+                    Key.DirectionDown -> controls.move(CropMove.Down)
+                    Key.Plus, Key.Equals, Key.NumPadAdd -> controls.zoomIn()
+                    Key.Minus, Key.NumPadSubtract -> controls.zoomOut()
+                    else -> return@onKeyEvent false
                 }
-                .pointerInput(bitmap, frame) {
-                    detectTransformGestures { centroid, pan, zoom, _ ->
-                        // The frame as it is now: a button may have changed it since the gesture began.
-                        val current = latest
-                        val left = (size.width - frame) / 2f
-                        val top = (size.height - frame) / 2f
-                        val scale = frame / current.side // screen pixels per pixel of the photo
-                        // The photo point under the fingers stays under them while zooming.
-                        val focusX = current.centerX - current.side / 2 + (centroid.x - left) / scale
-                        val focusY = current.centerY - current.side / 2 + (centroid.y - top) / scale
-                        onGesture(current.panBy(-pan.x / scale, -pan.y / scale).zoomBy(zoom, focusX, focusY))
-                    }
-                },
-        ) {
-            val left = (size.width - frame) / 2f
-            val top = (size.height - frame) / 2f
-            val scale = frame / crop.side // screen pixels per pixel of the photo
-            val cropLeft = crop.centerX - crop.side / 2
-            val cropTop = crop.centerY - crop.side / 2
-            // Only the part of the photo that is on the canvas is drawn (at a high zoom the whole photo would be many screens wide).
-            val srcLeft = floor(max(0f, cropLeft - left / scale)).toInt()
-            val srcTop = floor(max(0f, cropTop - top / scale)).toInt()
-            val srcRight = ceil(min(crop.imageWidth.toFloat(), cropLeft + (size.width - left) / scale)).toInt()
-            val srcBottom = ceil(min(crop.imageHeight.toFloat(), cropTop + (size.height - top) / scale)).toInt()
-            drawImage(
-                image = bitmap,
-                srcOffset = IntOffset(srcLeft, srcTop),
-                srcSize = IntSize(srcRight - srcLeft, srcBottom - srcTop),
-                dstOffset = IntOffset((left + (srcLeft - cropLeft) * scale).roundToInt(), (top + (srcTop - cropTop) * scale).roundToInt()),
-                dstSize = IntSize(((srcRight - srcLeft) * scale).roundToInt(), ((srcBottom - srcTop) * scale).roundToInt()),
-                filterQuality = FilterQuality.Medium,
-            )
-            // The scrim over everything outside the frame: what is left out is dimmed, not hidden.
-            val scrim = Color.Black.copy(alpha = SCRIM_ALPHA)
-            drawRect(scrim, Offset(0f, 0f), Size(size.width, top))
-            drawRect(scrim, Offset(0f, top + frame), Size(size.width, size.height - top - frame))
-            drawRect(scrim, Offset(0f, top), Size(left, frame))
-            drawRect(scrim, Offset(left + frame, top), Size(size.width - left - frame, frame))
-            drawRect(frameColor, Offset(left, top), Size(frame, frame), style = Stroke(width = 3.dp.toPx()))
-        }
+                true
+            }
+            .pointerInput(bitmap) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    // The frame as it is now: a button may have changed it since the gesture began.
+                    val current = latest
+                    val frame = frameIn(Size(size.width.toFloat(), size.height.toFloat()))
+                    val scale = frame.width / current.side // screen pixels per pixel of the photo
+                    // The photo point under the fingers stays under them while zooming.
+                    val focusX = current.centerX - current.side / 2 + (centroid.x - frame.left) / scale
+                    val focusY = current.centerY - current.side / 2 + (centroid.y - frame.top) / scale
+                    onGesture(current.panBy(-pan.x / scale, -pan.y / scale).zoomBy(zoom, focusX, focusY))
+                }
+            },
+    ) {
+        val frame = frameIn(size)
+        val left = frame.left
+        val top = frame.top
+        val side = frame.width
+        val scale = side / crop.side // screen pixels per pixel of the photo
+        val cropLeft = crop.centerX - crop.side / 2
+        val cropTop = crop.centerY - crop.side / 2
+        // Only the part of the photo that is on the canvas is drawn (at a high zoom the whole photo would be many screens wide).
+        val srcLeft = floor(max(0f, cropLeft - left / scale)).toInt()
+        val srcTop = floor(max(0f, cropTop - top / scale)).toInt()
+        val srcRight = ceil(min(crop.imageWidth.toFloat(), cropLeft + (size.width - left) / scale)).toInt()
+        val srcBottom = ceil(min(crop.imageHeight.toFloat(), cropTop + (size.height - top) / scale)).toInt()
+        drawImage(
+            image = bitmap,
+            srcOffset = IntOffset(srcLeft, srcTop),
+            srcSize = IntSize(srcRight - srcLeft, srcBottom - srcTop),
+            dstOffset = IntOffset((left + (srcLeft - cropLeft) * scale).roundToInt(), (top + (srcTop - cropTop) * scale).roundToInt()),
+            dstSize = IntSize(((srcRight - srcLeft) * scale).roundToInt(), ((srcBottom - srcTop) * scale).roundToInt()),
+            filterQuality = FilterQuality.Medium,
+        )
+        // The scrim over everything outside the frame: what is left out is dimmed, not hidden.
+        val scrim = Color.Black.copy(alpha = SCRIM_ALPHA)
+        drawRect(scrim, Offset(0f, 0f), Size(size.width, top))
+        drawRect(scrim, Offset(0f, top + side), Size(size.width, size.height - top - side))
+        drawRect(scrim, Offset(0f, top), Size(left, side))
+        drawRect(scrim, Offset(left + side, top), Size(size.width - left - side, side))
+        drawRect(frameColor, Offset(left, top), Size(side, side), style = Stroke(width = 3.dp.toPx()))
     }
 }
 
-/** The buttons: two rows under the photo, or two columns beside it, each named for a screen reader and acting once per tap. */
+/** The buttons: one row under the photo, or one column beside it, each named for a screen reader and acting once per tap. (The photo is moved by dragging.) */
 @Composable
 private fun CropButtons(controls: CropControls, sideBySide: Boolean) {
-    val first = listOf(
-        Triple("Zoom out", "−", controls.zoomOut),
-        Triple("Zoom in", "+", controls.zoomIn),
-        Triple("Rotate photo", "↻", controls.rotate),
-    )
-    val second = listOf(
-        Triple("Move left", "←", { controls.move(CropMove.Left) }),
-        Triple("Move right", "→", { controls.move(CropMove.Right) }),
-        Triple("Move up", "↑", { controls.move(CropMove.Up) }),
-        Triple("Move down", "↓", { controls.move(CropMove.Down) }),
-    )
-    val reset = @Composable {
+    val zoomOut = @Composable { CropButton("Zoom out", "\u2212", controls.zoomOut) }
+    val zoomIn = @Composable { CropButton("Zoom in", "+", controls.zoomIn) }
+    val rest = @Composable {
+        CropButton("Rotate photo", "\u21BB", controls.rotate)
         TextButton(onClick = controls.reset) { Text("Reset", color = Color.White) }
     }
     if (sideBySide) {
-        Row(Modifier.padding(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Column { first.forEach { CropButton(it.first, it.second, it.third) }; reset() }
-            Column { second.forEach { CropButton(it.first, it.second, it.third) } }
-        }
+        // A column: "+" above "-", as on a slider that runs upwards.
+        Column(Modifier.padding(end = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { zoomIn(); zoomOut(); rest() }
     } else {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                first.forEach { CropButton(it.first, it.second, it.third) }
-                reset()
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                second.forEach { CropButton(it.first, it.second, it.third) }
-            }
-        }
+        // A row: "-" to the left of "+", as on a slider that runs to the right.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { zoomOut(); zoomIn(); rest() }
     }
 }
 

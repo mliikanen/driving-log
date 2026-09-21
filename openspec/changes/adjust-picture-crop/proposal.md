@@ -17,8 +17,9 @@ The crop screen is where the user decides what a vehicle's picture is, and today
 
 ## What Changes
 
-- **Controls that do not need a gesture:** zoom-in and zoom-out buttons, buttons that move the photo a step in each direction (each acts once per tap), "Rotate photo" (a quarter turn clockwise) and "Reset" (back to the largest centered square), all with
-  labels for assistive technology; the photo also moves and zooms with arrow keys, plus and minus when a hardware keyboard is used. Pinch and drag keep working.
+- **Controls that do not need a gesture:** zoom-in and zoom-out buttons, "Rotate photo" (a quarter turn clockwise) and "Reset" (back to the largest centered square), each acting once per tap and with a
+  label for assistive technology; the photo also moves with the arrow keys and zooms with plus and minus when a hardware keyboard is used. Pinch and drag keep working, and dragging is the way to move (**no move buttons**, decided by the developer).
+- **Edge to edge:** the crop screen fills the whole window behind the system bars (black background and photo), its buttons kept clear of them.
 - **Context outside the frame:** the parts of the photo outside the square are drawn **dimmed** instead of black, so the user sees what is being left out and can move it in.
 - **The crop survives rotation and process death** while the crop screen is open (zoom and position are saved with the screen state; they are pixels of the photo, so they mean the same after a rotation).
 - **The photo moves and zooms behind a fixed square** (what exists; the alternative, a movable and resizable square over a fixed photo, was considered and not chosen: see the design).

@@ -9,9 +9,15 @@
 
 ## 2. The screen
 
-- [x] 2.1 Save the crop and the turns with `rememberSaveable` in `CropScreen` (restored only for the same image size), and add the labelled buttons ("Zoom in", "Zoom out", "Move left", "Move right", "Move up", "Move down", "Rotate photo", "Reset"), one action per tap, and the keyboard handling (arrows, plus, minus), keeping drag and pinch; verify it compiles for Android and iOS and that every control has its accessibility label
+- [x] 2.1 Save the crop and the turns with `rememberSaveable` in `CropScreen` (restored only for the same image size), and add the labelled buttons ("Zoom in", "Zoom out", "Rotate photo", "Reset"; no move buttons), one action per tap, and the keyboard handling (arrows move, plus and minus zoom), keeping drag and pinch; verify it compiles for Android and iOS and that every control has its accessibility label
 - [x] 2.2 Draw the photo dimmed outside the frame (the whole photo at the current scale, a scrim of black at 60% outside the frame, the outline), and verify it compiles for Android and iOS
 - [x] 2.3 Make the scaling explicit: keep Android's stepwise halving, set a high interpolation quality (or halve stepwise) in the iOS renderer, and verify a JVM-side test where possible (a stepwise-halving helper on a synthetic fine pattern gives no stripes, if the helper is made pure) and that iOS compiles
+
+## 2b. Edge to edge (added during apply)
+
+- [x] 2.4 Remove the four move buttons from the crop screen (keep Zoom in, Zoom out, Rotate photo, Reset and the keyboard keys), and make the crop screen edge to edge (design decision 7: dialog properties through expect/actual, a full-window canvas layer under the padded controls); verify on the emulator in portrait and landscape that the black background and the photo reach every edge behind the status and navigation bars while the buttons are clear of them, that drag, pinch and the buttons still work, and that `crop-controls` passes without the move buttons
+
+- [x] 2.5 Replace the crop screen's title and bottom row with a themed Material top app bar (the shared back button as navigation icon, the title, "Use photo" as a text action; no "Cancel", back navigation cancels), put "Zoom in" above "Zoom out" in the landscape column, and update `maestro/picture/crop-controls.yaml`; verify on the emulator in portrait and landscape that the bar looks like the other screens' (dark header, same insets), that back and the system back cancel, that "Use photo" confirms, and that `maestro/run.sh picture` passes
 
 ## 3. Flows and checks
 

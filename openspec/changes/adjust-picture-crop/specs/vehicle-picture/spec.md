@@ -7,9 +7,8 @@ After a photo is chosen the system SHALL open a crop screen showing the photo un
 photo before the user has confirmed a crop. The user SHALL be able to move the photo under the frame and to zoom it, and the
 system SHALL keep the frame inside the photo at all times: the smallest zoom makes the shorter side of the photo fill the frame,
 and the photo cannot be moved so that an edge of the frame leaves it. The crop SHALL start at the smallest zoom with the photo centered. The
-user SHALL confirm with "Use photo" or cancel; cancelling SHALL discard the chosen photo and leave the form as it was. There SHALL be no
-way to keep a photo without cropping it. The user SHALL also be able to move and zoom without a gesture, with labelled buttons for zooming in and out and for moving the photo a step
-in each direction, and to return to the start with a labelled "Reset" button; a hardware keyboard SHALL do the same with the arrow keys, plus and minus. Each button acts once per tap. The user SHALL also be able to turn the photo a quarter turn clockwise with a labelled "Rotate photo" button, which keeps the frame over the same part of the photo, and the picture SHALL be made from the photo as turned. The part of the photo outside the frame
+user SHALL confirm with "Use photo", an action in the crop screen's top app bar, or cancel by back navigation (the app bar's back arrow or the system's back); cancelling SHALL discard the chosen photo and leave the form as it was. The top app bar SHALL follow the app's theme like the other screens' and be laid out as Material Design specifies (a navigation icon, a title and a text action). There SHALL be no
+way to keep a photo without cropping it. The user SHALL also be able to zoom without a gesture, with labelled buttons for zooming in and out, and to return to the start with a labelled "Reset" button; a hardware keyboard SHALL move the photo with the arrow keys and zoom with plus and minus. Each button acts once per tap. There are no buttons for moving the photo: the user drags it. The crop screen SHALL fill the whole window, edge to edge, behind the system bars (its black background and the photo), while its buttons stay clear of them. The user SHALL also be able to turn the photo a quarter turn clockwise with a labelled "Rotate photo" button, which keeps the frame over the same part of the photo, and the picture SHALL be made from the photo as turned. The part of the photo outside the frame
 SHALL be shown dimmed, so that the user sees what is left out. The zoom and the position SHALL survive a rotation of the device and the restart of the app's process while the crop screen is open.
 
 #### Scenario: The crop starts centered
@@ -29,20 +28,24 @@ SHALL be shown dimmed, so that the user sees what is left out. The zoom and the 
 - **THEN** the form shows the part of the photo inside the frame as its picture
 
 #### Scenario: Cancel the crop
-- **WHEN** the user taps cancel on the crop screen
+- **WHEN** the user taps the back arrow on the crop screen, or uses the system's back
 - **THEN** the form's picture is what it was before and nothing is stored
 
 #### Scenario: The crop cannot be skipped
 - **WHEN** the crop screen is displayed
-- **THEN** besides the controls that move, zoom and turn the photo it offers only "Use photo" and cancel, and no way to use the photo without a crop
+- **THEN** besides the controls that move, zoom and turn the photo it offers only "Use photo" and back navigation (which cancels), and no way to use the photo without a crop
 
 #### Scenario: Zoom with the buttons
 - **WHEN** the user taps the zoom-in button and then the zoom-out button
 - **THEN** the frame first covers a smaller part of the photo and then the part it covered before, and the buttons stop having an effect at the zoom limits
 
-#### Scenario: Move with the buttons
-- **WHEN** the user has zoomed in and taps the button that moves the photo to the left
+#### Scenario: Move with the keyboard
+- **WHEN** the user has zoomed in and presses the left arrow key on a hardware keyboard
 - **THEN** the photo moves under the frame by a step and stops at the photo's edge
+
+#### Scenario: The crop screen is edge to edge
+- **WHEN** the crop screen is open, in portrait or in landscape
+- **THEN** its black background and the photo reach every edge of the screen behind the system bars, and its buttons are not covered by the status bar, the navigation bar or a display cutout
 
 #### Scenario: Reset
 - **WHEN** the user has moved and zoomed the photo and taps "Reset"
@@ -50,7 +53,7 @@ SHALL be shown dimmed, so that the user sees what is left out. The zoom and the 
 
 #### Scenario: The controls are labelled
 - **WHEN** a screen reader reads the crop screen
-- **THEN** every control has a name ("Zoom in", "Zoom out", "Move left", "Move right", "Move up", "Move down", "Rotate photo", "Reset", "Use photo", "Cancel")
+- **THEN** every control has a name ("Back", "Zoom in", "Zoom out", "Rotate photo", "Reset", "Use photo")
 
 #### Scenario: Rotate the photo
 - **WHEN** the user taps "Rotate photo" once
@@ -63,6 +66,10 @@ SHALL be shown dimmed, so that the user sees what is left out. The zoom and the 
 #### Scenario: The picture is made from the turned photo
 - **WHEN** the user turns a sideways photo upright, and taps "Use photo"
 - **THEN** the form's picture shows the photo upright, and the vehicle's color is taken from that picture
+
+#### Scenario: The buttons are laid out by orientation
+- **WHEN** the crop screen is shown in portrait, and then in landscape
+- **THEN** in portrait "Zoom out" is to the left of "Zoom in" in a row under the photo, and in landscape "Zoom in" is above "Zoom out" in a column beside it
 
 #### Scenario: The rest of the photo is visible, dimmed
 - **WHEN** the crop screen shows a landscape photo at the smallest zoom
