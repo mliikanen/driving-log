@@ -11,6 +11,9 @@ appId: com.mikonoma.drivinglog
 # No picture yet: the car icon as the preview, labelled "Add picture", and nothing to remove. The picture is the action: there is
 # no separate button.
 - assertVisible: Add picture
+# The mark in the corner of the preview is a camera badge (not a pen), there in both states.
+- assertVisible:
+    id: picture_badge
 - assertNotVisible:
     id: remove_picture
 # Cancelling the crop keeps the form as it was.
@@ -53,6 +56,8 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: edit_vehicle
 - assertVisible: Change picture
+- assertVisible:
+    id: picture_badge
 - assertVisible:
     id: remove_picture
 - runFlow: subflows/pick-photo.yaml

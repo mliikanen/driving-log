@@ -9,6 +9,8 @@ appId: com.mikonoma.drivinglog
     id: add_vehicle
 - runFlow: ../subflows/pick-photo.yaml
 - tapOn: Use photo
+- assertVisible:
+    id: picture_badge
 - tapOn:
     id: vehicle_name
 - inputText: Family car

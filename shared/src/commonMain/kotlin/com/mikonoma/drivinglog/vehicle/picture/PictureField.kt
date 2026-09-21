@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.VehiclePicture
 
 /**
@@ -57,7 +56,7 @@ fun PictureField(
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // The picture itself is the action: tapping it opens the system chooser. The small badge says so.
+            // The picture itself is the action: tapping it opens the system chooser. The small camera badge says so.
             val label = if (hasPicture) "Change picture" else "Add picture"
             Box(
                 Modifier
@@ -69,10 +68,10 @@ fun PictureField(
                 VehiclePicture(previewUri, type, Modifier.fillMaxSize(), placeholderDescription = null)
                 Box(
                     Modifier.align(Alignment.BottomEnd).padding(4.dp).size(28.dp).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
+                        .background(MaterialTheme.colorScheme.primary).testTag("picture_badge"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                    Icon(PhotoIcons.Camera, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                 }
             }
             if (hasPicture) {

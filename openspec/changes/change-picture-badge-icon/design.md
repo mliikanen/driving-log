@@ -5,7 +5,7 @@
 `PictureField` draws the badge as a 28 dp circle in the primary color in the bottom-right corner of the 96 dp preview, holding
 `Icons.Filled.Edit` (16 dp, `onPrimary`). The badge is decorative (`contentDescription = null`); the preview `Box` carries the label and
 the click. The app depends only on `material-icons-core`, which has no camera icon (the camera icons are in the large `icons-extended`
-artifact). `add-vehicle-type` (pending) adds Phosphor SVGs in `docs/icons/phosphor` and turns them into `ImageVector`s in
+artifact). `add-vehicle-type` adds (archived) Phosphor SVGs in `docs/icons/phosphor` and turns them into `ImageVector`s in
 `ui/VehicleIcons.kt`. See proposal.md for scope.
 
 ## Goals / Non-Goals
