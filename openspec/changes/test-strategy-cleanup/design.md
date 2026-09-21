@@ -105,7 +105,7 @@ Do the spike first. Write the document and the policy before deleting anything. 
 
 ## Result
 
-Run on the emulator after the last move: `maestro/run.sh --all` passed all 9 flows (`vehicles` 3 min 9 s, `distance` 2 min, `resilience` 5 min 35 s, `appearance` 2 min 50 s) in **13 min 42 s**, against 41 min 53 s for the 23 flows; the device-state groups
-(`picture` 3 min 10 s, `theme` and `clock` together 4 min 30 s) also pass. The Maestro flows went from 23 to 12 journey flows (9 in the plain manifests, 5 picture steps and the camera in `picture`, and the `theme`/`clock` flows), `addMedia` is used by three
+Run on the emulator after the last move: `maestro/run.sh --all` passed all 7 journey flows and the 2 setup flows (`vehicles` 3 min 9 s, `distance` 2 min, `resilience` 5 min 35 s, `appearance` 2 min 50 s) in **13 min 42 s**, against 41 min 53 s for the 23 flows; the device-state groups
+(`picture` 3 min 10 s, `theme` and `clock` together 4 min 30 s) also pass. The numbered flows went from 23 to 12 journey flows (7 in the plain manifests and the 4 steps and the camera flow of `picture`, next to the `theme` and `clock` flows, which are unchanged), `addMedia` is used by three
 `setup.yaml` files only, and one unit test was added (`SqlDelightVehicleRepositoryTest.editingAVehicleKeepsItsUnitItsOdometerAndItsLog`).
 
