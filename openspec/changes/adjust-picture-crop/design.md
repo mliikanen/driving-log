@@ -55,3 +55,12 @@ The two changes touch different requirements and no code in common except that b
 - **Landscape layout** of the controls on small screens (the crop screen is already scroll-free): eight buttons (zoom in and out, four moves, rotate, reset) go beside the photo and are checked on the emulator.
 - **The turned bitmap costs memory** (one more bounded decode while the crop screen is open): the previous one is released when the turn changes.
 - **iOS scaling** is unverifiable until the Xcode project exists.
+
+## Verified on the emulator (tasks 3.1 to 3.3)
+
+- **The `picture` group** (`maestro/run.sh picture`, now with a sixth step, `crop-controls`) passes: add, replace, remove and cancel with their file checks, the camera, and the crop screen's controls (all nine named, the buttons, the crop screen open in portrait and landscape after a device rotation, a turned crop confirmed).
+- **The crop survives a device rotation:** with the photo turned and zoomed, rotating the device to landscape and back gives an identical frame area (mean pixel difference 0.0; it was 22.9 before panning and 0.0 back at the start before this change, i.e. reset).
+- **The turn:** "Rotate photo" turns the photo clockwise with the frame over the same content (a photo of a car, front to the left, has its roof to the right after one turn), and the stored picture and the photo color come from the turned photo.
+- **Layouts:** portrait (two rows of buttons under the photo) and landscape (two columns beside it) both fit with every control reachable; the parts of the photo outside the frame are dimmed (a 60% scrim), the crop screen is a fixed black surface so light and dark mode look the same.
+- **Photos of other shapes:** a tall photo (500 x 1200) zooms and moves inside the photo with the dimmed context above and below; a photo smaller than the minimum frame (100 x 100) shows whole and "Zoom in" has no effect, without an error.
+- **Not verified:** iOS (the klib compiles, `:shared:compileKotlinIosSimulatorArm64`, but there is no Xcode project to run it), and an aliasing check of the scaled versions on a fine pattern (the stepwise halving is a pure, tested function, `downscaleSteps`, used by Android; the visual check needs Roborazzi or a bitmap test, neither adopted yet).

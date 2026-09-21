@@ -2,7 +2,7 @@
 # Runs the picture flows one step at a time and checks the files the app keeps in its private storage after each, over adb:
 # two files per picture (a small and a large one), both WebP, the small one 256 x 256 pixels and the large one at most
 # 1024 x 1024 and under 200 kB, the files of a replaced or removed picture gone, and nothing left after leaving the add screen
-# without saving; then the camera flow. The photo they choose is uploaded once, by setup.yaml, at the start. Needs a running Android emulator or device with the debug
+# without saving; then the camera flow and the crop screen's controls. The photo they choose is uploaded once, by setup.yaml, at the start. Needs a running Android emulator or device with the debug
 # app installed (run it through ../run.sh picture, which also removes the photos of earlier runs).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -75,5 +75,8 @@ run_flow cancel
 
 echo "== 5. the camera app"
 run_flow camera
+
+echo "== 6. the crop screen's controls"
+run_flow crop-controls
 
 echo "picture files: all checks passed"

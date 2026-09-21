@@ -1,0 +1,44 @@
+# Step 6 of run.sh: the crop screen's controls. Every control is there under its name; the buttons zoom, move, turn and reset; the crop screen stays open with its controls when the device
+# is rotated; a turned crop is confirmed and the form shows the picture. (What each button does to the frame is a unit test of CropState: see docs/test-strategy.md.)
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- assertVisible: Crop the photo
+- assertVisible: Zoom in
+- assertVisible: Zoom out
+- assertVisible: Move left
+- assertVisible: Move right
+- assertVisible: Move up
+- assertVisible: Move down
+- assertVisible: Rotate photo
+- assertVisible: Reset
+- assertVisible: Use photo
+- assertVisible: Cancel
+# Zoom in, move, zoom out, turn, reset: the screen stays as it is.
+- tapOn: Zoom in
+- tapOn: Zoom in
+- tapOn: Move left
+- tapOn: Move up
+- tapOn: Zoom out
+- tapOn: Rotate photo
+- tapOn: Reset
+- tapOn: Zoom in
+- tapOn: Rotate photo
+# Rotating the device keeps the crop screen open with its controls, in both layouts.
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Crop the photo
+- assertVisible: Zoom in
+- assertVisible: Rotate photo
+- assertVisible: Use photo
+- setOrientation: PORTRAIT
+- assertVisible: Zoom in
+- assertVisible: Rotate photo
+# A turned crop is confirmed.
+- tapOn: Use photo
+- assertVisible: Change picture
+- assertVisible:
+    id: remove_picture

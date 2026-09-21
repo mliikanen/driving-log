@@ -15,10 +15,10 @@
 
 ## 3. Flows and checks
 
-- [ ] 3.1 Run the `picture` group (`maestro/run.sh picture`) and verify its flows still pass with the new crop screen (the crop screen is another window without test tags: flows use its texts "Use photo", "Cancel")
-- [ ] 3.2 Add `maestro/picture/crop-controls.yaml` (a step of `picture/run.sh`): on the crop screen zoom in with the button, move with the buttons, rotate the photo, Reset, confirm, and rotate the device with the crop screen open (the crop screen stays open); verify it passes
-- [ ] 3.3 Check by hand on the emulator (light and dark, portrait and landscape, with a large photo, with a tall photo and with a photo smaller than the minimum frame) that the buttons, the turn, the dimmed context and the saved crop after a device rotation work and look right, and that a tight crop of a photo with a small vehicle gives the picture and (with `add-vehicle-color`) the color the user expects; fix what looks wrong
+- [x] 3.1 Run the `picture` group (`maestro/run.sh picture`) and verify its flows still pass with the new crop screen (the crop screen is another window without test tags: flows use its texts "Use photo", "Cancel")
+- [x] 3.2 Add `maestro/picture/crop-controls.yaml` (a step of `picture/run.sh`): on the crop screen zoom in with the button, move with the buttons, rotate the photo, Reset, confirm, and rotate the device with the crop screen open (the crop screen stays open); verify it passes
+- [x] 3.3 Check by hand on the emulator (light and dark, portrait and landscape, with a large photo, with a tall photo and with a photo smaller than the minimum frame) that the buttons, the turn, the dimmed context and the saved crop after a device rotation work and look right, and that a tight crop of a photo with a small vehicle gives the picture and (with `add-vehicle-color`) the color the user expects; fix what looks wrong
 
 ## 4. Final verification
 
-- [ ] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (Maestro is not part of the final regression run; the `picture` group was run in 3.1 and 3.2)
+- [x] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (Maestro is not part of the final regression run; the `picture` group was run in 3.1 and 3.2)
