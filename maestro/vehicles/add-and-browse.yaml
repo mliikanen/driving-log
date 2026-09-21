@@ -1,0 +1,86 @@
+# Happy path: add two vehicles (all fields; and a motorcycle with an odometer typed and corrected), see them in the list, open the details and the full log, and come back.
+# Variations (validation, every odometer key sequence, ordering, each unit's display) are unit tests: see docs/test-strategy.md.
+# Run with the emulator locale English (United States): readings are checked with "," thousands separators.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- assertVisible: No vehicles yet
+- assertVisible:
+    id: add_vehicle
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+# A motorcycle with a whole-mile odometer: one digit too many is typed and taken back.
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Bike
+- hideKeyboard
+- tapOn:
+    id: vehicle_type_MOTORCYCLE
+- scrollUntilVisible:
+    element:
+      id: unit_MILES
+    centerElement: true
+- tapOn:
+    id: unit_MILES
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
+- tapOn:
+    id: odo_field
+- inputText: "12006"
+- eraseText: 1
+- assertVisible:
+    id: odo_field
+    text: "1,200"
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: add_vehicle
+- assertNotVisible: No vehicles yet
+# The list shows both, each with the icon of its type.
+- assertVisible: Family car
+- assertVisible: ABC-123
+- assertVisible: Bike
+- assertVisible: "Vehicle type: Car"
+- assertVisible: "Vehicle type: Motorcycle"
+# The details of the first: the recent activity, then the full log.
+- tapOn: Family car
+- assertVisible:
+    id: vehicle_title
+    text: Family car
+- assertVisible:
+    id: vehicle_plate
+    text: ABC-123
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+- assertVisible: Recent activity
+- assertVisible: Initial odometer
+- tapOn:
+    id: view_log
+- assertVisible: Family car log
+- assertVisible: Initial odometer
+- assertVisible: 45,200.3 km
+# Back to the details, back to the list, and the other vehicle.
+- tapOn:
+    id: back
+- assertVisible:
+    id: current_odometer
+- tapOn:
+    id: back
+- assertVisible:
+    id: add_vehicle
+- tapOn: Bike
+- assertVisible:
+    id: current_odometer
+    text: 1,200 mi

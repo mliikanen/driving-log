@@ -1,0 +1,67 @@
+# Happy path: edit a vehicle's name and plate, leave once without saving, and see the changes on the details screen and in the list.
+# Cases (an empty name, trimming, clearing the plate, the odometer and unit that cannot change) are unit tests: see docs/test-strategy.md.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS
+      ODOMETER: "45200"
+- tapOn: Family car
+- tapOn:
+    id: edit_vehicle
+# The form starts with the current values and offers no odometer or unit.
+- assertVisible:
+    id: vehicle_name
+    text: Family car
+- assertVisible:
+    id: vehicle_plate
+    text: ABC-123
+- assertNotVisible:
+    id: odo_field
+- assertNotVisible:
+    id: unit_choice
+# Leaving without saving keeps the values.
+- tapOn:
+    id: vehicle_name
+- eraseText: 20
+- inputText: Not saved
+- hideKeyboard
+- tapOn:
+    id: back
+- assertVisible:
+    id: vehicle_title
+    text: Family car
+# Change the name and the plate and save.
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: vehicle_name
+- eraseText: 20
+- inputText: Estate car
+- tapOn:
+    id: vehicle_plate
+- eraseText: 20
+- inputText: XYZ-789
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: vehicle_title
+    text: Estate car
+- assertVisible:
+    id: vehicle_plate
+    text: XYZ-789
+- assertVisible:
+    id: current_odometer
+    text: 45,200 km
+# The list shows the new values.
+- tapOn:
+    id: back
+- assertVisible: Estate car
+- assertVisible: XYZ-789
+- assertNotVisible: Family car

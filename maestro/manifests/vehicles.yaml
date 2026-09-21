@@ -1,0 +1,8 @@
+# Adding, listing, opening and editing vehicles. Run with: maestro/run.sh vehicles
+flows:
+  - "vehicles/*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - add-and-browse
+    - edit
