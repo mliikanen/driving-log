@@ -127,6 +127,9 @@ context: |
   - Colors come from the theme (`MaterialTheme.colorScheme` roles, or `DrivingLogTheme.domain` for distance and fuel), never hard-coded in a screen.
     A new color is added to both schemes, and every text pair must reach 4.5:1 and every outline, icon and control 3:1 (`ThemeColorsTest` checks the
     schemes). The crop screen is the one deliberate exception: a fixed black surface with its own colors.
+  - Use Material 3 components and their defaults instead of re-implementing what they do: colors of the enabled, disabled and pressed states, ripples, focus and accessibility semantics come from the component
+    (a disabled control is the component with `enabled = false`, not a color chosen by hand); a role of the theme is passed only where the design needs one the component does not use by default (an action's
+    `primaryContainer`, say), and a state that Compose has a semantics property for (`stateDescription`, `disabled`) uses it.
   - MVI architecture.
   - Tests follow docs/test-strategy.md: a check goes in the lowest kind of test that can check it (pure unit tests for variations, Compose integration
     tests for MVI, Roborazzi for UI structure, Maestro for the happy path of a feature end to end). Maestro flows are grouped into manifests

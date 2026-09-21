@@ -11,7 +11,7 @@
 ### Requirement: Home screen offers the main actions
 The system SHALL show on the Home screen the application name "Driving Log" in a top app bar, and below it a grid of four actions in two rows of two, each an icon with a short text below it: "Vehicles", "Log event", "Trip" and "Placeholder" (a question mark icon). The grid SHALL stay two by two in
 portrait and in landscape, and every action SHALL be at least 48 dp square with its whole area tappable. The first action SHALL open the vehicle list; when the user has no vehicle it SHALL instead read "Add vehicle" (a plus icon) and open the add vehicle screen. An action that is not available
-yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be shown in the theme's disabled colors (the Material 3 disabled container and content, taken from the theme's on-surface color) and not in the colors of an available action, and SHALL NOT react to a tap; the disabled action SHALL still be readable by a screen reader, with a name that says it is not available. The vehicle list SHALL NOT be shown on the Home screen.
+yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be disabled Material 3 components: shown in Material's disabled colors and not in the colors of an available action, not reacting to a tap, and exposed to a screen reader as disabled (with their label still readable). The vehicle list SHALL NOT be shown on the Home screen.
 
 #### Scenario: Home screen with vehicles
 - **WHEN** the Home screen is displayed and the user has added a vehicle

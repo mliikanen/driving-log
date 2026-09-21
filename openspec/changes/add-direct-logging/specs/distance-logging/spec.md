@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: A distance can be logged from the Home screen
-The system SHALL make the Home screen's "Log event" action open the log distance form when the user has at least one vehicle. With no vehicle the action SHALL stay dimmed and SHALL NOT react to a tap, and its accessible name SHALL say that a vehicle must be added first. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
+The system SHALL make the Home screen's "Log event" action open the log distance form when the user has at least one vehicle. With no vehicle the action SHALL stay a disabled Material 3 component (as on the Home screen) that does not react to a tap, and its state description for a screen reader SHALL say that a vehicle must be added first. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
 
 #### Scenario: Open the form from the Home screen
 - **WHEN** the user has a vehicle and taps "Log event" on the Home screen
@@ -11,7 +11,7 @@ The system SHALL make the Home screen's "Log event" action open the log distance
 
 #### Scenario: No vehicle
 - **WHEN** the user has no vehicle and taps "Log event"
-- **THEN** nothing happens, and the action is shown dimmed
+- **THEN** nothing happens, and the action is shown as disabled
 
 #### Scenario: Save from the Home screen route
 - **WHEN** the user opened the form from the Home screen, enters a valid entry and saves
