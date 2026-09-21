@@ -14,6 +14,7 @@ odometer field, so "entering the odometer 45200" means typing the digits 4, 5, 2
 ### Requirement: Add a vehicle
 The system SHALL allow the user to add a vehicle by entering a name (required), a license plate (optional), a picture
 (optional, as specified in the `vehicle-picture` capability), the vehicle's type (preselected as Car, changeable, as specified in the `vehicle-type`
+capability), the vehicle's color (preselected as the application's main theme color, changeable, as specified in the `vehicle-color`
 capability), choosing
 the vehicle's odometer unit and entering its current odometer reading in the odometer field (required: the user
 SHALL type at least one digit, and a typed 0 is a valid reading). After a successful save the system SHALL return to
@@ -25,13 +26,17 @@ share the same name or license plate.
 - **THEN** the vehicle "Family car" with plate "ABC-123" appears in the vehicle list
 - **AND** its details screen shows a current odometer of 45200 km
 
+#### Scenario: Add a vehicle with a color
+- **WHEN** the user enters the name "Family car", chooses the color "Teal", types the odometer 45200 and saves
+- **THEN** the vehicle "Family car" is saved with the color "Teal", as specified in the `vehicle-color` capability
+
 #### Scenario: Add a vehicle with a picture
 - **WHEN** the user enters the name "Family car", chooses the type "Car", adds and crops a picture, types the odometer 45200 and saves
 - **THEN** the vehicle "Family car" appears in the vehicle list with its picture, as specified in the `vehicle-picture` capability
 
 #### Scenario: Add a vehicle with a name, the default unit and an odometer of zero
 - **WHEN** the user enters the name "Van", chooses the type "Van", leaves the preselected unit unchanged, types 0 as the odometer and saves
-- **THEN** the vehicle "Van" appears in the vehicle list without a license plate and with the placeholder of its type
+- **THEN** the vehicle "Van" appears in the vehicle list without a license plate, with the placeholder of its type and with the default color
 - **AND** its details screen shows a current odometer of 0 in the preselected unit
 
 #### Scenario: Odometer is required
@@ -353,7 +358,7 @@ Going back SHALL return to the vehicle list.
 - **THEN** the vehicle list is displayed
 
 ### Requirement: Edit a vehicle
-The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
+The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
 SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
 NOT allow changing the odometer reading or the odometer unit. After a successful save the system SHALL return to the details screen showing
 the new values, and the vehicle list SHALL show them too.
@@ -366,6 +371,10 @@ the new values, and the vehicle list SHALL show them too.
 #### Scenario: Change the type
 - **WHEN** the user edits a vehicle of the type "Car", chooses the type "Van" and saves
 - **THEN** the vehicle has the type "Van", as specified in the `vehicle-type` capability
+
+#### Scenario: Change the color
+- **WHEN** the user edits a vehicle, chooses the color "Red" and saves
+- **THEN** the vehicle has the color "Red", as specified in the `vehicle-color` capability
 
 #### Scenario: Change the picture
 - **WHEN** the user chooses and crops another picture on the edit screen and saves
@@ -381,11 +390,11 @@ the new values, and the vehicle list SHALL show them too.
 
 #### Scenario: Odometer and unit are not editable
 - **WHEN** the user opens the edit screen of a vehicle
-- **THEN** the screen offers only the name, the license plate, the type and the picture for editing
+- **THEN** the screen offers only the name, the license plate, the type, the color and the picture for editing
 
 #### Scenario: Cancel editing
 - **WHEN** the user changes the fields and then leaves the edit screen without saving
-- **THEN** the vehicle keeps its previously saved name, plate, type and picture
+- **THEN** the vehicle keeps its previously saved name, plate, type, color and picture
 
 ### Requirement: Vehicles persist and work offline
 The system SHALL keep vehicles on the device so that they are still present after the app is closed and reopened,
