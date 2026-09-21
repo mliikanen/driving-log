@@ -20,4 +20,4 @@
 
 ## 4. Final verification
 
-- [ ] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass; run the four plain Maestro manifests once while applying (the shared subflow they all use changed), not as part of the final regression run
+- [x] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass; run the four plain Maestro manifests once while applying (the shared subflow they all use changed), not as part of the final regression run
