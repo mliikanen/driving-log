@@ -67,8 +67,8 @@ That leaves twelve journey flows in place of 23 (`vehicles` 2, `distance` 1, `re
 **Jupiter: not used in shared code.** Decided: the shared logic is tested with `kotlin.test` in `commonTest`, so it also runs on iOS (Jupiter is JVM-only). The document says pure unit tests are `kotlin.test` (running on JUnit under the Android host tests); nothing is migrated.
 
 **The platform split of the test kinds is written into the document.** Pure unit tests are shared (`commonTest`, run on Android host and iOS). Robolectric, Compose UI test and Roborazzi are Android/JVM-only tools, so the tiers that use them are Android tests, never `commonTest`.
-The composables and processors they exercise live in `shared`, which already has an `androidHostTest` source set, so the expected home of Compose integration and screenshot tests is `shared/src/androidHostTest` (they reach the shared screens directly); `androidApp` holds only tests of the shell (the activity, DI wiring), if any.
-iOS has no counterpart of these tiers yet: its screens are covered by the shared unit tests and, when an Xcode project exists, by an iOS-specific tier that its own change decides. Maestro flows are Android flows today. The document states this as the expected layout, to be confirmed by `add-compose-integration-tests`, which owns the actual source-set and dependency choices; none of it is added by this change.
+The composables and processors they exercise live in `shared`, which already has an `androidHostTest` source set, so the home of Compose integration and screenshot tests is `shared/src/androidHostTest` (decided) (they reach the shared screens directly); `androidApp` holds only tests of the shell (the activity, DI wiring), if any.
+iOS has no counterpart of these tiers yet: its screens are covered by the shared unit tests and, when an Xcode project exists, by an iOS-specific tier that its own change decides. Maestro flows are Android flows today. The document states this layout; `add-compose-integration-tests` owns the dependency choices (Robolectric, Compose UI test, Roborazzi), and none of it is added by this change.
 
 ## Risks / Trade-offs
 
