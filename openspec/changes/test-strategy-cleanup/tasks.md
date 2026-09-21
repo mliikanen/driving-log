@@ -2,8 +2,8 @@
 
 ## 1. Spike: Maestro manifests
 
-- [ ] 1.1 On Maestro 2.10.0 and the emulator, prove with a scratch workspace under the scratchpad (not committed) that `maestro test <dir>` reads `<dir>/config.yaml`, that `executionOrder.flowsOrder` runs a `setup.yaml` (an `addMedia` of one photo) first, that `../subflows/…` and `../assets/…` resolve from a flow inside a manifest directory, and that `--include-tags` filters the flows; record the result (and the fallback of design "A manifest is a Maestro workspace directory" if a piece fails) in the design's Decisions
-- [ ] 1.2 Prove that a flow that finds the setup's photos in the picker works with the pick-photo retry reduced to one attempt when the photos were uploaded in an earlier flow (run the picture add flow after a setup flow); record whether the retry can shrink
+- [x] 1.1 On Maestro 2.10.0 and the emulator, prove with a scratch workspace under the scratchpad (not committed) that a manifest can be a config file chosen with `--config`, that `executionOrder.flowsOrder` runs a `setup.yaml` (an `addMedia` of one photo) first, that `../subflows/…` and `../assets/…` resolve from a flow inside an area directory, and that `--include-tags` filters the flows; record the result (and the fallbacks) in the design's Decisions
+- [x] 1.2 Prove that a flow that finds the setup's photos in the picker works with the pick-photo retry reduced to one attempt when the photos were uploaded in an earlier flow (run the picture add flow after a setup flow); record whether the retry can shrink
 
 ## 2. Strategy and policy
 
@@ -18,8 +18,8 @@
 
 ## 4. Manifest scaffolding
 
-- [ ] 4.1 Create `maestro/run.sh`: runs `reset-media.sh` when `adb` is available (says so and goes on when not), then `maestro test maestro/<area>` for each area named, `--all` for all plain areas (`vehicles distance resilience appearance`), and `<area> <flow>` for setup plus one flow; documents the device-state areas (`picture theme clock`) and runs them through their own `run.sh`. Verify: `maestro/run.sh nosuch` fails with the list of areas; running a manifest on the emulator works
-- [ ] 4.2 Add `setup.yaml` and `config.yaml` to each area that needs photos or an order (`appearance`, `resilience`, `picture`) and only `config.yaml` to the others, each `config.yaml` listing flows, `flowsOrder` (setup first) and tags; verify each manifest's dry listing with `maestro test maestro/<area>` reaching its first flow
+- [ ] 4.1 Create `maestro/run.sh`: runs `reset-media.sh` when `adb` is available (says so and goes on when not), then `maestro test maestro/<area>` for each area named, `--all` for all plain areas (`vehicles distance resilience appearance`), and `<area> <flow>` for setup plus one flow (through a generated config file); documents the device-state areas (`picture theme clock`) and runs them through their own `run.sh`. Verify: `maestro/run.sh nosuch` fails with the list of areas; running a manifest on the emulator works
+- [ ] 4.2 Add `maestro/manifests/<area>.yaml` for `vehicles`, `distance`, `resilience` and `appearance`, each listing the area's flows and `flowsOrder` (setup first when it has one), and a `setup.yaml` in the areas whose flows choose photos (`appearance`, `resilience`); no tags (they conflict with `flowsOrder`); verify that `maestro/run.sh <area>` reaches the area's first flow
 
 ## 5. Move the flows, one manifest at a time
 

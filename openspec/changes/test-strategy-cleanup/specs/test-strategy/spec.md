@@ -46,7 +46,7 @@ assertion SHALL be removed from a flow only when the test that checks it in a lo
 - **THEN** that test exists and passes before the assertion is removed
 
 ### Requirement: Flows are organized into manifests with one setup
-The Maestro flows SHALL be grouped by feature area into manifests, each a workspace directory with a `config.yaml` that lists its flows and their order. Each manifest that
+The Maestro flows SHALL be grouped by feature area into manifests, each a Maestro configuration file that lists its flows and their order. Each manifest that
 needs test data on the device (the photos the flows use) SHALL upload it once, in a setup flow that runs first, and its other flows SHALL NOT upload it again. A
 fresh emulator with the debug app installed SHALL be all a manifest needs, and one command SHALL run a manifest, several manifests or all of them.
 

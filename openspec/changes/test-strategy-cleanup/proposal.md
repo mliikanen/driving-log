@@ -22,8 +22,7 @@ is for, so each new flow has been written to check everything about its feature.
 - **Maestro flows are cleaned up.** Flows that only repeat what a unit test (or another flow) already checks are removed, and the remaining
   ones are merged into one happy-path flow per journey. Before an assertion goes, the unit test that owns it is named, and where there is none it
   is added first. The 23 numbered flows become about a dozen, kept in the per-feature manifests below.
-- **Manifests.** A *manifest* is a Maestro workspace directory with a `config.yaml`: it lists the flows of one feature area, their order and their
-  tags. Each manifest starts with one setup flow that uploads the test photos its flows use, **once for all of them**, instead of each flow
+- **Manifests.** A *manifest* is a Maestro config file (`maestro/manifests/<area>.yaml`, run with `--config`): it lists the flows of one feature area and their order. Each manifest starts with one setup flow that uploads the test photos its flows use, **once for all of them**, instead of each flow
   uploading its own photos just before it needs them. `maestro/run.sh <manifest>…` runs manifests (and clears the emulator's old photo copies first);
   `maestro/run.sh --all` runs all.
 - **What is run when changes.** The final regression run of a change (the last task of `/opsx:apply`, before `/opsx:archive`) is
