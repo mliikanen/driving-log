@@ -128,6 +128,9 @@ context: |
     A new color is added to both schemes, and every text pair must reach 4.5:1 and every outline, icon and control 3:1 (`ThemeColorsTest` checks the
     schemes). The crop screen is the one deliberate exception: a fixed black surface with its own colors.
   - MVI architecture.
+  - Tests follow docs/test-strategy.md: a check goes in the lowest kind of test that can check it (pure unit tests for variations, Compose integration
+    tests for MVI, Roborazzi for UI structure, Maestro for the happy path of a feature end to end). Maestro flows are grouped into manifests
+    (maestro/manifests/<area>.yaml) and are not part of the final regression run of a change.
 
 # Per-artifact rules.
 rules:
@@ -138,4 +141,6 @@ rules:
     - Note platform differences (Android vs iOS) explicitly when behavior differs
   tasks:
     - Keep tasks small enough to complete and verify in one sitting
-    - Include test tasks for each requirement
+    - Include test tasks for each requirement, each in the lowest kind of test that can check it (docs/test-strategy.md); a Maestro flow only follows the happy path of a feature
+    - Name the Maestro manifests to run for the functionality the change touches. Do not add a task to run the whole Maestro suite unless the change is a major refactoring
+    - The final task is the regression run - `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict` - without Maestro

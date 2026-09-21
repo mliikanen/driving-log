@@ -36,5 +36,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   The flows are self-contained: the photos they use are in `maestro/assets/` (see its README) and each flow that needs one uploads it with `addMedia`, so a fresh
   emulator with the debug app installed is all the suite needs. Each run adds another copy of the photos to the emulator; if `addMedia` starts to fail or the photo
   picker shows nothing, run `maestro/reset-media.sh`.
-- Checking a change while working on it: run only the Maestro flows that were changed themselves or that exercise the screens the
-  change touches, not the whole suite. Run the full suite only when getting ready to archive the change.
+- Test strategy: see `docs/test-strategy.md`. A check goes in the lowest kind of test that can check it; Maestro flows are only the happy path of a feature end to end.
+  While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
+  The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, **without Maestro**.
+  The whole Maestro suite is for major refactorings, which the developer names.

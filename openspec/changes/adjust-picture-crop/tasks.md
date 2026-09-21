@@ -20,4 +20,4 @@
 
 ## 4. Project context and final verification
 
-- [ ] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the flows that use the crop screen (and the whole suite before archiving) and `openspec validate --all --strict`, and verify all pass
+- [ ] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass; run the `picture` manifest (the flows that use the crop screen) once while applying, not as part of the final regression run

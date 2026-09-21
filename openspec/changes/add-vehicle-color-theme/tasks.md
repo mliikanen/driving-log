@@ -16,7 +16,7 @@
 
 ## 3. Flows, context and findings
 
-- [ ] 3.1 Add Maestro flows: on the add screen choose a color and complete and save a vehicle (every control still reachable and legible: the flow reads texts and taps controls), the same on the edit screen, a rotation with a color chosen, and back on the list (assert the list is unaffected); verify they pass together with the add and edit flows of the suite
+- [ ] 3.1 Add Maestro flows: on the add screen choose a color and complete and save a vehicle (every control still reachable and legible: the flow reads texts and taps controls), the same on the edit screen, a rotation with a color chosen, and back on the list (assert the list is unaffected); verify they pass together with the flows of the `vehicles` and `appearance` manifests
 - [ ] 3.2 Record the findings in the design (a "Findings" section): how the scheme looks in light and dark, the default color next to Petroleum, the measured cost, the fixed app bar, accents on a themed screen, the navigation seam, and propose the next change for the other vehicle-specific screens from them
 - [ ] 3.3 Add to the project context in `openspec/config.yaml` that the add and edit vehicle screens are themed by the vehicle's color (derived scheme, animated as one, app bar and other screens not themed), and verify `openspec validate --all --strict` passes
-- [ ] 3.4 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [ ] 3.4 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (Maestro is not part of the final regression run: the manifests this change touches, `vehicles` and `appearance`, were run in 3.1)
