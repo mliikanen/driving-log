@@ -33,4 +33,4 @@
 ## 6. Project context and final verification
 
 - [x] 6.1 Add to the project context in `openspec/config.yaml` that every vehicle has a mandatory color (a `NOT NULL` `RRGGBB` column, default the theme's main color), that vehicle-specific colors are derived from it when drawn and never stored, and the convention that any real-time color change is animated as one animation driven by a single animated color (`rememberAnimatedColor`), and verify `openspec validate --all --strict` passes
-- [ ] 6.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [x] 6.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
