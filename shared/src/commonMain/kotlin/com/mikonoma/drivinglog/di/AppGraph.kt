@@ -14,6 +14,8 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
 import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
+import com.mikonoma.drivinglog.vehicle.color.HistogramColorExtractor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
@@ -52,6 +54,9 @@ interface AppGraph {
 
     @Provides
     fun provideClock(): Clock = Clock.System
+
+    @Provides
+    fun provideColorExtractor(): ColorExtractor = HistogramColorExtractor()
 
     @Provides
     fun provideDeviceTimeZone(): DeviceTimeZone = SystemDeviceTimeZone()

@@ -15,12 +15,15 @@ CREATE TABLE vehicle (
     picture_id    TEXT,
     -- The kind of vehicle: a VehicleType code (CAR, SUV, VAN, ...). Never null: every vehicle has a type (a vehicle from before types existed is a CAR).
     -- An unknown code (from a newer app) reads as OTHER.
-    vehicle_type  TEXT    NOT NULL DEFAULT 'CAR'
+    vehicle_type  TEXT    NOT NULL DEFAULT 'CAR',
+    -- The vehicle's color as RRGGBB (upper case). Never null: every vehicle has one, and the default is the application's main theme color (the same
+    -- value as VehicleColors.default, which a test ties to this). A value that is not six hex digits reads as the default.
+    vehicle_color TEXT    NOT NULL DEFAULT '203A43'
 );
 
 insertVehicle:
-INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id, vehicle_type)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id, vehicle_type, vehicle_color)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Only name and plate can change. The unit and the log are never touched.
 updateVehicle:
@@ -29,6 +32,10 @@ UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
 -- Sets the vehicle's type. Editing the type is a vehicle edit, so updated_at moves.
 updateVehicleType:
 UPDATE vehicle SET vehicle_type = ?, updated_at = ? WHERE id = ?;
+
+-- Sets the vehicle's color. Editing the color is a vehicle edit, so updated_at moves.
+updateVehicleColor:
+UPDATE vehicle SET vehicle_color = ?, updated_at = ? WHERE id = ?;
 
 -- Points the vehicle at another picture (or none). Editing the picture is a vehicle edit, so updated_at moves.
 updateVehiclePicture:
@@ -42,7 +49,7 @@ selectPictureId:
 SELECT picture_id FROM vehicle WHERE id = ?;
 
 selectVehicles:
-SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id, vehicle_type
+SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id, vehicle_type, vehicle_color
 FROM vehicle
 ORDER BY created_at, rowid;
 
@@ -58,6 +65,7 @@ SELECT
     v.log_distance_tenths,
     v.picture_id,
     v.vehicle_type,
+    v.vehicle_color,
     (
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)

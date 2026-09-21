@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
@@ -40,6 +42,7 @@ data class AddCall(
     val unit: OdometerUnit,
     val initialOdometer: Distance,
     val picture: PendingPicture? = null,
+    val color: Rgb = VehicleColors.default,
 )
 data class UpdateCall(
     val id: String,
@@ -47,6 +50,7 @@ data class UpdateCall(
     val licensePlate: String?,
     val type: VehicleType = VehicleType.CAR,
     val picture: PictureChange = PictureChange.Keep,
+    val color: Rgb = VehicleColors.default,
 )
 
 /** An in-memory repository for processor tests. Events are kept newest first, as the real one returns them. */
@@ -72,8 +76,9 @@ class FakeVehicleRepository : VehicleRepository {
         logDistanceTenths: Boolean? = null,
         pictureId: String? = null,
         type: VehicleType = VehicleType.CAR,
+        color: Rgb = VehicleColors.default,
     ) {
-        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type)
+        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type, color)
     }
 
     /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
@@ -82,6 +87,10 @@ class FakeVehicleRepository : VehicleRepository {
     }
 
     /** Changes a seeded vehicle's type, as another screen saving it would. */
+    fun setColor(id: String, color: Rgb) {
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(color = color) else it }
+    }
+
     fun setType(id: String, type: VehicleType) {
         vehicles.value = vehicles.value.map { if (it.id == id) it.copy(type = type) else it }
     }
@@ -114,14 +123,15 @@ class FakeVehicleRepository : VehicleRepository {
         name: String,
         licensePlate: String?,
         type: VehicleType,
+        color: Rgb,
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture?,
     ): String {
         addFailure?.let { throw it }
-        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture)
+        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color)
         val id = "v${++counter}"
-        seedVehicle(id, name, licensePlate, unit, type = type)
+        seedVehicle(id, name, licensePlate, unit, type = type, color = color)
         seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
         return id
     }
@@ -160,10 +170,10 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, picture: PictureChange) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
         updateFailure?.let { throw it }
-        updateCalls += UpdateCall(id, name, licensePlate, type, picture)
-        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type) else it }
+        updateCalls += UpdateCall(id, name, licensePlate, type, picture, color)
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type, color = color) else it }
     }
 }
 

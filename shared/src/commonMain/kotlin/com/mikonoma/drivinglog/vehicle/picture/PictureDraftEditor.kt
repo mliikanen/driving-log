@@ -1,5 +1,23 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
+import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+
+/** The longer side, in pixels, of what a picture's color is taken from. */
+const val COLOR_SAMPLE_SIDE = 128
+
+/** What a picture step does to the form's color. */
+enum class ColorStep {
+    /** Leaves the picture color and the color as they are. */
+    Keep,
+
+    /** A crop was confirmed: its color becomes the picture color and the current color. */
+    FromConfirmedCrop,
+
+    /** The picture was removed: the picture color goes, the current color stays. */
+    ClearPictureColor,
+}
+
 /** A photo larger than this is refused as unreadable, which keeps the bytes held in memory bounded. */
 const val MAX_PHOTO_BYTES = 40L * 1024 * 1024
 
@@ -32,6 +50,16 @@ class PictureDraftEditor(
                 state.copy(cropSourceId = store.putPendingSource(bytes), error = null)
             }
         }
+    }
+
+    /**
+     * The one color of the picture the [state] holds as its pending draft (its small version is what the user confirmed), or null when there is no
+     * pending picture, its files are gone, it cannot be sampled or it has no opaque pixel. The extraction is a single pass over at most 16 K pixels.
+     */
+    suspend fun sampleColor(state: PictureEditState, extractor: ColorExtractor): Rgb? {
+        val pendingId = (state.draft as? PictureDraft.Pending)?.pendingId ?: return null
+        val bytes = store.readPending(pendingId, PictureSize.SMALL) ?: return null
+        return codec.sample(bytes, COLOR_SAMPLE_SIDE)?.let(extractor::extract)
     }
 
     /** The photo being cropped, decoded for the crop screen, or null when there is none or its file is gone. */

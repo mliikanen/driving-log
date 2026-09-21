@@ -13,6 +13,10 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
     val encodes = mutableListOf<Encode>()
     var decodeCount = 0
 
+    /** What [sample] gives for bytes that are an image: a flat mid grey unless a test sets something else. */
+    var samples: PixelSamples? = PixelSamples(4, 4, IntArray(16) { 0xFF808080.toInt() })
+    val sampledBytes = mutableListOf<ByteArray>()
+
     /** When set, [encodeSquare] throws it. */
     var encodeFailure: Throwable? = null
 
@@ -30,6 +34,11 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
         if (bytes.isEmpty()) return null
         encodes += Encode(bytes, crop, sides)
         return EncodedPicture(version(crop, sides.small, 0), version(crop, sides.large, 1))
+    }
+
+    override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? {
+        sampledBytes += bytes
+        return if (bytes.isEmpty()) null else samples
     }
 
     private fun version(crop: CropRect, side: Int, marker: Int) =

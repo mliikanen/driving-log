@@ -67,7 +67,7 @@ The library's `QuantizerCelebi` was tried first and left out: measured while app
 most common color". The histogram is short, exact and deterministic; real photos with gradients spread a paint color over several neighbouring bins, which is one reason the result is shown and can be changed, and a neighbourhood-weighted bin is the first refinement to try.
 
 The rule is deliberately simple: a photo of a red car on grey asphalt may give the grey. The user sees the result as the selected "Picture color" swatch and can change it in one tap, which is why the result is shown and never silently applied. Better
-selection (chroma-weighted, background-aware) is a later refinement that changes no storage or spec. Extraction runs on `Dispatchers.Default` after the crop is confirmed, in the processor, and its result is a serializable `Rgb` in the state.
+selection (chroma-weighted, background-aware) is a later refinement that changes no storage or spec. Extraction runs in the processor right after the crop is confirmed (`PictureDraftEditor.sampleColor` reads the pending small version, samples it through the codec, which works off the main thread on Android, and extracts): it is a single pass over at most 16 K pixels, about a millisecond, so it needs no dispatcher of its own, and it stays synchronous in tests. Its result is a serializable `Rgb` in the state.
 
 ### 6. State, processors and the picker
 

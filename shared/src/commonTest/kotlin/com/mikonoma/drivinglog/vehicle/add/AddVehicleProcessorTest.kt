@@ -5,6 +5,7 @@ import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.vehicle.AddCall
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import com.mikonoma.drivinglog.vehicle.color.FakeColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
@@ -17,6 +18,8 @@ import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -42,6 +45,7 @@ class AddVehicleProcessorTest {
     private val repository = FakeVehicleRepository()
     private val pictures = FakeVehiclePictureStore()
     private val codec = FakeImageCodec()
+    private val colors = FakeColorExtractor()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -49,7 +53,7 @@ class AddVehicleProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region), pictures, codec)
+    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region), pictures, codec, colors)
 
     private fun AddVehicleProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(AddVehicleIntent.OdometerEdited(state.entry.digits + d))
@@ -860,5 +864,225 @@ class AddVehicleProcessorTest {
         processor.dispatch(AddVehicleIntent.Save)
 
         assertEquals(VehicleType.VAN, processor.state.type)
+    }
+
+    // ---- The vehicle's color
+
+    private val red = Rgb(0xE53935)
+    private val blue = Rgb(0x1E88E5)
+
+    @Test
+    fun theDefaultColorIsChosenAtFirstAndThereIsNoPictureColor() {
+        val state = processor().state
+
+        assertEquals(VehicleColors.default, state.color)
+        assertNull(state.pictureColor)
+    }
+
+    @Test
+    fun choosingAColorSelectsIt() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+
+        assertEquals(blue, processor.state.color)
+    }
+
+    @Test
+    fun choosingAnotherColorReplacesTheChoice() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+
+        processor.dispatch(AddVehicleIntent.ColorSelected(red))
+
+        assertEquals(red, processor.state.color)
+    }
+
+    @Test
+    fun aConfirmedCropSetsTheColorAndTheOfferedPictureColor() {
+        colors.color = red
+        val processor = processor()
+
+        processor.pickAndCrop()
+
+        assertEquals(red, processor.state.color)
+        assertEquals(red, processor.state.pictureColor)
+    }
+
+    @Test
+    fun theColorIsTakenFromTheSmallVersionOfTheConfirmedCrop() = runTest {
+        val processor = processor()
+
+        processor.pickAndCrop()
+
+        val pendingId = (processor.state.picture.draft as PictureDraft.Pending).pendingId
+        val small = checkNotNull(pictures.readPending(pendingId, PictureSize.SMALL))
+        assertEquals(1, codec.sampledBytes.size)
+        assertEquals(small.toList(), codec.sampledBytes.single().toList())
+        assertEquals(listOf(codec.samples), colors.extracted)
+    }
+
+    @Test
+    fun choosingAPresetAfterThePictureKeepsThePictureColorOffered() {
+        colors.color = red
+        val processor = processor()
+        processor.pickAndCrop()
+
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+
+        assertEquals(blue, processor.state.color)
+        assertEquals(red, processor.state.pictureColor)
+        processor.dispatch(AddVehicleIntent.ColorSelected(red))
+        assertEquals(red, processor.state.color)
+    }
+
+    @Test
+    fun anotherConfirmedCropReplacesBothColors() {
+        colors.color = red
+        val processor = processor()
+        processor.pickAndCrop()
+        colors.color = blue
+
+        processor.pickAndCrop()
+
+        assertEquals(blue, processor.state.color)
+        assertEquals(blue, processor.state.pictureColor)
+    }
+
+    @Test
+    fun aCropCancelledKeepsTheColorAndNoPictureColorAppears() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.ColorSelected(Rgb(0x43A047)))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+
+        processor.dispatch(AddVehicleIntent.CropCancelled)
+
+        assertEquals(Rgb(0x43A047), processor.state.color)
+        assertNull(processor.state.pictureColor)
+        assertEquals(emptyList(), colors.extracted)
+    }
+
+    @Test
+    fun aCropCancelledAfterAPictureKeepsThePictureColorOfTheFirst() {
+        colors.color = red
+        val processor = processor()
+        processor.pickAndCrop()
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+
+        processor.dispatch(AddVehicleIntent.CropCancelled)
+
+        assertEquals(red, processor.state.color)
+        assertEquals(red, processor.state.pictureColor)
+    }
+
+    @Test
+    fun removingThePictureKeepsTheColorAndDropsThePictureColor() {
+        colors.color = red
+        val processor = processor()
+        processor.pickAndCrop()
+
+        processor.dispatch(AddVehicleIntent.PictureRemoved)
+
+        assertEquals(red, processor.state.color)
+        assertNull(processor.state.pictureColor)
+    }
+
+    @Test
+    fun aPhotoWithoutAColorLeavesTheColorAsItWas() {
+        colors.color = null
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+
+        processor.pickAndCrop()
+
+        assertEquals(blue, processor.state.color)
+        assertNull(processor.state.pictureColor)
+        assertTrue(processor.state.picture.draft is PictureDraft.Pending)
+    }
+
+    @Test
+    fun aCropWhosePhotoIsGoneTakesNoColor() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+        pictures.discardPendingSource(checkNotNull(processor.state.picture.cropSourceId))
+
+        processor.dispatch(AddVehicleIntent.CropConfirmed(crop))
+
+        assertEquals(VehicleColors.default, processor.state.color)
+        assertNull(processor.state.pictureColor)
+        assertEquals(emptyList(), colors.extracted)
+    }
+
+    @Test
+    fun theChosenColorReachesTheRepository() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Blue van"))
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+        processor.type(4, 5)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(blue, repository.addCalls.single().color)
+    }
+
+    @Test
+    fun aVehicleSavedWithoutTouchingTheColorGetsTheDefault() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Plain"))
+        processor.type(1)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleColors.default, repository.addCalls.single().color)
+    }
+
+    @Test
+    fun theColorFromThePictureIsWhatIsSavedUnlessAnotherWasChosen() = runTest {
+        colors.color = red
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Red car"))
+        processor.type(1)
+        processor.pickAndCrop()
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(red, repository.addCalls.single().color)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheColorAndThePictureColor() {
+        colors.color = red
+        val first = processor()
+        first.pickAndCrop()
+        first.dispatch(AddVehicleIntent.ColorSelected(blue))
+        val saved = checkNotNull(first.stateToSave())
+
+        val restored = processor()
+        restored.restoreState(saved)
+
+        assertEquals(blue, restored.state.color)
+        assertEquals(red, restored.state.pictureColor)
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheColorForAnotherTry() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.ColorSelected(blue))
+        processor.type(1)
+        repository.addFailure = IllegalStateException("disk full")
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertEquals(blue, processor.state.color)
     }
 }

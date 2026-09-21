@@ -1,11 +1,13 @@
 package com.mikonoma.drivinglog.vehicle.add
 
 import com.mikonoma.drivinglog.locale.DeviceLocale
+import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.defaultOdometerUnit
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.input.VehicleFieldsResult
 import com.mikonoma.drivinglog.vehicle.input.validateVehicleFields
+import com.mikonoma.drivinglog.vehicle.picture.ColorStep
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraftEditor
@@ -25,6 +27,7 @@ class AddVehicleProcessor(
     deviceLocale: DeviceLocale,
     pictures: VehiclePictureStore,
     codec: ImageCodec,
+    private val colors: ColorExtractor,
 ) : PresentationProcessor<AddVehicleIntent, AddVehicleState, AddVehicleEffect>(
     AddVehicleState(entry = OdometerEntry(defaultOdometerUnit(deviceLocale.regionCode))),
 ) {
@@ -36,6 +39,7 @@ class AddVehicleProcessor(
         is AddVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is AddVehicleIntent.UnitSelected -> reduce { copy(entry = entry.withUnit(intent.unit)) }
         is AddVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
+        is AddVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
         is AddVehicleIntent.OdometerEdited -> reduce {
             val edited = entry.applyEdit(intent.text)
             copy(entry = edited, odometerError = odometerError && edited.isEmpty)
@@ -44,15 +48,15 @@ class AddVehicleProcessor(
         AddVehicleIntent.Save -> save()
         is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
         AddVehicleIntent.PictureRefresh -> pictureStep { it }
-        is AddVehicleIntent.CropConfirmed -> pictureStep { editor.cropConfirmed(it, intent.crop) }
+        is AddVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop) }
         AddVehicleIntent.CropCancelled -> pictureStep { editor.cropCancelled(it) }
-        AddVehicleIntent.PictureRemoved -> pictureStep { editor.removed(it) }
+        AddVehicleIntent.PictureRemoved -> pictureStep(ColorStep.ClearPictureColor) { editor.removed(it) }
         AddVehicleIntent.PictureErrorDismissed -> pictureStep { editor.errorDismissed(it) }
         AddVehicleIntent.Left -> async("leave") { editor.discardAll(state.picture) }
     }
 
-    /** Applies a picture change, then rebuilds what is derived from it: the preview and the photo being cropped. */
-    private fun pictureStep(change: suspend (PictureEditState) -> PictureEditState): Action<AddVehicleState, AddVehicleEffect> =
+    /** Applies a picture change, then rebuilds what is derived from it: the preview, the photo being cropped and, as [colorStep] says, the color. */
+    private fun pictureStep(colorStep: ColorStep = ColorStep.Keep, change: suspend (PictureEditState) -> PictureEditState): Action<AddVehicleState, AddVehicleEffect> =
         async("picture") {
             var next = change(state.picture)
             var cropImage = if (next.isCropping) editor.cropImage(next) else null
@@ -62,7 +66,22 @@ class AddVehicleProcessor(
                 cropImage = null
             }
             val preview = editor.previewUri(next, savedPictureId = null)
-            reduce { copy(picture = next, previewUri = preview, cropImage = cropImage) }
+            // A confirmed crop gives the color of its picture (null: the picture has none, so the color stays as it was).
+            val confirmed = colorStep == ColorStep.FromConfirmedCrop && next.error == null && next.draft is PictureDraft.Pending
+            val extracted = if (confirmed) editor.sampleColor(next, colors) else null
+            reduce {
+                copy(
+                    picture = next,
+                    previewUri = preview,
+                    cropImage = cropImage,
+                    pictureColor = when {
+                        confirmed -> extracted
+                        colorStep == ColorStep.ClearPictureColor -> null
+                        else -> pictureColor
+                    },
+                    color = extracted ?: color,
+                )
+            }
         }
 
     private fun save(): Action<AddVehicleState, AddVehicleEffect>? {
@@ -82,7 +101,7 @@ class AddVehicleProcessor(
             reduce { copy(isSaving = true, nameError = false, odometerError = false) }
             try {
                 repository.addVehicle(
-                    fields.fields.name, fields.fields.licensePlate, state.type, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
+                    fields.fields.name, fields.fields.licensePlate, state.type, state.color, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
                 )
             } catch (throwable: Throwable) {
                 // Let the user try again; Kide logs the rethrown error.

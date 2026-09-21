@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.list
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
@@ -13,6 +15,8 @@ data class VehicleListItem(
     val pictureUri: String? = null,
     /** The vehicle's type, whose icon stands in for a missing picture. */
     val type: VehicleType,
+    /** The vehicle's color, which its icon is drawn from. */
+    val color: Rgb = VehicleColors.default,
 )
 
 data class VehicleListState(

@@ -14,6 +14,8 @@ data class Vehicle(
     val pictureId: String? = null,
     /** The kind of vehicle. Every vehicle has one; a stored code this app does not know reads as [VehicleType.OTHER]. */
     val type: VehicleType,
+    /** The vehicle's color. Every vehicle has one (the default is the application's main theme color). */
+    val color: Rgb,
 )
 
 /** A vehicle with its current odometer, which is derived from the log and never stored. */

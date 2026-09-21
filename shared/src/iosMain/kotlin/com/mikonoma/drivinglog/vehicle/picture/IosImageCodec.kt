@@ -12,6 +12,12 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import platform.CoreGraphics.CGBitmapContextCreate
+import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
+import platform.CoreGraphics.CGColorSpaceRelease
+import platform.CoreGraphics.CGContextDrawImage
+import platform.CoreGraphics.CGContextRelease
+import platform.CoreGraphics.CGImageAlphaInfo
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Foundation.NSData
@@ -46,6 +52,35 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
             val image = upright(bytes) ?: return@withContext null
             EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
         }
+
+    override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {
+        val image = upright(bytes) ?: return@withContext null
+        val (width, height) = image.size.useContents { width to height }
+        val scale = minOf(1.0, maxSide / max(width, height))
+        val w = max(1, (width * scale).roundToInt())
+        val h = max(1, (height * scale).roundToInt())
+        val cgImage = image.CGImage ?: return@withContext null
+        // Draw into an RGBA buffer of the sample's size, then turn each premultiplied pixel into a plain ARGB int.
+        val rgba = ByteArray(w * h * 4)
+        val space = CGColorSpaceCreateDeviceRGB()
+        rgba.usePinned { pinned ->
+            val context = CGBitmapContextCreate(
+                pinned.addressOf(0), w.toULong(), h.toULong(), 8u, (w * 4).toULong(), space, CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value,
+            )
+            CGContextDrawImage(context, CGRectMake(0.0, 0.0, w.toDouble(), h.toDouble()), cgImage)
+            CGContextRelease(context)
+        }
+        CGColorSpaceRelease(space)
+        val pixels = IntArray(w * h) { i ->
+            val a = rgba[i * 4 + 3].toInt() and 0xFF
+            fun channel(offset: Int): Int {
+                val value = rgba[i * 4 + offset].toInt() and 0xFF
+                return if (a == 0 || a == 255) value else minOf(255, value * 255 / a)
+            }
+            (a shl 24) or (channel(0) shl 16) or (channel(1) shl 8) or channel(2)
+        }
+        PixelSamples(w, h, pixels)
+    }
 
     /** The photo upright and no larger than [MAX_DECODE_SIDE] on its longer side, or null when it is not an image. */
     private fun upright(bytes: ByteArray): UIImage? {

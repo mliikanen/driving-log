@@ -38,6 +38,24 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             EncodedPicture(encode(square, sides.small), encode(square, sides.large))
         }
 
+    override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {
+        try {
+            val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))
+            val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                var sample = 1
+                val longer = max(info.size.width, info.size.height)
+                while (longer / sample > maxSide) sample *= 2
+                if (sample > 1) decoder.setTargetSampleSize(sample)
+            }
+            val pixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            PixelSamples(bitmap.width, bitmap.height, pixels)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** A software bitmap (a hardware one cannot be cropped or compressed), or null when the bytes are not an image. */
     private fun decodeBitmap(bytes: ByteArray): Bitmap? = try {
         val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))

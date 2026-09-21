@@ -1,0 +1,3 @@
+-- Version 5 to 6: the vehicle's color, six hexadecimal digits (RRGGBB). Every vehicle has one: the vehicles added before colors existed get the default,
+-- the application's main theme color (Oil Slick Blue, VehicleColors.default). There is no backfill from pictures.
+ALTER TABLE vehicle ADD COLUMN vehicle_color TEXT NOT NULL DEFAULT '203A43';

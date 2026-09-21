@@ -45,4 +45,10 @@ interface ImageCodec {
      * the platform can write it), or null when the bytes cannot be decoded.
      */
     suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides): EncodedPicture?
+
+    /**
+     * The image reduced to at most [maxSide] pixels on its longer side, as ARGB pixels (the photo's orientation applied), for taking a color from it;
+     * or null when the bytes are not an image the platform can decode. Bounded, so it never holds more than [maxSide] squared pixels.
+     */
+    suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples?
 }

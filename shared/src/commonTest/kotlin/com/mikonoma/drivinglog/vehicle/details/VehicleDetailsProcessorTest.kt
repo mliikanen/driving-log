@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
@@ -101,7 +103,7 @@ class VehicleDetailsProcessorTest {
         repository.seedVehicle("v1", "Family car")
         val processor = processor()
 
-        repository.updateVehicle("v1", "Estate car", "XYZ-789", VehicleType.CAR)
+        repository.updateVehicle("v1", "Estate car", "XYZ-789", VehicleType.CAR, VehicleColors.default)
 
         assertEquals("Estate car", processor.state.name)
         assertEquals("XYZ-789", processor.state.licensePlate)
@@ -237,5 +239,29 @@ class VehicleDetailsProcessorTest {
         repository.setType("v1", VehicleType.SUV)
 
         assertEquals(VehicleType.SUV, processor.state.type)
+    }
+
+    // ---- The vehicle's color
+
+    @Test
+    fun theStateHasTheVehiclesColor() {
+        repository.seedVehicle("v1", "Rig", color = Rgb(0x8E24AA))
+
+        assertEquals(Rgb(0x8E24AA), processor().state.color)
+    }
+
+    @Test
+    fun theStateFollowsAChangeOfColor() {
+        repository.seedVehicle("v1", "Rig", color = Rgb(0x8E24AA))
+        val processor = processor()
+
+        repository.setColor("v1", Rgb(0x43A047))
+
+        assertEquals(Rgb(0x43A047), processor.state.color)
+    }
+
+    @Test
+    fun theDetailsHaveTheDefaultColorUntilTheVehicleHasLoaded() {
+        assertEquals(VehicleColors.default, VehicleDetailsState().color)
     }
 }

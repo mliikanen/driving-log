@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
@@ -12,7 +13,7 @@ import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
 
-/** The edit form. Only name and plate can be edited: there is no odometer or unit here. */
+/** The edit form. The name, plate, type, color and picture can be edited: there is no odometer or unit here. */
 @Serializable
 data class EditVehicleState(
     /** True once the saved values have been copied into the form, so later database changes never overwrite typing. */
@@ -22,6 +23,10 @@ data class EditVehicleState(
     val licensePlate: String = "",
     /** The vehicle's type: null only until the saved vehicle has loaded, its saved type from then on. It can be changed but never cleared. */
     val type: VehicleType? = null,
+    /** The vehicle's color: null only until the saved vehicle has loaded, its saved color from then on. It can be changed but never cleared. */
+    val color: Rgb? = null,
+    /** The color taken from a crop confirmed in this form, offered as a swatch of its own; null until then (and after the picture is removed). */
+    val pictureColor: Rgb? = null,
     val nameError: Boolean = false,
     val isSaving: Boolean = false,
     /** The picture: [PictureDraft.Unchanged] until the user changes or removes it. Names files, holds no pixels. */
@@ -38,6 +43,7 @@ sealed interface EditVehicleIntent : ViewIntent {
     data class NameChanged(val text: String) : EditVehicleIntent
     data class LicensePlateChanged(val text: String) : EditVehicleIntent
     data class TypeSelected(val type: VehicleType) : EditVehicleIntent
+    data class ColorSelected(val color: Rgb) : EditVehicleIntent
     data object Save : EditVehicleIntent
 
     /** The system's chooser of where the photo comes from gave [result]. */

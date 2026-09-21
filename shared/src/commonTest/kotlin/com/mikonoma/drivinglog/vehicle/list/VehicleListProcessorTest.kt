@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.list
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
@@ -188,5 +190,27 @@ class VehicleListProcessorTest {
         repository.setType("1", VehicleType.SCOOTER)
 
         assertEquals(VehicleType.SCOOTER, processor.state.vehicles.single().type)
+    }
+
+    // ---- The vehicle's color
+
+    @Test
+    fun eachItemHasItsVehiclesColor() {
+        repository.seedVehicle("1", "Bike", color = Rgb(0xE53935))
+        repository.seedVehicle("2", "Rig")
+
+        val items = VehicleListProcessor(repository, pictures).state.vehicles
+
+        assertEquals(listOf(Rgb(0xE53935), VehicleColors.default), items.map { it.color })
+    }
+
+    @Test
+    fun anItemFollowsAChangeOfColor() {
+        repository.seedVehicle("1", "Bike", color = Rgb(0xE53935))
+        val processor = VehicleListProcessor(repository, pictures)
+
+        repository.setColor("1", Rgb(0x1E88E5))
+
+        assertEquals(Rgb(0x1E88E5), processor.state.vehicles.single().color)
     }
 }

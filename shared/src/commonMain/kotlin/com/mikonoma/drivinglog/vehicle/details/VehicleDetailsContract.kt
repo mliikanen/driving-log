@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -21,6 +23,8 @@ data class VehicleDetailsState(
     val pictureUri: String? = null,
     /** The vehicle's type, whose icon stands in for a missing picture (a placeholder until the vehicle has loaded). */
     val type: VehicleType = VehicleType.CAR,
+    /** The vehicle's color, which its icon is drawn from (the default until the vehicle has loaded). */
+    val color: Rgb = VehicleColors.default,
     val unit: OdometerUnit = OdometerUnit.KILOMETERS,
     val currentOdometer: Distance? = null,
     /** At most [VehicleDetailsProcessor.RECENT_EVENT_LIMIT] events, newest first. */

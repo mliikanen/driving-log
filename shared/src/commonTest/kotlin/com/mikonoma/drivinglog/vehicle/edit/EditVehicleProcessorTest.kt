@@ -1,8 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.UpdateCall
+import com.mikonoma.drivinglog.vehicle.color.FakeColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.initialEvent
@@ -36,6 +39,7 @@ class EditVehicleProcessorTest {
     private val repository = FakeVehicleRepository()
     private val pictures = FakeVehiclePictureStore()
     private val codec = FakeImageCodec()
+    private val colors = FakeColorExtractor()
 
     @BeforeTest
     fun setUp() {
@@ -47,7 +51,7 @@ class EditVehicleProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor() = EditVehicleProcessor("v1", repository, pictures, codec)
+    private fun processor() = EditVehicleProcessor("v1", repository, pictures, codec, colors)
 
     @Test
     fun theFormStartsWithTheCurrentValues() {
@@ -61,7 +65,7 @@ class EditVehicleProcessorTest {
     @Test
     fun aVehicleWithoutAPlateStartsWithAnEmptyPlateField() {
         repository.seedVehicle("v2", "Van", plate = null)
-        assertEquals("", EditVehicleProcessor("v2", repository, pictures, codec).state.licensePlate)
+        assertEquals("", EditVehicleProcessor("v2", repository, pictures, codec, colors).state.licensePlate)
     }
 
     @Test
@@ -155,7 +159,7 @@ class EditVehicleProcessorTest {
         val processor = processor()
         processor.dispatch(EditVehicleIntent.NameChanged("Typing"))
 
-        repository.updateVehicle("v1", "Changed elsewhere", null, VehicleType.CAR)
+        repository.updateVehicle("v1", "Changed elsewhere", null, VehicleType.CAR, VehicleColors.default)
 
         assertEquals("Typing", processor.state.name)
     }
@@ -171,7 +175,7 @@ class EditVehicleProcessorTest {
 
     @Test
     fun aMissingVehicleIsReportedAndCannotBeSaved() {
-        val processor = EditVehicleProcessor("missing", repository, pictures, codec)
+        val processor = EditVehicleProcessor("missing", repository, pictures, codec, colors)
         assertTrue(processor.state.notFound)
 
         processor.dispatch(EditVehicleIntent.Save)
@@ -216,7 +220,7 @@ class EditVehicleProcessorTest {
     fun theFormStartsWithTheSavedPictureUnchangedAndItsPreview() {
         val pictureId = seedPicture()
 
-        val state = EditVehicleProcessor("v3", repository, pictures, codec).state
+        val state = EditVehicleProcessor("v3", repository, pictures, codec, colors).state
 
         assertEquals(PictureDraft.Unchanged, state.picture.draft)
         assertEquals(pictureId, state.savedPictureId)
@@ -232,7 +236,7 @@ class EditVehicleProcessorTest {
     @Test
     fun savingWithoutTouchingThePictureKeepsIt() = runTest {
         seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.dispatch(EditVehicleIntent.NameChanged("Big van"))
 
         processor.test {
@@ -246,7 +250,7 @@ class EditVehicleProcessorTest {
     @Test
     fun aChosenAndCroppedPictureReplacesTheSavedOneOnSave() = runTest {
         seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.pickAndCrop()
         val pendingId = (processor.state.picture.draft as PictureDraft.Pending).pendingId
         assertEquals(FakeVehiclePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
@@ -262,7 +266,7 @@ class EditVehicleProcessorTest {
     @Test
     fun removingThePictureClearsThePreviewButNotTheSavedFiles() = runTest {
         val pictureId = seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
 
         processor.dispatch(EditVehicleIntent.PictureRemoved)
 
@@ -280,7 +284,7 @@ class EditVehicleProcessorTest {
     @Test
     fun removingThenLeavingKeepsTheSavedPictureAndSavesNothing() {
         val pictureId = seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
 
         processor.dispatch(EditVehicleIntent.PictureRemoved)
         processor.dispatch(EditVehicleIntent.Left)
@@ -292,7 +296,7 @@ class EditVehicleProcessorTest {
     @Test
     fun leavingAfterCroppingAnotherPictureDeletesOnlyThePendingFiles() {
         val pictureId = seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.pickAndCrop()
 
         processor.dispatch(EditVehicleIntent.Left)
@@ -303,7 +307,7 @@ class EditVehicleProcessorTest {
     @Test
     fun aPhotoThatCannotBeOpenedKeepsTheSavedPictureAndShowsTheError() {
         seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
 
         processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(ByteArray(0))))
 
@@ -315,7 +319,7 @@ class EditVehicleProcessorTest {
     @Test
     fun cancellingTheCropKeepsTheSavedPicture() {
         seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
         assertTrue(processor.state.picture.isCropping)
 
@@ -328,7 +332,7 @@ class EditVehicleProcessorTest {
     @Test
     fun aFailedSaveKeepsTheDraft() {
         seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.pickAndCrop()
         val draft = processor.state.picture.draft
         repository.updateFailure = IllegalStateException("disk full")
@@ -342,7 +346,7 @@ class EditVehicleProcessorTest {
     @Test
     fun aVehicleWhosePictureChangesElsewhereGetsTheNewPreviewWhileTheDraftIsUnchanged() {
         val first = seedPicture()
-        val processor = EditVehicleProcessor("v3", repository, pictures, codec)
+        val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         assertEquals(first, processor.state.savedPictureId)
 
         // The repository emits the vehicle again with another picture (say, the same vehicle edited on another screen).
@@ -357,7 +361,7 @@ class EditVehicleProcessorTest {
 
     private fun seedTyped(type: VehicleType): EditVehicleProcessor {
         repository.seedVehicle("t1", "Rig", type = type)
-        return EditVehicleProcessor("t1", repository, pictures, codec)
+        return EditVehicleProcessor("t1", repository, pictures, codec, colors)
     }
 
     @Test
@@ -409,7 +413,7 @@ class EditVehicleProcessorTest {
 
         assertEquals(emptyList(), repository.updateCalls)
         // The saved vehicle is untouched: a new processor over it starts with the saved type.
-        assertEquals(VehicleType.BUS, EditVehicleProcessor("t1", repository, pictures, codec).state.type)
+        assertEquals(VehicleType.BUS, EditVehicleProcessor("t1", repository, pictures, codec, colors).state.type)
     }
 
     @Test
@@ -428,9 +432,183 @@ class EditVehicleProcessorTest {
     @Test
     fun aRestoredStateKeepsTheChoiceMadeBeforeTheProcessorWasRecreated() {
         repository.seedVehicle("t2", "Rig", type = VehicleType.CAR)
-        val restored = EditVehicleProcessor("t2", repository, pictures, codec)
+        val restored = EditVehicleProcessor("t2", repository, pictures, codec, colors)
         restored.restoreState(EditVehicleState(loaded = true, name = "Rig", type = VehicleType.SUV))
 
         assertEquals(VehicleType.SUV, restored.state.type)
+    }
+
+    // ---- The vehicle's color
+
+    private val red = Rgb(0xE53935)
+    private val blue = Rgb(0x1E88E5)
+
+    private fun seedColored(color: Rgb, pictureId: String? = null): EditVehicleProcessor {
+        repository.seedVehicle("c1", "Rig", color = color, pictureId = pictureId)
+        return EditVehicleProcessor("c1", repository, pictures, codec, colors)
+    }
+
+    @Test
+    fun theSavedColorIsSelected() {
+        assertEquals(Rgb(0x00796B), seedColored(Rgb(0x00796B)).state.color)
+    }
+
+    @Test
+    fun aVehicleWithTheDefaultColorStartsWithIt() {
+        assertEquals(VehicleColors.default, processor().state.color)
+    }
+
+    @Test
+    fun openingTheFormTakesNoColorFromAPicture() {
+        val processor = seedColored(Rgb(0x00796B), pictureId = pictures.addPicture())
+
+        assertEquals(Rgb(0x00796B), processor.state.color)
+        assertNull(processor.state.pictureColor)
+        assertEquals(emptyList(), colors.extracted)
+        assertEquals(emptyList(), codec.sampledBytes)
+    }
+
+    @Test
+    fun choosingAColorSelectsIt() {
+        val processor = seedColored(Rgb(0x00796B))
+
+        processor.dispatch(EditVehicleIntent.ColorSelected(red))
+
+        assertEquals(red, processor.state.color)
+    }
+
+    @Test
+    fun changingTheColorSavesIt() = runTest {
+        val processor = seedColored(Rgb(0x00796B))
+        processor.dispatch(EditVehicleIntent.ColorSelected(red))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(red, repository.updateCalls.single().color)
+    }
+
+    @Test
+    fun anEditThatDoesNotTouchTheColorKeepsIt() = runTest {
+        val processor = seedColored(Rgb(0x00796B))
+        processor.dispatch(EditVehicleIntent.NameChanged("Renamed"))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(Rgb(0x00796B), repository.updateCalls.single().color)
+        assertEquals(Rgb(0x00796B), repository.observeVehicle("c1").first()!!.vehicle.color)
+    }
+
+    @Test
+    fun leavingWithoutSavingKeepsTheSavedColor() = runTest {
+        val processor = seedColored(Rgb(0x00796B))
+        processor.dispatch(EditVehicleIntent.ColorSelected(red))
+
+        processor.dispatch(EditVehicleIntent.Left)
+
+        assertEquals(emptyList(), repository.updateCalls)
+        assertEquals(Rgb(0x00796B), repository.observeVehicle("c1").first()!!.vehicle.color)
+    }
+
+    @Test
+    fun aConfirmedCropSetsTheColorAndTheOfferedPictureColor() {
+        colors.color = red
+        val processor = seedColored(Rgb(0x00796B))
+
+        processor.pickAndCrop()
+
+        assertEquals(red, processor.state.color)
+        assertEquals(red, processor.state.pictureColor)
+    }
+
+    @Test
+    fun choosingAPresetAfterThePictureKeepsThePictureColorOffered() {
+        colors.color = red
+        val processor = seedColored(Rgb(0x00796B))
+        processor.pickAndCrop()
+
+        processor.dispatch(EditVehicleIntent.ColorSelected(blue))
+
+        assertEquals(blue, processor.state.color)
+        assertEquals(red, processor.state.pictureColor)
+    }
+
+    @Test
+    fun cancellingACropKeepsTheColor() {
+        val processor = seedColored(Rgb(0x00796B), pictureId = pictures.addPicture())
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
+
+        processor.dispatch(EditVehicleIntent.CropCancelled)
+
+        assertEquals(Rgb(0x00796B), processor.state.color)
+        assertNull(processor.state.pictureColor)
+    }
+
+    @Test
+    fun removingTheSavedPictureKeepsTheColor() {
+        val processor = seedColored(Rgb(0x00796B), pictureId = pictures.addPicture())
+
+        processor.dispatch(EditVehicleIntent.PictureRemoved)
+
+        assertEquals(Rgb(0x00796B), processor.state.color)
+        assertNull(processor.state.pictureColor)
+    }
+
+    @Test
+    fun removingAPictureCroppedInThisFormKeepsItsColorAndDropsThePictureColor() {
+        colors.color = red
+        val processor = seedColored(Rgb(0x00796B))
+        processor.pickAndCrop()
+
+        processor.dispatch(EditVehicleIntent.PictureRemoved)
+
+        assertEquals(red, processor.state.color)
+        assertNull(processor.state.pictureColor)
+    }
+
+    @Test
+    fun aPhotoWithoutAColorLeavesTheColorAsItWas() {
+        colors.color = null
+        val processor = seedColored(Rgb(0x00796B))
+
+        processor.pickAndCrop()
+
+        assertEquals(Rgb(0x00796B), processor.state.color)
+        assertNull(processor.state.pictureColor)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheColorAndThePictureColor() {
+        colors.color = red
+        val first = seedColored(Rgb(0x00796B))
+        first.pickAndCrop()
+        first.dispatch(EditVehicleIntent.ColorSelected(blue))
+        val saved = checkNotNull(first.stateToSave())
+
+        val restored = EditVehicleProcessor("c1", repository, pictures, codec, colors)
+        restored.restoreState(saved)
+
+        assertEquals(blue, restored.state.color)
+        assertEquals(red, restored.state.pictureColor)
+    }
+
+    @Test
+    fun aColorEditDoesNotChangeTheTypeOrThePictureChange() = runTest {
+        val processor = seedColored(Rgb(0x00796B))
+        processor.dispatch(EditVehicleIntent.ColorSelected(red))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        val call = repository.updateCalls.single()
+        assertEquals(VehicleType.CAR, call.type)
+        assertEquals(PictureChange.Keep, call.picture)
     }
 }
