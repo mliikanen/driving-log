@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.list
 
+import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import androidx.compose.foundation.layout.safeDrawing
@@ -41,6 +42,7 @@ fun VehicleListScreen(
     processor: VehicleListProcessor,
     onShowDetails: (String) -> Unit,
     onShowAdd: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
 
@@ -57,6 +59,7 @@ fun VehicleListScreen(
         state = state,
         onOpen = { processor.dispatch(VehicleListIntent.OpenVehicle(it)) },
         onAdd = { processor.dispatch(VehicleListIntent.AddVehicle) },
+        onBack = onBack,
     )
 }
 
@@ -66,12 +69,17 @@ fun VehicleListContent(
     state: VehicleListState,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
+    onBack: () -> Unit,
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             Column {
-                CenterAlignedTopAppBar(title = { Text("Driving Log") }, colors = drivingLogTopAppBarColors())
+                CenterAlignedTopAppBar(
+                    title = { Text("Vehicles") },
+                    navigationIcon = { BackButton(onBack) },
+                    colors = drivingLogTopAppBarColors(),
+                )
                 HeaderDivider()
             }
         },

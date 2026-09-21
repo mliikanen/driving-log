@@ -47,26 +47,29 @@ class LandingProcessorTest {
     fun withVehiclesTheFirstTileOpensTheVehicles() {
         val first = tile(landingTiles(hasVehicles = true, isLoading = false), LandingTileId.VEHICLES)
 
-        assertEquals("Vehicles", first.label)
+        assertEquals("Vehicles", first.name)
         assertEquals(LandingIcon.VEHICLES, first.icon)
         assertTrue(first.enabled)
     }
 
     @Test
-    fun withoutVehiclesTheFirstTileIsAddVehicle() {
+    fun withoutVehiclesTheFirstTileIsTheSameCarAndOnlyItsNameChanges() {
         val first = tile(landingTiles(hasVehicles = false, isLoading = false), LandingTileId.VEHICLES)
+        val withVehicles = tile(landingTiles(hasVehicles = true, isLoading = false), LandingTileId.VEHICLES)
 
-        assertEquals("Add vehicle", first.label)
-        assertEquals(LandingIcon.ADD_VEHICLE, first.icon)
+        assertEquals("Add vehicle", first.name)
+        assertEquals(LandingIcon.VEHICLES, first.icon)
+        assertEquals(withVehicles.icon, first.icon)
         assertTrue(first.enabled)
     }
 
     @Test
-    fun whileLoadingTheFirstTileHasNoLabelAndIsNotEnabledSoAddVehicleNeverFlashes() {
+    fun whileLoadingTheFirstTileHasNoNameAndIsNotEnabledSoATapCannotPickTheWrongScreen() {
         for (hasVehicles in listOf(true, false)) {
             val first = tile(landingTiles(hasVehicles, isLoading = true), LandingTileId.VEHICLES)
 
-            assertEquals("", first.label)
+            assertEquals("", first.name)
+            assertEquals(LandingIcon.VEHICLES, first.icon)
             assertFalse(first.enabled)
         }
     }
@@ -81,12 +84,12 @@ class LandingProcessorTest {
     }
 
     @Test
-    fun thePlaceholdersHaveTheirLabelsAndIcons() {
+    fun thePlaceholdersHaveTheirNamesAndIcons() {
         val tiles = landingTiles(hasVehicles = true, isLoading = false)
 
-        assertEquals("Log event" to LandingIcon.LOG_EVENT, tile(tiles, LandingTileId.LOG_EVENT).let { it.label to it.icon })
-        assertEquals("Trip" to LandingIcon.TRIP, tile(tiles, LandingTileId.TRIP).let { it.label to it.icon })
-        assertEquals("Placeholder" to LandingIcon.PLACEHOLDER, tile(tiles, LandingTileId.PLACEHOLDER).let { it.label to it.icon })
+        assertEquals("Log event" to LandingIcon.LOG_EVENT, tile(tiles, LandingTileId.LOG_EVENT).let { it.name to it.icon })
+        assertEquals("Trip" to LandingIcon.TRIP, tile(tiles, LandingTileId.TRIP).let { it.name to it.icon })
+        assertEquals("Placeholder" to LandingIcon.PLACEHOLDER, tile(tiles, LandingTileId.PLACEHOLDER).let { it.name to it.icon })
     }
 
     // ---- The processor
@@ -97,7 +100,7 @@ class LandingProcessorTest {
 
         assertFalse(processor.state.isLoading)
         assertFalse(processor.state.hasVehicles)
-        assertEquals("Add vehicle", tile(processor.state.tiles, LandingTileId.VEHICLES).label)
+        assertEquals("Add vehicle", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
     }
 
     @Test
@@ -107,17 +110,17 @@ class LandingProcessorTest {
         val processor = LandingProcessor(repository)
 
         assertTrue(processor.state.hasVehicles)
-        assertEquals("Vehicles", tile(processor.state.tiles, LandingTileId.VEHICLES).label)
+        assertEquals("Vehicles", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
     }
 
     @Test
     fun theTileFollowsAVehicleBeingAdded() = runTest {
         val processor = LandingProcessor(repository)
-        assertEquals("Add vehicle", tile(processor.state.tiles, LandingTileId.VEHICLES).label)
+        assertEquals("Add vehicle", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
 
         repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance.ZERO)
 
-        assertEquals("Vehicles", tile(processor.state.tiles, LandingTileId.VEHICLES).label)
+        assertEquals("Vehicles", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
     }
 
     @Test

@@ -5,8 +5,9 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+# A fresh start is the Home screen with no vehicle: its first tile, "Add vehicle", opens the add screen.
 - tapOn:
-    id: add_vehicle
+    id: landing_vehicles
 - scrollUntilVisible:
     element:
       id: vehicle_color_203A43
@@ -67,6 +68,9 @@ appId: com.mikonoma.drivinglog
 - hideKeyboard
 - tapOn:
     id: save_vehicle
+# Back on the Home screen, whose first tile is now "Vehicles".
+- tapOn:
+    id: landing_vehicles
 - assertVisible:
     id: add_vehicle
 - tapOn: Photo car

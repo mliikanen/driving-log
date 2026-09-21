@@ -1,0 +1,61 @@
+# Happy path: the Home screen. A fresh start shows the four tiles with "Add vehicle" first, which opens the add screen; the three placeholder tiles are disabled and do nothing; after a vehicle
+# is added the first tile is "Vehicles", which opens the vehicle list, and back returns to the Home screen.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- assertVisible: Driving Log
+- assertVisible: Add vehicle
+- assertVisible: Log event
+- assertVisible: Trip
+- assertVisible: Placeholder
+# The three placeholders are disabled: they are exposed as disabled and a tap changes nothing.
+- assertVisible:
+    id: landing_log_event
+    enabled: false
+- assertVisible:
+    id: landing_trip
+    enabled: false
+- assertVisible:
+    id: landing_more
+    enabled: false
+- tapOn:
+    id: landing_trip
+- tapOn:
+    id: landing_log_event
+- tapOn:
+    id: landing_more
+- assertVisible:
+    id: landing_vehicles
+# "Add vehicle" opens the add screen, and back returns to the Home screen.
+- tapOn:
+    id: landing_vehicles
+- assertVisible:
+    id: vehicle_name
+- tapOn:
+    id: back
+- assertVisible: Add vehicle
+# With a vehicle the first tile is "Vehicles".
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "1"
+- assertVisible: Family car
+- tapOn:
+    id: back
+- assertVisible: Vehicles
+- assertNotVisible: Add vehicle
+- assertVisible:
+    id: landing_trip
+    enabled: false
+# "Vehicles" opens the list, and back returns.
+- tapOn:
+    id: landing_vehicles
+- assertVisible: Family car
+- tapOn:
+    id: back
+- assertVisible: Vehicles
+- assertNotVisible: Add vehicle

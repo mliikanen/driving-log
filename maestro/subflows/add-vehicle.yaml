@@ -1,12 +1,32 @@
-# Adds a vehicle from the vehicle list. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
+# Adds a vehicle, from the Home screen or from the vehicle list, and ends on the vehicle list. From the Home screen the first tile is used: with no vehicle it is "Add vehicle" and
+# opens the add screen straight away (after saving the app is on the Home screen again, so the list is then opened); with vehicles it opens the list, whose button is tapped. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
 # unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading),
 # TYPE (optional, a vehicle type code such as MOTORCYCLE; when not given the preselected Car is kept),
 # COLOR (optional, a preset's RRGGBB code such as E53935; when not given the preselected default color is kept),
 # PICTURE (optional, any value: the first photo of the system picker is chosen and cropped; the photo must be on the device, see the area's setup.yaml).
 appId: com.mikonoma.drivinglog
 ---
-- tapOn:
-    id: add_vehicle
+- evalScript: "${output.emptyRoute = false}"
+- runFlow:
+    when:
+      visible:
+        id: landing_vehicles
+    commands:
+      # The tile's label is a text of its own: "Add vehicle" only while the user has no vehicle.
+      - runFlow:
+          when:
+            visible: Add vehicle
+          commands:
+            - evalScript: "${output.emptyRoute = true}"
+      - tapOn:
+          id: landing_vehicles
+# On the vehicle list (opened just now or already there) the add button is tapped; from an empty Home screen the add screen is already open.
+- runFlow:
+    when:
+      true: ${!output.emptyRoute}
+    commands:
+      - tapOn:
+          id: add_vehicle
 - evalScript: "${output.withPicture = (typeof PICTURE === 'undefined') ? '' : PICTURE}"
 - runFlow:
     when:
@@ -59,6 +79,14 @@ appId: com.mikonoma.drivinglog
 - hideKeyboard
 - tapOn:
     id: save_vehicle
-# Wait for the list: the add screen is still on screen while it navigates away.
+# Wait for the list: the add screen is still on screen while it navigates away. After the empty Home screen route the Home screen comes back instead: open the list from it.
+- runFlow:
+    when:
+      true: ${output.emptyRoute}
+    commands:
+      - assertVisible:
+          id: landing_vehicles
+      - tapOn:
+          id: landing_vehicles
 - assertVisible:
     id: add_vehicle

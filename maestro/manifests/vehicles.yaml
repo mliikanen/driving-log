@@ -1,8 +1,9 @@
-# Adding, listing, opening and editing vehicles. Run with: maestro/run.sh vehicles
+# The Home screen, adding, listing, opening and editing vehicles. Run with: maestro/run.sh vehicles
 flows:
   - "vehicles/*.yaml"
 executionOrder:
   continueOnFailure: false
   flowsOrder:
+    - landing
     - add-and-browse
     - edit

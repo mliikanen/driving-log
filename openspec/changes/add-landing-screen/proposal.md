@@ -11,14 +11,14 @@ actions gives them that place, keeps the vehicle list one tap away, and makes th
 
 ## What Changes
 
-- **A new Home screen: a 2 x 2 grid of four actions**, each an icon over a short text, in a top app bar titled "Driving Log":
-  1. **"Vehicles"** (a car icon): opens the vehicle list. When the user has **no vehicles** the tile is **"Add vehicle"** (a plus icon) and opens the add vehicle screen directly.
-  2. **"Log event"** (a pencil-and-note icon): present, **not usable yet** (shown in the theme's disabled colors, not in the action colors); `add-direct-logging` makes it open the log form.
-  3. **"Trip"** (a route icon): present, **not usable yet** (in the disabled colors); it becomes start and end trip in `add-trip-logging`.
-  4. **"Placeholder"** (a question mark icon): holds the place of a fourth action, in the disabled colors; the three disabled tiles **stay disabled** until the changes that build them are applied.
-- **The app starts on the landing screen** instead of the vehicle list. The **vehicle list becomes a screen of its own**, reached from the "Vehicles" tile: it keeps its list, its "Add vehicle" button and its empty state, gains a back arrow (back returns to the landing screen) and is titled "Vehicles".
+- **A new Home screen: a 2 x 2 grid of four actions**, each **an icon and no visible text** (every tile has a name for screen readers), in a top app bar titled "Driving Log":
+  1. **Vehicles** (always the **car icon**, whether or not there are vehicles): opens the vehicle list; when the user has **no vehicles** it opens the add vehicle screen directly. Only the destination depends on the vehicles; its name for a screen reader says which ("Vehicles" or "Add vehicle").
+  2. **Log event** (a pencil-and-note icon): present, **not usable yet** (shown in the theme's disabled colors, not in the action colors); `add-direct-logging` makes it open the log form.
+  3. **Trip** (a route icon): present, **not usable yet** (in the disabled colors); it becomes start and end trip in `add-trip-logging`.
+  4. **Placeholder** (a question mark icon): holds the place of a fourth action, in the disabled colors; the three disabled tiles **stay disabled** until the changes that build them are applied.
+- **The app starts on the landing screen** instead of the vehicle list. The **vehicle list becomes a screen of its own**, reached from the first tile: it keeps its list, its "Add vehicle" button and its empty state, gains a back arrow (back returns to the landing screen) and is titled "Vehicles".
 - The grid stays 2 x 2 in portrait and in landscape; it survives rotation; tiles are at least 48 dp. **The tiles are Material 3 `Card`s used as they are meant to be**: an available tile takes the action colors of the theme (primary container with its on-color) and a disabled one is a `Card` with `enabled = false`, so Material's own disabled colors, semantics (it is announced as disabled) and input handling apply, with no color, alpha or state re-implemented here; the two states cannot be mistaken for each other, the available tiles' text and icons meet the app's contrast rules, and the disabled ones are exempt, as Material Design exempts inactive components.
-- Four new icons (plus, note-pencil, route, question) from the Phosphor set already used for the vehicle icons (MIT, in `THIRD_PARTY_NOTICES.md`); the car icon is the existing vehicle car.
+- Three new icons (note-pencil, route, question) from the Phosphor set already used for the vehicle icons (MIT, in `THIRD_PARTY_NOTICES.md`); the car icon is the existing vehicle car.
 - The Maestro flows start from the landing screen: the shared `add-vehicle` steps get to the list (or straight to the add screen when there are no vehicles) from the landing tile, and a new flow follows the landing screen's happy path.
 
 Out of scope: the log form and the remembered vehicle (`add-direct-logging`), trips (`add-trip-logging`), what the fourth tile will be, a per-vehicle theme for the landing screen (`add-vehicle-color-theme` and its follow-ups), a settings or account entry, and iOS on a device (there is no Xcode project yet).

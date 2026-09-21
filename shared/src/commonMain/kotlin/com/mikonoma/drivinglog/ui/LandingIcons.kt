@@ -17,14 +17,10 @@ object LandingIcons {
     /** The vector a tile draws for [icon]. */
     fun of(icon: LandingIcon): ImageVector = when (icon) {
         LandingIcon.VEHICLES -> VehicleIcons.Car
-        LandingIcon.ADD_VEHICLE -> AddVehicle
         LandingIcon.LOG_EVENT -> LogEvent
         LandingIcon.TRIP -> Trip
         LandingIcon.PLACEHOLDER -> Placeholder
     }
-
-    /** `plus-circle-fill`: "Add vehicle". */
-    val AddVehicle: ImageVector by lazy { build("AddVehicle", ADD_VEHICLE_PATH) }
 
     /** `note-pencil-fill`: "Log event". */
     val LogEvent: ImageVector by lazy { build("LogEvent", LOG_EVENT_PATH) }
@@ -37,7 +33,6 @@ object LandingIcons {
 
     /** The path data of the new icons by name, for tests. */
     internal val pathData: Map<String, String> get() = mapOf(
-        "AddVehicle" to ADD_VEHICLE_PATH,
         "LogEvent" to LOG_EVENT_PATH,
         "Trip" to TRIP_PATH,
         "Placeholder" to PLACEHOLDER_PATH,
@@ -48,8 +43,6 @@ object LandingIcons {
             .addPath(pathData = PathParser().parsePathString(path).toNodes(), fill = SolidColor(Color.Black))
             .build()
 
-    internal const val ADD_VEHICLE_PATH =
-        "M128,24A104,104,0,1,0,232,128,104.13,104.13,0,0,0,128,24Zm40,112H136v32a8,8,0,0,1-16,0V136H88a8,8,0,0,1,0-16h32V88a8,8,0,0,1,16,0v32h32a8,8,0,0,1,0,16Z"
     internal const val LOG_EVENT_PATH =
         "M224,128v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h80a8,8,0,0,1,0,16H48V208H208V128a8,8,0,0,1,16,0Zm5.66-58.34-96,96A8,8,0,0,1,128,168H96a8,8,0,0,1-8-8V128a8,8,0,0,1,2.34-5.66l96-96a8,8,0,0,1,11.32,0l32,32A8,8,0,0,1,229.66,69.66Zm-17-5.66L192,43.31,179.31,56,200,76.69Z"
     internal const val TRIP_PATH =

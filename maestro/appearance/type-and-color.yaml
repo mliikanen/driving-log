@@ -5,8 +5,9 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+# A fresh start is the Home screen with no vehicle: its first tile, "Add vehicle", opens the add screen.
 - tapOn:
-    id: add_vehicle
+    id: landing_vehicles
 - assertVisible:
     id: vehicle_type_CAR
     checked: true
@@ -63,6 +64,7 @@ appId: com.mikonoma.drivinglog
 # Closing the app completely keeps them.
 - stopApp
 - launchApp
+- runFlow: ../subflows/open-vehicles.yaml
 - assertVisible: "Vehicle type: Scooter"
 - tapOn: Bike
 - tapOn:

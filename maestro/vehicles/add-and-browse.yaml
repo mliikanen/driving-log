@@ -5,9 +5,8 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
-- assertVisible: No vehicles yet
-- assertVisible:
-    id: add_vehicle
+# A fresh start is the Home screen with no vehicle: its first tile is "Add vehicle".
+- assertVisible: Add vehicle
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

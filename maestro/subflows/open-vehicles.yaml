@@ -1,0 +1,6 @@
+# Opens the vehicle list from the Home screen: taps the first tile, which is "Vehicles" once the user has a vehicle. Use it after a restart (launchApp without clearState),
+# which lands on the Home screen; with no vehicle that tile is "Add vehicle" and opens the add screen instead (add-vehicle.yaml handles that).
+appId: com.mikonoma.drivinglog
+---
+- tapOn:
+    id: landing_vehicles

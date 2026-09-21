@@ -4,39 +4,39 @@
 
 ### Requirement: Home screen lists vehicles
 **Reason**: The Home screen becomes a landing screen with the app's main actions; the vehicle list is a screen of its own, reached from it (see the `vehicles` capability, "Vehicle list").
-**Migration**: The behavior moves to "Home screen offers the main actions" (the top app bar, the vehicles tile and the add vehicle variant of it) and to the vehicle list screen.
+**Migration**: The behavior moves to "Home screen offers the main actions" (the top app bar and the vehicles action) and to the vehicle list screen.
 
 ## ADDED Requirements
 
 ### Requirement: Home screen offers the main actions
-The system SHALL show on the Home screen the application name "Driving Log" in a top app bar, and below it a grid of four actions in two rows of two, each an icon with a short text below it: "Vehicles", "Log event", "Trip" and "Placeholder" (a question mark icon). The grid SHALL stay two by two in
-portrait and in landscape, and every action SHALL be at least 48 dp square with its whole area tappable. The first action SHALL open the vehicle list; when the user has no vehicle it SHALL instead read "Add vehicle" (a plus icon) and open the add vehicle screen. An action that is not available
-yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be disabled Material 3 components: shown in Material's disabled colors and not in the colors of an available action, not reacting to a tap, and exposed to a screen reader as disabled (with their label still readable). The vehicle list SHALL NOT be shown on the Home screen.
+The system SHALL show on the Home screen the application name "Driving Log" in a top app bar, and below it a grid of four actions in two rows of two, each an icon with no visible text. The icons are a car (vehicles), a pencil on a note ("Log event"), a route ("Trip") and a question mark ("Placeholder"), and every action SHALL have a name for a screen reader: "Vehicles", "Log event", "Trip" and "Placeholder". The grid SHALL stay two by two in
+portrait and in landscape, and every action SHALL be at least 48 dp square with its whole area tappable. The first action SHALL always show the car icon; it SHALL open the vehicle list, or, when the user has no vehicle, the add vehicle screen, and only its name for a screen reader changes with that ("Add vehicle" instead of "Vehicles"). An action that is not available
+yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be disabled Material 3 components: shown in Material's disabled colors and not in the colors of an available action, not reacting to a tap, and exposed to a screen reader as disabled (with their names still readable). The vehicle list SHALL NOT be shown on the Home screen.
 
 #### Scenario: Home screen with vehicles
 - **WHEN** the Home screen is displayed and the user has added a vehicle
-- **THEN** the top app bar shows "Driving Log" and the grid shows "Vehicles", "Log event", "Trip" and "Placeholder", two in each row
+- **THEN** the top app bar shows "Driving Log" and the grid shows the car, note, route and question mark icons, two in each row, with no text on the tiles
 
 #### Scenario: Home screen without vehicles
 - **WHEN** the Home screen is displayed and the user has not added any vehicle
-- **THEN** the first action reads "Add vehicle" with a plus icon, and tapping it displays the add vehicle screen
+- **THEN** the first action still shows the car icon, its name for a screen reader is "Add vehicle", and tapping it displays the add vehicle screen
 
 #### Scenario: Open the vehicles
-- **WHEN** the user taps "Vehicles"
+- **WHEN** the user has a vehicle and taps the first action
 - **THEN** the vehicle list is displayed, and going back from it returns to the Home screen
 
 #### Scenario: An action that is not available
-- **WHEN** the user taps "Trip"
+- **WHEN** the user taps the trip action
 - **THEN** nothing happens, and the action is shown in the disabled colors, unlike the available actions
 
 #### Scenario: Available and disabled actions look different
 - **WHEN** the Home screen is displayed with a vehicle, in the light and in the dark scheme
-- **THEN** "Vehicles" is drawn in the theme's action colors, "Log event", "Trip" and "Placeholder" in the theme's disabled colors, and the two are told apart by more than the label
+- **THEN** the car action is drawn in the theme's action colors, the other three in the theme's disabled colors, and the two are told apart by color as well as by the icon
 
 #### Scenario: The grid in landscape
 - **WHEN** the user rotates the device to landscape while the Home screen is displayed
 - **THEN** the four actions are still shown two by two and each can be tapped
 
-#### Scenario: The first action does not flash
+#### Scenario: The first action waits for the vehicles
 - **WHEN** the application starts and the vehicles are not yet loaded
-- **THEN** the first action is not shown as "Add vehicle" until it is known that there are no vehicles
+- **THEN** the first action does not react to a tap until it is known whether the user has vehicles, so it cannot open the wrong screen

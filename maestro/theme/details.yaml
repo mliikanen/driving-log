@@ -2,6 +2,7 @@
 appId: com.mikonoma.drivinglog
 ---
 - launchApp
+- runFlow: ../subflows/open-vehicles.yaml
 - tapOn: Family car
 - assertVisible:
     id: current_odometer

@@ -22,7 +22,7 @@ class VehicleNavKeysTest {
         com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec(),
     )
 
-    private val serialKeys = listOf("vehicle-list", "vehicle-add", "vehicle-details", "vehicle-edit", "vehicle-log", "vehicle-log-distance")
+    private val serialKeys = listOf("landing", "vehicle-list", "vehicle-add", "vehicle-details", "vehicle-edit", "vehicle-log", "vehicle-log-distance")
 
     @Test
     fun everyScreenIsRegistered() {
@@ -71,6 +71,9 @@ class VehicleNavKeysTest {
         val first = testGraph()
         val second = testGraph()
 
+        assertEquals(com.mikonoma.drivinglog.landing.LandingNavKey(first), com.mikonoma.drivinglog.landing.LandingNavKey(second))
+        assertEquals(com.mikonoma.drivinglog.landing.LandingNavKey(first).hashCode(), com.mikonoma.drivinglog.landing.LandingNavKey(second).hashCode())
+        assertNotEquals<Any>(com.mikonoma.drivinglog.landing.LandingNavKey(first), VehicleListNavKey(first))
         assertEquals(VehicleListNavKey(first), VehicleListNavKey(second))
         assertEquals(AddVehicleNavKey(first), AddVehicleNavKey(second))
         assertEquals(VehicleListNavKey(first).hashCode(), VehicleListNavKey(second).hashCode())

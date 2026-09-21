@@ -2,6 +2,7 @@
 appId: com.mikonoma.drivinglog
 ---
 - launchApp
+- runFlow: ../subflows/open-vehicles.yaml
 - tapOn:
     id: add_vehicle
 - runFlow: ../subflows/pick-photo.yaml

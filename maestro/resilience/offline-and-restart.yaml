@@ -41,6 +41,8 @@ appId: com.mikonoma.drivinglog
 # Close the app completely and open it again, without clearing its data.
 - stopApp
 - launchApp
+# The app starts on the Home screen: the vehicles are one tap away.
+- runFlow: ../subflows/open-vehicles.yaml
 - assertVisible:
     id: vehicle_picture
 - assertVisible: Estate car

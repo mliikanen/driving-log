@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle
 
 import androidx.compose.runtime.Composable
 import com.mikonoma.drivinglog.di.AppGraph
+import com.mikonoma.drivinglog.landing.LandingNavKey
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleScreen
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleState
@@ -47,6 +48,7 @@ class VehicleListNavKey(private val graph: AppGraph) : ScreenNavKey<VehicleListP
             processor = ctx.processor,
             onShowDetails = { id -> ctx.navigateTo(VehicleDetailsNavKey(graph, id)) },
             onShowAdd = { ctx.navigateTo(AddVehicleNavKey(graph)) },
+            onBack = ctx.onBack,
         )
     }
 }
@@ -164,7 +166,7 @@ class LogDistanceNavKey(private val graph: AppGraph, val vehicleId: String = "")
 private var registeredFor: AppGraph? = null
 
 /**
- * Registers a prototype of every vehicle screen so Kide can restore the back stack after process death.
+ * Registers a prototype of every screen (the Home screen and the vehicle screens) so Kide can restore the back stack after process death.
  *
  * The registry is process-wide and rejects a serialKey it already has, while this is called from composition, which
  * runs again whenever the activity is recreated (a rotation, say). So it registers once per graph and is a no-op after.
@@ -172,6 +174,7 @@ private var registeredFor: AppGraph? = null
 fun registerVehicleNavKeys(graph: AppGraph) {
     if (registeredFor === graph) return
     ScreenNavKeyRegistry.clear()
+    ScreenNavKeyRegistry.register(LandingNavKey(graph))
     ScreenNavKeyRegistry.register(VehicleListNavKey(graph))
     ScreenNavKeyRegistry.register(AddVehicleNavKey(graph))
     ScreenNavKeyRegistry.register(VehicleDetailsNavKey(graph))

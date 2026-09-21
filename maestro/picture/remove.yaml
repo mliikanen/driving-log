@@ -2,6 +2,7 @@
 appId: com.mikonoma.drivinglog
 ---
 - launchApp
+- runFlow: ../subflows/open-vehicles.yaml
 - assertVisible: Family car
 - tapOn: Family car
 - tapOn:
