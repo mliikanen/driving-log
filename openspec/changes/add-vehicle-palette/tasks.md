@@ -1,6 +1,6 @@
 # Tasks
 
-> Start only after `add-vehicle-picture` is applied and archived.
+> `add-vehicle-picture` and `add-vehicle-type` are archived; the migration here is `5.sqm` (schema version 6).
 
 ## 1. Libraries and color logic
 
@@ -12,7 +12,7 @@
 
 ## 2. Data and platform
 
-- [ ] 2.1 Add migration `4.sqm` (`vehicle.main_color` and `vehicle.palette`, both TEXT and nullable), schema version 5, `Vehicle.mainColor` and `Vehicle.palette`, and the two columns in the vehicle insert, update, list and details queries (one small update query for the palette alone that leaves `updated_at`), and verify the JVM migration test for 4 to 5, 1 to 5, 2 to 5, 3 to 5 and a fresh version-5 schema (data intact, both columns null)
+- [ ] 2.1 Add migration `5.sqm` (`vehicle.main_color` and `vehicle.palette`, both TEXT and nullable), schema version 6, `Vehicle.mainColor` and `Vehicle.palette`, and the two columns in the vehicle insert, update, list and details queries (one small update query for the palette alone that leaves `updated_at`), and verify the JVM migration test for 5 to 6, 1 to 6, 2 to 6, 3 to 6, 4 to 6 and a fresh version-6 schema (data intact, both columns null)
 - [ ] 2.2 Let `addVehicle` and `updateVehicle` take `mainColor` and `palette` and write them in the same transaction as the picture, keep the stored values for an edit that passes them unchanged, and update the fake repository, and verify repository tests on real SQL: save with a picture and a palette, with a color only, with neither, the invariant (a palette only with a picture or a color), an unrelated edit keeps the palette text exactly, changing the picture, removing the picture (the color's palette or none), clearing the color, a failed transaction leaves the old values, the log unchanged
 - [ ] 2.3 Add `ImageCodec.sample(bytes, maxSide): PixelSamples?` (Android: `ImageDecoder` with a target size and the pixels as ARGB; iOS: ImageIO thumbnail drawn into an RGBA buffer, converted to ARGB; null for bytes that are not an image) and a fake for tests, and verify it compiles for Android and iOS and that on the emulator a stored picture is sampled to the expected size (see 4.1)
 - [ ] 2.4 Add `PaletteBackfill` (vehicles with a picture and no palette get one from the stored small file; only the palette column is written; a failure is skipped and retried at the next start; idempotent) and run it at app start after the picture sweep, and verify unit tests with fakes: fills a missing palette, leaves an existing one, an unreadable picture is skipped and the others are filled, a second run changes nothing, `updated_at` is untouched

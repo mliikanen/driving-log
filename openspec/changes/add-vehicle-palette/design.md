@@ -2,9 +2,10 @@
 
 ## Context
 
-- This change is applied after `add-vehicle-picture`. From it we build on: `Vehicle.pictureId`, the picture draft (`None | Unchanged | Removed | Pending`) held in the add and
+- This change is applied after `add-vehicle-picture` and `add-vehicle-type` (both archived). From them we build on: `Vehicle.pictureId`, the picture draft (`None | Unchanged | Removed | Pending`) held in the add and
   edit states and its `PictureDraftEditor`, `ImageCodec` (platform decode and encode; the crop is confirmed into a small (at most 256 px) and a large version), the
-  `VehiclePictureStore` (files) and the repository transaction that writes `picture_id`, schema version 4.
+  `VehiclePictureStore` (files) and the repository transaction that writes `picture_id` and, from the type change, `vehicle_type` (which is always present: the palette
+  columns are independent of it), schema version 5.
 - The project rules that shape this: stored data is locale-agnostic and platform-independent; business logic and tests live in commonMain; every state-changing behavior is
   specified first; Android is primary, iOS opportunistic. The palette is *data for a later theming change*: it must be stable, deterministic and role-neutral, and
   nothing visible is themed by it now.
@@ -85,7 +86,7 @@ palette. The candidate order and numbers are tested (the first color is the chos
 
 ### 4. Data: two nullable columns
 
-Migration `4.sqm`: `ALTER TABLE vehicle ADD COLUMN main_color TEXT;` and `ALTER TABLE vehicle ADD COLUMN palette TEXT;` and schema version 5. `main_color` is `RRGGBB` or null; `palette` is the four `RRGGBB` values joined by commas or null. `Vehicle` gains `mainColor: Rgb?` and `palette: Palette?`. The vehicle queries carry both,
+Migration `5.sqm` (`4.sqm` is the type column): `ALTER TABLE vehicle ADD COLUMN main_color TEXT;` and `ALTER TABLE vehicle ADD COLUMN palette TEXT;` and schema version 6. `main_color` is `RRGGBB` or null; `palette` is the four `RRGGBB` values joined by commas or null. `Vehicle` gains `mainColor: Rgb?` and `palette: Palette?`. The vehicle queries carry both,
 and the insert and update queries write them; the column values are text, so nothing depends on locale, platform or byte order. The invariant "a palette if and only if a picture or a main color" is kept by the single function that decides it (decision 5) and asserted in repository tests.
 
 ### 5. Which palette a vehicle has, and when it is computed
@@ -117,7 +118,7 @@ accessibility simple.
 
 - Pure, in commonTest: `Rgb` and HSV conversions (round trip over a grid, primaries, greys), `Palette` text form (parse and format, rejects malformed), the selection and fill rules on hand-made swatch lists (with a fake `PaletteExtractor` backend), `derive` (first is the chosen color, four distinct colors for every preset and a hue sweep, white, black and mid grey, determinism), `vehiclePalette` on all combinations, extraction on synthetic pixel arrays through the real library (solid, two halves, white with a little dark grey, red square in a blue border, transparent, all
   transparent, a determinism check that runs it twice).
-- Repository on real SQL: save with a palette and a main color, the invariant, an unrelated edit keeps the stored palette bytes, picture removal falls back to the color's palette, a failed transaction leaves the old values. Migration test 4 to 5 (and 1, 2, 3 to 5, fresh version 5). Backfill with a fake codec: fills, skips existing, an unreadable picture, idempotence.
+- Repository on real SQL: save with a palette and a main color, the invariant, an unrelated edit keeps the stored palette bytes, picture removal falls back to the color's palette, a failed transaction leaves the old values. Migration test 5 to 6 (and 1, 2, 3, 4 to 6, fresh version 6). Backfill with a fake codec: fills, skips existing, an unreadable picture, idempotence.
 - Processors with kide-test: pick a color, clear it, rotate (restore with a color and with a pending palette), the swatches after a confirmed crop, save arguments, leaving without saving.
 - Maestro on the emulator (`addMedia` with generated solid-color images kept in `maestro/assets/`): choose a preset color and read `palette_swatch_0` (description `Color #...`); add a solid-color picture and read the swatches; the swatches after saving on the edit screen; removing the picture falls back to the chosen color's swatches; rotation with a color chosen.
 

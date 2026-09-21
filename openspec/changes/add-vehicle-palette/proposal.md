@@ -1,8 +1,8 @@
 # Proposal
 
-> **Depends on `add-vehicle-picture`.** This change is applied after `add-vehicle-picture` has been applied and archived: it
-> reads the picture's confirmed crop, saves in the same transaction as the picture, and its delta of `vehicles` is written
-> against the text that change leaves behind. Do not apply it earlier.
+> **Builds on `add-vehicle-picture` and `add-vehicle-type`, both archived.** It reads the picture's confirmed crop, saves in the same
+> transaction as the picture, and its delta of `vehicles` is written against the text those changes left behind (the edit screen offers
+> the type as well). The type took migration `4.sqm` and schema version 5, so this change is migration `5.sqm` and schema version 6.
 
 ## Why
 
@@ -13,7 +13,7 @@ own small change on top of data that already exists.
 
 ## What Changes
 
-- Every vehicle can have a **palette of four colors**, stored with the vehicle (two nullable columns, migration `4.sqm`, schema version 5).
+- Every vehicle can have a **palette of four colors**, stored with the vehicle (two nullable columns, migration `5.sqm`, schema version 6).
 - **With a picture:** when the user confirms the crop of the picture (`add-vehicle-picture`), the app **extracts the four colors from
   the cropped photo**. The colors are picked deterministically (the same photo always gives the same palette), are visibly
   different from each other, and keep whites, blacks and greys (a white car gets a white color). A photo with fewer than four
@@ -53,7 +53,7 @@ own small change on top of data that already exists.
   interfaces with their library-backed implementations (and a pure fallback), the rule for which palette a vehicle has, HSV/RGB
   conversions for the picker, the `ColorPicker` and `PaletteSwatches` composables, palette and main color in the add and edit states and
   processors (the palette computed at crop confirmation is part of the picture draft), repository writes in the picture transaction,
-  the startup backfill, migration `4.sqm`.
+  the startup backfill, migration `5.sqm`.
 - Platform code: `ImageCodec.sample` (decode a stored image to a bounded array of ARGB pixels; Android `ImageDecoder`, iOS ImageIO), added
   to the interface from `add-vehicle-picture`.
 - Dependencies: `com.materialkolor.palette:core` (multiplatform Android palette port, no Compose) and `com.materialkolor:material-color-utilities`
