@@ -1,0 +1,7 @@
+# Logging distances: a trip distance, a new odometer count, another day and time zone. Run with: maestro/run.sh distance
+flows:
+  - "distance/*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - log-distance

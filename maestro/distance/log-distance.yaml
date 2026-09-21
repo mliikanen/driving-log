@@ -1,0 +1,104 @@
+# Happy path: log a trip distance, log a new odometer count, and log a distance for an earlier day in another time zone; the details and the full log show them.
+# Cases (validation messages, a future moment, before the initial odometer, the unit choices and what is remembered) are unit tests: see docs/test-strategy.md.
+# Run with the emulator locale English (United States): readings are checked with "," thousands separators and dates are typed as MMDDYYYY.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+- runScript: ../subflows/yesterday.js
+- tapOn: Family car
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+# By trip distance (the way that is preselected): 100.5 km.
+- tapOn:
+    id: log_distance
+- assertVisible: Log distance
+- assertVisible:
+    id: log_way_distance
+    checked: true
+- tapOn:
+    id: odo_field
+- inputText: "1005"
+- hideKeyboard
+- assertVisible:
+    id: odo_field
+    text: "100.5"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 45,300.8 km
+- scrollUntilVisible:
+    element:
+      text: "+100.5 km"
+- assertVisible: +100.5 km
+# By a new odometer count: the known odometer includes the distance just logged, and the distance is shown live.
+- tapOn:
+    id: log_distance
+- tapOn:
+    id: log_way_odometer
+- assertVisible:
+    id: log_known_odometer
+    text: "Previous known odometer: 45,300.8 km"
+- tapOn:
+    id: odo_field
+- inputText: "453208"
+- hideKeyboard
+- assertVisible:
+    id: log_live_distance
+    text: "Distance: 20.0 km"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 45,320.8 km
+- scrollUntilVisible:
+    element:
+      text: "+20.0 km"
+- assertVisible: +20.0 km
+# For yesterday, in another time zone chosen from the searchable list (the date picker takes the digits typed).
+- tapOn:
+    id: log_distance
+- tapOn:
+    id: log_date
+- tapOn: Switch to text input mode
+- eraseText: 10
+- inputText: ${output.yesterday}
+- tapOn: OK
+- assertVisible: ${output.yesterdayWeekday}
+- tapOn:
+    id: log_zone
+- tapOn: Search
+- inputText: new york
+- tapOn: America/New_York
+- assertVisible: America/New_York
+- tapOn:
+    id: odo_field
+- inputText: "100"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+- scrollUntilVisible:
+    element:
+      text: "+10.0 km"
+- assertVisible: ".*\\(America/New_York\\).*"
+# The full log lists all of it.
+- scrollUntilVisible:
+    element:
+      id: view_log
+- tapOn:
+    id: view_log
+- assertVisible: +10.0 km
+- assertVisible: +20.0 km
+- assertVisible: +100.5 km
+- assertVisible: Initial odometer
