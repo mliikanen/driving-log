@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
@@ -61,17 +64,22 @@ fun EditVehicleContent(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = { Text("Edit vehicle") },
-                navigationIcon = { BackButton(onBack) },
-                actions = {
-                    TextButton(
-                        onClick = { onIntent(EditVehicleIntent.Save) },
-                        enabled = state.loaded && !state.notFound && !state.isSaving,
-                        modifier = Modifier.testTag("save_vehicle"),
-                    ) { Text("Save") }
-                },
-            )
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text("Edit vehicle") },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        TextButton(
+                            colors = headerTextButtonColors(),
+                            onClick = { onIntent(EditVehicleIntent.Save) },
+                            enabled = state.loaded && !state.notFound && !state.isSaving,
+                            modifier = Modifier.testTag("save_vehicle"),
+                        ) { Text("Save") }
+                    },
+                )
+                HeaderDivider()
+            }
         },
     ) { padding ->
         Column(

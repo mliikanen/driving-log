@@ -5,8 +5,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.locale.TimeFormat
+import com.mikonoma.drivinglog.ui.theme.DrivingLogTheme
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
@@ -31,7 +33,10 @@ fun EventRow(
                 content.loggedOdometer?.let { Text(it) }
             }
         },
-        trailingContent = { Text(content.trailing) },
+        // Only a distance is drawn in the distance accent: an odometer reading (initial or anchor) is not a distance.
+        trailingContent = {
+            Text(content.trailing, color = if (content.isDistance) DrivingLogTheme.domain.distance else Color.Unspecified)
+        },
         modifier = modifier,
     )
 }

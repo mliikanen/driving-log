@@ -1,0 +1,7 @@
+# Opens the details screen of the vehicle.
+appId: com.mikonoma.drivinglog
+---
+- launchApp
+- tapOn: Family car
+- assertVisible:
+    id: current_odometer

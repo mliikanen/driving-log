@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
+import com.mikonoma.drivinglog.ui.theme.CoolPlatinum
+import com.mikonoma.drivinglog.ui.theme.AsphaltText
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -43,7 +46,8 @@ import kotlin.math.roundToInt
 fun CropScreen(image: DecodedImage, onConfirm: (CropRect) -> Unit, onCancel: () -> Unit) {
     var crop by remember(image) { mutableStateOf(CropState.initial(image.width, image.height)) }
     val bitmap = remember(image) { image.toImageBitmap() }
-    val frameColor = MaterialTheme.colorScheme.primary
+    // The crop screen is a fixed black surface, so its frame is white in both schemes: the primary color is nearly invisible on black in light mode.
+    val frameColor = Color.White
 
     Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
         Text(
@@ -84,7 +88,11 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect) -> Unit, onCancel: () 
         }
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
             TextButton(onClick = onCancel) { Text("Cancel", color = Color.White) }
-            Button(onClick = { onConfirm(crop.rect()) }) { Text("Use photo") }
+            // Fixed colors like the rest of this screen: the theme's primary is Oil Slick Blue in light mode, which is lost on black.
+            Button(
+                onClick = { onConfirm(crop.rect()) },
+                colors = ButtonDefaults.buttonColors(containerColor = CoolPlatinum, contentColor = AsphaltText),
+            ) { Text("Use photo") }
         }
     }
 }

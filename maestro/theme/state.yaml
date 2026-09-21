@@ -1,0 +1,23 @@
+# Step 1 of run.sh: a vehicle with one distance entry, so the screens the script samples have a header, a button and a distance figure.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS
+      ODOMETER: "45200"
+- tapOn: Family car
+- tapOn:
+    id: log_distance
+- tapOn:
+    id: odo_field
+- inputText: "300"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer

@@ -16,6 +16,8 @@ data class EventRowContent(
     val trailing: String,
     /** A distance entry logged by odometer: the count that was typed. */
     val loggedOdometer: String?,
+    /** True for a distance entry: its [trailing] figure is a distance, which the theme draws in the distance accent color. */
+    val isDistance: Boolean = false,
 )
 
 fun eventRowContent(
@@ -43,5 +45,6 @@ fun eventRowContent(
             moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
             trailing = "+" + formatOdometer(event.distance, unit, symbols),
             loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
+            isDistance = true,
         )
     }

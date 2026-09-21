@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.list
 
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
@@ -66,10 +68,17 @@ fun VehicleListContent(
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = { CenterAlignedTopAppBar(title = { Text("Driving Log") }) },
+        topBar = {
+            Column {
+                CenterAlignedTopAppBar(title = { Text("Driving Log") }, colors = drivingLogTopAppBarColors())
+                HeaderDivider()
+            }
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAdd,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = { Text("Add vehicle") },
                 modifier = Modifier.testTag("add_vehicle"),

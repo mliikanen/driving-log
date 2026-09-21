@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
@@ -104,17 +107,22 @@ fun LogDistanceContent(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = { Text("Log distance") },
-                navigationIcon = { BackButton(onBack) },
-                actions = {
-                    TextButton(
-                        onClick = { onIntent(LogDistanceIntent.Save) },
-                        enabled = !state.isLoading && !state.notFound && !state.isSaving,
-                        modifier = Modifier.testTag("save_entry"),
-                    ) { Text("Save") }
-                },
-            )
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text("Log distance") },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        TextButton(
+                            colors = headerTextButtonColors(),
+                            onClick = { onIntent(LogDistanceIntent.Save) },
+                            enabled = !state.isLoading && !state.notFound && !state.isSaving,
+                            modifier = Modifier.testTag("save_entry"),
+                        ) { Text("Save") }
+                    },
+                )
+                HeaderDivider()
+            }
         },
     ) { padding ->
         Column(

@@ -1,0 +1,6 @@
+# Opens the vehicle list from wherever the app is.
+appId: com.mikonoma.drivinglog
+---
+- launchApp
+- assertVisible:
+    id: add_vehicle

@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
@@ -94,15 +96,19 @@ fun VehicleDetailsContent(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = { Text(state.name, modifier = Modifier.testTag("vehicle_title")) },
-                navigationIcon = { BackButton(onBack) },
-                actions = {
-                    IconButton(onClick = onEdit, modifier = Modifier.testTag("edit_vehicle")) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit vehicle")
-                    }
-                },
-            )
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text(state.name, modifier = Modifier.testTag("vehicle_title")) },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        IconButton(onClick = onEdit, modifier = Modifier.testTag("edit_vehicle")) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit vehicle")
+                        }
+                    },
+                )
+                HeaderDivider()
+            }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {

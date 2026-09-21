@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launch window's background in dark mode: Asphalt Dark, the dark scheme's background. -->
+    <color name="window_background">#12181B</color>
+</resources>

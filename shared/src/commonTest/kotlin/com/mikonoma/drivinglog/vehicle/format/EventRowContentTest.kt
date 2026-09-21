@@ -94,4 +94,12 @@ class EventRowContentTest {
         assertEquals("44,000 km", row.trailing)
         assertEquals(null, row.loggedOdometer)
     }
+
+    @Test
+    fun onlyADistanceEntryIsDrawnAsADistance() {
+        assertEquals(true, row(distance(30_000)).isDistance)
+        assertEquals(true, row(distance(30_000, logged = 45_230_000)).isDistance)
+        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).isDistance)
+        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).isDistance)
+    }
 }

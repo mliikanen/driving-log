@@ -61,7 +61,10 @@ context: |
   state (a local file URI today, possibly an HTTP one later) and load it asynchronously with Coil. A vehicle without a picture shows a
   generic vehicle icon.
 
-  Use Material Design 3 as app design system.
+  Use Material Design 3 as app design system. The default theme is Petroleum, from the palette in `docs/color-palette.md`, in a light and a dark
+  scheme that follow the device. Every screen's app bar is a dark Petroleum Deep header; logged distances are drawn in the Road Trip Emerald accent
+  (a deeper shade in light mode) and fuel is reserved for Fuel Gauge Gold. Where a raw palette color fails contrast for a role, the scheme uses a derived
+  tint or shade, recorded with its contrast ratio in the design of the `petroleum-color-theme` change (archived under `openspec/changes/archive`).
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
   Whenever there are differences in the app behavior on platforms, note the differences in the relevant feature specifications.
@@ -110,6 +113,9 @@ context: |
     the gesture bar or the three-button navigation bar, or under the keyboard. Scrolling content ends with `ScreenBottomSpace` beyond the
     inset, so the last item can be scrolled comfortably clear of the navigation bar and the keyboard. Every screen with content that can
     outgrow the screen scrolls (a scrolling column or a lazy list), including in landscape.
+  - Colors come from the theme (`MaterialTheme.colorScheme` roles, or `DrivingLogTheme.domain` for distance and fuel), never hard-coded in a screen.
+    A new color is added to both schemes, and every text pair must reach 4.5:1 and every outline, icon and control 3:1 (`ThemeColorsTest` checks the
+    schemes). The crop screen is the one deliberate exception: a fixed black surface with its own colors.
   - MVI architecture.
 
 # Per-artifact rules.

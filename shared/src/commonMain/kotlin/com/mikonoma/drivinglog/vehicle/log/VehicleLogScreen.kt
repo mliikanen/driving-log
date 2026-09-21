@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.log
 
+import androidx.compose.foundation.layout.Column
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
@@ -41,10 +44,14 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = { Text(if (state.vehicleName.isEmpty()) "Log" else "${state.vehicleName} log") },
-                navigationIcon = { BackButton(onBack) },
-            )
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text(if (state.vehicleName.isEmpty()) "Log" else "${state.vehicleName} log") },
+                    navigationIcon = { BackButton(onBack) },
+                )
+                HeaderDivider()
+            }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {

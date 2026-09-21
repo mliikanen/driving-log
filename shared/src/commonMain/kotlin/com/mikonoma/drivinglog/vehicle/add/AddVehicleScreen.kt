@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
@@ -78,17 +81,22 @@ fun AddVehicleContent(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = { Text("Add vehicle") },
-                navigationIcon = { BackButton(onBack) },
-                actions = {
-                    TextButton(
-                        onClick = { onIntent(AddVehicleIntent.Save) },
-                        enabled = !state.isSaving,
-                        modifier = Modifier.testTag("save_vehicle"),
-                    ) { Text("Save") }
-                },
-            )
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text("Add vehicle") },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        TextButton(
+                            colors = headerTextButtonColors(),
+                            onClick = { onIntent(AddVehicleIntent.Save) },
+                            enabled = !state.isSaving,
+                            modifier = Modifier.testTag("save_vehicle"),
+                        ) { Text("Save") }
+                    },
+                )
+                HeaderDivider()
+            }
         },
     ) { padding ->
         Column(

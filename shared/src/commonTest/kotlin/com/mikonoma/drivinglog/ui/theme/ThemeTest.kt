@@ -1,19 +1,25 @@
 package com.mikonoma.drivinglog.ui.theme
 
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ThemeTest {
 
     @Test
-    fun darkThemeUsesDarkColorScheme() {
-        assertEquals(darkColorScheme().background, drivingLogColorScheme(darkTheme = true).background)
+    fun darkThemeUsesTheDarkScheme() {
+        val scheme = drivingLogColorScheme(darkTheme = true)
+
+        assertEquals(AsphaltDark, scheme.background)
+        // A dark scheme is dark: its background is darker than its text.
+        assertTrue(relativeLuminance(scheme.background) < relativeLuminance(scheme.onBackground))
     }
 
     @Test
-    fun lightThemeUsesLightColorScheme() {
-        assertEquals(lightColorScheme().background, drivingLogColorScheme(darkTheme = false).background)
+    fun lightThemeUsesTheLightScheme() {
+        val scheme = drivingLogColorScheme(darkTheme = false)
+
+        assertEquals(CoolPlatinum, scheme.background)
+        assertTrue(relativeLuminance(scheme.background) > relativeLuminance(scheme.onBackground))
     }
 }

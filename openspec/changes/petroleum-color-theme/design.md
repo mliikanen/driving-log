@@ -101,7 +101,7 @@ never hard-codes it.
 ### 6. The crop screen
 
 The crop screen is a fixed black surface (photos are judged on black) with white text. Its frame used `primary`, which is Oil Slick Blue in light mode and almost invisible on black (1.75:1); the frame becomes white
-(21:1) in both modes. The screen keeps its own colors on purpose and does not follow the scheme.
+(21:1) in both modes. Its "Use photo" button has fixed colors too (Cool Platinum with Asphalt text), because the theme's primary (Oil Slick Blue in light mode) is lost on black. The screen keeps its own colors on purpose and does not follow the scheme.
 
 ### 7. Room for the vehicle palette
 

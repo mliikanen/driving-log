@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launch window's background: Cool Platinum, the light scheme's background (see the theme in shared/ui/theme). -->
+    <color name="window_background">#F4F7F6</color>
+</resources>

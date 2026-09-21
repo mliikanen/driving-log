@@ -15,3 +15,10 @@ asks for it at the moment the user chooses Take Photo, not before. Add this key 
 
 The photo library (`PHPicker`) and the file picker need no permission and no `Info.plist` key. Pictures are stored in Application Support, which is
 private to the app.
+
+## Status bar over the dark header
+
+Every screen's app bar is a dark header (Petroleum Deep) in both light and dark mode. The status bar above it must therefore show **light content**
+(white icons and text) in both modes: return `UIStatusBarStyleLightContent` from the hosting view controller's preferred status bar style (or set
+`UIStatusBarStyle` to `UIStatusBarStyleLightContent` in `Info.plist` with `UIViewControllerBasedStatusBarAppearance` off). Without it, the light-mode status bar
+shows dark icons on the dark header and is unreadable. On Android the app configures this itself.
