@@ -1,0 +1,19 @@
+# Taps the vehicle picture on the add or edit screen, which opens the system chooser of where the photo comes from, chooses the
+# "Media" app (the system's media picker, which is what this emulator image lists for images, next to "Camera") and the first photo in
+# it. The crop screen is then open. The photo must have been added with addMedia. The chooser, the picker and the crop screen are
+# other windows, which do not expose test tags, so they are driven by text.
+appId: com.mikonoma.drivinglog
+---
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 20000
+- tapOn: "Photo taken on.*"
+- extendedWaitUntil:
+    visible: Use photo
+    timeout: 20000

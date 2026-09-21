@@ -1,10 +1,16 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.ui.EventRow
@@ -85,6 +92,7 @@ fun VehicleDetailsContent(
     val timeFormat = deviceLocale.timeFormat()
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text(state.name, modifier = Modifier.testTag("vehicle_title")) },
@@ -101,9 +109,20 @@ fun VehicleDetailsContent(
             when {
                 state.isLoading -> Unit
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
-                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+                else -> LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
+                ) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            // Large, but not the whole screen: the odometer and the actions stay near the top.
+                            Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
+                                VehiclePicture(
+                                    state.pictureUri,
+                                    Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).testTag("vehicle_picture_large"),
+                                    contentDescription = "Picture of ${state.name}",
+                                )
+                            }
                             state.licensePlate?.let { plate ->
                                 Text("License plate", style = MaterialTheme.typography.labelMedium)
                                 Text(plate, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("vehicle_plate"))

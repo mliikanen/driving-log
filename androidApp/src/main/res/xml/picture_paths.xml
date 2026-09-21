@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The only place the app shares with another app: the file the camera app writes a new photo to. -->
+<paths>
+    <cache-path name="camera" path="camera/" />
+</paths>

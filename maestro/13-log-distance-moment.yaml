@@ -61,6 +61,9 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 45,200.3 km
+- scrollUntilVisible:
+    element:
+      text: "+10.0 km"
 - assertVisible: +10.0 km
 - assertVisible: ".*\\(America/New_York\\).*"
 # A new odometer count for a time before the initial odometer is saved as an odometer anchor, not as a distance; it does
@@ -88,6 +91,15 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 45,200.3 km
+- scrollUntilVisible:
+    element:
+      text: "Odometer reading"
 - assertVisible: Odometer reading
+- scrollUntilVisible:
+    element:
+      text: "44,000.0 km"
 - assertVisible: 44,000.0 km
+- scrollUntilVisible:
+    element:
+      text: "+10.0 km"
 - assertVisible: +10.0 km

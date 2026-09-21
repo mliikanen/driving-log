@@ -1,0 +1,12 @@
+# Step 2 of run.sh: the picture of the vehicle is changed.
+appId: com.mikonoma.drivinglog
+---
+- launchApp
+- tapOn: Family car
+- tapOn:
+    id: edit_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- tapOn: Use photo
+- tapOn:
+    id: save_vehicle
+- assertVisible: Picture of Family car

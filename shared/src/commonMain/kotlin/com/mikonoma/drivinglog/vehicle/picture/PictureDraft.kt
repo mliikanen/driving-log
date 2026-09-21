@@ -27,15 +27,25 @@ sealed interface PictureDraft {
     data class Pending(val pendingId: String) : PictureDraft
 }
 
+/** Why the last attempt to get a picture did not work; shown under the preview until the next action. */
+@Serializable
+enum class PictureError {
+    /** The photo could not be read as an image, or was too large. */
+    COULD_NOT_OPEN,
+
+    /** The user has not allowed the camera. */
+    CAMERA_DENIED,
+}
+
 /**
  * The picture part of the add and edit forms: the [draft], the photo being cropped ([cropSourceId], the pending id of the chosen
- * photo, while the crop screen is open) and whether the last photo could not be opened ([error]).
+ * photo, while the crop screen is open) and why the last attempt failed, if it did ([error]).
  */
 @Serializable
 data class PictureEditState(
     val draft: PictureDraft = PictureDraft.None,
     val cropSourceId: String? = null,
-    val error: Boolean = false,
+    val error: PictureError? = null,
 ) {
     val isCropping: Boolean get() = cropSourceId != null
 }

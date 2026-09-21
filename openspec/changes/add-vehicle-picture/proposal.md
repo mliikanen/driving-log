@@ -8,10 +8,15 @@ matching a vehicle by photo) it is the natural thing to show. Users can add it n
 
 ## What Changes
 
-- The **add vehicle** and **edit vehicle** screens get an optional **picture**: an "Add picture" action (which becomes
-  "Change picture" and "Remove picture" once there is one) and a preview of the picture.
-- The user **selects the source photo with the system photo picker** (the Android Photo Picker, which needs no storage
-  permission; the iOS photo picker on iOS). The app never asks for access to the photo library.
+- The **add vehicle** and **edit vehicle** screens get an optional **picture**: a preview of it (or the placeholder) that **is itself the action**: tapping the
+  picture starts choosing one, with no separate button; a "Remove picture" button appears once there is a picture.
+- The photo comes from **the system's own way of choosing where an image comes from**, so the user picks the app that provides it. On
+  Android that is the **intent chooser** (tapping the picture opens the system chooser, which lists the apps that can supply an image: the photo
+  and file apps, the camera app, and any other app that offers images); on iOS it is the **system source sheet** (Take Photo, Photo
+  Library, Choose File). This includes **taking a new photo with the camera**. The app does not build its own picker.
+- **Permissions are asked for only when needed and only when the user triggers the action that needs them.** The Android chooser and the
+  camera app are used through intents, so the app needs no storage, photo or camera permission; on iOS the first "Take Photo" asks for
+  camera access at that moment (the usage description is added to the app's `Info.plist`), and a refusal is explained, never a crash.
 - After selecting, the user **must crop the photo to a square**: a crop screen shows the photo under a fixed square frame,
   the user pans and pinches to position and zoom it, and confirms with "Use photo" or cancels (cancel discards the selection and
   leaves the vehicle's picture as it was). The crop cannot be skipped and the frame cannot leave the photo, so the result
@@ -33,7 +38,7 @@ matching a vehicle by photo) it is the natural thing to show. Users can add it n
   per type is a separate, later change (`add-vehicle-type`).
 - Storage moves to **schema version 4** (migration `3.sqm`: one nullable `picture_id` column on the vehicle). Existing
   vehicles have no picture.
-- Out of scope: a vehicle type and per-type icons (`add-vehicle-type`), taking a photo with the camera (the system picker may offer it, the app adds nothing), rotating, filters
+- Out of scope: a vehicle type and per-type icons (`add-vehicle-type`), building our own camera or gallery screen (the system ones are used), rotating, filters
   or free-form cropping, several pictures per vehicle, a zoomable full screen viewer, pictures in the log or in
   distance entries, syncing pictures to a backend, and verifying the iOS side on a device (there is no Xcode project yet).
 
@@ -47,6 +52,7 @@ matching a vehicle by photo) it is the natural thing to show. Users can add it n
 - `vehicles`: adding and editing a vehicle offer the picture, the vehicle list shows the small picture, and the details
   screen shows the large picture.
 - `vehicle-log`: editing a vehicle's picture, like its name and plate, leaves the log unchanged.
+- `app-shell`: two global rules: the application requests the minimum set of permissions it needs (this change is the first to touch permissions, and satisfies the rule by needing none on Android), and every screen respects the system bars and the keyboard and scrolls clear of them (the taller add, edit and details screens made this matter).
 
 ## Impact
 

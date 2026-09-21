@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.edit
 
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import kotlinx.serialization.Serializable
@@ -35,8 +36,8 @@ sealed interface EditVehicleIntent : ViewIntent {
     data class LicensePlateChanged(val text: String) : EditVehicleIntent
     data object Save : EditVehicleIntent
 
-    /** The photo picker returned [bytes], or null when the user left it without choosing. */
-    class PhotoPicked(val bytes: ByteArray?) : EditVehicleIntent
+    /** The system's chooser of where the photo comes from gave [result]. */
+    class PhotoPicked(val result: PhotoResult) : EditVehicleIntent
 
     /** Rebuilds the preview and the crop image from the picture state, e.g. after a restore. */
     data object PictureRefresh : EditVehicleIntent

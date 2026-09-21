@@ -21,14 +21,23 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: vehicle_title
     text: Family car
+- scrollUntilVisible:
+    element:
+      id: current_odometer
 - assertVisible:
     id: current_odometer
     text: 45,200.3 km
 - setOrientation: PORTRAIT
+- scrollUntilVisible:
+    element:
+      id: current_odometer
 - assertVisible:
     id: current_odometer
     text: 45,200.3 km
 # The full log.
+- scrollUntilVisible:
+    element:
+      id: view_log
 - tapOn:
     id: view_log
 - setOrientation: LANDSCAPE_LEFT

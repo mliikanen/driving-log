@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets users give a vehicle a picture: they choose a photo with the system photo picker, crop it to a square, and the app stores a
+Lets users give a vehicle a picture: they choose or take a photo with the system's own image chooser, crop it to a square, and the app stores a
 small and a large version of it in its own local file system. The small one shows the vehicle in lists and pickers, the large one
 in full screen views such as the vehicle details.
 
@@ -11,12 +11,13 @@ in full screen views such as the vehicle details.
 ### Requirement: A vehicle can have one optional picture
 The system SHALL let a vehicle have at most one picture, which is optional. A vehicle without a picture SHALL be shown
 with a generic car icon as its placeholder wherever its picture would be shown; the icon is the same for every vehicle until vehicles have a type. The picture SHALL be offered on the add vehicle screen
-and on the edit vehicle screen as an "Add picture" action, which becomes "Change picture" together with a "Remove picture"
-action when the vehicle (or the form) has a picture, and the form SHALL show a preview of the picture it has.
+and on the edit vehicle screen as the picture itself: the form SHALL show a preview of the picture it has (or the placeholder), and tapping the preview SHALL be the
+action that starts choosing a picture, with no separate button for it. The preview SHALL be labelled "Add picture" when there is no picture and "Change picture" when there
+is one, and SHALL show a small edit mark that tells it can be tapped. A "Remove picture" action SHALL be offered only when the vehicle (or the form) has a picture.
 
 #### Scenario: A vehicle without a picture
 - **WHEN** the user opens the add vehicle screen
-- **THEN** the screen offers "Add picture", shows the generic car icon as the preview and offers no "Remove picture"
+- **THEN** the screen shows the generic car icon as the preview, labelled "Add picture", and offers no "Remove picture"
 
 #### Scenario: The placeholder is a generic car icon
 - **WHEN** the vehicle list contains a vehicle without a picture
@@ -24,35 +25,62 @@ action when the vehicle (or the form) has a picture, and the form SHALL show a p
 
 #### Scenario: A vehicle with a picture
 - **WHEN** the user opens the edit screen of a vehicle that has a picture
-- **THEN** the screen shows that picture as the preview and offers "Change picture" and "Remove picture"
+- **THEN** the screen shows that picture as the preview, labelled "Change picture", and offers "Remove picture"
 
-### Requirement: The photo is chosen with the system photo picker
-The system SHALL let the user choose the source photo with the system's own photo picker, opened by "Add picture" or "Change picture",
-and SHALL NOT ask for permission to read the device's photos or files. The system SHALL accept any still image the
-picker returns and SHALL NOT change or remove the chosen photo. Leaving the picker without choosing SHALL change nothing.
-When the chosen file cannot be read as an image, the system SHALL show a message that the picture could not be opened and SHALL
-keep the vehicle's picture as it was.
+#### Scenario: Tapping the picture starts choosing
+- **WHEN** the user taps the preview on the add or edit screen
+- **THEN** the system chooser of where the photo comes from is shown, and there is no other button that does so
 
-**Platform note:** on Android this is the Android Photo Picker; on iOS it is the system photo picker (`PHPicker`).
+### Requirement: The photo comes from an app the user chooses through the system
+The system SHALL let the user choose where the photo comes from with the system's own mechanism for providing an image, opened by "Add picture" or
+"Change picture": on Android the system intent chooser, which offers the apps that can supply an image (including the camera app, so a new photo can be
+taken); on iOS the system source sheet with Take Photo, Photo Library and Choose File. The system SHALL NOT draw its own picker or camera screen. It
+SHALL accept any still image the chosen app returns and SHALL NOT change or remove a photo the user chose. Leaving the chooser or the app without
+providing an image SHALL change nothing. When the image cannot be read as an image, the system SHALL show a message that the picture could not be opened
+and SHALL keep the vehicle's picture as it was.
+
+The system SHALL ask for a permission only when the user triggers an action that needs it, at that moment and not before, and SHALL NOT ask for
+permissions the chosen way does not need. On Android the chooser and the camera app are used through intents, which need no storage, photo or camera
+permission of the app. On iOS taking a photo needs camera access, which is asked for when the user chooses Take Photo the first time; when access is
+refused, the system SHALL show a message that camera access is turned off and that it can be allowed in the device settings, and SHALL change nothing else.
+
+**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with the camera app's `ACTION_IMAGE_CAPTURE` as an initial
+intent. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files, offered in a source sheet.
+
+#### Scenario: The system asks which app provides the image
+- **WHEN** the user taps "Add picture"
+- **THEN** the system's chooser (on iOS the source sheet) is shown, listing the apps or sources that can provide an image, and the app draws no picker of its own
 
 #### Scenario: Choose a photo
-- **WHEN** the user taps "Add picture" and chooses a photo in the system photo picker
+- **WHEN** the user chooses a photo in the app they picked
 - **THEN** the crop screen opens with that photo
 
-#### Scenario: No permission is requested
-- **WHEN** the user chooses a photo for the first time after installing the app
-- **THEN** no storage or photo library permission prompt is shown
+#### Scenario: Take a new photo
+- **WHEN** the user chooses the camera app in the chooser and takes a photo
+- **THEN** the crop screen opens with the new photo
 
-#### Scenario: Leave the picker
-- **WHEN** the user opens the photo picker and leaves it without choosing a photo
+#### Scenario: No permission is asked before it is needed
+- **WHEN** the user opens the add vehicle screen, and again when the user chooses a photo from the library
+- **THEN** no permission prompt is shown
+
+#### Scenario: Camera access is asked for when taking a photo
+- **WHEN** on iOS the user chooses Take Photo for the first time
+- **THEN** the system asks for camera access at that moment, and the camera opens when it is allowed
+
+#### Scenario: Camera access refused
+- **WHEN** on iOS the user has refused camera access and chooses Take Photo
+- **THEN** the system shows a message that camera access is turned off and can be allowed in the settings, opens no camera and keeps the vehicle's picture as it was
+
+#### Scenario: Leave the chooser
+- **WHEN** the user opens the chooser and leaves it, or leaves the camera without taking a photo
 - **THEN** the form is unchanged
 
 #### Scenario: A file that is not an image
-- **WHEN** the picker returns a file that cannot be decoded as an image
+- **WHEN** the chosen app returns a file that cannot be decoded as an image
 - **THEN** the system shows that the picture could not be opened, does not open the crop screen and keeps the vehicle's picture as it was
 
 #### Scenario: The photo's orientation is respected
-- **WHEN** the user chooses a photo that is stored rotated and marked with an orientation
+- **WHEN** the user chooses or takes a photo that is stored rotated and marked with an orientation
 - **THEN** the crop screen shows it the right way up
 
 ### Requirement: The photo must be cropped to a square

@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.log
 
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -36,6 +39,7 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
     val timeFormat = deviceLocale.timeFormat()
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text(if (state.vehicleName.isEmpty()) "Log" else "${state.vehicleName} log") },
@@ -47,7 +51,10 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
             when {
                 state.isLoading -> Unit
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
-                else -> LazyColumn(Modifier.fillMaxSize().testTag("log_list")) {
+                else -> LazyColumn(
+                    Modifier.fillMaxSize().testTag("log_list"),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = ScreenBottomSpace),
+                ) {
                     items(state.events, key = { it.id }) { event ->
                         EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("log_event"))
                         HorizontalDivider()

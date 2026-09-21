@@ -8,7 +8,9 @@ import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlin.test.AfterTest
@@ -205,7 +207,7 @@ class EditVehicleProcessorTest {
     }
 
     private fun EditVehicleProcessor.pickAndCrop() {
-        dispatch(EditVehicleIntent.PhotoPicked(photo))
+        dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
         dispatch(EditVehicleIntent.CropConfirmed(crop))
     }
 
@@ -302,9 +304,9 @@ class EditVehicleProcessorTest {
         seedPicture()
         val processor = EditVehicleProcessor("v3", repository, pictures, codec)
 
-        processor.dispatch(EditVehicleIntent.PhotoPicked(ByteArray(0)))
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(ByteArray(0))))
 
-        assertTrue(processor.state.picture.error)
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
         assertEquals(PictureDraft.Unchanged, processor.state.picture.draft)
         assertTrue(processor.state.previewUri != null)
     }
@@ -313,7 +315,7 @@ class EditVehicleProcessorTest {
     fun cancellingTheCropKeepsTheSavedPicture() {
         seedPicture()
         val processor = EditVehicleProcessor("v3", repository, pictures, codec)
-        processor.dispatch(EditVehicleIntent.PhotoPicked(photo))
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
         assertTrue(processor.state.picture.isCropping)
 
         processor.dispatch(EditVehicleIntent.CropCancelled)

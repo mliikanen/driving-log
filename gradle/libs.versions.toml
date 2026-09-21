@@ -7,6 +7,7 @@ androidx-activity = "1.13.0"
 coroutines = "1.11.0"
 datetime = "0.8.0"
 kotlinx-io = "0.9.1"
+coil = "3.6.3"
 kide = "2.2.0"
 metro = "1.4.4"
 sqldelight = "2.4.0"
@@ -26,6 +27,7 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 kide = { module = "org.fuusio.kide:kide", version.ref = "kide" }

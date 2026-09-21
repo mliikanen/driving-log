@@ -1,0 +1,13 @@
+# Step 4 of run.sh: a picture is chosen and cropped on the add screen, and the screen is left without saving.
+appId: com.mikonoma.drivinglog
+---
+- launchApp
+- tapOn:
+    id: add_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- tapOn: Use photo
+- assertVisible: Change picture
+- tapOn:
+    id: back
+- assertVisible:
+    id: add_vehicle

@@ -10,6 +10,7 @@ import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.forAdd
 import dev.zacsweers.metro.Inject
@@ -40,7 +41,7 @@ class AddVehicleProcessor(
         }
         AddVehicleIntent.OdometerCleared -> reduce { copy(entry = entry.clear()) }
         AddVehicleIntent.Save -> save()
-        is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.bytes) }
+        is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
         AddVehicleIntent.PictureRefresh -> pictureStep { it }
         is AddVehicleIntent.CropConfirmed -> pictureStep { editor.cropConfirmed(it, intent.crop) }
         AddVehicleIntent.CropCancelled -> pictureStep { editor.cropCancelled(it) }
@@ -52,9 +53,14 @@ class AddVehicleProcessor(
     /** Applies a picture change, then rebuilds what is derived from it: the preview and the photo being cropped. */
     private fun pictureStep(change: suspend (PictureEditState) -> PictureEditState): Action<AddVehicleState, AddVehicleEffect> =
         async("picture") {
-            val next = change(state.picture)
+            var next = change(state.picture)
+            var cropImage = if (next.isCropping) editor.cropImage(next) else null
+            // A photo that is gone (or cannot be decoded any more) closes the crop with the error instead of leaving it waiting.
+            if (next.isCropping && cropImage == null) {
+                next = editor.cropCancelled(next).copy(error = PictureError.COULD_NOT_OPEN)
+                cropImage = null
+            }
             val preview = editor.previewUri(next, savedPictureId = null)
-            val cropImage = if (next.isCropping) editor.cropImage(next) else null
             reduce { copy(picture = next, previewUri = preview, cropImage = cropImage) }
         }
 

@@ -1,9 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.vehicle.picture.PictureField
 
 @Composable
 fun EditVehicleScreen(processor: EditVehicleProcessor, onBack: () -> Unit) {
@@ -37,7 +40,15 @@ fun EditVehicleScreen(processor: EditVehicleProcessor, onBack: () -> Unit) {
         }
     }
 
-    EditVehicleContent(state = state, onIntent = processor::dispatch, onBack = onBack)
+    EditVehicleContent(
+        state = state,
+        onIntent = processor::dispatch,
+        // Leaving without saving deletes the pending picture files; a rotation is not leaving and keeps them.
+        onBack = {
+            processor.dispatch(EditVehicleIntent.Left)
+            onBack()
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +59,7 @@ fun EditVehicleContent(
     onBack: () -> Unit,
 ) {
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text("Edit vehicle") },
@@ -63,12 +75,23 @@ fun EditVehicleContent(
         },
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+            modifier = Modifier.padding(padding).verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (state.notFound) {
                 Text("This vehicle no longer exists.")
             } else if (state.loaded) {
+                PictureField(
+                    picture = state.picture,
+                    previewUri = state.previewUri,
+                    cropImage = state.cropImage,
+                    onPhotoPicked = { onIntent(EditVehicleIntent.PhotoPicked(it)) },
+                    onCropConfirmed = { onIntent(EditVehicleIntent.CropConfirmed(it)) },
+                    onCropCancelled = { onIntent(EditVehicleIntent.CropCancelled) },
+                    onRemove = { onIntent(EditVehicleIntent.PictureRemoved) },
+                    onRefresh = { onIntent(EditVehicleIntent.PictureRefresh) },
+                )
                 OutlinedTextField(
                     value = state.name,
                     onValueChange = { onIntent(EditVehicleIntent.NameChanged(it)) },

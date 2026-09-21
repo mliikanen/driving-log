@@ -15,15 +15,23 @@ class PictureDraftEditor(
     private val removedDraft: PictureDraft,
 ) {
     /**
-     * A photo was chosen: keep its bytes and open the crop. A photo that cannot be opened (not an image, or too large) changes
-     * nothing but sets the error. Choosing again while a crop is open replaces the earlier photo.
+     * The system's chooser gave [result]. A photo is kept and the crop opens; leaving without one changes nothing; a photo that cannot
+     * be opened (not an image, or too large) and a refused camera change nothing but set their error. Choosing again while a crop is
+     * open replaces the earlier photo.
      */
-    suspend fun photoPicked(state: PictureEditState, bytes: ByteArray?): PictureEditState {
-        // Leaving the picker without choosing is not an error and changes nothing.
-        if (bytes == null) return state
-        if (bytes.size > MAX_PHOTO_BYTES || codec.decode(bytes) == null) return state.copy(error = true)
-        state.cropSourceId?.let { store.discardPendingSource(it) }
-        return state.copy(cropSourceId = store.putPendingSource(bytes), error = false)
+    suspend fun photoPicked(state: PictureEditState, result: PhotoResult): PictureEditState = when (result) {
+        PhotoResult.Cancelled -> state
+        PhotoResult.Unreadable -> state.copy(error = PictureError.COULD_NOT_OPEN)
+        PhotoResult.CameraDenied -> state.copy(error = PictureError.CAMERA_DENIED)
+        is PhotoResult.Chosen -> {
+            val bytes = result.bytes
+            if (bytes.size > MAX_PHOTO_BYTES || codec.decode(bytes) == null) {
+                state.copy(error = PictureError.COULD_NOT_OPEN)
+            } else {
+                state.cropSourceId?.let { store.discardPendingSource(it) }
+                state.copy(cropSourceId = store.putPendingSource(bytes), error = null)
+            }
+        }
     }
 
     /** The photo being cropped, decoded for the crop screen, or null when there is none or its file is gone. */
@@ -43,12 +51,12 @@ class PictureDraftEditor(
         val encoded = source?.let { codec.encodeSquare(it, crop, pictureSides(crop.side)) }
         if (encoded == null) {
             store.discardPending(pendingId)
-            return state.copy(cropSourceId = null, error = true)
+            return state.copy(cropSourceId = null, error = PictureError.COULD_NOT_OPEN)
         }
         store.putPending(pendingId, encoded.small, encoded.large)
         store.discardPendingSource(pendingId)
         (state.draft as? PictureDraft.Pending)?.let { store.discardPending(it.pendingId) }
-        return state.copy(draft = PictureDraft.Pending(pendingId), cropSourceId = null, error = false)
+        return state.copy(draft = PictureDraft.Pending(pendingId), cropSourceId = null, error = null)
     }
 
     /** The crop was cancelled: the chosen photo is dropped and the draft is as it was. */
@@ -60,10 +68,10 @@ class PictureDraftEditor(
     /** "Remove picture": a pending picture's files are deleted and the draft is [removedDraft]. */
     suspend fun removed(state: PictureEditState): PictureEditState {
         (state.draft as? PictureDraft.Pending)?.let { store.discardPending(it.pendingId) }
-        return state.copy(draft = removedDraft, error = false)
+        return state.copy(draft = removedDraft, error = null)
     }
 
-    fun errorDismissed(state: PictureEditState): PictureEditState = state.copy(error = false)
+    fun errorDismissed(state: PictureEditState): PictureEditState = state.copy(error = null)
 
     /** The user left the screen without saving: nothing pending is kept. */
     suspend fun discardAll(state: PictureEditState) {

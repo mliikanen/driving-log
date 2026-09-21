@@ -1,10 +1,12 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -34,6 +36,7 @@ import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.picture.PictureField
 import com.mikonoma.drivinglog.vehicle.ui.label
 
 @Composable
@@ -56,7 +59,11 @@ fun AddVehicleScreen(
         state = state,
         deviceLocale = deviceLocale,
         onIntent = processor::dispatch,
-        onBack = onBack,
+        // Leaving without saving deletes the pending picture files; a rotation is not leaving and keeps them.
+        onBack = {
+            processor.dispatch(AddVehicleIntent.Left)
+            onBack()
+        },
     )
 }
 
@@ -69,6 +76,7 @@ fun AddVehicleContent(
     onBack: () -> Unit,
 ) {
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             TopAppBar(
                 title = { Text("Add vehicle") },
@@ -86,11 +94,20 @@ fun AddVehicleContent(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            PictureField(
+                picture = state.picture,
+                previewUri = state.previewUri,
+                cropImage = state.cropImage,
+                onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
+                onCropConfirmed = { onIntent(AddVehicleIntent.CropConfirmed(it)) },
+                onCropCancelled = { onIntent(AddVehicleIntent.CropCancelled) },
+                onRemove = { onIntent(AddVehicleIntent.PictureRemoved) },
+                onRefresh = { onIntent(AddVehicleIntent.PictureRefresh) },
+            )
             OutlinedTextField(
                 value = state.name,
                 onValueChange = { onIntent(AddVehicleIntent.NameChanged(it)) },

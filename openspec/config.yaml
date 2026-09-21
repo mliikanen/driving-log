@@ -54,6 +54,13 @@ context: |
   otherwise. Wherever a screen lets the user choose a date and time it also lets them choose the time zone. Times and weekday
   names follow the device: the system's 12-hour or 24-hour setting and the device language.
 
+  A vehicle can have a picture, which the user provides through the system's own chooser of image sources (on Android the intent
+  chooser, including the camera app; on iOS the source sheet) and crops to a square. The picture is stored as files in the application's
+  private storage, a small (up to 256 px) and a large (up to 1024 px) version in a size-efficient format (lossy WebP; PNG on iOS until an
+  encoder is added), and the database keeps only the picture's id, never a path. Screens receive the picture as a URI in their view
+  state (a local file URI today, possibly an HTTP one later) and load it asynchronously with Coil. A vehicle without a picture shows a
+  generic vehicle icon.
+
   Use Material Design 3 as app design system.
 
   Android is the primary target platform which MUST contain all required functionality, iOS is opportunistic target.
@@ -92,6 +99,17 @@ context: |
     and repositories apply it before storing, so a caller cannot store more. This keeps every such time on the footing of a
     picker and keeps events created within the same minute from being ordered by seconds nobody sees. A spec may state
     another precision. Timestamps the system keeps for itself (`created_at`, `updated_at`) keep their exact time.
+  - The application requests the minimum set of permissions it needs to fulfil the required functionality. Where the platform
+    offers a way to do the thing that needs none (a system picker, chooser or camera app used through an intent or a system source
+    sheet, where the user picks the provider and the provider holds the access), that way is used and the app declares nothing.
+    A permission is declared only for functionality that cannot be provided otherwise, is asked for at the moment the user
+    triggers the action that needs it and never at start-up, and a refusal is explained and never a crash. A change that adds a
+    permission states why nothing lighter works, and `maestro/check-permissions.sh` lists what the installed app asks for.
+  - System insets are handled the same way on every screen: the screen's `Scaffold` uses `contentWindowInsets = WindowInsets.safeDrawing`
+    (system bars, display cutout and the keyboard, one mechanism, never `imePadding` on top of it), so nothing sits under the status bar,
+    the gesture bar or the three-button navigation bar, or under the keyboard. Scrolling content ends with `ScreenBottomSpace` beyond the
+    inset, so the last item can be scrolled comfortably clear of the navigation bar and the keyboard. Every screen with content that can
+    outgrow the screen scrolls (a scrolling column or a lazy list), including in landscape.
   - MVI architecture.
 
 # Per-artifact rules.

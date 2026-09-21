@@ -30,5 +30,6 @@ Project context and artifact rules live in `openspec/config.yaml`.
 - `maestro test maestro/`: run the UI flows on a running Android emulator or device with the debug app installed
   (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). Each flow clears the app's data and
   expects the device locale English (United States). Run a single flow with `maestro test maestro/05-odometer-field.yaml`.
-  `maestro/subflows/` holds shared steps and is not run on its own.
-  `maestro/clock/run.sh` runs the 12-hour/24-hour setting flow (it changes the device setting with `adb`, so it is not part of the plain suite).
+  `maestro/subflows/` holds shared steps and is not run on its own. `maestro/clock/run.sh` runs the 12-hour/24-hour flow and
+  `maestro/picture/run.sh` the picture flows with a check of the files the app stores (both change device state over `adb`, so
+  they are not part of the plain suite); `maestro/check-permissions.sh` fails when the installed app requests a system permission.

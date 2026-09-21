@@ -1,0 +1,25 @@
+# Step 1 of run.sh: a vehicle is added with a picture (clears the app's data first).
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- addMedia:
+    - ../assets/photo-landscape.png
+- tapOn:
+    id: add_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- tapOn: Use photo
+- tapOn:
+    id: vehicle_name
+- inputText: Family car
+- hideKeyboard
+- tapOn:
+    id: unit_KILOMETERS
+- tapOn:
+    id: odo_field
+- inputText: "45200"
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+- assertVisible:
+    id: vehicle_picture

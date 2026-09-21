@@ -41,6 +41,10 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: vehicle_plate
 - inputText: " AB  12 "
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "1"
@@ -69,6 +73,10 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: vehicle_plate
 - inputText: "   "
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "1"
@@ -100,6 +108,9 @@ appId: com.mikonoma.drivinglog
 - assertNotVisible:
     id: odo_field
     text: ".+"
+- scrollUntilVisible:
+    element:
+      id: odo_field
 - tapOn:
     id: odo_field
 - inputText: "0"

@@ -11,7 +11,9 @@ import com.mikonoma.drivinglog.vehicle.format.formatSteps
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlin.test.AfterTest
@@ -570,7 +572,7 @@ class AddVehicleProcessorTest {
     private val crop = CropRect(500, 0, 3000)
 
     private fun AddVehicleProcessor.pickAndCrop() {
-        dispatch(AddVehicleIntent.PhotoPicked(photo))
+        dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
         dispatch(AddVehicleIntent.CropConfirmed(crop))
     }
 
@@ -587,7 +589,7 @@ class AddVehicleProcessorTest {
     fun aChosenPhotoOpensTheCropWithTheDecodedPhoto() {
         val processor = processor()
 
-        processor.dispatch(AddVehicleIntent.PhotoPicked(photo))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
 
         assertTrue(processor.state.picture.isCropping)
         assertEquals(4000, processor.state.cropImage!!.width)
@@ -599,22 +601,42 @@ class AddVehicleProcessorTest {
     fun leavingThePickerChangesNothing() {
         val processor = processor()
 
-        processor.dispatch(AddVehicleIntent.PhotoPicked(null))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Cancelled))
 
         assertEquals(PictureEditState(), processor.state.picture)
+    }
+
+    @Test
+    fun aRefusedCameraShowsItsMessageAndNoCrop() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.picture.error)
+        assertFalse(processor.state.picture.isCropping)
+        assertEquals(PictureDraft.None, processor.state.picture.draft)
+    }
+
+    @Test
+    fun anUnreadableImageFromTheChooserShowsTheCouldNotOpenError() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
     }
 
     @Test
     fun aPhotoThatCannotBeOpenedShowsTheErrorAndNoCrop() {
         val processor = processor()
 
-        processor.dispatch(AddVehicleIntent.PhotoPicked(ByteArray(0)))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(ByteArray(0))))
 
-        assertTrue(processor.state.picture.error)
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
         assertFalse(processor.state.picture.isCropping)
         assertNull(processor.state.cropImage)
         processor.dispatch(AddVehicleIntent.PictureErrorDismissed)
-        assertFalse(processor.state.picture.error)
+        assertNull(processor.state.picture.error)
     }
 
     @Test
@@ -632,7 +654,7 @@ class AddVehicleProcessorTest {
     @Test
     fun cancellingTheCropKeepsTheFormAsItWas() {
         val processor = processor()
-        processor.dispatch(AddVehicleIntent.PhotoPicked(photo))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(photo)))
 
         processor.dispatch(AddVehicleIntent.CropCancelled)
 
@@ -703,7 +725,7 @@ class AddVehicleProcessorTest {
     fun leavingWithoutSavingDeletesThePendingFiles() {
         val processor = processor()
         processor.pickAndCrop()
-        processor.dispatch(AddVehicleIntent.PhotoPicked(byteArrayOf(9)))
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.Chosen(byteArrayOf(9))))
 
         processor.dispatch(AddVehicleIntent.Left)
 
@@ -736,12 +758,14 @@ class AddVehicleProcessorTest {
     }
 
     @Test
-    fun aRestoredCropWhosePhotoIsGoneHasNoImage() {
+    fun aRestoredCropWhosePhotoIsGoneClosesWithTheError() {
         val processor = processor()
         processor.restoreState(processor.state.copy(picture = PictureEditState(cropSourceId = "gone")))
 
         processor.dispatch(AddVehicleIntent.PictureRefresh)
 
         assertNull(processor.state.cropImage)
+        assertFalse(processor.state.picture.isCropping)
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
     }
 }

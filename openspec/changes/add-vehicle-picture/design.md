@@ -24,7 +24,7 @@
 - Keep every save atomic and leave no stray files; keep the picture flow testable in commonMain (crop maths, sizes, processors, repository).
 
 **Non-Goals:**
-- Camera capture by the app, rotation, filters, free-form or non-square crops, several pictures, a zoomable viewer, backend sync,
+- Our own camera or gallery screens (the system ones are used), rotation, filters, free-form or non-square crops, several pictures, a zoomable viewer, backend sync,
   pictures elsewhere in the app, an iOS WebP encoder, and verifying iOS on a device.
 
 ## Decisions
@@ -95,11 +95,21 @@ It starts at zoom 1 centred, so the first frame is the largest centred square.
 (`detectTransformGestures`) from screen pixels to image pixels using the frame's on-screen side, and offers "Use photo" and "Cancel" (and a back gesture that cancels). It is a composable inside the screen, not a navigation
 destination, because its input is the draft in the state; that keeps the flow local and restorable. No third-party cropper is used: the maths is small and fully unit-tested, and a library would bring its own UI.
 
-### 6. The photo picker
+### 6. Where the photo comes from: the system chooser
 
-`rememberPhotoPicker(onResult: (ByteArray?) -> Unit): PhotoPicker` is an `expect`/`actual` composable. Android: `rememberLauncherForActivityResult(PickVisualMedia())` with `ImageOnly`, and the result Uri
-is read into bytes immediately (the picker's grant is short-lived) on the IO dispatcher. iOS: `PHPickerViewController` (single selection, images) with its item provider loaded as data. Neither asks for a permission.
-`null` means the user left the picker. Bytes larger than a limit (say 40 MB) are refused as unreadable, which keeps the in-memory copy bounded.
+`rememberPhotoPicker(onResult: (PhotoResult) -> Unit): PhotoPicker` is an `expect`/`actual` composable, and `PhotoResult` is `Chosen(bytes) | Cancelled | Unreadable | CameraDenied`. The picture logic
+takes it whole (decision 3): `Chosen` is checked and cropped, `Cancelled` changes nothing, `Unreadable` and `CameraDenied` set the form's `PictureError` (`COULD_NOT_OPEN`, `CAMERA_DENIED`, each with its own message).
+The app draws no picker: it asks the system.
+
+- **Android.** One `Intent.createChooser` over `ACTION_GET_CONTENT` (`image/*`, openable) with `EXTRA_INITIAL_INTENTS = [ACTION_IMAGE_CAPTURE]`, launched with `StartActivityForResult`. The system chooser lists every app that can supply an image
+  (photo and file apps, other apps that offer images) and the camera app, so the user picks the provider. The result is either a `Uri` (a chosen image, read at once with the read grant the provider gave, capped at the size limit) or, from the camera, no `Uri` but the file the
+  camera was told to write (`EXTRA_OUTPUT`), which is read and deleted. That file lives in `cacheDir/camera/` and is shared with the camera app through a `FileProvider` (declared in the Android app shell, authority `{applicationId}.pictures`, with a `cache-path` XML).
+  **No permission is declared or requested**: the camera app takes the picture through the intent and holds the camera permission itself; the chooser and the providers grant access to the chosen image. Because the app never declares `CAMERA`, `ACTION_IMAGE_CAPTURE` does not need a runtime permission.
+  This replaces the earlier choice of `PickVisualMedia`: the Photo Picker is one provider among the apps the chooser lists (Android's own picker shows in it on devices that have it), and the chooser is what lets the user pick the app.
+- **iOS.** A `UIAlertController` action sheet (the system's source sheet) with **Take Photo**, **Photo Library** and **Choose File**: Photo Library is `PHPickerViewController` (needs no permission), Choose File is `UIDocumentPickerViewController` for images, and Take Photo is `UIImagePickerController` with the camera
+  source, shown only when the device has a camera. **Camera permission is asked for when Take Photo is chosen**: the authorization status is checked, `NotDetermined` asks with `AVCaptureDevice.requestAccess` (the prompt appears at that moment) and then opens the camera, `Denied` and `Restricted` report `CameraDenied` (the form shows the message
+  with the hint about the device settings) and open nothing. The app's `Info.plist` needs `NSCameraUsageDescription` (the text shown in that prompt); there is no Xcode project yet, so the key is recorded in `iosApp/README.md` as a step for when it is created.
+- **All platforms.** A photo larger than the limit (40 MB) or one that cannot be decoded is `Unreadable`. `Cancelled` covers leaving the chooser, the camera or any provider without an image.
 
 ### 7. Repository and atomic saves
 
@@ -137,8 +147,8 @@ dependency for one glyph. Building the vector from path data is tintable, has no
 
 ### 9. The form
 
-Add and edit screens get a row with the preview (96 dp) and the actions: "Add picture" when there is no picture, otherwise "Change picture" and "Remove picture". "Remove picture" only changes the draft; the saved vehicle changes on Save. An unreadable photo
-shows a short message under the preview (`pictureError` in the state, cleared on the next action). Save is disabled while a crop is in progress (the crop screen covers the form anyway).
+Add and edit screens get a row with the preview (96 dp) and the tap target and "Remove picture". The preview itself is the action: tapping it (labelled "Add picture" or "Change picture" for accessibility, with a small edit badge) opens the system chooser directly (decision 6); there is no separate add or change button. Only "Remove picture" is a button, shown when there is a picture. "Remove picture" only changes the draft; the saved vehicle changes on Save. A photo that could not be opened, or refused
+camera access, shows a short message under the preview (`PictureEditState.error`, a `PictureError`, cleared on the next action). Save is disabled while a crop is in progress (the crop screen covers the form anyway).
 
 ### 10. Migration and its test
 
@@ -155,7 +165,8 @@ shows a short message under the preview (`pictureError` in the state, cleared on
 
 ## Risks / Trade-offs
 
-- **The photo picker in Maestro.** The Android Photo Picker is a system UI; its selectors (the content description of a photo) can differ by image version. The flows use `addMedia` and select the first item; if that proves flaky the fallback is to drive it with `adb` input events from the script.
+- **The system chooser in Maestro.** The chooser and the apps it lists are system UI and differ by image and version. The flows add a photo with `addMedia`, pick an app that lists it by its visible name and select the first item; taking a photo with the camera app is checked by hand on the emulator (and by a flow only if the emulator's camera app is stable enough to drive). If a selector proves flaky the fallback is `adb` input events from the script.
+- **Camera on iOS cannot be tried yet.** The code compiles for iOS and the permission logic is simple, but it runs only once the Xcode project exists.
 - **Memory of big photos.** The picked bytes (bounded at 40 MB) and one decode (bounded by 3072 px) are in memory at once. Acceptable for a single picture; not for batch use.
 - **Crop precision.** Cropping from a 3072 px decode loses some detail on zoomed-in crops of very large photos, so the large version can be below 1024 px for a tight crop. Accepted; decoding the crop region from the original file is the follow-up if it matters.
 - **iOS stores PNG.** Larger files on iOS until an encoder is added, and the "well under 200 kilobytes" figure applies to Android. The spec says so.

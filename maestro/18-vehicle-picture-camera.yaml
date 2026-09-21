@@ -1,0 +1,47 @@
+# Taking a new photo with the camera app: the system chooser lists the camera app next to the media picker, the photo is taken in it, and
+# the crop screen opens with it. Written for the emulator's camera app ("Shutter" and "Done" are its labels); no permission is asked
+# by the app, the camera app holds its own.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: Shutter
+    timeout: 30000
+- tapOn: Shutter
+- extendedWaitUntil:
+    visible: Done
+    timeout: 30000
+- tapOn: Done
+- extendedWaitUntil:
+    visible: Use photo
+    timeout: 30000
+- tapOn: Use photo
+- assertVisible: Change picture
+- assertVisible:
+    id: remove_picture
+# Leaving the camera without taking a photo changes nothing.
+- tapOn:
+    id: remove_picture
+- assertVisible: Add picture
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: Shutter
+    timeout: 30000
+- pressKey: back
+- assertVisible: Add picture
+- assertNotVisible:
+    id: remove_picture

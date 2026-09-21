@@ -4,6 +4,7 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -43,8 +44,8 @@ sealed interface AddVehicleIntent : ViewIntent {
     data object OdometerCleared : AddVehicleIntent
     data object Save : AddVehicleIntent
 
-    /** The photo picker returned [bytes], or null when the user left it without choosing. */
-    class PhotoPicked(val bytes: ByteArray?) : AddVehicleIntent
+    /** The system's chooser of where the photo comes from gave [result]. */
+    class PhotoPicked(val result: PhotoResult) : AddVehicleIntent
 
     /** Rebuilds the preview and the crop image from the picture state, e.g. after a restore. */
     data object PictureRefresh : AddVehicleIntent

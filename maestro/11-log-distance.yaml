@@ -56,6 +56,9 @@ appId: com.mikonoma.drivinglog
     id: recent_event
     index: 0
 - assertVisible: Distance
+- scrollUntilVisible:
+    element:
+      text: "+100.5 km"
 - assertVisible: +100.5 km
 # Log by new odometer: the known odometer includes the distance just logged.
 - tapOn:
@@ -98,9 +101,18 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 45,320.8 km
+- scrollUntilVisible:
+    element:
+      text: "+20.0 km"
 - assertVisible: +20.0 km
+- scrollUntilVisible:
+    element:
+      text: "Odometer 45,320.8 km"
 - assertVisible: Odometer 45,320.8 km
 # The full log lists both entries and the initial odometer.
+- scrollUntilVisible:
+    element:
+      id: view_log
 - tapOn:
     id: view_log
 - assertVisible: +20.0 km

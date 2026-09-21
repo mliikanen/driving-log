@@ -1,0 +1,83 @@
+# A vehicle's picture: choose a photo, crop it, save it with the vehicle, see it in the list and on the details screen, change it,
+# cancel a crop and remove it. A vehicle without a picture shows the generic car icon.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- addMedia:
+    - assets/photo-landscape.png
+- tapOn:
+    id: add_vehicle
+# No picture yet: the car icon as the preview, labelled "Add picture", and nothing to remove. The picture is the action: there is
+# no separate button.
+- assertVisible: Add picture
+- assertNotVisible:
+    id: remove_picture
+# Cancelling the crop keeps the form as it was.
+- runFlow: subflows/pick-photo.yaml
+- assertVisible: Crop the photo
+- tapOn: Cancel
+- assertVisible: Add picture
+- assertNotVisible:
+    id: remove_picture
+# Choose and crop again: the form shows the picture and offers to change or remove it.
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- assertVisible: Change picture
+- assertVisible:
+    id: remove_picture
+- tapOn:
+    id: vehicle_name
+- inputText: Family car
+- hideKeyboard
+- tapOn:
+    id: unit_KILOMETERS
+- tapOn:
+    id: odo_field
+- inputText: "45200"
+- hideKeyboard
+- tapOn:
+    id: save_vehicle
+# The list shows the picture, the details screen the large one.
+- assertVisible:
+    id: vehicle_item
+- assertVisible:
+    id: vehicle_picture
+- tapOn: Family car
+- assertVisible: Picture of Family car
+- assertVisible:
+    id: vehicle_picture_large
+# Change it: the edit form starts with the saved picture.
+- tapOn:
+    id: edit_vehicle
+- assertVisible: Change picture
+- assertVisible:
+    id: remove_picture
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- tapOn:
+    id: save_vehicle
+- assertVisible: Picture of Family car
+# Remove it, but leave without saving: the vehicle keeps its picture.
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: remove_picture
+- assertVisible: Add picture
+- tapOn:
+    id: back
+- assertVisible: Picture of Family car
+# Remove it and save: the generic car icon is shown, in the list and on the details screen.
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: remove_picture
+- tapOn:
+    id: save_vehicle
+- assertNotVisible: Picture of Family car
+- assertVisible: Vehicle
+- tapOn:
+    id: back
+- assertVisible:
+    id: vehicle_picture
+- assertVisible: Vehicle

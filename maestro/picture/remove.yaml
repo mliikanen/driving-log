@@ -1,0 +1,13 @@
+# Step 3 of run.sh: the picture of the vehicle is removed.
+appId: com.mikonoma.drivinglog
+---
+- launchApp
+- assertVisible: Family car
+- tapOn: Family car
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: remove_picture
+- tapOn:
+    id: save_vehicle
+- assertNotVisible: Picture of Family car
