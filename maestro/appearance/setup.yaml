@@ -1,0 +1,7 @@
+# Once for the appearance manifest: the photos its flows choose (a solid purple one, whose color is no preset, and a photo of a car in a street, a JPEG like a camera's).
+# The flows take the first and the second photo of the system picker by position and do not depend on which is which.
+appId: com.mikonoma.drivinglog
+---
+- addMedia:
+    - ../assets/photo-solid-purple.png
+    - ../assets/photo-car-red.jpg

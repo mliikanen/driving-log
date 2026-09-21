@@ -1,0 +1,78 @@
+# Happy path: the add form starts on Car and the default color; a motorcycle in blue is added, shown in the list and on the details screen, changed on the edit screen
+# to a scooter in red, and it all survives closing the app.
+# (Which is preselected, the eight icons, the rules of choosing and the saved values are unit tests: see docs/test-strategy.md.)
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add_vehicle
+- assertVisible:
+    id: vehicle_type_CAR
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_203A43
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: true
+- tapOn:
+    id: back
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Bike
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "1"
+      TYPE: MOTORCYCLE
+      COLOR: 1E88E5
+- assertVisible: "Vehicle type: Motorcycle"
+- tapOn: Bike
+- assertVisible: "Vehicle type: Motorcycle"
+# The edit form starts with the saved type and color.
+- tapOn:
+    id: edit_vehicle
+- assertVisible:
+    id: vehicle_type_MOTORCYCLE
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_1E88E5
+- assertVisible:
+    id: vehicle_color_1E88E5
+    checked: true
+# Change both and save.
+- scrollUntilVisible:
+    element:
+      id: vehicle_type_SCOOTER
+    direction: UP
+- tapOn:
+    id: vehicle_type_SCOOTER
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_E53935
+- tapOn:
+    id: vehicle_color_E53935
+- tapOn:
+    id: save_vehicle
+- assertVisible: "Vehicle type: Scooter"
+- tapOn:
+    id: back
+- assertVisible: "Vehicle type: Scooter"
+# Closing the app completely keeps them.
+- stopApp
+- launchApp
+- assertVisible: "Vehicle type: Scooter"
+- tapOn: Bike
+- tapOn:
+    id: edit_vehicle
+- assertVisible:
+    id: vehicle_type_SCOOTER
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_E53935
+- assertVisible:
+    id: vehicle_color_E53935
+    checked: true

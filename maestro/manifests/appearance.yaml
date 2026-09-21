@@ -1,0 +1,9 @@
+# What a vehicle looks like: its type, its color, and the color a photo gives. Run with: maestro/run.sh appearance
+flows:
+  - "appearance/*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - setup
+    - type-and-color
+    - color-from-photo
