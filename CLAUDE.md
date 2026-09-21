@@ -27,15 +27,15 @@ Project context and artifact rules live in `openspec/config.yaml`.
 
 - `./gradlew :shared:allTests`: run shared tests
 - `./gradlew :androidApp:assembleDebug`: build the Android app (needs Android SDK)
-- `maestro test maestro/`: run the UI flows on a running Android emulator or device with the debug app installed
-  (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). Each flow clears the app's data and
-  expects the device locale English (United States). Run a single flow with `maestro test maestro/05-odometer-field.yaml`.
-  `maestro/subflows/` holds shared steps and is not run on its own. `maestro/clock/run.sh` runs the 12-hour/24-hour flow and
-  `maestro/picture/run.sh` the picture flows with a check of the files the app stores (both change device state over `adb`, so
-  they are not part of the plain suite); `maestro/check-permissions.sh` fails when the installed app requests a system permission.
-  The flows are self-contained: the photos they use are in `maestro/assets/` (see its README) and each flow that needs one uploads it with `addMedia`, so a fresh
-  emulator with the debug app installed is all the suite needs. Each run adds another copy of the photos to the emulator; if `addMedia` starts to fail or the photo
-  picker shows nothing, run `maestro/reset-media.sh`.
+- `maestro/run.sh <area>...`: run Maestro manifests on a running Android emulator or device with the debug app installed
+  (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). A manifest (`maestro/manifests/<area>.yaml`) is the flows of `maestro/<area>/` in order; areas:
+  `vehicles`, `distance`, `resilience`, `appearance`. `maestro/run.sh vehicles edit` runs the manifest's setup and then one flow; `maestro/run.sh --all` runs all four.
+  The device-state groups `picture` (checks the files the app stores over `adb`), `theme` (samples screenshot pixels) and `clock` (12-hour/24-hour) change or inspect device state and are run by name
+  (`maestro/run.sh picture theme clock`). Each flow clears the app's data and expects the device locale English (United States). `maestro/subflows/` holds shared steps and is not run on its own;
+  `maestro/check-permissions.sh` fails when the installed app requests a system permission.
+  The flows are self-contained: the photos they use are in `maestro/assets/` (see its README) and the `setup.yaml` of each manifest uploads them once, so a fresh
+  emulator with the debug app installed is all a manifest needs. `run.sh` first removes the copies earlier runs left (`maestro/reset-media.sh`; each run adds another copy, and after a few dozen
+  the emulator's `addMedia` fails or the photo picker shows nothing).
 - Test strategy: see `docs/test-strategy.md`. A check goes in the lowest kind of test that can check it; Maestro flows are only the happy path of a feature end to end.
   While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
   The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, **without Maestro**.
