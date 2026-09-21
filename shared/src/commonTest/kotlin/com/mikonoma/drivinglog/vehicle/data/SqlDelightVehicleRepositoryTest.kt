@@ -267,6 +267,20 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(listOf<String?>("Family car", "Estate car"), names)
     }
 
+    @Test
+    fun editingAVehicleKeepsItsUnitItsOdometerAndItsLog() = runTest {
+        val id = addFamilyCar(OdometerUnit.MILES_TENTHS, 45_200_300)
+        val before = repository.observeVehicle(id).first()
+        val eventsBefore = repository.observeLog(id).first()
+
+        repository.updateVehicle(id, "Estate car", "XYZ-789", VehicleType.VAN, VehicleColors.default)
+
+        val after = repository.observeVehicle(id).first()
+        assertEquals(OdometerUnit.MILES_TENTHS, after?.vehicle?.odometerUnit)
+        assertEquals(before?.currentOdometer, after?.currentOdometer)
+        assertEquals(eventsBefore, repository.observeLog(id).first())
+    }
+
     // ---- Distance entries, time zones and the derived odometer
 
     private val noon = Instant.parse("2026-09-20T12:00:00Z")

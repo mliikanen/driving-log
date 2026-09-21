@@ -64,6 +64,23 @@ command line (`run.sh picture theme clock`) or by `--all --device-state`.
 
 That leaves twelve journey flows in place of 23 (`vehicles` 2, `distance` 1, `resilience` 2, `appearance` 2, `picture` 5 with the camera one) and the `theme`/`clock` helpers. The last column is checked for each dropped assertion: break the rule in the code, see the owner test fail.
 
+**Audit of the owners (task 3.1).** Every flow that is deleted or trimmed was read assertion by assertion. The owner of each dropped group, by test class:
+
+| Dropped from | Assertions | Owner |
+|---|---|---|
+| `02`, `04` | name required and trimmed, whitespace-only name refused, error clears while typing, inner whitespace kept, whitespace plate is none, unit can be changed, `0.0 km` shown, leaving adds nothing | `VehicleInputTest`, `AddVehicleProcessorTest` (`anEmptyNameIsRefused…`, `nameAndPlateAreTrimmed`, `aWhitespaceOnlyPlateIsSavedAsNone`, `theNameErrorClearsWhenTheUserTypes`, `theUserCanChangeTheUnit`, `leavingWithoutSavingAddsNothing`), `OdometerFormatTest` |
+| `05` | empty start, digits from the right, backspace, clear, unit change keeps the number, typed zero, zero prefix rules, the cap | `OdometerEntryTest` (39), `OdometerEntryZeroPrefixTest` (30), `AddVehicleProcessorTest` (the same sequences through the processor) |
+| `06`, `07` | alphabetical order ignoring case, empty state, details and log contents | `VehicleListProcessorTest`, `VehicleDetailsProcessorTest`, `VehicleLogProcessorTest` |
+| `08` | name/plate trimmed, plate cleared, name required, cancel keeps values, the log is unchanged | `EditVehicleProcessorTest`; the odometer and unit cannot be edited: **added** `SqlDelightVehicleRepositoryTest.editingAVehicleKeepsItsUnitItsOdometerAndItsLog` (fails when the edit statement is made to reset the unit) |
+| `10`, `14`, `16`, `19`, `21` rotation steps | what was typed and chosen survives recreation | `restoreState` tests: `AddVehicleProcessorTest` (7), `EditVehicleProcessorTest` (4), `LogDistanceProcessorTest`. The screen surviving the activity's recreation is what the `rotation` flow keeps |
+| `11` | trip and odometer ways, empty and zero refused, a lower and an equal count refused naming the known odometer, live distance | `LogDistanceRulesTest`, `LogDistanceProcessorTest` |
+| `12` | unit defaults, tenths choice remembered per vehicle when saved, not remembered when not saved, other vehicle unaffected | `LogDistanceProcessorTest` (`theTenthsChoiceStartsAsTheRememberedOne`, `aChoiceThatIsNotSavedIsNotRemembered`, `theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm`), `SqlDelightVehicleRepositoryTest` (remembering) |
+| `13` | future day refused, before the initial odometer, anchor, time zone search and offsets | `LogDistanceRulesTest`, `LogDistanceProcessorTest`, `EntryMomentTest`, `TimeZoneChoicesTest`, `FormatMomentTest`; the weekday under the date (`SystemDeviceLocaleTest` covers the name) is shown by a composable, so it stays as an assertion in `distance/log-distance` |
+| `19`, `20` | Car preselected, choice replaces, eight icons, edit changes type, leaving drops it, persistence | `AddVehicleProcessorTest`, `EditVehicleProcessorTest`, `VehicleIconsTest`, `VehicleListProcessorTest`, repository tests. That the tile and the list item carry the label "Vehicle type: <name>" is composable-only: kept as an assertion in `appearance/type-and-color` until Compose integration tests exist |
+| `21`, `22`, `23` | default color selected, choice replaces, old color and photo color offered, rules of choosing, photo colors | `ColorChoiceTest`, `AddVehicleProcessorTest`, `EditVehicleProcessorTest`, `ColorExtractorTest`, `RealPhotoColorJvmTest`. The segments' labels ("Old color", "Photo color") are composable-only: kept in `appearance/color-from-photo` |
+
+Nothing else needed adding: the owners named in the ledger exist, and the only gap the audit found was the edit statement's guarantee about the unit and odometer.
+
 **The regression policy is written in three places, and they agree.** `docs/test-strategy.md` (the reasoning), `CLAUDE.md` (the commands and the instruction), and `openspec/config.yaml` under `rules.tasks` (so future `/opsx:propose` tasks do not ask for the whole suite). The existing bullet in
 `CLAUDE.md` ("run the full suite only when getting ready to archive") is replaced. A major refactoring is one that the developer names as such; the agent does not decide alone that a change is major.
 

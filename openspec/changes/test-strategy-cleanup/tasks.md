@@ -13,8 +13,8 @@
 
 ## 3. Owners of what the flows check
 
-- [ ] 3.1 For every row of the design's ledger, confirm that the owner named for each dropped assertion exists, and where the owner is not a plain test of the rule, list it: read the flow, list its assertions, and map each to a test; record the resulting table in the design (replacing the ledger's "Owner" wording where it differs)
-- [ ] 3.2 Add the unit tests the ledger marks "add first" and any the audit of 3.1 finds missing (at least: the edit form keeps the odometer and unit out of reach, `EditVehicleProcessor` and `LogDistanceProcessor` restore their state before intents like the add processor does); run `./gradlew :shared:allTests` and verify each new test fails when the behavior it owns is broken (temporarily break it, see it fail, restore)
+- [x] 3.1 For every row of the design's ledger, confirm that the owner named for each dropped assertion exists, and where the owner is not a plain test of the rule, list it: read the flow, list its assertions, and map each to a test; record the resulting table in the design (replacing the ledger's "Owner" wording where it differs)
+- [x] 3.2 Add the unit tests the ledger marks "add first" and any the audit of 3.1 finds missing (the audit found one: editing a vehicle keeps its unit and odometer; the restore tests of the edit and log processors already exist); run `./gradlew :shared:allTests` and verify each new test fails when the behavior it owns is broken (temporarily break it, see it fail, restore)
 
 ## 4. Manifest scaffolding
 
