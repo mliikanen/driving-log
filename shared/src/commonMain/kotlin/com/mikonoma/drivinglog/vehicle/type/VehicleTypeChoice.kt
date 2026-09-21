@@ -29,6 +29,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.ui.VehicleIcons
+import com.mikonoma.drivinglog.ui.color.VehicleTones
+import com.mikonoma.drivinglog.ui.color.toColor
+import com.mikonoma.drivinglog.ui.theme.DrivingLogTheme
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 
 /**
@@ -41,6 +45,8 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 fun VehicleTypeChoice(
     selected: VehicleType?,
     onSelect: (VehicleType) -> Unit,
+    /** The vehicle's color, already animated by the screen: the tiles' icons and backgrounds are drawn from it. */
+    color: Rgb,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.testTag("vehicle_type_choice"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -50,20 +56,21 @@ fun VehicleTypeChoice(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            for (type in VehicleType.entries) TypeTile(type, selected = type == selected, onSelect = { onSelect(type) })
+            val tones = VehicleTones.of(color, DrivingLogTheme.isDark)
+            for (type in VehicleType.entries) TypeTile(type, selected = type == selected, tones = tones, onSelect = { onSelect(type) })
         }
     }
 }
 
 @Composable
-private fun TypeTile(type: VehicleType, selected: Boolean, onSelect: () -> Unit) {
+private fun TypeTile(type: VehicleType, selected: Boolean, tones: VehicleTones, onSelect: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     val colors = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .width(82.dp)
             .clip(shape)
-            .background(if (selected) colors.primaryContainer else colors.surfaceVariant)
+            .background(tones.container.toColor())
             .border(BorderStroke(if (selected) 2.dp else 1.dp, if (selected) colors.primary else colors.outlineVariant), shape)
             .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
             .testTag("vehicle_type_${type.code}"),
@@ -76,13 +83,13 @@ private fun TypeTile(type: VehicleType, selected: Boolean, onSelect: () -> Unit)
             Icon(
                 imageVector = VehicleIcons.of(type),
                 contentDescription = null,
-                tint = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                tint = tones.icon.toColor(),
                 modifier = Modifier.size(48.dp),
             )
             Text(
                 type.label,
                 style = MaterialTheme.typography.labelMedium,
-                color = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                color = colors.onSurface,
                 textAlign = TextAlign.Center,
             )
         }

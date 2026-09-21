@@ -40,6 +40,7 @@ import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.VehiclePicture
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.ui.EventRow
@@ -120,12 +121,15 @@ fun VehicleDetailsContent(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
                 ) {
                     item {
+                        // One animated color for the screen, remembered once the vehicle has loaded, so it opens in the vehicle's color.
+                        val animatedColor = rememberAnimatedColor(state.color)
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             // Large, but not the whole screen: the odometer and the actions stay near the top.
                             Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
                                 VehiclePicture(
                                     state.pictureUri,
                                     state.type,
+                                    animatedColor,
                                     Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).testTag("vehicle_picture_large"),
                                     contentDescription = "Picture of ${state.name}",
                                 )

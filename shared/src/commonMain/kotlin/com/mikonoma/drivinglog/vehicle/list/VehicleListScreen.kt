@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.ui.VehiclePicture
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
 
 @Composable
 fun VehicleListScreen(
@@ -95,12 +96,14 @@ fun VehicleListContent(
                     contentPadding = PaddingValues(bottom = 96.dp),
                 ) {
                     items(state.vehicles, key = { it.id }) { vehicle ->
+                        // One animated color per row: the icon is drawn from it, and a saved change of the color reaches the row as one animation.
+                        val animatedColor = rememberAnimatedColor(vehicle.color)
                         Column {
                             ListItem(
                                 headlineContent = { Text(vehicle.name) },
                                 supportingContent = vehicle.licensePlate?.let { plate -> { Text(plate) } },
                                 leadingContent = {
-                                    VehiclePicture(vehicle.pictureUri, vehicle.type, Modifier.size(56.dp).testTag("vehicle_picture"))
+                                    VehiclePicture(vehicle.pictureUri, vehicle.type, animatedColor, Modifier.size(56.dp).testTag("vehicle_picture"))
                                 },
                                 modifier = Modifier.clickable { onOpen(vehicle.id) }.testTag("vehicle_item"),
                             )

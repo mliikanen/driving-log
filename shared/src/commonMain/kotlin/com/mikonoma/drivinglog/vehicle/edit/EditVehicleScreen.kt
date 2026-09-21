@@ -1,5 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
+import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
@@ -91,10 +94,15 @@ fun EditVehicleContent(
             if (state.notFound) {
                 Text("This vehicle no longer exists.")
             } else if (state.loaded) {
+                // One animated color for the form: everything drawn from the vehicle's color takes it from here. It is remembered inside the loaded branch, so the
+                // form opens in the saved color instead of animating from a placeholder.
+                val color = state.color ?: VehicleColors.default
+                val animatedColor = rememberAnimatedColor(color)
                 PictureField(
                     picture = state.picture,
                     previewUri = state.previewUri,
                     type = state.type,
+                    color = animatedColor,
                     cropImage = state.cropImage,
                     onPhotoPicked = { onIntent(EditVehicleIntent.PhotoPicked(it)) },
                     onCropConfirmed = { onIntent(EditVehicleIntent.CropConfirmed(it)) },
@@ -123,6 +131,12 @@ fun EditVehicleContent(
                 VehicleTypeChoice(
                     selected = state.type,
                     onSelect = { onIntent(EditVehicleIntent.TypeSelected(it)) },
+                    color = animatedColor,
+                )
+                VehicleColorChoice(
+                    color = color,
+                    pictureColor = state.pictureColor,
+                    onSelect = { onIntent(EditVehicleIntent.ColorSelected(it)) },
                 )
             }
         }

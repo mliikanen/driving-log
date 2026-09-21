@@ -12,7 +12,7 @@
 
 - [x] 2.1 Add migration `5.sqm` (`vehicle.vehicle_color TEXT NOT NULL DEFAULT '203A43'`), schema version 6, the same declaration in the fresh schema, `Vehicle.color` (non-null, an invalid stored value reading as the default) and the queries that select and write it, and verify the JVM migration tests from every previous version (the vehicle is intact and has the default color), that a fresh database has the same column, that the database rejects a null color, and that the default literal equals `VehicleColors.default`; update the schema-version test
 - [x] 2.2 Give `addVehicle` and `updateVehicle` a required non-null `color`, updating the fake repository, and verify repository tests on real SQL: each preset is written and read back, an edit changes it, an invalid stored value reads as the default, the log is unchanged by a color edit, and a failed save changes nothing
-- [ ] 2.3 Add `ImageCodec.sample(bytes, maxSide): PixelSamples?` (Android: `ImageDecoder` with a target size and the pixels as ARGB; iOS: ImageIO thumbnail drawn into an RGBA buffer, converted to ARGB; null for bytes that are not an image) and a fake for tests, and verify it compiles for Android and iOS and that a stored picture is sampled on the emulator (see 5.1)
+- [x] 2.3 Add `ImageCodec.sample(bytes, maxSide): PixelSamples?` (Android: `ImageDecoder` with a target size and the pixels as ARGB; iOS: ImageIO thumbnail drawn into an RGBA buffer, converted to ARGB; null for bytes that are not an image) and a fake for tests, and verify it compiles for Android and iOS and that a stored picture is sampled on the emulator (see 5.1)
 
 ## 3. Form logic
 
@@ -21,10 +21,10 @@
 
 ## 4. Screens
 
-- [ ] 4.1 Add `rememberAnimatedColor` (one progress, endpoints from the currently shown color, 300 ms, the first composition not animated, the system animator scale respected), and verify it compiles for Android and iOS and that the pure interpolation is covered by 1.5
-- [ ] 4.2 Add the `VehicleColorChoice` composable (twelve preset swatches, the "Picture color" and "Current color" extras, selection ring and check, names as labels, the test tags from the design) and use it on the add and edit screens, and verify it compiles for Android and iOS
-- [ ] 4.3 Draw `VehiclePicture` and the type tiles from `VehicleTones` of the (animated) vehicle color, with one call of `rememberAnimatedColor` per screen (per item on the list) and the animated color passed down, and verify it compiles for Android and iOS and that a picture still wins over the icon
-- [ ] 4.4 Check the color choice, the tinted icons and the animation by hand on the emulator (add, edit, list, details) in light and dark mode, in landscape and with the keyboard open, including a frame sequence of a color change and an interrupted one, and fix what looks wrong
+- [x] 4.1 Add `rememberAnimatedColor` (one progress, endpoints from the currently shown color, 300 ms, the first composition not animated, the system animator scale respected), and verify it compiles for Android and iOS and that the pure interpolation is covered by 1.5
+- [x] 4.2 Add the `VehicleColorChoice` composable (twelve preset swatches, the "Picture color" and "Current color" extras, selection ring and check, names as labels, the test tags from the design) and use it on the add and edit screens, and verify it compiles for Android and iOS
+- [x] 4.3 Draw `VehiclePicture` and the type tiles from `VehicleTones` of the (animated) vehicle color, with one call of `rememberAnimatedColor` per screen (per item on the list) and the animated color passed down, and verify it compiles for Android and iOS and that a picture still wins over the icon
+- [x] 4.4 Check the color choice, the tinted icons and the animation by hand on the emulator (add, edit, list, details) in light and dark mode, in landscape and with the keyboard open, including a frame sequence of a color change and an interrupted one, and fix what looks wrong
 
 ## 5. Maestro flows
 

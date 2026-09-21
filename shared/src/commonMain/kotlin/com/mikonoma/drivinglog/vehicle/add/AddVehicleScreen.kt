@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
+import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
 import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
@@ -79,6 +81,8 @@ fun AddVehicleContent(
     onIntent: (AddVehicleIntent) -> Unit,
     onBack: () -> Unit,
 ) {
+    // One animated color for the whole screen: everything drawn from the vehicle's color takes it from here, so it all moves together.
+    val animatedColor = rememberAnimatedColor(state.color)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -111,6 +115,7 @@ fun AddVehicleContent(
                 picture = state.picture,
                 previewUri = state.previewUri,
                 type = state.type,
+                color = animatedColor,
                 cropImage = state.cropImage,
                 onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
                 onCropConfirmed = { onIntent(AddVehicleIntent.CropConfirmed(it)) },
@@ -139,6 +144,12 @@ fun AddVehicleContent(
             VehicleTypeChoice(
                 selected = state.type,
                 onSelect = { onIntent(AddVehicleIntent.TypeSelected(it)) },
+                color = animatedColor,
+            )
+            VehicleColorChoice(
+                color = state.color,
+                pictureColor = state.pictureColor,
+                onSelect = { onIntent(AddVehicleIntent.ColorSelected(it)) },
             )
             UnitChoice(
                 selected = state.entry.unit,
