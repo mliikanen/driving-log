@@ -15,7 +15,7 @@ actions gives them that place, keeps the vehicle list one tap away, and makes th
   1. **"Vehicles"** (a car icon): opens the vehicle list. When the user has **no vehicles** the tile is **"Add vehicle"** (a plus icon) and opens the add vehicle screen directly.
   2. **"Log event"** (a pencil-and-note icon): present, **not usable yet** (shown dimmed and disabled); `add-direct-logging` makes it open the log form.
   3. **"Trip"** (a route icon): present, **not usable yet** (dimmed, disabled); it becomes start and end trip in `add-trip-logging`.
-  4. **"Coming soon"** (a question mark icon): a placeholder for a fourth action, dimmed and disabled.
+  4. **"Placeholder"** (a question mark icon): holds the place of a fourth action, dimmed and disabled; the three disabled tiles **stay disabled** until the changes that build them are applied.
 - **The app starts on the landing screen** instead of the vehicle list. The **vehicle list becomes a screen of its own**, reached from the "Vehicles" tile: it keeps its list, its "Add vehicle" button and its empty state, gains a back arrow (back returns to the landing screen) and is titled "Vehicles".
 - The grid stays 2 x 2 in portrait and in landscape; it survives rotation; tiles are at least 48 dp and their text and icons meet the app's contrast rules (a disabled tile is dimmed the way Material Design dims a disabled control).
 - Four new icons (plus, note-pencil, route, question) from the Phosphor set already used for the vehicle icons (MIT, in `THIRD_PARTY_NOTICES.md`); the car icon is the existing vehicle car.

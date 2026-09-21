@@ -46,4 +46,4 @@ and vehicles cannot be deleted (or, yet, hidden).
 
 ## Open Questions
 
-- The tile is "Log event" while the form is still "Log distance" (the only event kind today). Renaming the form's title to "Log event" now is possible; kept for the moment so the details route's wording does not change here.
+- The tile is "Log event" while the form is still "Log distance" (the only event kind today). Renaming the form and the details action is its own future change, the stub `update-log-distance-to-log-event`; it is deliberately not done here, so the details route's wording does not change in this change.

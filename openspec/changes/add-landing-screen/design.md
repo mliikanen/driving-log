@@ -39,4 +39,4 @@ Vehicles cannot be deleted, so once the first vehicle exists the "no vehicles" s
 
 ## Open Questions
 
-- What the fourth tile becomes is undecided ("Coming soon" is a placeholder label); a settings entry or reports are candidates, and the label changes with it.
+- What the fourth tile becomes is undecided ("Placeholder" is the label until then); a settings entry or reports are candidates, and the label changes with it.
