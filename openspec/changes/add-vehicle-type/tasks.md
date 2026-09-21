@@ -29,4 +29,4 @@
 ## 5. Project context and final verification
 
 - [x] 5.1 Add to the project context in `openspec/config.yaml` that a vehicle has a type from a fixed set (stored as a code in a `NOT NULL` column, Car preselected when adding, editable, and Car for vehicles that existed before) and that placeholders follow it, and verify `openspec validate --all --strict` passes
-- [ ] 5.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
+- [x] 5.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug`, the whole Maestro suite and `openspec validate --all --strict`, and verify all pass
