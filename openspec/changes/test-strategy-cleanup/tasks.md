@@ -19,7 +19,7 @@
 ## 4. Manifest scaffolding
 
 - [x] 4.1 Create `maestro/run.sh`: runs `reset-media.sh` when `adb` is available (says so and goes on when not), then `maestro test maestro/<area>` for each area named, `--all` for all plain areas (`vehicles distance resilience appearance`), and `<area> <flow>` for setup plus one flow (through a generated config file); documents the device-state areas (`picture theme clock`) and runs them through their own `run.sh`. Verify: `maestro/run.sh nosuch` fails with the list of areas; running a manifest on the emulator works
-- [ ] 4.2 Add `maestro/manifests/<area>.yaml` for `vehicles`, `distance`, `resilience` and `appearance`, each listing the area's flows and `flowsOrder` (setup first when it has one), and a `setup.yaml` in the areas whose flows choose photos (`appearance`, `resilience`); no tags (they conflict with `flowsOrder`); verify that `maestro/run.sh <area>` reaches the area's first flow
+- [x] 4.2 Add `maestro/manifests/<area>.yaml` for `vehicles`, `distance`, `resilience` and `appearance`, each listing the area's flows and `flowsOrder` (setup first when it has one), and a `setup.yaml` in the areas whose flows choose photos (`appearance`, `resilience`); no tags (they conflict with `flowsOrder`); verify that `maestro/run.sh <area>` reaches the area's first flow
 
 ## 5. Move the flows, one manifest at a time
 
@@ -27,8 +27,8 @@
 - [x] 5.2 `distance/`: write `log-distance.yaml` (trip distance, new odometer count, unit choice, an earlier day and another time zone, the log entries, the app in airplane mode is not part of it); run `maestro/run.sh distance`; then delete `11`, `12`, `13` and commit
 - [x] 5.3 `resilience/`: write `offline-and-restart.yaml` (airplane mode, add with a picture from the setup's photo, log a distance, edit, stop and start the app, everything present) and `rotation.yaml` (add screen with typed name, type and color, crop screen, edit screen, log form); run `maestro/run.sh resilience`; then delete `09`, `10`, `14`, `17` and commit
 - [x] 5.4 `appearance/`: write `type-and-color.yaml` and `color-from-photo.yaml` (setup uploads the solid purple photo and one real car photo); run `maestro/run.sh appearance`; then delete `19`, `20`, `21`, `22`, `23` and commit
-- [ ] 5.5 `picture/`: move `picture/*.yaml` and `run.sh` into the manifest with its `setup.yaml` (uploaded once per `run.sh`, not per step), fold `15`'s list and details assertions into `add` and `16`'s leaving-drops-the-picture check into `cancel`, move `18` in as `camera.yaml`; run `maestro/picture/run.sh`; then delete `15`, `16`, `17`, `18` (17's persistence is covered by `resilience/offline-and-restart`) and commit
-- [ ] 5.6 `theme/` and `clock/`: keep their scripts and flows, use the shared `run.sh` entry for them, and make sure no flow other than a setup flow uploads a photo (`grep -rn addMedia maestro` lists only `setup.yaml` files); run both scripts and commit
+- [x] 5.5 `picture/`: move `picture/*.yaml` and `run.sh` into the manifest with its `setup.yaml` (uploaded once per `run.sh`, not per step), fold `15`'s list and details assertions into `add` and `16`'s leaving-drops-the-picture check into `cancel`, move `18` in as `camera.yaml`; run `maestro/picture/run.sh`; then delete `15`, `16`, `17`, `18` (17's persistence is covered by `resilience/offline-and-restart`) and commit
+- [x] 5.6 `theme/` and `clock/`: keep their scripts and flows, use the shared `run.sh` entry for them, and make sure no flow other than a setup flow uploads a photo (`grep -rn addMedia maestro` lists only `setup.yaml` files); run both scripts and commit
 
 ## 6. Finish
 

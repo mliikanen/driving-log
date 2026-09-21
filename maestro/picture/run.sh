@@ -2,11 +2,16 @@
 # Runs the picture flows one step at a time and checks the files the app keeps in its private storage after each, over adb:
 # two files per picture (a small and a large one), both WebP, the small one 256 x 256 pixels and the large one at most
 # 1024 x 1024 and under 200 kB, the files of a replaced or removed picture gone, and nothing left after leaving the add screen
-# without saving. Needs a running Android emulator or device with the debug app installed.
+# without saving; then the camera flow. The photo they choose is uploaded once, by setup.yaml, at the start. Needs a running Android emulator or device with the debug
+# app installed (run it through ../run.sh picture, which also removes the photos of earlier runs).
 set -euo pipefail
 cd "$(dirname "$0")"
 ADB="${ADB:-adb}"
 APP=com.mikonoma.drivinglog
+
+# Runs one flow of this directory as a manifest of its own over the maestro/ workspace (media must come from inside the workspace).
+config="$(mktemp)"; trap 'rm -f "$config"' EXIT
+run_flow() { printf 'flows:\n  - picture/%s.yaml\n' "$1" > "$config"; (cd .. && maestro test --config="$config" .); }
 
 # The command is one string for the device's shell: run-as runs it in the app's data directory.
 files() { $ADB shell "run-as $APP ls files/pictures 2>/dev/null" | tr -d '\r' | grep -v '^pending$' || true; }
@@ -48,21 +53,27 @@ expect_one_picture() {
   echo "$list" | head -1 | sed 's/-\(small\|large\).*//'
 }
 
+echo "== 0. upload the photo, once"
+run_flow setup
+
 echo "== 1. add a vehicle with a picture"
-maestro test add.yaml
+run_flow add
 first="$(expect_one_picture | tail -1)"
 
 echo "== 2. replace the picture: new files, old files gone"
-maestro test replace.yaml
+run_flow replace
 second="$(expect_one_picture | tail -1)"
 [ "$first" != "$second" ] || { echo "the picture id did not change"; exit 1; }
 
 echo "== 3. remove the picture: no files left"
-maestro test remove.yaml
+run_flow remove
 [ -z "$(files)" ] && [ -z "$(pending)" ] || { echo "files left after removing: $(files) $(pending)"; exit 1; }
 
 echo "== 4. leave the add screen after cropping: nothing left"
-maestro test cancel.yaml
+run_flow cancel
 [ -z "$(files)" ] && [ -z "$(pending)" ] || { echo "files left after leaving: $(files) $(pending)"; exit 1; }
+
+echo "== 5. the camera app"
+run_flow camera
 
 echo "picture files: all checks passed"

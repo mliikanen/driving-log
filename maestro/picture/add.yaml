@@ -1,10 +1,8 @@
-# Step 1 of run.sh: a vehicle is added with a picture (clears the app's data first).
+# Step 1 of run.sh: a vehicle is added with a picture (clears the app's data first); the list shows the picture instead of the icon of the type, and the details screen the large one.
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
-- addMedia:
-    - ../assets/photo-landscape.png
 - tapOn:
     id: add_vehicle
 - runFlow: ../subflows/pick-photo.yaml
@@ -33,3 +31,8 @@ appId: com.mikonoma.drivinglog
     id: save_vehicle
 - assertVisible:
     id: vehicle_picture
+- assertNotVisible: "Vehicle type: Car"
+- tapOn: Family car
+- assertVisible: Picture of Family car
+- assertVisible:
+    id: vehicle_picture_large

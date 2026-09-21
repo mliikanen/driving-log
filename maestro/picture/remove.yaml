@@ -11,3 +11,8 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: save_vehicle
 - assertNotVisible: Picture of Family car
+# The icon of the vehicle's type is shown again, on the details screen and in the list.
+- assertVisible: "Vehicle type: Car"
+- tapOn:
+    id: back
+- assertVisible: "Vehicle type: Car"

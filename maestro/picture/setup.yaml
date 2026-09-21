@@ -1,0 +1,5 @@
+# Once per run of run.sh: the photo the picture flows choose.
+appId: com.mikonoma.drivinglog
+---
+- addMedia:
+    - ../assets/photo-landscape.png
