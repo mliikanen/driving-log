@@ -2,8 +2,8 @@
 
 ## 1. The state and the tiles
 
-- [ ] 1.1 Add `LandingContract` (state `LandingState(isLoading, hasVehicles)`, intents `OpenVehicles` and `AddVehicle`, effects `ShowVehicles` and `ShowAddVehicle`) and `LandingProcessor` observing the vehicles, and the pure `landingTiles(...)` giving each tile its id, label, icon key and enabled flag; verify by `LandingProcessorTest` and a tiles test: loading shows the first tile without a label and not tappable, no vehicles gives "Add vehicle", vehicles give "Vehicles", exactly the other three tiles are not enabled, the intents lead to the right effects, and the state follows a vehicle being added
-- [ ] 1.2 Add the four icons: the Phosphor SVGs (`plus-circle-fill`, `note-pencil-fill`, `path-fill`, `question-fill`) in `docs/icons/phosphor` and `LandingIcons` with their path data; verify by a test that every path parses to a non-empty vector (like `PhotoIconsTest`) and that the Phosphor licence is still the one in `THIRD_PARTY_NOTICES.md`
+- [x] 1.1 Add `LandingContract` (state `LandingState(isLoading, hasVehicles)`, intents `OpenVehicles` and `AddVehicle`, effects `ShowVehicles` and `ShowAddVehicle`) and `LandingProcessor` observing the vehicles, and the pure `landingTiles(...)` giving each tile its id, label, icon key and enabled flag; verify by `LandingProcessorTest` and a tiles test: loading shows the first tile without a label and not tappable, no vehicles gives "Add vehicle", vehicles give "Vehicles", exactly the other three tiles are not enabled, the intents lead to the right effects, and the state follows a vehicle being added
+- [x] 1.2 Add the four icons: the Phosphor SVGs (`plus-circle-fill`, `note-pencil-fill`, `path-fill`, `question-fill`) in `docs/icons/phosphor` and `LandingIcons` with their path data; verify by a test that every path parses to a non-empty vector (like `PhotoIconsTest`) and that the Phosphor licence is still the one in `THIRD_PARTY_NOTICES.md`
 
 ## 2. The screen and the navigation
 

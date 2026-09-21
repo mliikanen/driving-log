@@ -12,6 +12,7 @@ import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.SystemDeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
+import com.mikonoma.drivinglog.landing.LandingProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
 import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
@@ -36,6 +37,7 @@ interface AppGraph {
     val vehicleRepository: VehicleRepository
     val vehiclePictureStore: VehiclePictureStore
 
+    val landingProcessor: LandingProcessor
     val vehicleListProcessor: VehicleListProcessor
     val addVehicleProcessor: AddVehicleProcessor
     val vehicleDetailsProcessorFactory: VehicleDetailsProcessor.Factory
