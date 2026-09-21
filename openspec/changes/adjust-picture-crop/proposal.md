@@ -1,6 +1,6 @@
-# Proposal (stub)
+# Proposal
 
-> **Stub.** Short on purpose: it fixes the scope and lists the open questions, to be settled before `/opsx:apply`. It builds on the archived `add-vehicle-picture`
+> **Decided.** The open questions of the stub were settled by the developer before apply (see the design's Decisions): a fixed square with the photo moving behind it, single-tap buttons next to the gestures, a scrim without a preview, a rotate control, and no soft-picture warning. It builds on the archived `add-vehicle-picture`
 > and is independent of `add-vehicle-color` (see "Why now").
 
 ## Why
@@ -17,15 +17,15 @@ The crop screen is where the user decides what a vehicle's picture is, and today
 
 ## What Changes
 
-- **Controls that do not need a gesture:** zoom-in and zoom-out buttons, buttons that move the photo a step in each direction, and "Reset" (back to the largest centered square), all with
-  labels for assistive technology; the photo also moves and zooms with arrow keys, plus and minus when a hardware keyboard is used. Pinch, drag and (where a wheel exists) the scroll wheel keep working.
+- **Controls that do not need a gesture:** zoom-in and zoom-out buttons, buttons that move the photo a step in each direction (each acts once per tap), "Rotate photo" (a quarter turn clockwise) and "Reset" (back to the largest centered square), all with
+  labels for assistive technology; the photo also moves and zooms with arrow keys, plus and minus when a hardware keyboard is used. Pinch and drag keep working.
 - **Context outside the frame:** the parts of the photo outside the square are drawn **dimmed** instead of black, so the user sees what is being left out and can move it in.
 - **The crop survives rotation and process death** while the crop screen is open (zoom and position are saved with the screen state; they are pixels of the photo, so they mean the same after a rotation).
-- **Recommended interaction: the photo moves and zooms behind a fixed square** (what exists). The alternative, a **movable and resizable square over a fixed photo**, is kept as an open question (see the design).
+- **The photo moves and zooms behind a fixed square** (what exists; the alternative, a movable and resizable square over a fixed photo, was considered and not chosen: see the design).
 - The output is unchanged: a **square scaled to the stored sizes** (small at most 256 px, large at most 1024 px, never enlarged). The scaling quality is made explicit and checked (see the design): it is a save-time
   quality matter, not a render-time speed matter.
 
-Out of scope: rotating the photo by hand (its orientation is applied on decode), free aspect ratios, filters, several crops of one photo, changing the stored formats or sizes.
+Out of scope: free-angle rotation (only quarter turns; the photo's own orientation is still applied on decode), free aspect ratios, filters, several crops of one photo, a preview of the list tile, a warning about soft pictures, buttons that repeat while held, changing the stored formats or sizes.
 
 ## Capabilities
 
@@ -39,7 +39,7 @@ None.
 
 ## Impact
 
-- `shared/` commonMain: `CropScreen` (buttons, keyboard handling, dimmed context, labels), `CropState` (step functions for the buttons; a `Saver` for saving it), `CropState` tests. Platform: the iOS codec sets a high interpolation
+- `shared/` commonMain: `CropScreen` (buttons, keyboard handling, dimmed context, labels), `CropState` (step functions for the buttons, a quarter turn, a `Saver` for saving it), `CropState` tests. The confirmed crop carries the quarter turns (`CropConfirmed`, `PictureDraftEditor.cropConfirmed`, `ImageCodec.encodeSquare`, and a turned `DecodedImage` for the screen). Platform: both codecs turn the decoded photo before cropping; the iOS codec sets a high interpolation
   quality when it draws the scaled versions; Android already halves stepwise and finishes with a smooth step (`AndroidImageCodec.scaledTo`).
 - **No storage or schema change, no new dependency, no permission.** The stored files, the sizes and the formats are exactly the current ones.
 - `maestro/`: the crop screen is another window without test tags, so flows use its text ("Use photo", "Cancel") and the new button labels.
