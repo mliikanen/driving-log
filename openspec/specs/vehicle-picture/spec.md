@@ -12,7 +12,7 @@ The system SHALL let a vehicle have at most one picture, which is optional. A ve
 with the icon of its type (as specified in the `vehicle-type` capability) as its placeholder wherever its picture would be shown, and the add vehicle screen shows the icon of the type currently chosen there (Car at first). The picture SHALL be offered on the add vehicle screen
 and on the edit vehicle screen as the picture itself: the form SHALL show a preview of the picture it has (or the placeholder), and tapping the preview SHALL be the
 action that starts choosing a picture, with no separate button for it. The preview SHALL be labelled "Add picture" when there is no picture and "Change picture" when there
-is one, and SHALL show a small edit mark that tells it can be tapped. A "Remove picture" action SHALL be offered only when the vehicle (or the form) has a picture.
+is one, and SHALL show a small camera mark in its corner that tells a photo can be set by tapping it. The mark SHALL be the same camera in both cases, on top of the picture or the placeholder, and SHALL NOT be an edit (pen) mark. A "Remove picture" action SHALL be offered only when the vehicle (or the form) has a picture.
 
 #### Scenario: A vehicle without a picture
 - **WHEN** the user opens the add vehicle screen
@@ -33,6 +33,14 @@ is one, and SHALL show a small edit mark that tells it can be tapped. A "Remove 
 #### Scenario: Tapping the picture starts choosing
 - **WHEN** the user taps the preview on the add or edit screen
 - **THEN** the system chooser of where the photo comes from is shown, and there is no other button that does so
+
+#### Scenario: The preview shows a camera mark
+- **WHEN** the user opens the add vehicle screen, and again the edit screen of a vehicle that has a picture
+- **THEN** the corner of the preview shows a camera mark in both cases, and no pen mark
+
+#### Scenario: The mark is not a separate control
+- **WHEN** the user taps the camera mark
+- **THEN** the system chooser is shown, as when tapping anywhere else on the preview, and the screen reader announces the preview as "Add picture" or "Change picture" and not the mark separately
 
 ### Requirement: The photo comes from an app the user chooses through the system
 The system SHALL let the user choose where the photo comes from with the system's own mechanism for providing an image, opened by "Add picture" or
