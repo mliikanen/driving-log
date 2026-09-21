@@ -1,0 +1,5 @@
+# Once for the resilience manifest: the photo its flows choose. (Other flows of the area do not upload anything.)
+appId: com.mikonoma.drivinglog
+---
+- addMedia:
+    - ../assets/photo-landscape.png

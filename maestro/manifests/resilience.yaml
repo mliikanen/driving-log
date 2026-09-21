@@ -1,0 +1,9 @@
+# The app under the conditions of real use: no network, being closed and reopened, and rotation. Run with: maestro/run.sh resilience
+flows:
+  - "resilience/*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - setup
+    - offline-and-restart
+    - rotation

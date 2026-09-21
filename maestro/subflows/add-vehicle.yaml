@@ -1,11 +1,19 @@
 # Adds a vehicle from the vehicle list. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
 # unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading),
 # TYPE (optional, a vehicle type code such as MOTORCYCLE; when not given the preselected Car is kept),
-# COLOR (optional, a preset's RRGGBB code such as E53935; when not given the preselected default color is kept).
+# COLOR (optional, a preset's RRGGBB code such as E53935; when not given the preselected default color is kept),
+# PICTURE (optional, any value: the first photo of the system picker is chosen and cropped; the photo must be on the device, see the area's setup.yaml).
 appId: com.mikonoma.drivinglog
 ---
 - tapOn:
     id: add_vehicle
+- evalScript: "${output.withPicture = (typeof PICTURE === 'undefined') ? '' : PICTURE}"
+- runFlow:
+    when:
+      true: ${output.withPicture.length > 0}
+    commands:
+      - runFlow: pick-photo.yaml
+      - tapOn: Use photo
 - tapOn:
     id: vehicle_name
 - inputText: ${NAME}

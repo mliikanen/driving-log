@@ -1,0 +1,210 @@
+# Happy path: rotating the device recreates the activity, and every screen keeps what the user did: the list, the details, the full log, the crop screen, the add
+# form (a picture, a name, a type, a color, a unit and an odometer entry), the edit form and the log distance form.
+# (Which state a processor restores is a unit test: see docs/test-strategy.md. What a flow shows is that the screen is still there and still shows it.)
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS_TENTHS
+      ODOMETER: "452003"
+# The list.
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Family car
+- setOrientation: PORTRAIT
+- assertVisible: Family car
+# The details screen.
+- tapOn: Family car
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: vehicle_title
+    text: Family car
+- scrollUntilVisible:
+    element:
+      id: current_odometer
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+- setOrientation: PORTRAIT
+- scrollUntilVisible:
+    element:
+      id: current_odometer
+- assertVisible:
+    id: current_odometer
+    text: 45,200.3 km
+# The full log.
+- scrollUntilVisible:
+    element:
+      id: view_log
+- tapOn:
+    id: view_log
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Initial odometer
+- setOrientation: PORTRAIT
+- assertVisible: Initial odometer
+- tapOn:
+    id: back
+# The log distance form keeps the way, the unit, the typed number, the day and the zone.
+- runScript: ../subflows/yesterday.js
+- scrollUntilVisible:
+    element:
+      id: log_distance
+- tapOn:
+    id: log_distance
+- tapOn:
+    id: log_way_odometer
+- tapOn:
+    id: log_unit_mi
+- tapOn:
+    id: log_date
+- tapOn: Switch to text input mode
+- eraseText: 10
+- inputText: ${output.yesterday}
+- tapOn: OK
+- tapOn:
+    id: log_zone
+- tapOn: Search
+- inputText: tokyo
+- tapOn: Asia/Tokyo
+- tapOn:
+    id: odo_field
+- inputText: "12345"
+- hideKeyboard
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: log_way_odometer
+    checked: true
+- assertVisible:
+    id: log_unit_mi
+    checked: true
+- assertVisible:
+    id: log_tenths
+    checked: true
+- assertVisible: ${output.yesterdayWeekday}
+- assertVisible: Asia/Tokyo
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
+- assertVisible:
+    id: odo_field
+    text: "1,234.5"
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: log_way_odometer
+    checked: true
+- assertVisible: ${output.yesterdayWeekday}
+- assertVisible: Asia/Tokyo
+- assertVisible:
+    id: odo_field
+    text: "1,234.5"
+- tapOn:
+    id: back
+# The edit form.
+- tapOn:
+    id: edit_vehicle
+- tapOn:
+    id: vehicle_name
+- eraseText: 20
+- inputText: Rotated name
+- hideKeyboard
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: vehicle_name
+    text: Rotated name
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: vehicle_name
+    text: Rotated name
+- tapOn:
+    id: back
+- tapOn:
+    id: back
+# The add form: the crop screen first, then what was typed and chosen.
+- tapOn:
+    id: add_vehicle
+- runFlow: ../subflows/pick-photo.yaml
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible: Crop the photo
+- assertVisible: Use photo
+- setOrientation: PORTRAIT
+- assertVisible: Use photo
+- tapOn: Use photo
+- assertVisible: Change picture
+- tapOn:
+    id: vehicle_name
+- inputText: Half typed
+- hideKeyboard
+- tapOn:
+    id: vehicle_type_VAN
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_E53935
+    centerElement: true
+- tapOn:
+    id: vehicle_color_E53935
+- scrollUntilVisible:
+    element:
+      id: unit_KILOMETERS_TENTHS
+    centerElement: true
+- tapOn:
+    id: unit_KILOMETERS_TENTHS
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
+- tapOn:
+    id: odo_field
+- inputText: "123"
+- hideKeyboard
+- setOrientation: LANDSCAPE_LEFT
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
+- assertVisible:
+    id: odo_field
+    text: "12.3"
+- assertVisible:
+    id: unit_KILOMETERS_TENTHS
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_E53935
+    direction: UP
+- assertVisible:
+    id: vehicle_color_E53935
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_type_VAN
+    direction: UP
+- assertVisible:
+    id: vehicle_type_VAN
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_name
+    direction: UP
+- assertVisible:
+    id: vehicle_name
+    text: Half typed
+- scrollUntilVisible:
+    element: Change picture
+    direction: UP
+- assertVisible: Change picture
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: vehicle_name
+    text: Half typed
+- assertVisible: Change picture
+# Leaving without saving adds nothing.
+- tapOn:
+    id: back
+- assertVisible:
+    id: add_vehicle
+- assertNotVisible: Half typed
