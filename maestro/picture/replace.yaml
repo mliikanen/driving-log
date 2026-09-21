@@ -2,6 +2,8 @@
 appId: com.mikonoma.drivinglog
 ---
 - launchApp
+- addMedia:
+    - ../assets/photo-landscape.png
 - tapOn: Family car
 - tapOn:
     id: edit_vehicle

@@ -70,6 +70,7 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: odo_field
+    centerElement: true
 - assertVisible:
     id: odo_field
     text: "1,234.5"

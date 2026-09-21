@@ -1,0 +1,87 @@
+# Real photos of cars set the color: each photo is added to the emulator by this flow, chosen and cropped on the add screen, and gives a selected "Photo color" segment
+# (the colors themselves are checked by RealPhotoColorJvmTest on the same files; Maestro cannot read a color). Cars in the street: JPEG files, with the vehicle in
+# the middle of a busy background.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+# A photo of a red car.
+- addMedia:
+    - assets/photo-car-red.jpg
+- tapOn:
+    id: add_vehicle
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+    centerElement: true
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: false
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet
+# A photo of a blue car.
+- addMedia:
+    - assets/photo-car-blue.jpg
+- tapOn:
+    id: add_vehicle
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+    centerElement: true
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: false
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet
+# A photo of a grey car.
+- addMedia:
+    - assets/photo-car-grey.jpg
+- tapOn:
+    id: add_vehicle
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+    centerElement: true
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: false
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet
+# A photo of a white car.
+- addMedia:
+    - assets/photo-car-white.jpg
+- tapOn:
+    id: add_vehicle
+- runFlow: subflows/pick-photo.yaml
+- tapOn: Use photo
+- scrollUntilVisible:
+    element:
+      id: vehicle_color_picture
+    centerElement: true
+- assertVisible:
+    id: vehicle_color_picture
+    checked: true
+- assertVisible:
+    id: vehicle_color_203A43
+    checked: false
+- tapOn:
+    id: back
+- assertVisible: No vehicles yet

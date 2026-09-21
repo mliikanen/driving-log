@@ -55,8 +55,16 @@ appId: com.mikonoma.drivinglog
     id: vehicle_name
 - inputText: Half typed
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: unit_KILOMETERS_TENTHS
+    centerElement: true
 - tapOn:
     id: unit_KILOMETERS_TENTHS
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
 - tapOn:
     id: odo_field
 - inputText: "123"
@@ -68,6 +76,7 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: odo_field
+    centerElement: true
 - assertVisible:
     id: odo_field
     text: "12.3"
@@ -78,6 +87,10 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: vehicle_name
     text: Half typed
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
 - assertVisible:
     id: odo_field
     text: "12.3"

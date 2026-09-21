@@ -34,15 +34,17 @@ appId: com.mikonoma.drivinglog
             id: vehicle_color_${output.vehicleColor}
       - tapOn:
           id: vehicle_color_${output.vehicleColor}
-# The unit choice is below the type and color choices: bring it into view before tapping it.
+# The unit choice is below the type and color choices: bring it into the middle of the screen before tapping it (at the very edge a tap can land in the gesture bar).
 - scrollUntilVisible:
     element:
       id: ${UNIT}
+    centerElement: true
 - tapOn:
     id: ${UNIT}
 - scrollUntilVisible:
     element:
       id: odo_field
+    centerElement: true
 - tapOn:
     id: odo_field
 - inputText: ${ODOMETER}

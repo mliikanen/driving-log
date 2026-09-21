@@ -2,6 +2,8 @@
 appId: com.mikonoma.drivinglog
 ---
 - launchApp
+- addMedia:
+    - ../assets/photo-landscape.png
 - tapOn:
     id: add_vehicle
 - runFlow: ../subflows/pick-photo.yaml

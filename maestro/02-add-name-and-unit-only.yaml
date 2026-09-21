@@ -10,6 +10,10 @@ appId: com.mikonoma.drivinglog
     id: unit_MILES
     checked: true
 # The odometer field starts empty: no 0 and no 0.0 (a text of one or more characters must not be there).
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
 - assertVisible:
     id: odo_field
 - assertNotVisible:
@@ -31,6 +35,10 @@ appId: com.mikonoma.drivinglog
 - assertVisible: Enter the odometer reading
 - assertVisible: Add vehicle
 # A typed zero is a valid reading and clears the error.
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
 - tapOn:
     id: odo_field
 - inputText: "0"

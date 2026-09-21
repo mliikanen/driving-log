@@ -13,6 +13,10 @@ appId: com.mikonoma.drivinglog
 - tapOn: Family car
 - tapOn:
     id: log_distance
+- scrollUntilVisible:
+    element:
+      id: odo_field
+    centerElement: true
 - tapOn:
     id: odo_field
 - inputText: "300"
