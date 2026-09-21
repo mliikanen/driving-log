@@ -45,7 +45,12 @@ class EditVehicleProcessor @AssistedInject constructor(
                     reduce { copy(loaded = true, notFound = true) }
                 } else {
                     reduce {
-                        copy(loaded = true, name = details.vehicle.name, licensePlate = details.vehicle.licensePlate.orEmpty())
+                        copy(
+                            loaded = true,
+                            name = details.vehicle.name,
+                            licensePlate = details.vehicle.licensePlate.orEmpty(),
+                            type = details.vehicle.type,
+                        )
                     }
                 }
             }
@@ -55,6 +60,7 @@ class EditVehicleProcessor @AssistedInject constructor(
     override suspend fun map(intent: EditVehicleIntent): Action<EditVehicleState, EditVehicleEffect>? = when (intent) {
         is EditVehicleIntent.NameChanged -> reduce { copy(name = intent.text, nameError = false) }
         is EditVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
+        is EditVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
         EditVehicleIntent.Save -> save()
         is EditVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
         EditVehicleIntent.PictureRefresh -> pictureStep { it }
@@ -81,12 +87,14 @@ class EditVehicleProcessor @AssistedInject constructor(
 
     private fun save(): Action<EditVehicleState, EditVehicleEffect>? {
         if (state.isSaving || !state.loaded || state.notFound) return null
+        // A loaded vehicle always has a type; without one there is nothing to save.
+        val type = state.type ?: return null
         return when (val result = validateVehicleFields(state.name, state.licensePlate)) {
             VehicleFieldsResult.NameRequired -> reduce { copy(nameError = true) }
             is VehicleFieldsResult.Valid -> async("save") {
                 reduce { copy(isSaving = true, nameError = false) }
                 try {
-                    repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, state.picture.draft.toChange())
+                    repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, type, state.picture.draft.toChange())
                 } catch (throwable: Throwable) {
                     reduce { copy(isSaving = false) }
                     throw throwable

@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -35,11 +36,18 @@ data class AnchorCall(val vehicleId: String, val occurredAt: ZonedMoment, val re
 data class AddCall(
     val name: String,
     val licensePlate: String?,
+    val type: VehicleType,
     val unit: OdometerUnit,
     val initialOdometer: Distance,
     val picture: PendingPicture? = null,
 )
-data class UpdateCall(val id: String, val name: String, val licensePlate: String?, val picture: PictureChange = PictureChange.Keep)
+data class UpdateCall(
+    val id: String,
+    val name: String,
+    val licensePlate: String?,
+    val type: VehicleType = VehicleType.CAR,
+    val picture: PictureChange = PictureChange.Keep,
+)
 
 /** An in-memory repository for processor tests. Events are kept newest first, as the real one returns them. */
 class FakeVehicleRepository : VehicleRepository {
@@ -63,13 +71,19 @@ class FakeVehicleRepository : VehicleRepository {
         createdAtMillis: Long = counter++.toLong(),
         logDistanceTenths: Boolean? = null,
         pictureId: String? = null,
+        type: VehicleType = VehicleType.CAR,
     ) {
-        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId)
+        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type)
     }
 
     /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
     fun seedEvents(vehicleId: String, newestFirst: List<VehicleEvent>) {
         events.value += vehicleId to newestFirst
+    }
+
+    /** Changes a seeded vehicle's type, as another screen saving it would. */
+    fun setType(id: String, type: VehicleType) {
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(type = type) else it }
     }
 
     /** Changes a seeded vehicle's picture id, as another screen saving it would. */
@@ -99,14 +113,15 @@ class FakeVehicleRepository : VehicleRepository {
     override suspend fun addVehicle(
         name: String,
         licensePlate: String?,
+        type: VehicleType,
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture?,
     ): String {
         addFailure?.let { throw it }
-        addCalls += AddCall(name, licensePlate, unit, initialOdometer, picture)
+        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture)
         val id = "v${++counter}"
-        seedVehicle(id, name, licensePlate, unit)
+        seedVehicle(id, name, licensePlate, unit, type = type)
         seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
         return id
     }
@@ -145,10 +160,10 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, picture: PictureChange) {
         updateFailure?.let { throw it }
-        updateCalls += UpdateCall(id, name, licensePlate, picture)
-        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate) else it }
+        updateCalls += UpdateCall(id, name, licensePlate, type, picture)
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type) else it }
     }
 }
 

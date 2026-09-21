@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.vehicle.AddCall
@@ -364,7 +365,7 @@ class AddVehicleProcessorTest {
         }
 
         assertEquals(
-            listOf(AddCall("Family car", "ABC-123", OdometerUnit.KILOMETERS, Distance(45_200_000))),
+            listOf(AddCall("Family car", "ABC-123", VehicleType.CAR, OdometerUnit.KILOMETERS, Distance(45_200_000))),
             repository.addCalls,
         )
     }
@@ -380,7 +381,7 @@ class AddVehicleProcessorTest {
             expectSideEffect(AddVehicleEffect.Saved)
         }
 
-        assertEquals(listOf(AddCall("Van", null, OdometerUnit.MILES, Distance.ZERO)), repository.addCalls)
+        assertEquals(listOf(AddCall("Van", null, VehicleType.CAR, OdometerUnit.MILES, Distance.ZERO)), repository.addCalls)
     }
 
     @Test
@@ -767,5 +768,97 @@ class AddVehicleProcessorTest {
         assertNull(processor.state.cropImage)
         assertFalse(processor.state.picture.isCropping)
         assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
+    }
+
+    // ---- The vehicle's type
+
+    @Test
+    fun carIsChosenAtFirst() {
+        assertEquals(VehicleType.CAR, processor().state.type)
+    }
+
+    @Test
+    fun choosingATypeSelectsIt() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.MOTORCYCLE))
+
+        assertEquals(VehicleType.MOTORCYCLE, processor.state.type)
+    }
+
+    @Test
+    fun choosingAnotherTypeReplacesTheChoice() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.MOTORCYCLE))
+
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.SCOOTER))
+
+        assertEquals(VehicleType.SCOOTER, processor.state.type)
+    }
+
+    @Test
+    fun savingWithTheChoiceUntouchedSavesACar() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Family car"))
+        processor.type(4, 5)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleType.CAR, repository.addCalls.single().type)
+    }
+
+    @Test
+    fun theNameAndOdometerErrorsShowWithoutAnyTypeError() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertTrue(processor.state.nameError)
+        assertTrue(processor.state.odometerError)
+        assertEquals(emptyList(), repository.addCalls)
+    }
+
+    @Test
+    fun theChosenTypeReachesTheRepository() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Big van"))
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.MOTORCYCLE))
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.VAN))
+        processor.type(4, 5)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleType.VAN, repository.addCalls.single().type)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheChosenType() {
+        val first = processor()
+        first.dispatch(AddVehicleIntent.TypeSelected(VehicleType.BUS))
+        val saved = checkNotNull(first.stateToSave())
+
+        val restored = processor()
+        restored.restoreState(saved)
+
+        assertEquals(VehicleType.BUS, restored.state.type)
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheChoiceForAnotherTry() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.VAN))
+        processor.type(1)
+        repository.addFailure = IllegalStateException("disk full")
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertEquals(VehicleType.VAN, processor.state.type)
     }
 }

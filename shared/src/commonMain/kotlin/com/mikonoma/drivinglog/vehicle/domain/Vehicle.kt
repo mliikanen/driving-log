@@ -12,6 +12,8 @@ data class Vehicle(
     val logDistanceTenths: Boolean? = null,
     /** The id naming the vehicle's picture files, or null when it has no picture. */
     val pictureId: String? = null,
+    /** The kind of vehicle. Every vehicle has one; a stored code this app does not know reads as [VehicleType.OTHER]. */
+    val type: VehicleType,
 )
 
 /** A vehicle with its current odometer, which is derived from the log and never stored. */

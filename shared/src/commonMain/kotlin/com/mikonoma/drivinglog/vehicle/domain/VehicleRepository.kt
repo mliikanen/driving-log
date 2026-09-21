@@ -22,6 +22,8 @@ interface VehicleRepository {
     suspend fun addVehicle(
         name: String,
         licensePlate: String?,
+        /** A new vehicle always has a type: the required-type rule is in the form, and this signature cannot save one without. */
+        type: VehicleType,
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture? = null,
@@ -54,9 +56,16 @@ interface VehicleRepository {
     ): String
 
     /**
-     * Changes only the name, the plate and the picture. The log and the unit are never touched. The changes are applied together
+     * Changes only the name, the plate, the type and the picture. The log and the unit are never touched. The changes are applied together
      * or not at all; the files of a replaced or removed picture are deleted once the change is saved, and a failed save leaves
      * the vehicle's picture in use and no new files behind.
      */
-    suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange = PictureChange.Keep)
+    suspend fun updateVehicle(
+        id: String,
+        name: String,
+        licensePlate: String?,
+        /** The type to store. Every vehicle has one, so there is no way to save an edit without it. */
+        type: VehicleType,
+        picture: PictureChange = PictureChange.Keep,
+    )
 }

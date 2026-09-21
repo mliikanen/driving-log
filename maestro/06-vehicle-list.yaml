@@ -10,6 +10,7 @@ appId: com.mikonoma.drivinglog
     file: subflows/add-vehicle.yaml
     env:
       NAME: van
+      TYPE: VAN
       PLATE: ""
       UNIT: unit_KILOMETERS
       ODOMETER: "1"
@@ -17,6 +18,7 @@ appId: com.mikonoma.drivinglog
     file: subflows/add-vehicle.yaml
     env:
       NAME: Bike
+      TYPE: MOTORCYCLE
       PLATE: ""
       UNIT: unit_KILOMETERS
       ODOMETER: "1"
@@ -24,6 +26,7 @@ appId: com.mikonoma.drivinglog
     file: subflows/add-vehicle.yaml
     env:
       NAME: Family car
+      TYPE: CAR
       PLATE: ""
       UNIT: unit_KILOMETERS
       ODOMETER: "1"
@@ -34,11 +37,16 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     text: van
     below: Family car
+# Each item shows the icon of its type.
+- assertVisible: "Vehicle type: Motorcycle"
+- assertVisible: "Vehicle type: Car"
+- assertVisible: "Vehicle type: Van"
 # Duplicate names are allowed.
 - runFlow:
     file: subflows/add-vehicle.yaml
     env:
       NAME: van
+      TYPE: VAN
       PLATE: ""
       UNIT: unit_KILOMETERS
       ODOMETER: "1"

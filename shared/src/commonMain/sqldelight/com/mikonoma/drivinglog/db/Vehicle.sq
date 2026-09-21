@@ -12,16 +12,23 @@ CREATE TABLE vehicle (
     -- null when none was saved yet (the form then starts with the tenths of odometer_unit).
     log_distance_tenths INTEGER,
     -- The id of the vehicle's picture: the files are named by it in the application's private storage, never a path. Null: no picture.
-    picture_id    TEXT
+    picture_id    TEXT,
+    -- The kind of vehicle: a VehicleType code (CAR, SUV, VAN, ...). Never null: every vehicle has a type (a vehicle from before types existed is a CAR).
+    -- An unknown code (from a newer app) reads as OTHER.
+    vehicle_type  TEXT    NOT NULL DEFAULT 'CAR'
 );
 
 insertVehicle:
-INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id, vehicle_type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Only name and plate can change. The unit and the log are never touched.
 updateVehicle:
 UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
+
+-- Sets the vehicle's type. Editing the type is a vehicle edit, so updated_at moves.
+updateVehicleType:
+UPDATE vehicle SET vehicle_type = ?, updated_at = ? WHERE id = ?;
 
 -- Points the vehicle at another picture (or none). Editing the picture is a vehicle edit, so updated_at moves.
 updateVehiclePicture:
@@ -35,7 +42,7 @@ selectPictureId:
 SELECT picture_id FROM vehicle WHERE id = ?;
 
 selectVehicles:
-SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id
+SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id, vehicle_type
 FROM vehicle
 ORDER BY created_at, rowid;
 
@@ -50,6 +57,7 @@ SELECT
     v.created_at,
     v.log_distance_tenths,
     v.picture_id,
+    v.vehicle_type,
     (
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)

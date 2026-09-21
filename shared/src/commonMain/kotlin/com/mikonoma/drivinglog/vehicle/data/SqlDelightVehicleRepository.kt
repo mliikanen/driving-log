@@ -18,6 +18,7 @@ import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
 import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
@@ -57,6 +58,7 @@ class SqlDelightVehicleRepository(
     override suspend fun addVehicle(
         name: String,
         licensePlate: String?,
+        type: VehicleType,
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture?,
@@ -73,7 +75,7 @@ class SqlDelightVehicleRepository(
         try {
             // One transaction: the vehicle and its initial event are both saved, or neither.
             database.transaction {
-                vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId)
+                vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code)
                 events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
             }
         } catch (throwable: Throwable) {
@@ -132,15 +134,16 @@ class SqlDelightVehicleRepository(
         eventId
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, picture: PictureChange) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, picture: PictureChange) {
         withContext(dispatcher) {
             val now = clock.now().toEpochMilliseconds()
             val newPictureId = (picture as? PictureChange.Replace)?.let { promoted(it.picture) }
             var oldPictureId: String? = null
             try {
-                // One transaction: the name, the plate and the picture change together, or not at all.
+                // One transaction: the name, the plate, the type and the picture change together, or not at all.
                 database.transaction {
                     vehicles.updateVehicle(name, licensePlate, now, id)
+                    vehicles.updateVehicleType(type.code, now, id)
                     if (picture !is PictureChange.Keep) {
                         oldPictureId = vehicles.selectPictureId(id).executeAsOneOrNull()?.picture_id
                         vehicles.updateVehiclePicture(newPictureId, now, id)
@@ -173,6 +176,7 @@ class SqlDelightVehicleRepository(
         createdAt = Instant.fromEpochMilliseconds(created_at),
         logDistanceTenths = log_distance_tenths?.let { it != 0L },
         pictureId = picture_id,
+        type = VehicleType.fromCode(vehicle_type) ?: VehicleType.OTHER,
     )
 
     private fun SelectVehicleDetails.toDomain() = VehicleDetails(
@@ -184,6 +188,7 @@ class SqlDelightVehicleRepository(
             createdAt = Instant.fromEpochMilliseconds(created_at),
             logDistanceTenths = log_distance_tenths?.let { it != 0L },
             pictureId = picture_id,
+            type = VehicleType.fromCode(vehicle_type) ?: VehicleType.OTHER,
         ),
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )

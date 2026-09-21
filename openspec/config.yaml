@@ -58,8 +58,13 @@ context: |
   chooser, including the camera app; on iOS the source sheet) and crops to a square. The picture is stored as files in the application's
   private storage, a small (up to 256 px) and a large (up to 1024 px) version in a size-efficient format (lossy WebP; PNG on iOS until an
   encoder is added), and the database keeps only the picture's id, never a path. Screens receive the picture as a URI in their view
-  state (a local file URI today, possibly an HTTP one later) and load it asynchronously with Coil. A vehicle without a picture shows a
-  generic vehicle icon.
+  state (a local file URI today, possibly an HTTP one later) and load it asynchronously with Coil. A vehicle without a picture shows the
+  icon of its type.
+
+  Every vehicle has a type from a fixed set (Car, SUV, Van, Truck, Bus, Motorcycle, Scooter, Other), stored as a locale-agnostic code in a
+  NOT NULL column. The add form has Car preselected, the type can be changed on the edit form and can never be cleared, and vehicles that
+  existed before types were added are Cars. The placeholder shown for a vehicle without a picture follows its type; the icons are Phosphor
+  glyphs (MIT, noted in THIRD_PARTY_NOTICES.md).
 
   Use Material Design 3 as app design system. The default theme is Petroleum, from the palette in `docs/color-palette.md`, in a light and a dark
   scheme that follow the device. Every screen's app bar is a dark Petroleum Deep header; logged distances are drawn in the Road Trip Emerald accent

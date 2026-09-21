@@ -125,6 +125,7 @@ fun VehicleDetailsContent(
                             Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
                                 VehiclePicture(
                                     state.pictureUri,
+                                    state.type,
                                     Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).testTag("vehicle_picture_large"),
                                     contentDescription = "Picture of ${state.name}",
                                 )

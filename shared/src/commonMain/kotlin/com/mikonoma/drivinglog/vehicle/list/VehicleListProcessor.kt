@@ -28,7 +28,7 @@ class VehicleListProcessor(
     }
 
     private suspend fun Vehicle.toItem() =
-        VehicleListItem(id, name, licensePlate, pictureId?.let { pictures.uri(it, PictureSize.SMALL) })
+        VehicleListItem(id, name, licensePlate, pictureId?.let { pictures.uri(it, PictureSize.SMALL) }, type)
 
     private companion object {
         /** By name without regard to letter case (SQLite's NOCASE only folds ASCII), then by when it was added. */

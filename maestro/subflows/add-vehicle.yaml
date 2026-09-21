@@ -1,5 +1,6 @@
 # Adds a vehicle from the vehicle list. Env: NAME, PLATE (may be empty), UNIT (a unit_<CODE> id such as
-# unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading).
+# unit_KILOMETERS), ODOMETER (digits, required: the odometer cannot be left empty, "0" is a valid reading),
+# TYPE (optional, a vehicle type code such as MOTORCYCLE; when not given the preselected Car is kept).
 appId: com.mikonoma.drivinglog
 ---
 - tapOn:
@@ -15,6 +16,13 @@ appId: com.mikonoma.drivinglog
           id: vehicle_plate
       - inputText: ${PLATE}
 - hideKeyboard
+- evalScript: "${output.vehicleType = (typeof TYPE === 'undefined') ? '' : TYPE}"
+- runFlow:
+    when:
+      true: ${output.vehicleType.length > 0}
+    commands:
+      - tapOn:
+          id: vehicle_type_${output.vehicleType}
 - tapOn:
     id: ${UNIT}
 - tapOn:

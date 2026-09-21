@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
@@ -93,6 +94,7 @@ fun EditVehicleContent(
                 PictureField(
                     picture = state.picture,
                     previewUri = state.previewUri,
+                    type = state.type,
                     cropImage = state.cropImage,
                     onPhotoPicked = { onIntent(EditVehicleIntent.PhotoPicked(it)) },
                     onCropConfirmed = { onIntent(EditVehicleIntent.CropConfirmed(it)) },
@@ -117,6 +119,10 @@ fun EditVehicleContent(
                     label = { Text("License plate (optional)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                )
+                VehicleTypeChoice(
+                    selected = state.type,
+                    onSelect = { onIntent(EditVehicleIntent.TypeSelected(it)) },
                 )
             }
         }

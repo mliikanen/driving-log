@@ -14,9 +14,9 @@
 ## Goals / Non-Goals
 
 **Goals:**
-- A fixed, small set of vehicle types with an icon each, required on add, editable later, and never clearable once set.
+- A fixed, small set of vehicle types with an icon each, preselected as Car on add, editable later, and never clearable once set.
 - The placeholder icon follows the type everywhere a vehicle without a picture is drawn.
-- Existing vehicles keep working without a type; nothing is forced on them.
+- Every vehicle always has a type, enforced by the data model (a `NOT NULL` column and non-null types in the code); existing vehicles are given Car by the migration.
 - Icons from one consistent, permissively licensed set, with the license kept in the repository.
 
 **Non-Goals:**
@@ -28,14 +28,14 @@
 
 | Code | Name | Icon (Phosphor `*-fill`) | Why |
 |---|---|---|---|
-| `CAR` | Car | `car` | the common case; also what a vehicle without a type shows |
+| `CAR` | Car | `car` | the common case; also the type existing vehicles are given |
 | `SUV` | SUV | `jeep` | distinct silhouette from a car, common in registries |
 | `VAN` | Van | `van` | vans and minibuses |
 | `TRUCK` | Truck | `truck` | lorries and delivery trucks |
 | `BUS` | Bus | `bus` | buses and coaches |
 | `MOTORCYCLE` | Motorcycle | `motorcycle` | |
 | `SCOOTER` | Scooter | `scooter` | mopeds and scooters, a different odometer world from motorcycles |
-| `OTHER` | Other | `steering-wheel` | everything else, so the required choice never forces a wrong answer |
+| `OTHER` | Other | `steering-wheel` | everything else, so the choice never forces a wrong answer |
 
 The order above is the order in the choice. The **code** is what is stored; it never changes once released, and adding a type later is adding an enum entry, an icon and a row in this table (no migration). The names are English strings on the enum for now (localizing is a later,
 app-wide change). Why not more: every extra type is another tile on a small screen and another icon to keep consistent; eight fit in one row-wrapped choice on a phone. **Considered and left out:**
@@ -54,48 +54,50 @@ for Tabler, a gap at Van. Material Icons (Apache-2.0) has `directions_car`, `loc
 Kept in the repository: the eight original SVGs in `docs/icons/phosphor/` (`car-fill.svg` is already there from the picture change), the license text `docs/icons/phosphor/LICENSE`, and one entry in `THIRD_PARTY_NOTICES.md` naming Phosphor, its copyright and license and the icons used, which is what the MIT license asks for. If a later icon comes from another set (a motorhome, say),
 that set's license text and notice are added the same way.
 
-### 3. Data: one nullable `vehicle_type` column
+### 3. Data: a `NOT NULL` `vehicle_type` column, default Car
 
-Migration `N.sqm` (the next number at apply time): `ALTER TABLE vehicle ADD COLUMN vehicle_type TEXT;` Null means "no type". `enum class VehicleType(val code: String, val label: String)` with `fromCode(code): VehicleType?` returning **null for an unknown code**, so a database written by a newer app degrades to "no type" and never crashes. `Vehicle.type: VehicleType?`. The queries that select a
-vehicle carry the column; the code is written as `type?.code`. No default and no backfill: existing rows stay null, which is the specified behavior for existing vehicles.
+Migration `4.sqm` (the next number at apply time, giving schema version 5): `ALTER TABLE vehicle ADD COLUMN vehicle_type TEXT NOT NULL DEFAULT 'CAR';` SQLite adds a `NOT NULL` column with a default and gives every existing row
+that default, so **every existing vehicle becomes a Car** in the migration, which is how those vehicles were drawn before (the car icon); nothing else is needed to backfill. A fresh database declares the same column (`TEXT NOT NULL DEFAULT 'CAR'`),
+so a migrated and a fresh database are identical. **The column cannot hold null, so a vehicle cannot exist without a type.** `enum class VehicleType(val code: String, val label: String)` with `fromCode(code): VehicleType?`: the
+repository maps what it reads with `VehicleType.fromCode(code) ?: VehicleType.OTHER`, so a code this app does not know (written by a newer version) reads as **Other**, a valid type, and never crashes and never yields "no type". `Vehicle.type: VehicleType` is non-null.
+The queries that select a vehicle carry the column; the code is written as `type.code`. There is deliberately no `CHECK` on the codes: adding a type later is an enum entry and an icon, not a migration.
 
 ### 4. Repository
 
-`addVehicle(name, plate, type: VehicleType, unit, initialOdometer, picture)` takes a **non-null** type: the required-type rule lives in the add processor, and the type system makes the repository unable to save a new vehicle without one. `updateVehicle(id, name, plate, type: VehicleType?, picture)` writes the given type, which may be null only because an existing vehicle
-without a type can be saved unchanged; the edit processor never sets a type back to null once the state has one (there is no "none" tile). Both run inside the transactions the earlier changes already use. A test asserts the log is unchanged by a type edit.
+`addVehicle(name, plate, type: VehicleType, unit, initialOdometer, picture)` and `updateVehicle(id, name, plate, type: VehicleType, picture)` both take a **non-null** type. The add state starts with `CAR`, so a save always has a type; below it, the repository signatures and the `NOT NULL` column make it impossible to save a
+new vehicle, or an edit, without a type. There is no way to clear a type: there is no "none" tile in the form and no nullable parameter. An edit always writes the type it was given, inside the transactions the earlier changes already use. A test asserts the log is unchanged by a type edit.
 
 ### 5. The icon lookup
 
-`object VehicleIcons` holds one lazily built `ImageVector` per type and `fun of(type: VehicleType?): ImageVector` that returns the car icon for null. The generic `VehicleIcons.Car` of the picture change stays as the `CAR` entry and the null entry, so nothing that used it changes. A test checks the lookup is **total** (every `VehicleType`, and null, yields an icon), that the
-eight icons are pairwise different (compared by their path data), and that each builds with a non-empty path. `VehiclePicture(uri, type, modifier)` gains the type: for a null URI (or while loading and on error) it draws the icon of the type in the same tile, with the accessibility label `Vehicle type: <label>` or `Vehicle type: none`
-(`contentDescription`, which Maestro and TalkBack read), and a `null` type draws the car.
+`object VehicleIcons` holds one lazily built `ImageVector` per type and `fun of(type: VehicleType): ImageVector`. The generic `VehicleIcons.Car` of the picture change stays as the `CAR` entry. A test checks the lookup is **total** (every `VehicleType` yields an icon), that the
+eight icons are pairwise different (compared by their path data), and that each builds with a non-empty path. `VehiclePicture(uri, type, modifier)` gains the type: for a null URI (or while loading and on error) it draws the icon of the type in the same tile, with the accessibility label `Vehicle type: <label>`
+(`contentDescription`, which Maestro and TalkBack read). Its `type` parameter is nullable for one reason only: the edit form has no type until the saved vehicle has loaded, and then shows the generic car icon (labelled by the form as "Change picture"/"Add picture"); every other place passes a non-null type.
 
 ### 6. The state and the choice
 
-The add and edit states gain `type: VehicleType?` (serializable) and, on the add state, `typeError: Boolean`. Intents: `TypeSelected(type)`. On add, `Save` validates name, **type** and odometer together (all errors show at once, like name and odometer today); a missing type sets `typeError`, `TypeSelected` clears it. On edit the state starts with the saved type
-(possibly null), `TypeSelected` replaces it, and saving passes it on; a null stays null (no error), which is how a legacy vehicle's unrelated edit is never blocked. The view states of the list, the details screen and the forms carry `vehicleType: VehicleType?` next to their `pictureUri`.
+The add state gains `type: VehicleType = CAR` (serializable, never null: Car is preselected, which is how a vehicle always has a type when saved); the edit state has `type: VehicleType?` that is null only until the saved vehicle has loaded, and is always a type afterwards. Intents: `TypeSelected(type)`, which replaces the choice. On add, `Save` validates name and odometer as it does today and passes the chosen type on. On edit the state starts with the saved type, `TypeSelected` replaces it, and saving passes it on. The view states of the list and the details screen carry `type: VehicleType` (non-null) next to their `pictureUri`.
 
-`VehicleTypeChoice(selected, onSelect, error)` is one composable used by both forms: a `FlowRow` of selectable tiles (a 56 dp icon over the name, `selectable` with radio semantics, the selected tile with a `primaryContainer` fill and a check), the error text under it in the error color. Test tags `vehicle_type_<CODE>` (`vehicle_type_VAN`), `vehicle_type_error`, and the choice's `vehicle_type_choice`. Eight tiles wrap to
+`VehicleTypeChoice(selected, onSelect)` is one composable used by both forms: a `FlowRow` of selectable tiles (a 56 dp icon over the name, `selectable` with radio semantics, the selected tile with a `primaryContainer` fill and a check) . Test tags `vehicle_type_<CODE>` (`vehicle_type_VAN`) and the choice's `vehicle_type_choice`. Eight tiles wrap to
 two rows on a phone and one row in landscape; the form scrolls as it does today.
 
 ### 7. Where the placeholder shows
 
-The list rows, the details header and the form previews already draw through `VehiclePicture`; they pass the vehicle's type. On the add form the preview follows the current choice live (before a type is chosen it shows the generic car). Because a picture wins, nothing changes for vehicles that have one.
+The list rows, the details header and the form previews already draw through `VehiclePicture`; they pass the vehicle's type. On the add form the preview follows the current choice live (the car at first). Because a picture wins, nothing changes for vehicles that have one.
 
 ### 8. Testing
 
 - Enum: codes are stable (a test that pins each code string), `fromCode` round trips every entry, an unknown or empty code gives null, the order and the names are as specified.
-- Migration: a JVM test from the previous version to the new one keeps the vehicle and gives it a null type; a fresh database has the column.
-- Repository on real SQL: add with each type reads it back, edit changes it, edit with null leaves null, an unknown stored code reads as null, the log is unchanged by a type edit.
-- Processors (kide-test): add requires a type (error, no repository call), the error clears on selection, a rotation keeps the choice (state restore), edit starts with the saved type or none, changing it saves it, saving a legacy vehicle without choosing keeps null, the view states carry the type.
+- Migration: a JVM test from every previous version to the new one keeps the vehicle and gives it the type Car; a fresh database has the same `NOT NULL` column; inserting a vehicle with a null type fails at the database.
+- Repository on real SQL: add with each type reads it back, edit changes it, an unknown stored code reads as Other, the log is unchanged by a type edit, and the column rejects null.
+- Processors (kide-test): add starts with Car and saves it when the choice is untouched, choosing replaces it, a rotation keeps the choice (state restore), edit starts with the saved type, changing it saves it, saving an edit without touching the type keeps it, the view states carry the type.
 - Icons: the lookup is total, distinct and non-empty (above).
-- Maestro (Android): create one vehicle of each of the eight types and assert the list item's `Vehicle type: <label>` description, the required-type error, changing a type on the edit screen and seeing the list icon change, a picture winning over the icon, and rotation with a chosen type. A legacy vehicle without a type is
-  covered by unit and migration tests (a Maestro flow cannot create one).
+- Maestro (Android): create one vehicle of each of the eight types and assert the list item's `Vehicle type: <label>` description, changing a type on the edit screen and seeing the list icon change, a picture winning over the icon, and rotation with a chosen type. A migrated vehicle becoming a Car is
+  covered by the migration tests (a Maestro flow cannot create one).
 
 ## Risks / Trade-offs
 
 - **Two icon gaps (pickup, motorhome)** are left to users' judgment (Truck/SUV, Other) until a matching icon is found or drawn; the design records the candidates so the follow-up is a quick decision.
-- **A vehicle without a type looks like a Car.** Deliberate (that is what every vehicle looked like before) but a user cannot tell "Car" from "not chosen" in the list; the edit screen shows the difference (nothing selected).
+- **Existing vehicles all become Car.** Some are not cars, and the migration cannot know; it is the value they were drawn with, and the user can change it on the edit screen (a vehicle is not "unset", so nothing nags). The alternative, leaving them unset, was rejected: every vehicle must have a type.
 - **Icon legibility at 56 dp.** Phosphor's fill glyphs are designed to read at 24 dp and up, so 56 dp is comfortable; the placeholder tile keeps the same contrast tokens as the car icon already does.
-- **A required field on add adds a step.** One tap, on visible tiles, with no default to correct; the alternative (preselecting Car) was rejected because the request is that the user choose.
+- **Car is a default the user may not notice.** A user who adds a motorcycle and never looks at the choice gets a Car icon. The choice is a visible row of tiles with Car marked selected, the type is editable at any time, and the alternative (nothing preselected, a required error) was rejected because the request is that Car is selected by default.
 - **The names are English.** Consistent with the rest of the app today; the whole app's localization is a separate change and the codes make it safe.

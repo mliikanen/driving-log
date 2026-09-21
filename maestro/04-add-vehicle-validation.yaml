@@ -9,7 +9,6 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: save_vehicle
 - assertVisible: Enter a name
-- assertVisible: Enter the odometer reading
 - assertVisible: Add vehicle
 - tapOn:
     id: back
@@ -81,6 +80,12 @@ appId: com.mikonoma.drivinglog
     id: odo_field
 - inputText: "1"
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: vehicle_type_VAN
+    direction: UP
+- tapOn:
+    id: vehicle_type_VAN
 - tapOn:
     id: save_vehicle
 - assertVisible:

@@ -2,8 +2,9 @@
 
 ## Phosphor Icons
 
-The generic vehicle icon (the placeholder shown for a vehicle without a picture) is the `car-fill` glyph of
+The vehicle icons (the generic car placeholder for a vehicle without a picture, and one icon for each vehicle type: car, SUV, van, truck, bus,
+motorcycle, scooter and other) are the `fill` glyphs `car`, `jeep`, `van`, `truck`, `bus`, `motorcycle`, `scooter` and `steering-wheel` of
 [Phosphor Icons](https://github.com/phosphor-icons/core), used under the MIT license.
-The original file is kept in `docs/icons/phosphor/car-fill.svg` and the license text in `docs/icons/phosphor/LICENSE`.
+The original files are kept in `docs/icons/phosphor/` and the license text in `docs/icons/phosphor/LICENSE`.
 
 Copyright (c) 2023 Phosphor Icons

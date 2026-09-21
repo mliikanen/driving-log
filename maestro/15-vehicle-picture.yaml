@@ -1,5 +1,5 @@
 # A vehicle's picture: choose a photo, crop it, save it with the vehicle, see it in the list and on the details screen, change it,
-# cancel a crop and remove it. A vehicle without a picture shows the generic car icon.
+# cancel a crop and remove it. A vehicle without a picture shows the icon of its type.
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
@@ -43,6 +43,8 @@ appId: com.mikonoma.drivinglog
     id: vehicle_item
 - assertVisible:
     id: vehicle_picture
+# The picture wins over the icon of the type.
+- assertNotVisible: "Vehicle type: Car"
 - tapOn: Family car
 - assertVisible: Picture of Family car
 - assertVisible:
@@ -67,7 +69,7 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: back
 - assertVisible: Picture of Family car
-# Remove it and save: the generic car icon is shown, in the list and on the details screen.
+# Remove it and save: the car icon of the vehicle's type is shown, in the list and on the details screen.
 - tapOn:
     id: edit_vehicle
 - tapOn:
@@ -75,9 +77,9 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: save_vehicle
 - assertNotVisible: Picture of Family car
-- assertVisible: Vehicle
+- assertVisible: "Vehicle type: Car"
 - tapOn:
     id: back
 - assertVisible:
     id: vehicle_picture
-- assertVisible: Vehicle
+- assertVisible: "Vehicle type: Car"

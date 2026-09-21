@@ -35,6 +35,7 @@ class AddVehicleProcessor(
         is AddVehicleIntent.NameChanged -> reduce { copy(name = intent.text, nameError = false) }
         is AddVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is AddVehicleIntent.UnitSelected -> reduce { copy(entry = entry.withUnit(intent.unit)) }
+        is AddVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
         is AddVehicleIntent.OdometerEdited -> reduce {
             val edited = entry.applyEdit(intent.text)
             copy(entry = edited, odometerError = odometerError && edited.isEmpty)
@@ -68,17 +69,20 @@ class AddVehicleProcessor(
         if (state.isSaving) return null
         val fields = validateVehicleFields(state.name, state.licensePlate)
         val initialOdometer = state.entry.toDistance()
-        // Both errors are shown together, so the user sees everything that is missing at once.
+        // Every error is shown together, so the user sees everything that is missing at once.
         if (fields !is VehicleFieldsResult.Valid || initialOdometer == null) {
             return reduce {
-                copy(nameError = fields is VehicleFieldsResult.NameRequired, odometerError = initialOdometer == null)
+                copy(
+                    nameError = fields is VehicleFieldsResult.NameRequired,
+                    odometerError = initialOdometer == null,
+                )
             }
         }
         return async("save") {
             reduce { copy(isSaving = true, nameError = false, odometerError = false) }
             try {
                 repository.addVehicle(
-                    fields.fields.name, fields.fields.licensePlate, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
+                    fields.fields.name, fields.fields.licensePlate, state.type, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
                 )
             } catch (throwable: Throwable) {
                 // Let the user try again; Kide logs the rethrown error.

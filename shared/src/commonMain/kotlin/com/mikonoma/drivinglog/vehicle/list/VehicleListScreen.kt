@@ -100,7 +100,7 @@ fun VehicleListContent(
                                 headlineContent = { Text(vehicle.name) },
                                 supportingContent = vehicle.licensePlate?.let { plate -> { Text(plate) } },
                                 leadingContent = {
-                                    VehiclePicture(vehicle.pictureUri, Modifier.size(56.dp).testTag("vehicle_picture"))
+                                    VehiclePicture(vehicle.pictureUri, vehicle.type, Modifier.size(56.dp).testTag("vehicle_picture"))
                                 },
                                 modifier = Modifier.clickable { onOpen(vehicle.id) }.testTag("vehicle_item"),
                             )

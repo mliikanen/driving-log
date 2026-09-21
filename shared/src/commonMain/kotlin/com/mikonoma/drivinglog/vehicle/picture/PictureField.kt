@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,8 @@ import com.mikonoma.drivinglog.ui.VehiclePicture
 fun PictureField(
     picture: PictureEditState,
     previewUri: String?,
+    /** The type of the vehicle: its icon is the preview until there is a picture. Null on the add form before one is chosen. */
+    type: VehicleType?,
     cropImage: DecodedImage?,
     onPhotoPicked: (PhotoResult) -> Unit,
     onCropConfirmed: (CropRect) -> Unit,
@@ -63,7 +66,7 @@ fun PictureField(
                     .semantics { contentDescription = label }
                     .clickable(onClickLabel = label, role = Role.Button, onClick = picker.launch),
             ) {
-                VehiclePicture(previewUri, Modifier.fillMaxSize(), placeholderDescription = null)
+                VehiclePicture(previewUri, type, Modifier.fillMaxSize(), placeholderDescription = null)
                 Box(
                     Modifier.align(Alignment.BottomEnd).padding(4.dp).size(28.dp).clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary),

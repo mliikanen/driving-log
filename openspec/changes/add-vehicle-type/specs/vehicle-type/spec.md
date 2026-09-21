@@ -3,7 +3,7 @@
 ## Purpose
 
 Tells vehicles apart by kind: every vehicle has a type from a small fixed set (car, SUV, van, truck, bus, motorcycle, scooter,
-other), chosen when the vehicle is added and changeable later, and the type decides which generic icon stands in for a vehicle
+other), preselected as Car when the vehicle is added and changeable at any time, and the type decides which generic icon stands in for a vehicle
 that has no picture.
 
 ## ADDED Requirements
@@ -12,7 +12,7 @@ that has no picture.
 The system SHALL give every vehicle a type from this fixed set, each with a name and its own icon, shown in this order: "Car",
 "SUV", "Van", "Truck", "Bus", "Motorcycle", "Scooter" and "Other". The system SHALL store the type as a code that does not depend on the
 language or the device (`CAR`, `SUV`, `VAN`, `TRUCK`, `BUS`, `MOTORCYCLE`, `SCOOTER`, `OTHER`), and SHALL treat a code it does not
-know, such as one written by a newer version of the app, as a vehicle without a type. The names are English for now, like the rest of the app.
+know, such as one written by a newer version of the app, as the type "Other". Every vehicle SHALL always have exactly one type: the data model SHALL NOT allow a vehicle without one. The names are English for now, like the rest of the app.
 
 #### Scenario: The eight types are offered
 - **WHEN** the user opens the type choice on the add vehicle screen
@@ -24,17 +24,16 @@ know, such as one written by a newer version of the app, as a vehicle without a 
 
 #### Scenario: An unknown stored code
 - **WHEN** a vehicle's stored type is a code the app does not know
-- **THEN** the vehicle is shown as a vehicle without a type and nothing fails
+- **THEN** the vehicle is shown with the type "Other" and nothing fails
 
 ### Requirement: The type is chosen when a vehicle is added
-The system SHALL show the type choice on the add vehicle screen as selectable tiles, each with the type's icon and name, with none
-selected at first. The type SHALL be required: when the user tries to save without choosing one, the system SHALL show the error "Choose
-the vehicle type" on the choice, stay on the add screen and save nothing, and the error SHALL go away when the user chooses a type.
-Choosing another tile SHALL replace the choice.
+The system SHALL show the type choice on the add vehicle screen as selectable tiles, each with the type's icon and name, with "Car" selected
+at first, so that a vehicle always has a type when it is saved. The choice SHALL have no "none" option: exactly one tile is selected at all times,
+and choosing another tile SHALL replace the choice.
 
-#### Scenario: Nothing is preselected
+#### Scenario: Car is preselected
 - **WHEN** the user opens the add vehicle screen
-- **THEN** none of the types is selected
+- **THEN** "Car" is the only selected type
 
 #### Scenario: Choose a type
 - **WHEN** the user taps the tile "Motorcycle"
@@ -44,13 +43,9 @@ Choosing another tile SHALL replace the choice.
 - **WHEN** the user taps "Motorcycle" and then "Scooter"
 - **THEN** "Scooter" is the only selected type and the vehicle is saved with the type "Scooter"
 
-#### Scenario: Saving without a type
-- **WHEN** the user enters a name and an odometer and tries to save without choosing a type
-- **THEN** the system shows "Choose the vehicle type", stays on the add screen and does not save anything
-
-#### Scenario: The error clears
-- **WHEN** the type error is shown and the user taps a type tile
-- **THEN** the error is no longer shown
+#### Scenario: Saving without touching the choice
+- **WHEN** the user enters a name and an odometer, leaves the type as it was and saves
+- **THEN** the vehicle is saved with the type "Car"
 
 #### Scenario: The choice survives a rotation
 - **WHEN** the user chooses a type on the add screen and rotates the device
@@ -59,7 +54,7 @@ Choosing another tile SHALL replace the choice.
 ### Requirement: The type can be changed later but not cleared
 The system SHALL let the user change a vehicle's type on its edit screen, showing the vehicle's current type as selected and
 applying the change when the edit is saved. The system SHALL NOT let the user remove a type: the choice has no "none" option, so a vehicle
-that has a type always has one. Changing the type SHALL NOT change the vehicle's odometer, unit, picture or log. Leaving the edit
+that has a type always has one, and the edit SHALL NOT be saved without one. Changing the type SHALL NOT change the vehicle's odometer, unit, picture or log. Leaving the edit
 screen without saving SHALL keep the saved type.
 
 #### Scenario: The current type is selected
@@ -78,28 +73,28 @@ screen without saving SHALL keep the saved type.
 - **WHEN** the user changes only the type of a vehicle and saves
 - **THEN** the vehicle's name, plate, odometer, unit, picture and log are unchanged
 
-### Requirement: Vehicles that existed before have no type
-The system SHALL keep vehicles that were saved before types existed working: they SHALL have no type, be shown with the generic car
-icon, and offer the type choice on their edit screen with nothing selected. Saving such a vehicle's edit without choosing a type SHALL be
-allowed and SHALL leave it without a type, so no unrelated edit is blocked; choosing a type SHALL give it that type from then on.
+### Requirement: Vehicles that existed before are given the type Car
+The system SHALL give every vehicle that was saved before types existed the type "Car" when the app is updated, which is how those vehicles were
+drawn before (with the car icon), so that every vehicle has a type from then on. The user SHALL be able to change that type on the vehicle's edit
+screen like any other.
 
 #### Scenario: An existing vehicle after the update
 - **WHEN** the app is updated and a vehicle that was saved before types existed is shown
-- **THEN** it has no type and shows the generic car icon where it has no picture
+- **THEN** it has the type "Car" and shows the car icon where it has no picture
 
-#### Scenario: Edit without choosing a type
-- **WHEN** the user renames a vehicle that has no type, chooses no type and saves
-- **THEN** the vehicle is saved with the new name and still has no type
-
-#### Scenario: Give it a type
-- **WHEN** the user opens the edit screen of a vehicle that has no type, chooses "Bus" and saves
+#### Scenario: Change the type of an existing vehicle
+- **WHEN** the user opens the edit screen of a vehicle that was saved before types existed, chooses "Bus" and saves
 - **THEN** the vehicle has the type "Bus" and shows the bus icon where it has no picture
+
+#### Scenario: An existing vehicle's other edits keep its type
+- **WHEN** the user renames a vehicle that was saved before types existed and saves
+- **THEN** the vehicle is saved with the new name and the type "Car"
 
 ### Requirement: The placeholder icon follows the type
 Wherever the system shows a vehicle that has no picture (the vehicle list, the vehicle details screen, and the picture preview on the add
-and edit screens, and any later picker of vehicles), it SHALL show the icon of the vehicle's type in place of the picture, and SHALL
-show the generic car icon when the vehicle has no type. A picture, when the vehicle has one, SHALL be shown instead of the icon. The icon SHALL carry the accessibility
-label "Vehicle type: " followed by the type's name (for example "Vehicle type: Van"), and "Vehicle type: none" when there is no type. The icons of the eight types SHALL be
+and edit screens, and any later picker of vehicles), it SHALL show the icon of the vehicle's type in place of the picture, and SHALL follow the choice live on the add
+screen (which starts as "Car"). A picture, when the vehicle has one, SHALL be shown instead of the icon. The icon SHALL carry the accessibility
+label "Vehicle type: " followed by the type's name (for example "Vehicle type: Van"). The icons of the eight types SHALL be
 different from one another.
 
 #### Scenario: The list shows the icon of the type
@@ -118,9 +113,9 @@ different from one another.
 - **WHEN** a vehicle of the type "Truck" has a picture
 - **THEN** the vehicle list and the details screen show the picture and not the truck icon
 
-#### Scenario: No type
-- **WHEN** a vehicle has no type and no picture
-- **THEN** it shows the generic car icon labelled "Vehicle type: none"
+#### Scenario: The add screen starts with the car icon
+- **WHEN** the user opens the add vehicle screen and has changed no type and added no picture
+- **THEN** the picture preview shows the car icon, labelled "Add picture"
 
 #### Scenario: Removing the picture brings the icon back
 - **WHEN** the user removes the picture of a vehicle of the type "Bus" and saves

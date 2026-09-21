@@ -20,6 +20,12 @@ appId: com.mikonoma.drivinglog
     id: vehicle_name
 - inputText: Van
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: vehicle_type_VAN
+    direction: UP
+- tapOn:
+    id: vehicle_type_VAN
 - tapOn:
     id: save_vehicle
 - assertVisible: Enter the odometer reading
@@ -39,6 +45,7 @@ appId: com.mikonoma.drivinglog
     id: add_vehicle
 - assertVisible: Van
 - tapOn: Van
+- assertVisible: "Vehicle type: Van"
 - assertVisible:
     id: current_odometer
     text: 0 mi

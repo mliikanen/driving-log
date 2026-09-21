@@ -33,3 +33,5 @@ Project context and artifact rules live in `openspec/config.yaml`.
   `maestro/subflows/` holds shared steps and is not run on its own. `maestro/clock/run.sh` runs the 12-hour/24-hour flow and
   `maestro/picture/run.sh` the picture flows with a check of the files the app stores (both change device state over `adb`, so
   they are not part of the plain suite); `maestro/check-permissions.sh` fails when the installed app requests a system permission.
+- Checking a change while working on it: run only the Maestro flows that were changed themselves or that exercise the screens the
+  change touches, not the whole suite. Run the full suite only when getting ready to archive the change.

@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
@@ -100,7 +101,7 @@ class VehicleDetailsProcessorTest {
         repository.seedVehicle("v1", "Family car")
         val processor = processor()
 
-        repository.updateVehicle("v1", "Estate car", "XYZ-789")
+        repository.updateVehicle("v1", "Estate car", "XYZ-789", VehicleType.CAR)
 
         assertEquals("Estate car", processor.state.name)
         assertEquals("XYZ-789", processor.state.licensePlate)
@@ -217,5 +218,24 @@ class VehicleDetailsProcessorTest {
 
         repository.setPicture("v1", null)
         assertNull(processor.state.pictureUri)
+    }
+
+    // ---- The vehicle's type
+
+    @Test
+    fun theStateHasTheVehiclesType() {
+        repository.seedVehicle("v1", "Rig", type = VehicleType.BUS)
+
+        assertEquals(VehicleType.BUS, processor().state.type)
+    }
+
+    @Test
+    fun theStateFollowsAChangeOfType() {
+        repository.seedVehicle("v1", "Rig", type = VehicleType.BUS)
+        val processor = processor()
+
+        repository.setType("v1", VehicleType.SUV)
+
+        assertEquals(VehicleType.SUV, processor.state.type)
     }
 }

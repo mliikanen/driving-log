@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.data
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
@@ -48,7 +49,7 @@ class VehicleStorageJvmTest {
 
         // The empty file is a brand new database: create the schema, add a vehicle, close it.
         val first = JdbcSqliteDriver(url).also { DrivingLogDatabase.Schema.create(it) }
-        val id = repository(first).addVehicle("Family car", "ABC-123", OdometerUnit.KILOMETERS_TENTHS, Distance(45_200_300))
+        val id = repository(first).addVehicle("Family car", "ABC-123", VehicleType.CAR, OdometerUnit.KILOMETERS_TENTHS, Distance(45_200_300))
         first.close()
 
         // Reopen the same file without creating the schema again.
@@ -86,7 +87,7 @@ class VehicleStorageJvmTest {
         try {
             val entry = OdometerEntry(OdometerUnit.KILOMETERS_TENTHS).applyEdit("1235")
             kotlinx.coroutines.runBlocking {
-                repository(driver).addVehicle("Van", "X1", entry.unit, checkNotNull(entry.toDistance()))
+                repository(driver).addVehicle("Van", "X1", VehicleType.CAR, entry.unit, checkNotNull(entry.toDistance()))
             }
             return rows(driver, "SELECT id, name, license_plate, odometer_unit, created_at, updated_at FROM vehicle", 6) +
                 rows(driver, "SELECT id, vehicle_id, type, occurred_at, odometer_meters, created_at FROM vehicle_event", 6)

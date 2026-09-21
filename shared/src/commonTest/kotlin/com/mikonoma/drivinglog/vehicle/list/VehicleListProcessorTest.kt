@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.list
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
@@ -80,8 +81,8 @@ class VehicleListProcessorTest {
         repository.seedVehicle("2", "Van", plate = null)
 
         val items = VehicleListProcessor(repository, pictures).state.vehicles
-        assertEquals(VehicleListItem("1", "Family car", "ABC-123"), items[0])
-        assertEquals(VehicleListItem("2", "Van", null), items[1])
+        assertEquals(VehicleListItem("1", "Family car", "ABC-123", type = VehicleType.CAR), items[0])
+        assertEquals(VehicleListItem("2", "Van", null, type = VehicleType.CAR), items[1])
     }
 
     @Test
@@ -165,5 +166,27 @@ class VehicleListProcessorTest {
         val text = VehicleListProcessor(repository, pictures).state.vehicles.single().toString()
 
         assertEquals(false, pictureId in text.replace(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), ""))
+    }
+
+    // ---- The vehicle's type
+
+    @Test
+    fun eachItemHasItsVehiclesType() {
+        repository.seedVehicle("1", "Bike", type = VehicleType.MOTORCYCLE)
+        repository.seedVehicle("2", "Rig", type = VehicleType.TRUCK)
+
+        val items = VehicleListProcessor(repository, pictures).state.vehicles
+
+        assertEquals(listOf(VehicleType.MOTORCYCLE, VehicleType.TRUCK), items.map { it.type })
+    }
+
+    @Test
+    fun anItemFollowsAChangeOfType() {
+        repository.seedVehicle("1", "Bike", type = VehicleType.MOTORCYCLE)
+        val processor = VehicleListProcessor(repository, pictures)
+
+        repository.setType("1", VehicleType.SCOOTER)
+
+        assertEquals(VehicleType.SCOOTER, processor.state.vehicles.single().type)
     }
 }

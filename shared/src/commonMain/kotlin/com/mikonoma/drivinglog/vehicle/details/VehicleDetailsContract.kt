@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.details
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
@@ -18,6 +19,8 @@ data class VehicleDetailsState(
     val licensePlate: String? = null,
     /** Where the large version of the vehicle's picture can be loaded from, or null when it has none (or its file is gone). */
     val pictureUri: String? = null,
+    /** The vehicle's type, whose icon stands in for a missing picture (a placeholder until the vehicle has loaded). */
+    val type: VehicleType = VehicleType.CAR,
     val unit: OdometerUnit = OdometerUnit.KILOMETERS,
     val currentOdometer: Distance? = null,
     /** At most [VehicleDetailsProcessor.RECENT_EVENT_LIMIT] events, newest first. */

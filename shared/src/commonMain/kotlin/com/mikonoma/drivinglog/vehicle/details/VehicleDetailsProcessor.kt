@@ -40,6 +40,7 @@ class VehicleDetailsProcessor @AssistedInject constructor(
                         name = details.vehicle.name,
                         licensePlate = details.vehicle.licensePlate,
                         pictureUri = pictureUri,
+                        type = details.vehicle.type,
                         unit = details.vehicle.odometerUnit,
                         currentOdometer = details.currentOdometer,
                         recentEvents = events,

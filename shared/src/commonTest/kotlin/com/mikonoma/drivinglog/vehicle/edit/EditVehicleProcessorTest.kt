@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.UpdateCall
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
@@ -154,7 +155,7 @@ class EditVehicleProcessorTest {
         val processor = processor()
         processor.dispatch(EditVehicleIntent.NameChanged("Typing"))
 
-        repository.updateVehicle("v1", "Changed elsewhere", null)
+        repository.updateVehicle("v1", "Changed elsewhere", null, VehicleType.CAR)
 
         assertEquals("Typing", processor.state.name)
     }
@@ -350,5 +351,86 @@ class EditVehicleProcessorTest {
 
         assertEquals(second, processor.state.savedPictureId)
         assertEquals(FakeVehiclePictureStore.fakeUri("pictures", second, PictureSize.SMALL), processor.state.previewUri)
+    }
+
+    // ---- The vehicle's type
+
+    private fun seedTyped(type: VehicleType): EditVehicleProcessor {
+        repository.seedVehicle("t1", "Rig", type = type)
+        return EditVehicleProcessor("t1", repository, pictures, codec)
+    }
+
+    @Test
+    fun theSavedTypeIsSelected() {
+        assertEquals(VehicleType.TRUCK, seedTyped(VehicleType.TRUCK).state.type)
+    }
+
+    @Test
+    fun theFormAlwaysHasATypeOnceLoaded() {
+        val state = processor().state
+
+        assertTrue(state.loaded)
+        assertEquals(VehicleType.CAR, state.type)
+    }
+
+    @Test
+    fun changingTheTypeSavesIt() = runTest {
+        val processor = seedTyped(VehicleType.CAR)
+        processor.dispatch(EditVehicleIntent.TypeSelected(VehicleType.VAN))
+        assertEquals(VehicleType.VAN, processor.state.type)
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleType.VAN, repository.updateCalls.single().type)
+    }
+
+    @Test
+    fun anEditThatDoesNotTouchTheTypeKeepsIt() = runTest {
+        val processor = seedTyped(VehicleType.SCOOTER)
+        processor.dispatch(EditVehicleIntent.NameChanged("Renamed"))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleType.SCOOTER, repository.updateCalls.single().type)
+    }
+
+    @Test
+    fun leavingWithoutSavingKeepsTheSavedType() {
+        val processor = seedTyped(VehicleType.BUS)
+        processor.dispatch(EditVehicleIntent.TypeSelected(VehicleType.OTHER))
+
+        processor.dispatch(EditVehicleIntent.Left)
+
+        assertEquals(emptyList(), repository.updateCalls)
+        // The saved vehicle is untouched: a new processor over it starts with the saved type.
+        assertEquals(VehicleType.BUS, EditVehicleProcessor("t1", repository, pictures, codec).state.type)
+    }
+
+    @Test
+    fun aVehicleMigratedToCarCanBeChangedToAnotherType() = runTest {
+        val processor = seedTyped(VehicleType.CAR) // what the migration gives a vehicle from before types existed
+        processor.dispatch(EditVehicleIntent.TypeSelected(VehicleType.BUS))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleType.BUS, repository.updateCalls.single().type)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheChoiceMadeBeforeTheProcessorWasRecreated() {
+        repository.seedVehicle("t2", "Rig", type = VehicleType.CAR)
+        val restored = EditVehicleProcessor("t2", repository, pictures, codec)
+        restored.restoreState(EditVehicleState(loaded = true, name = "Rig", type = VehicleType.SUV))
+
+        assertEquals(VehicleType.SUV, restored.state.type)
     }
 }

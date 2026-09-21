@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
@@ -109,6 +110,7 @@ fun AddVehicleContent(
             PictureField(
                 picture = state.picture,
                 previewUri = state.previewUri,
+                type = state.type,
                 cropImage = state.cropImage,
                 onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
                 onCropConfirmed = { onIntent(AddVehicleIntent.CropConfirmed(it)) },
@@ -133,6 +135,10 @@ fun AddVehicleContent(
                 label = { Text("License plate (optional)") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            )
+            VehicleTypeChoice(
+                selected = state.type,
+                onSelect = { onIntent(AddVehicleIntent.TypeSelected(it)) },
             )
             UnitChoice(
                 selected = state.entry.unit,

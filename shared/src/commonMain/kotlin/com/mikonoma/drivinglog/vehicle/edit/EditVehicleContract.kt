@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
@@ -19,6 +20,8 @@ data class EditVehicleState(
     val notFound: Boolean = false,
     val name: String = "",
     val licensePlate: String = "",
+    /** The vehicle's type: null only until the saved vehicle has loaded, its saved type from then on. It can be changed but never cleared. */
+    val type: VehicleType? = null,
     val nameError: Boolean = false,
     val isSaving: Boolean = false,
     /** The picture: [PictureDraft.Unchanged] until the user changes or removes it. Names files, holds no pixels. */
@@ -34,6 +37,7 @@ data class EditVehicleState(
 sealed interface EditVehicleIntent : ViewIntent {
     data class NameChanged(val text: String) : EditVehicleIntent
     data class LicensePlateChanged(val text: String) : EditVehicleIntent
+    data class TypeSelected(val type: VehicleType) : EditVehicleIntent
     data object Save : EditVehicleIntent
 
     /** The system's chooser of where the photo comes from gave [result]. */
