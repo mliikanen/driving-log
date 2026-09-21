@@ -33,7 +33,7 @@ so nothing derived is stored.
   space (shortest way around the hue), respects the system's animation setting and does not animate the first display of a screen. The icons are the
   first users of it; `add-vehicle-color-theme` moves the whole screen with the same animation.
 - One new dependency, **Material Color Utilities for Kotlin Multiplatform** (`com.materialkolor:material-color-utilities`: HCT and the
-  quantizer), verified first (the first task is a go/no-go), with a small own implementation as the fallback behind an interface.
+  no quantizer), verified first (the first task is a go/no-go), with a small own implementation as the fallback behind an interface.
 
 Out of scope: theming screens from the color (`add-vehicle-color-theme`, then the other vehicle-specific screens after it has been
 proven), sliders or hex entry in the picker, storing a palette, backfilling existing pictures, picking a color from a spot of the photo,

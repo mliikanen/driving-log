@@ -8,6 +8,7 @@ coroutines = "1.11.0"
 datetime = "0.8.0"
 kotlinx-io = "0.9.1"
 coil = "3.6.3"
+material-color-utilities = "5.0.1"
 kide = "2.2.0"
 metro = "1.4.4"
 sqldelight = "2.4.0"
@@ -28,6 +29,7 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "material-color-utilities" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 kide = { module = "org.fuusio.kide:kide", version.ref = "kide" }

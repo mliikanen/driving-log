@@ -22,11 +22,15 @@ ready for `add-vehicle-color-theme` to reuse; the libraries verified before they
 
 ### 1. Library: Material Color Utilities (HCT), verified first
 
-`com.materialkolor:material-color-utilities` is the Compose-free Kotlin Multiplatform port of Google's Material Color Utilities (HCT color space, `Hct`, `TonalPalette`, `QuantizerCelebi`, and later `DynamicScheme`). The Android Palette
+`com.materialkolor:material-color-utilities` is the Compose-free Kotlin Multiplatform port of Google's Material Color Utilities (HCT color space, `Hct`, `TonalPalette`, and later `DynamicScheme`; its quantizer is not used, see decision 5). The Android Palette
 API (`androidx.palette`) is not multiplatform (it works on `android.graphics.Bitmap`), and the multiplatform ports of it are not needed any more, because we extract **one** color, not a swatch set. *Verify* the coordinates and version on
-Maven Central. Task 1.1 is a **go/no-go before anything is built on it**: it resolves and compiles for `androidTarget`, `iosArm64` and `iosSimulatorArm64` with Kotlin 2.4.20 and Compose Multiplatform 1.12.0; a smoke test builds an `Hct` and
-quantizes a small pixel array twice with the same result; the APK growth is recorded. The library appears in **one file** (`HctColors`, which wraps `Hct` for tones, hue arithmetic and the quantizer) so a failure means a
+Maven Central. Task 1.1 is a **go/no-go before anything is built on it**: it resolves and compiles for `androidTarget`, `iosArm64` and `iosSimulatorArm64` with Kotlin 2.4.20 and Compose Multiplatform 1.12.0; a smoke test builds an `Hct`, reads it and
+rebuilds it; the APK growth is recorded. The library appears in **one file** (`HctColors`, which wraps `Hct` for reading and building colors, tones and hue arithmetic) so a failure means a
 replacement of that file by a small own implementation (sRGB to CAM16 or, cheaper, OKLCH: tone as OKLab lightness, hue and chroma as polar coordinates), with the same tests and no spec change; the spec states behavior, not library.
+
+**Verified (task 1.1):** version **5.0.1** (the latest stable on Maven Central; the search index still lists 3.0.0-beta01, so read `maven-metadata.xml`). It resolves and compiles for `androidTarget`, `iosArm64` and `iosSimulatorArm64`
+with Kotlin 2.4.20 and Compose Multiplatform 1.12.0, `Hct.fromInt`/`Hct.from` round-trip a color (`ColorLibrarySmokeTest`), and the debug APK grows by about 384 KB (unminified; a release build
+shrinks it). No fallback needed. The package used is `com.materialkolor.hct`.
 
 ### 2. The value, the presets and the default
 
@@ -56,8 +60,12 @@ and give neutral tones (a white vehicle is a neutral icon, not a colorful one). 
 (at most 256 px) of the confirmed crop, so the color is tied to what the user confirmed and the work is small (at most 16 K pixels). `ColorExtractor.extract(samples): Rgb?` (an interface, the library behind it):
 1. Only the central 80% of the square is used (a 10% margin each side), a deterministic stand-in for "the middle counts more".
 2. Pixels with alpha below 128 are dropped; fewer than 1% opaque gives `null` (the color stays as it was).
-3. The pixels are quantized to at most 16 colors (`QuantizerCelebi`, which has no randomness), **no chroma filter** (so white, black and grey vehicles keep their color), and the color with the **largest population** wins; ties go to the lower ARGB value, so
-   the result is deterministic.
+3. The opaque pixels are counted in a **histogram of 16 levels per channel** (4096 bins), **no chroma filter** (so white, black and grey vehicles keep their color); the **most populated bin** wins (ties go to the lower `RRGGBB` bin, so the result is deterministic) and the color is
+   the **average of the pixels in that bin**, which is exactly the color for a flat one.
+
+The library's `QuantizerCelebi` was tried first and left out: measured while applying this change, for an image with few distinct colors and a lopsided split (75/25 or 90/10 of two colors, 1000 pixels or more) it merged both into one in-between color, which is wrong for "the
+most common color". The histogram is short, exact and deterministic; real photos with gradients spread a paint color over several neighbouring bins, which is one reason the result is shown and can be changed, and a neighbourhood-weighted bin is the first refinement to try.
+
 The rule is deliberately simple: a photo of a red car on grey asphalt may give the grey. The user sees the result as the selected "Picture color" swatch and can change it in one tap, which is why the result is shown and never silently applied. Better
 selection (chroma-weighted, background-aware) is a later refinement that changes no storage or spec. Extraction runs on `Dispatchers.Default` after the crop is confirmed, in the processor, and its result is a serializable `Rgb` in the state.
 

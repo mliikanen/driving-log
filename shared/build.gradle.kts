@@ -40,6 +40,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             api(libs.kotlinx.io.core)
             implementation(libs.coil.compose)
+            implementation(libs.material.color.utilities)
             api(libs.kide)
             implementation(libs.kide.navigation)
             implementation(libs.kotlinx.serialization.core)
