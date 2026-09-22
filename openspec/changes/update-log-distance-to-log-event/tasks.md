@@ -1,12 +1,22 @@
-# Tasks (stub)
+# Tasks
 
-## 1. Before any code
+## 1. The mechanical rename (code only, no behavior change)
 
-- [ ] 1.1 Settle the open questions of the design with the developer (rename only or also a kind-of-event choice, what the visible words are after the rename, whether the code and the tags are renamed, whether the capability is), update the proposal, the spec delta and these tasks, and verify with `openspec validate update-log-distance-to-log-event --strict`
-- [ ] 1.2 Confirm the order: `add-landing-screen` and `add-direct-logging` are archived, so the tile and the selector exist; write the `distance-logging` and `vehicles` deltas against the specs they leave
+- [ ] 1.1 Rename the classes and the file names: `LogDistanceContract.kt`→`LogEventContract.kt` (`LogDistanceState`→`LogEventState`, `LogDistanceIntent`→`LogEventIntent`, `LogDistanceEffect`→`LogEventEffect`), `LogDistanceProcessor.kt`→`LogEventProcessor.kt`, `LogDistanceScreen.kt`→`LogEventScreen.kt` (`LogDistanceScreen`→`LogEventScreen`, `LogDistanceContent`→`LogEventContent`); update every reference. Verify: `./gradlew :shared:allTests :androidApp:assembleDebug` passes with no test changed beyond the names it references
+- [ ] 1.2 Rename `LogDistanceNavKey`→`LogEventNavKey` in `VehicleNavKeys.kt` (its `serialKey` string stays `"vehicle-log-distance"`, with a comment saying why), `AppGraph.logDistanceProcessorFactory`→`logEventProcessorFactory`, and the import in `LandingNavKey.kt`; rename `VehicleDetailsIntent.LogDistanceClicked`→`LogEventClicked`, `VehicleDetailsEffect.ShowLogDistance`→`ShowLogEvent`, and `VehicleDetailsScreen`'s `onShowLogDistance`/`onLogDistance` callbacks to `onShowLogEvent`/`onLogEvent`. Verify: `VehicleNavKeysTest` and `VehicleDetailsProcessorTest` pass, updated for the new names; `git grep -n LogDistance -- shared/src` finds only `LogDistanceRules.kt`, `LogDistanceRulesTest.kt`, `LogDistanceResult`, `LogDistanceError`, `validateLogDistance`, `log_distance_tenths`, `updateLogDistanceTenths` and the `"vehicle-log-distance"` string literal
+- [ ] 1.3 Fix the tag collision: `VehicleLogScreen`'s per-row tag `"log_event"`→`"log_history_row"`; the details screen's action tag `"log_distance"`→`"log_event"`. Update every Maestro flow's `id: log_distance` to `id: log_event` (`clock/time-format.yaml`, `distance/log-distance.yaml`, `distance/log-from-home.yaml`, `resilience/offline-and-restart.yaml`, `resilience/rotation.yaml`, `theme/state.yaml`). Verify: `git grep -n "log_distance\b" -- maestro` finds nothing, and the `distance`, `resilience` and `theme` manifests pass
 
-## 2. To be planned after 1.1
+## 2. Visible text
 
-- [ ] 2.1 The visible words: the details action, the form title and the specs' wording; verified by the unit and flow checks that name them (planned in detail when 1.1 is done)
-- [ ] 2.2 The mechanical rename of the code, tags and flows, if chosen, in its own commit, with the whole suite passing unchanged apart from names (planned in detail when 1.1 is done)
-- [ ] 2.3 The final regression run (`./gradlew :shared:allTests :androidApp:assembleDebug`, `openspec validate --all --strict`) and the `distance` and `vehicles` manifests once while applying
+- [ ] 2.1 Change the details screen's action text and the form's title to "Log event"; verify by hand on the emulator that both read "Log event" and by a unit test on `VehicleDetailsScreen`'s content if one exists for its actions, or an updated flow assertion otherwise
+- [ ] 2.2 Update the specs (already drafted in this change's delta) by archiving; before that, `openspec validate update-log-distance-to-log-event --strict` passes
+
+## 3. The Kind selector
+
+- [ ] 3.1 Add `LogKind` (one entry, `DISTANCE`, with a `label` "Distance") and `LogEventState.kind: LogKind = LogKind.DISTANCE` (persisted) and `LogEventIntent.KindSelected(kind: LogKind)` to `LogEventContract.kt`; handle it in `LogEventProcessor.map` (`reduce { copy(kind = intent.kind) }`). Verify by `LogEventProcessorTest`: the form starts with `kind = DISTANCE`, dispatching `KindSelected(DISTANCE)` changes nothing else, the field is in the serialized state (add "kind" to `VehicleNavKeysTest`'s saved-fields list) and survives `restoreState`
+- [ ] 3.2 Add `KindSelector` to `LogEventScreen.kt` (`ExposedDropdownMenuBox`, one `DropdownMenuItem` "Distance", tag `log_kind_selector`, item tag `log_kind_option_distance`), and lay it out in a `Row` with the vehicle selector when the form has one (`Modifier.weight(1f)` each, Kind first) or alone (`Modifier.fillMaxWidth()`) when it does not. Verify it compiles for Android and iOS, and by hand on the emulator (light and dark, portrait and landscape, both routes) that the row splits evenly with equal height from the Home route and that the Kind selector alone looks right from a vehicle's details screen
+
+## 4. Flows and final verification
+
+- [ ] 4.1 Update `maestro/distance/log-distance.yaml`, `maestro/distance/log-from-home.yaml` and `maestro/resilience/rotation.yaml` to assert the Kind selector is present (`log_kind_selector`, showing "Distance") alongside their existing checks; verify by running the `distance` and `resilience` manifests
+- [ ] 4.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (the `distance`, `resilience` and `theme` manifests were run in tasks 1.3 and 4.1; Maestro is not part of the final regression run)

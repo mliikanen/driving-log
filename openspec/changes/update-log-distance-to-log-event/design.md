@@ -1,24 +1,38 @@
-# Design (stub)
+# Design
 
 ## Context
 
-The words "log distance" appear in three layers: what the user sees (the details screen's action "Log distance", the form's title "Log distance", and, with `add-landing-screen`, the tile "Log event" that opens the same form), the code and the tests (`LogDistanceScreen`, `LogDistanceProcessor`, `LogDistanceState`, `LogDistanceNavKey`, about 270 mentions in `shared/src`, the test tags
-`log_distance`, `log_way_distance`, `log_way_odometer`, `log_unit_*`, `log_tenths`, `log_date`, `log_zone`, the flows that use them) and what is stored (`vehicle.log_distance_tenths`, created in `2.sqm`; the event type `DISTANCE`). Kide restores a screen by its `serialKey` (`vehicle-log-distance`), so a change of that key would break a restored back stack from the previous version.
+The words "log distance" appear in three layers. What the user sees: the details screen's action "Log distance", the form's title "Log distance", and, since `add-landing-screen`/`add-direct-logging`, the Home screen's tile whose screen-reader name is already "Log event" — opening the very same form. The code: `LogDistanceContract.kt` (`LogDistanceState`, `LogDistanceIntent`, `LogDistanceEffect`, plus the `VehicleChoice` the vehicle selector uses), `LogDistanceProcessor.kt`, `LogDistanceScreen.kt`, `LogDistanceNavKey` (in `VehicleNavKeys.kt`, `serialKey = "vehicle-log-distance"`), `AppGraph.logDistanceProcessorFactory`, and, on the details screen, `VehicleDetailsIntent.LogDistanceClicked` / `VehicleDetailsEffect.ShowLogDistance`; about 270 mentions of `LogDistance` across 16 files. The Maestro tag `log_distance` names the details screen's button.
+What is stored: `vehicle.log_distance_tenths` (from `2.sqm`) and the query `updateLogDistanceTenths`, and the event type code `DISTANCE`. Kide restores a screen by its `serialKey`, so changing it would break a saved back stack from an earlier build. `LogDistanceRules.kt` (`validateLogDistance`, `LogDistanceResult`, `LogDistanceError`) lives in the same package and validates a distance entry's own rules (way, amount, moment), independent of what the screen around it is called.
 
-## Decisions (proposed, to be confirmed)
+**A naming collision, found while grounding this change:** the tag `log_event` already exists, on an unrelated element — each row of a vehicle's full log/history screen (`VehicleLogScreen`, `EventRow`, one tag per past event: "a logged event"). Renaming the details screen's `log_distance` tag to `log_event` would collide with it. The two screens are never open at once, so no single Maestro flow would see both, but the collision is confusing and worth avoiding on its own.
 
-1. **Rename what the user sees first, everywhere at once.** The action, the title, the tile and the specs use one word: "Log event".
-2. **Do not rename stored names or the serial key.** `log_distance_tenths` and the migrations stay; the `serialKey` `vehicle-log-distance` stays so a saved back stack still restores (a comment says why the name is old).
-3. **Rename the code in one mechanical step, separate from the behavior:** classes `LogDistance*` to `LogEvent*` only if the developer wants it (open question 3); a rename with no behavior change is checked by the whole test suite passing unchanged apart from names.
+## Decisions
 
-## Open questions
+1. **Rename what the user sees, everywhere at once.** The details screen's action, the form's title, and the specs' wording all become "Log event".
+2. **Keep "Trip distance" and "New odometer".** They name how a distance entry is measured, not the screen, and read the same once other kinds of event exist. Nothing else that is genuinely about a distance measurement (the way names, `log_known_odometer`, `log_live_distance`, "the current odometer", `LogDistanceRules.kt`) is renamed for the same reason.
+3. **Rename the code, one layer, mechanically:**
+   - `LogDistanceContract.kt` → `LogEventContract.kt`: `LogDistanceState`→`LogEventState`, `LogDistanceIntent`→`LogEventIntent`, `LogDistanceEffect`→`LogEventEffect` (plus the new `LogKind`/`KindSelected`, decision 6).
+   - `LogDistanceProcessor.kt` → `LogEventProcessor.kt` (class and its `Factory`).
+   - `LogDistanceScreen.kt` → `LogEventScreen.kt` (`LogDistanceScreen`→`LogEventScreen`, `LogDistanceContent`→`LogEventContent`).
+   - `VehicleNavKeys.kt`: `LogDistanceNavKey`→`LogEventNavKey`. Its `serialKey` string, `"vehicle-log-distance"`, **does not change** (a comment says it looks legacy on purpose, so a back stack saved by an earlier build still restores): this is the one place the old word survives in code, deliberately.
+   - `AppGraph.kt`: `logDistanceProcessorFactory`→`logEventProcessorFactory`.
+   - `VehicleDetailsContract.kt`/`Processor.kt`/`Screen.kt`: `LogDistanceClicked`→`LogEventClicked`, `ShowLogDistance`→`ShowLogEvent`, the screen's `onShowLogDistance`/`onLogDistance` callbacks →`onShowLogEvent`/`onLogEvent`.
+   - **Not renamed:** `LogDistanceRules.kt`, `LogDistanceResult`, `LogDistanceError`, `validateLogDistance`, `LogDistanceRulesTest.kt` (decision 2); `vehicle.log_distance_tenths`, `updateLogDistanceTenths` (storage, decision 4 in the earlier stub); the `vehicle.distance` package itself (it still holds distance-specific rules and the entry-moment/time-zone helpers, which stay related; splitting the screen classes into a new package would separate them from `LogDistanceRules.kt` for no benefit).
+   - A rename with no behavior change is checked by the whole suite passing with no assertion touched beyond the names it references.
+4. **Fix the tag collision by renaming the *other* tag.** `VehicleLogScreen`'s per-row tag `log_event` becomes `log_history_row` (clearer anyway: it was always "a row of the history", not "the Log event action"); the details screen's button then takes `log_event`, matching the action it opens.
+5. **The capability stays `distance-logging`.** It still only covers distance entries; a rename together with a real second kind is a decision for the change that adds one.
+6. **The Kind selector: Material's own dropdown pattern, one item, sharing a row with the vehicle selector.** A new `LogKind` enum (`DISTANCE` today, with a `label` "Distance") and `LogEventState.kind: LogKind = LogKind.DISTANCE` (persisted, not `@Transient`: even with one value today, a later kind needs the choice to survive rotation and process death the way the vehicle choice does). `LogEventIntent.KindSelected(kind: LogKind)`, handled the same way as `VehicleSelected`: `reduce { copy(kind = intent.kind) }` — with one legal value this is a no-op, and the wiring is ready for a second one.
+   The screen: `KindSelector(kind, onSelect)`, an `ExposedDropdownMenuBox` with one `DropdownMenuItem`, the same shape as `VehicleSelector` (an `OutlinedTextField`, read-only, `ExposedDropdownMenuDefaults.TrailingIcon`), tag `log_kind_selector` (`log_kind_option_distance` on the item). Layout: a `Row` holding `KindSelector` and, when the form has a selector (opened from the Home screen), `VehicleSelector`, each `Modifier.weight(1f)` so they split the row evenly and match height (both are plain `OutlinedTextField`s, so their intrinsic height is already equal, nothing extra needed); from a vehicle's details screen the row holds only `KindSelector`, `Modifier.fillMaxWidth()`. The row replaces the vehicle selector's current standalone placement (which was already conditional on the form having no fixed vehicle).
+   Alternatives: a segmented control (matches the existing "Trip distance"/"New odometer" look, but read the developer's answer as wanting the same interactive dropdown style as the vehicle selector) and no visible widget yet (also declined: the developer asked for the choice, not just an internal placeholder).
 
-1. Is this only a rename, or does the form also get a **kind of event** choice (distance now; refueling, note later)? Proposed: only the rename now; the choice arrives with the second kind of event.
-2. After the rename, does "distance" still appear anywhere the user sees it (the two ways are "Trip distance" and "New odometer": they are ways of entering a distance entry and keep their names)?
-3. Rename the code (classes, files, tags) or only the visible text? Renaming the tags forces every Maestro flow to change; keeping `log_distance` as a tag is possible but leaves a permanent mismatch.
-4. Rename the capability `distance-logging` to `event-logging`? It renames a spec directory (a REMOVED and ADDED in OpenSpec terms), so it is proposed only when a second kind of event makes the name wrong.
+## A tooling constraint found while drafting the spec delta
 
-## Risks
+OpenSpec matches a MODIFIED requirement's scenarios by their heading text, not by position or content: a scenario whose title changes reads as the old one dropped and a new, unrecognized one added, and `openspec validate --strict` refuses it ("omits scenario(s) the current spec still has"). Renaming a *requirement* is supported (the `RENAMED` block used above); renaming a *scenario title* within a requirement is not. The `vehicles` delta's scenario stays titled "Open the log distance form" even though its body now says "Log event" and "the log event form" — a small, deliberate inconsistency, not an oversight, kept because retitling it is not supported without appearing to remove a scenario the tool cannot see was preserved.
 
-- **A mechanical rename across 270 places** hides mistakes: it is done in its own commit, with the suite as the check.
-- **Restoring a saved back stack** after the update: the serial key stays (decision 2).
+## Risks / Trade-offs
+
+- [A mechanical rename across ~270 places hides mistakes] → done in its own commit, before the Kind selector and the tag-collision fix, with the whole suite as the check; a grep sweep for `LogDistance` after the rename should find only the deliberately-kept names (task 2.2 lists them).
+- [The tag collision would have been easy to miss] → found by grounding the plan against the current code before drafting; fixed by renaming the other tag, not by picking an awkward name for the new one.
+- [The `kind` field is dead weight until a second kind exists] → it costs one enum, one field and one intent; the alternative (adding it only with the second kind) means redoing the row layout and the selector at the same time as a behavior change, which is more to get right at once.
+- [Restoring a saved back stack after the update] → the serial key stays (decision 3); a state saved by the pre-rename build has no `kind` field, which defaults to `DISTANCE` on restore, same as today's behavior.
