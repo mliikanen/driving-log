@@ -16,6 +16,14 @@ interface VehicleRepository {
     fun observeLog(vehicleId: String): Flow<List<VehicleEvent>>
 
     /**
+     * The id of the vehicle last logged for: whichever of [addDistanceEntry] or [addOdometerAnchor] was called last, for any vehicle, on any route
+     * (the details screen or the Home screen). Null when nothing has been logged since this memory existed (a new install, or a database from before
+     * it). This is a memory of its own, stored apart from the events: it is not derived from their dates, so a backdated entry still counts as the
+     * last one logged.
+     */
+    fun observeLastLoggedVehicleId(): Flow<String?>
+
+    /**
      * Saves the vehicle, its initial odometer event and its [picture] (when it has one) together, or none of them: a failed save
      * leaves no picture files behind. Returns the new vehicle id.
      */

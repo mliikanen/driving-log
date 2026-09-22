@@ -42,6 +42,7 @@ class SqlDelightVehicleRepository(
 
     private val vehicles get() = database.vehicleQueries
     private val events get() = database.vehicleEventQueries
+    private val appState get() = database.appStateQueries
 
     override fun observeVehicles(): Flow<List<Vehicle>> =
         vehicles.selectVehicles().asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
@@ -56,6 +57,9 @@ class SqlDelightVehicleRepository(
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> =
         events.selectLog(vehicleId).asFlow().mapToList(dispatcher)
             .map { rows -> rows.mapNotNull { it.toDomain() } }
+
+    override fun observeLastLoggedVehicleId(): Flow<String?> =
+        appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
 
     override suspend fun addVehicle(
         name: String,
@@ -113,6 +117,7 @@ class SqlDelightVehicleRepository(
                     occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
                 )
                 vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
+                appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
             }
             eventId
         }
@@ -133,6 +138,7 @@ class SqlDelightVehicleRepository(
                 clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(),
             )
             vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
+            appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
         }
         eventId
     }
@@ -170,6 +176,9 @@ class SqlDelightVehicleRepository(
         const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
         const val DISTANCE = "DISTANCE"
         const val ODOMETER_ANCHOR = "ODOMETER_ANCHOR"
+
+        /** The key `app_state` remembers the vehicle last logged for under. */
+        const val LAST_LOGGED_VEHICLE_ID_KEY = "last_logged_vehicle_id"
     }
 
     private fun SelectVehicles.toDomain() = Vehicle(

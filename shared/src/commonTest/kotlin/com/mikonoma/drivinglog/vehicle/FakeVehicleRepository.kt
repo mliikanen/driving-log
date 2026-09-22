@@ -57,6 +57,7 @@ data class UpdateCall(
 class FakeVehicleRepository : VehicleRepository {
     private val vehicles = MutableStateFlow<List<Vehicle>>(emptyList())
     private val events = MutableStateFlow<Map<String, List<VehicleEvent>>>(emptyMap())
+    private val lastLoggedVehicleId = MutableStateFlow<String?>(null)
     private var counter = 0
 
     val addCalls = mutableListOf<AddCall>()
@@ -102,6 +103,9 @@ class FakeVehicleRepository : VehicleRepository {
 
     fun observeVehicleOdometer(vehicleId: String): Distance? = currentOdometer(eventsOf(vehicleId).asReversed())
 
+    /** Sets the remembered vehicle directly, as a database seeded from an earlier run would have it (no entry saved in this test). */
+    fun seedLastLoggedVehicleId(id: String?) { lastLoggedVehicleId.value = id }
+
     fun eventsOf(vehicleId: String): List<VehicleEvent> = events.value[vehicleId].orEmpty()
 
     override fun observeVehicles(): Flow<List<Vehicle>> = vehicles
@@ -118,6 +122,8 @@ class FakeVehicleRepository : VehicleRepository {
         events.map { it[vehicleId].orEmpty().take(limit) }
 
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.map { it[vehicleId].orEmpty() }
+
+    override fun observeLastLoggedVehicleId(): Flow<String?> = lastLoggedVehicleId
 
     override suspend fun addVehicle(
         name: String,
@@ -147,6 +153,7 @@ class FakeVehicleRepository : VehicleRepository {
         distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
         // The choice is remembered with the entry, like the real repository does.
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
+        lastLoggedVehicleId.value = vehicleId
         val id = "d${++counter}"
         // Keep the log newest first by instant, the way the real repository returns it.
         val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer)
@@ -164,6 +171,7 @@ class FakeVehicleRepository : VehicleRepository {
         distanceFailure?.let { throw it }
         anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded)
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
+        lastLoggedVehicleId.value = vehicleId
         val id = "a${++counter}"
         val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading)
         seedEvents(vehicleId, (listOf(anchor) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })

@@ -681,6 +681,82 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(logBefore.first(), repository.observeLog(id).first().last())
     }
 
+    // ---- The vehicle last logged for, stored apart from the events (see add-direct-logging's design)
+
+    @Test
+    fun nothingIsRememberedOnANewDatabase() = runTest {
+        assertNull(repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun savingADistanceEntryRemembersItsVehicle() = runTest {
+        val id = vehicleAtNoon()
+
+        addEntry(id, at(1.hours), Distance(1_000), null)
+
+        assertEquals(id, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun savingAnOdometerAnchorRemembersItsVehicleToo() = runTest {
+        val id = vehicleAtNoon()
+
+        repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        assertEquals(id, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun aBackdatedEntryStillMakesItsVehicleTheRememberedOne() = runTest {
+        // Not derived from the events' dates: an entry dated a month ago is still the one just saved.
+        val first = vehicleAtNoon()
+        val second = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance.ZERO)
+        addEntry(first, at(1.hours), Distance(1_000), null)
+
+        addEntry(second, at((-24 * 30).hours), Distance(1_000), null)
+
+        assertEquals(second, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun theLastVehicleSavedForWins() = runTest {
+        val first = vehicleAtNoon()
+        val second = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance.ZERO)
+
+        addEntry(first, at(1.hours), Distance(1_000), null)
+        addEntry(second, at(2.hours), Distance(1_000), null)
+        addEntry(first, at(3.hours), Distance(1_000), null)
+
+        assertEquals(first, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun aFailedEntryInsertLeavesTheRememberedVehicleUnchanged() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours), Distance(1_000), null)
+        val other = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance.ZERO)
+        // Make the next insert fail: its event id is already taken (id-1 the vehicle, id-2 its initial event, id-3 the entry, id-4 and id-5 the Van and its initial event; id-6 is next).
+        insertEvent("id-6", "other-owner-2", "INITIAL_ODOMETER", 1, 0)
+        database.vehicleQueries.insertVehicle("other-owner-2", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+
+        assertFails { addEntry(other, at(2.hours), Distance(2_000), null) }
+
+        assertEquals(id, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun theMemoryEmitsWhenItChanges() = runTest {
+        val id = vehicleAtNoon()
+        val seen = mutableListOf<String?>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeLastLoggedVehicleId().collect { seen += it }
+        }
+
+        addEntry(id, at(1.hours), Distance(1_000), null)
+
+        assertEquals(listOf(null, id), seen)
+    }
+
     // ---- Pictures
 
     private fun updatedAtOf(vehicleId: String): Long =
