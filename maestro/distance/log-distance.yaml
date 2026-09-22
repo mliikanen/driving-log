@@ -20,7 +20,7 @@ appId: com.mikonoma.drivinglog
 # By trip distance (the way that is preselected): 100.5 km.
 - tapOn:
     id: log_event
-- assertVisible: Log distance
+- assertVisible: Log event
 - assertVisible:
     id: log_way_distance
     checked: true

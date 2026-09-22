@@ -117,7 +117,7 @@ fun LogEventContent(
             Column {
                 TopAppBar(
                     colors = drivingLogTopAppBarColors(),
-                    title = { Text("Log distance") },
+                    title = { Text("Log event") },
                     navigationIcon = { BackButton(onBack) },
                     actions = {
                         TextButton(

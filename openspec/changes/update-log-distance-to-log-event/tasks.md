@@ -8,7 +8,7 @@
 
 ## 2. Visible text
 
-- [ ] 2.1 Change the details screen's action text and the form's title to "Log event"; verify by hand on the emulator that both read "Log event" and by a unit test on `VehicleDetailsScreen`'s content if one exists for its actions, or an updated flow assertion otherwise
+- [x] 2.1 Change the details screen's action text and the form's title to "Log event"; verify by hand on the emulator that both read "Log event" and by a unit test on `VehicleDetailsScreen`'s content if one exists for its actions, or an updated flow assertion otherwise
 - [ ] 2.2 Update the specs (already drafted in this change's delta) by archiving; before that, `openspec validate update-log-distance-to-log-event --strict` passes
 
 ## 3. The Kind selector
