@@ -141,9 +141,15 @@ fun LogEventContent(
                 state.isLoading -> Unit
                 state.notFound -> Text("This vehicle no longer exists.")
                 else -> {
-                    // Only when the form was opened without a vehicle (from the Home screen): a vehicle's details screen fixes it and shows no selector.
+                    // The Kind selector is always shown; the vehicle selector only when the form was opened without a vehicle (from the Home
+                    // screen — a vehicle's details screen fixes it and shows no selector). With both, they share one row, split in half.
                     if (state.vehicles.isNotEmpty()) {
-                        VehicleSelector(state.vehicles, state.selectedVehicle) { onIntent(LogEventIntent.VehicleSelected(it)) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            KindSelector(state.kind, Modifier.weight(1f)) { onIntent(LogEventIntent.KindSelected(it)) }
+                            VehicleSelector(state.vehicles, state.selectedVehicle, Modifier.weight(1f)) { onIntent(LogEventIntent.VehicleSelected(it)) }
+                        }
+                    } else {
+                        KindSelector(state.kind, Modifier.fillMaxWidth()) { onIntent(LogEventIntent.KindSelected(it)) }
                     }
                     WayChoice(state.way) { onIntent(LogEventIntent.WayChanged(it)) }
                     MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
@@ -192,15 +198,48 @@ fun LogEventContent(
 }
 
 /**
+ * The kind of event being logged: Material 3's own dropdown pattern, like [VehicleSelector], with one item, "Distance". [enabled]
+ * is `false` while [LogKind] has one entry, so the field's own disabled colors, semantics and blocked tap are Material's disabled
+ * treatment (the same one the Home screen's not-yet-available tiles use), and none of it is written here; it becomes a real choice
+ * once a later change adds a second kind.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KindSelector(kind: LogKind, modifier: Modifier = Modifier, onSelect: (LogKind) -> Unit = {}) {
+    val enabled = LogKind.entries.size > 1
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = { if (enabled) expanded = it }, modifier = modifier) {
+        OutlinedTextField(
+            value = kind.label,
+            onValueChange = {},
+            readOnly = true,
+            enabled = enabled,
+            label = { Text("Kind") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && enabled) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("log_kind_selector"),
+        )
+        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
+            for (option in LogKind.entries) {
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = { onSelect(option); expanded = false },
+                    modifier = Modifier.testTag("log_kind_option_${option.name.lowercase()}"),
+                )
+            }
+        }
+    }
+}
+
+/**
  * The vehicle to log for, when the form was opened without one: Material 3's own dropdown pattern
  * ([ExposedDropdownMenuBox], [DropdownMenuItem], the trailing icon Material gives it), so its expansion, focus, keyboard and
  * accessibility behavior and its colors are Material's, none of it re-implemented here.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VehicleSelector(vehicles: List<VehicleChoice>, selected: VehicleChoice?, onSelect: (String) -> Unit) {
+private fun VehicleSelector(vehicles: List<VehicleChoice>, selected: VehicleChoice?, modifier: Modifier = Modifier, onSelect: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
         OutlinedTextField(
             value = selected?.name.orEmpty(),
             onValueChange = {},
