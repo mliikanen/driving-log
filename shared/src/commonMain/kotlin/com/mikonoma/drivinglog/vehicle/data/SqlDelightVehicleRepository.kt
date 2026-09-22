@@ -83,7 +83,8 @@ class SqlDelightVehicleRepository(
             // One transaction: the vehicle and its initial event are both saved, or neither.
             database.transaction {
                 vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex)
-                events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong())
+                // The initial odometer event never carries a note (add-event-notes): it is created by this flow, not the log event form.
+                events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong(), null)
             }
         } catch (throwable: Throwable) {
             // Nothing was saved, so the files that were just moved into use belong to no vehicle.
@@ -99,6 +100,7 @@ class SqlDelightVehicleRepository(
         distance: Distance,
         loggedOdometer: Distance?,
         tenthsIncluded: Boolean,
+        note: String?,
     ): String {
         require(distance.meters > 0) { "A distance entry must be above zero" }
         return withContext(dispatcher) {
@@ -115,6 +117,7 @@ class SqlDelightVehicleRepository(
                     logged_odometer_meters = loggedOdometer?.meters,
                     occurred_zone = zone?.id,
                     occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+                    note = note,
                 )
                 vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                 appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
@@ -128,6 +131,7 @@ class SqlDelightVehicleRepository(
         occurredAt: ZonedMoment,
         reading: Distance,
         tenthsIncluded: Boolean,
+        note: String?,
     ): String = withContext(dispatcher) {
         val eventId = newId()
         val zone = occurredAt.zone
@@ -135,7 +139,7 @@ class SqlDelightVehicleRepository(
         database.transaction {
             events.insertEvent(
                 eventId, vehicleId, ODOMETER_ANCHOR, occurredAt.instant.truncatedToMinute().toEpochMilliseconds(), reading.meters,
-                clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(),
+                clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(), note,
             )
             vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
             appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
@@ -209,10 +213,10 @@ class SqlDelightVehicleRepository(
     )
 
     private fun SelectRecentEvents.toDomain(): VehicleEvent? =
-        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
+        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
 
     private fun SelectLog.toDomain(): VehicleEvent? =
-        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
+        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
 
     /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. */
     private fun eventOf(
@@ -224,11 +228,13 @@ class SqlDelightVehicleRepository(
         loggedOdometerMeters: Long?,
         zoneId: String?,
         offsetSeconds: Long?,
+        note: String?,
     ): VehicleEvent? {
         // Events from before time zones were stored have neither column and are shown in the device's zone.
         val zone = if (zoneId != null && offsetSeconds != null) EventZone(zoneId, offsetSeconds.toInt()) else null
         val moment = ZonedMoment(Instant.fromEpochMilliseconds(occurredAt), zone)
         return when (type) {
+            // The initial odometer event never has a note (add-event-notes): the column reads null for it, and it is ignored here.
             INITIAL_ODOMETER -> VehicleEvent.InitialOdometer(
                 id = id,
                 occurredAt = moment,
@@ -238,12 +244,14 @@ class SqlDelightVehicleRepository(
                 id = id,
                 occurredAt = moment,
                 reading = Distance(requireNotNull(odometerMeters) { "Odometer anchor event without a reading" }),
+                note = note,
             )
             DISTANCE -> VehicleEvent.DistanceEntry(
                 id = id,
                 occurredAt = moment,
                 distance = Distance(requireNotNull(distanceMeters) { "Distance event without a distance" }),
                 loggedOdometer = loggedOdometerMeters?.let { Distance(it) },
+                note = note,
             )
             else -> null
         }

@@ -106,3 +106,62 @@ appId: com.mikonoma.drivinglog
 - assertVisible: +20.0 km
 - assertVisible: +100.5 km
 - assertVisible: Initial odometer
+- tapOn:
+    id: back
+# A note: unobtrusive until added, a full-screen editor, a discarded edit changes nothing, a trash-can action needs confirmation.
+- tapOn:
+    id: log_event
+- assertVisible:
+    id: log_note
+    text: Add a note...
+- tapOn:
+    id: log_note
+- inputText: never saved
+- tapOn:
+    id: note_editor_discard
+- assertVisible:
+    id: log_note
+    text: Add a note...
+- tapOn:
+    id: log_note
+- inputText: borrowed to Sam
+- tapOn:
+    id: back
+- assertVisible:
+    id: log_note
+    text: borrowed to Sam
+- tapOn:
+    id: log_note_remove
+- tapOn: Cancel
+- assertVisible:
+    id: log_note
+    text: borrowed to Sam
+- tapOn:
+    id: log_note_remove
+- tapOn: Remove
+- assertVisible:
+    id: log_note
+    text: Add a note...
+- assertNotVisible:
+    id: log_note_remove
+# Add it again and save; its row shows the note icon on the details screen and in the full log.
+- tapOn:
+    id: log_note
+- inputText: borrowed to Sam
+- tapOn:
+    id: back
+- tapOn:
+    id: odo_field
+- inputText: "10"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: event_note_icon
+- scrollUntilVisible:
+    element:
+      id: view_log
+- tapOn:
+    id: view_log
+- assertVisible:
+    id: event_note_icon

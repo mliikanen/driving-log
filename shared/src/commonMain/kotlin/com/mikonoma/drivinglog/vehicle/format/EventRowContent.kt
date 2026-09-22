@@ -18,6 +18,8 @@ data class EventRowContent(
     val loggedOdometer: String?,
     /** True for a distance entry: its [trailing] figure is a distance, which the theme draws in the distance accent color. */
     val isDistance: Boolean = false,
+    /** True when the event has a non-empty note (`add-event-notes`); the row shows an icon, never the note's text. */
+    val hasNote: Boolean = false,
 )
 
 fun eventRowContent(
@@ -39,6 +41,7 @@ fun eventRowContent(
             moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
             trailing = formatOdometer(event.reading, unit, symbols),
             loggedOdometer = null,
+            hasNote = event.note != null,
         )
         is VehicleEvent.DistanceEntry -> EventRowContent(
             label = event.label,
@@ -46,5 +49,6 @@ fun eventRowContent(
             trailing = "+" + formatOdometer(event.distance, unit, symbols),
             loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
             isDistance = true,
+            hasNote = event.note != null,
         )
     }

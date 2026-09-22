@@ -647,6 +647,167 @@ class LogEventProcessorTest {
         assertEquals(LogKind.DISTANCE, restored.state.kind)
     }
 
+    // ---- The note (add-event-notes)
+
+    @Test
+    fun theFormStartsWithNoPendingNoteAndTheEditorClosed() {
+        seedVehicle()
+
+        val state = processor().state
+
+        assertNull(state.pendingNote)
+        assertNull(state.noteDraft)
+    }
+
+    @Test
+    fun openingTheEditorSeedsTheDraftFromNothingWhenNoNoteIsPending() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+
+        assertEquals("", processor.state.noteDraft)
+    }
+
+    @Test
+    fun openingTheEditorSeedsTheDraftFromThePendingNote() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("borrowed to Sam"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+
+        assertEquals("borrowed to Sam", processor.state.noteDraft)
+    }
+
+    @Test
+    fun attachingStoresTheTrimmedTextAndClosesTheEditor() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+
+        processor.dispatch(LogEventIntent.NoteDraftEdited("  borrowed to Sam  "))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        assertEquals("borrowed to Sam", processor.state.pendingNote)
+        assertNull(processor.state.noteDraft)
+    }
+
+    @Test
+    fun attachingBlankTextClearsTheNote() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("a note"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("   "))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        assertNull(processor.state.pendingNote)
+    }
+
+    @Test
+    fun discardingDropsTheDraftButKeepsThePreviousNote() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("a note"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("something else entirely"))
+        processor.dispatch(LogEventIntent.NoteDiscarded)
+
+        assertEquals("a note", processor.state.pendingNote)
+        assertNull(processor.state.noteDraft)
+    }
+
+    @Test
+    fun removingAfterConfirmationClearsTheNote() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("a note"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.NoteRemoveRequested)
+        assertTrue(processor.state.noteRemovalPending)
+        processor.dispatch(LogEventIntent.NoteRemoveConfirmed)
+
+        assertNull(processor.state.pendingNote)
+        assertFalse(processor.state.noteRemovalPending)
+    }
+
+    @Test
+    fun cancellingRemovalKeepsTheNote() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("a note"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.NoteRemoveRequested)
+        processor.dispatch(LogEventIntent.NoteRemoveCancelled)
+
+        assertEquals("a note", processor.state.pendingNote)
+        assertFalse(processor.state.noteRemovalPending)
+    }
+
+    @Test
+    fun theNoteAndTheOpenEditorSurviveRestoreState() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        seedVehicle()
+        val saved = processor().let { first ->
+            advanceUntilIdle()
+            first.dispatch(LogEventIntent.NoteEditorOpened)
+            first.dispatch(LogEventIntent.NoteDraftEdited("still typing"))
+            advanceUntilIdle()
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = processor()
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        assertEquals("still typing", restored.state.noteDraft)
+        assertNull(restored.state.pendingNote)
+    }
+
+    @Test
+    fun savingWithAPendingNoteReachesTheRepository() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 2)
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("borrowed to Sam"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals("borrowed to Sam", repository.distanceCalls.single().note)
+    }
+
+    @Test
+    fun savingWithoutANoteReachesTheRepositoryWithNull() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 2)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertNull(repository.distanceCalls.single().note)
+    }
+
     // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
 
     private fun chooser() = LogEventProcessor("", repository, pictures, clock, deviceZone)
@@ -728,6 +889,21 @@ class LogEventProcessorTest {
         // The unit changed from kilometers to miles; the digits are kept and converted, as a manual unit change would.
         assertEquals(OdometerUnit.MILES, processor.state.unit)
         assertEquals("123", processor.state.tripDistance.digits)
+    }
+
+    @Test
+    fun choosingAnotherVehicleKeepsThePendingNote() {
+        // distance-logging, "A pending note survives a vehicle change".
+        seedRemembered("aaa-van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("zzz-bike", OdometerUnit.MILES, remembered = null)
+        val processor = chooser()
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("a note"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+
+        processor.dispatch(LogEventIntent.VehicleSelected("zzz-bike"))
+
+        assertEquals("a note", processor.state.pendingNote)
     }
 
     @Test

@@ -102,4 +102,31 @@ class EventRowContentTest {
         assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).isDistance)
         assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).isDistance)
     }
+
+    // ---- The note icon (add-event-notes)
+
+    @Test
+    fun aDistanceEntryWithANoteHasNoteTrue() {
+        assertEquals(true, row(VehicleEvent.DistanceEntry("d", at, Distance(30_000), note = "borrowed to Sam")).hasNote)
+    }
+
+    @Test
+    fun aDistanceEntryWithoutANoteHasNoteFalse() {
+        assertEquals(false, row(distance(30_000)).hasNote)
+    }
+
+    @Test
+    fun anAnchorWithANoteHasNoteTrue() {
+        assertEquals(true, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000), note = "reset by mistake")).hasNote)
+    }
+
+    @Test
+    fun anAnchorWithoutANoteHasNoteFalse() {
+        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).hasNote)
+    }
+
+    @Test
+    fun anInitialOdometerNeverHasANote() {
+        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasNote)
+    }
 }

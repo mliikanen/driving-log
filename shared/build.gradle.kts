@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.icons.core)
             implementation(libs.compose.ui)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             api(libs.kotlinx.io.core)

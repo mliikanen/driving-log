@@ -1,0 +1,3 @@
+-- Version 7 to 8: a note the user can attach to a distance entry or an odometer anchor while logging it (add-event-notes).
+-- Null on every existing row; the "Initial odometer" event never gets one.
+ALTER TABLE vehicle_event ADD COLUMN note TEXT;

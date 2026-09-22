@@ -13,6 +13,13 @@ sealed interface VehicleEvent {
      */
     val odometer: Distance?
 
+    /**
+     * A note the user typed while logging the event (`add-event-notes`), or null when it has none. Only [DistanceEntry]
+     * and [OdometerAnchor] can carry one; [InitialOdometer] always reads null here, since it is created by the add-vehicle
+     * flow, a different form entirely.
+     */
+    val note: String?
+
     /** Written once, when the vehicle is added. It sets the odometer. */
     data class InitialOdometer(
         override val id: String,
@@ -20,6 +27,7 @@ sealed interface VehicleEvent {
         val reading: Distance,
     ) : VehicleEvent {
         override val odometer: Distance get() = reading
+        override val note: String? get() = null
     }
 
     /**
@@ -31,6 +39,8 @@ sealed interface VehicleEvent {
         override val id: String,
         override val occurredAt: ZonedMoment,
         val reading: Distance,
+        /** A note the user typed while logging it, or null. See [DistanceEntry.note]. */
+        override val note: String? = null,
     ) : VehicleEvent {
         override val odometer: Distance get() = reading
     }
@@ -45,6 +55,8 @@ sealed interface VehicleEvent {
         override val occurredAt: ZonedMoment,
         val distance: Distance,
         val loggedOdometer: Distance? = null,
+        /** A note the user typed while logging it (`add-event-notes`), or null when none was added. Immutable once saved. */
+        override val note: String? = null,
     ) : VehicleEvent {
         override val odometer: Distance? get() = null
     }

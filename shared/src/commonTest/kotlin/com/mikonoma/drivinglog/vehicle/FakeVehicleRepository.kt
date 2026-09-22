@@ -31,9 +31,16 @@ data class DistanceCall(
     val distance: Distance,
     val loggedOdometer: Distance?,
     val tenthsIncluded: Boolean,
+    val note: String? = null,
 )
 
-data class AnchorCall(val vehicleId: String, val occurredAt: ZonedMoment, val reading: Distance, val tenthsIncluded: Boolean)
+data class AnchorCall(
+    val vehicleId: String,
+    val occurredAt: ZonedMoment,
+    val reading: Distance,
+    val tenthsIncluded: Boolean,
+    val note: String? = null,
+)
 
 data class AddCall(
     val name: String,
@@ -148,15 +155,16 @@ class FakeVehicleRepository : VehicleRepository {
         distance: Distance,
         loggedOdometer: Distance?,
         tenthsIncluded: Boolean,
+        note: String?,
     ): String {
         distanceFailure?.let { throw it }
-        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
+        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded, note)
         // The choice is remembered with the entry, like the real repository does.
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "d${++counter}"
         // Keep the log newest first by instant, the way the real repository returns it.
-        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer)
+        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer, note)
         val updated = (listOf(entry) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant }
         seedEvents(vehicleId, updated)
         return id
@@ -167,13 +175,14 @@ class FakeVehicleRepository : VehicleRepository {
         occurredAt: ZonedMoment,
         reading: Distance,
         tenthsIncluded: Boolean,
+        note: String?,
     ): String {
         distanceFailure?.let { throw it }
-        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded)
+        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded, note)
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "a${++counter}"
-        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading)
+        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading, note)
         seedEvents(vehicleId, (listOf(anchor) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
         return id
     }

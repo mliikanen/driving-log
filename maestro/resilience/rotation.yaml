@@ -118,6 +118,23 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "1,234.5"
+# The note editor keeps what was typed across a rotation, in both orientations.
+- tapOn:
+    id: log_note
+- inputText: rotated note
+- setOrientation: LANDSCAPE_LEFT
+- assertVisible:
+    id: note_editor_field
+    text: rotated note
+- setOrientation: PORTRAIT
+- assertVisible:
+    id: note_editor_field
+    text: rotated note
+- tapOn:
+    id: back
+- assertVisible:
+    id: log_note
+    text: rotated note
 - tapOn:
     id: back
 # The edit form.

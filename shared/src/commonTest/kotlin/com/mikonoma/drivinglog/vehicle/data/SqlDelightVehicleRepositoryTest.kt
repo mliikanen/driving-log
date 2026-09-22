@@ -63,7 +63,7 @@ class SqlDelightVehicleRepositoryTest {
     fun close() = driver.close()
 
     private fun insertEvent(id: String, vehicleId: String, type: String, at: Long, meters: Long?) =
-        database.vehicleEventQueries.insertEvent(id, vehicleId, type, at, meters, at, null, null)
+        database.vehicleEventQueries.insertEvent(id, vehicleId, type, at, meters, at, null, null, null)
 
     private suspend fun addFamilyCar(unit: OdometerUnit = OdometerUnit.KILOMETERS, meters: Long = 45_200_000) =
         repository.addVehicle("Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, unit, Distance(meters))
@@ -312,8 +312,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionSeven() {
-        assertEquals(7L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionEight() {
+        assertEquals(8L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -347,6 +347,26 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(null, entry.loggedOdometer)
         assertEquals(moment, entry.occurredAt)
         assertEquals(EventZone("America/New_York", -4 * 3600), entry.occurredAt.zone)
+    }
+
+    @Test
+    fun aDistanceEntryWithANoteIsReadBackWithIt() = runTest {
+        val id = vehicleAtNoon()
+
+        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), loggedOdometer = null, tenthsIncluded = false, note = "borrowed to Sam")
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertEquals("borrowed to Sam", entry.note)
+    }
+
+    @Test
+    fun aDistanceEntryWithoutANoteReadsBackNull() = runTest {
+        val id = vehicleAtNoon()
+
+        addEntry(id, at(1.hours), Distance(30_000), null)
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertNull(entry.note)
     }
 
     @Test
@@ -474,7 +494,7 @@ class SqlDelightVehicleRepositoryTest {
         // A second baseline for the same instant, entered in Helsinki, added after the entry.
         database.vehicleEventQueries.insertEvent(
             "second-baseline", id, "INITIAL_ODOMETER", (noon + 1.hours).toEpochMilliseconds(), 50_000_000,
-            (noon + 1.hours).toEpochMilliseconds(), "Europe/Helsinki", 3 * 3600L,
+            (noon + 1.hours).toEpochMilliseconds(), "Europe/Helsinki", 3 * 3600L, null,
         )
         assertCurrentOdometer(id, 50_000_000)
 
@@ -559,6 +579,26 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(Distance(44_000_000), anchor.reading)
         assertEquals(noon - 24.hours, anchor.occurredAt.instant)
         assertEquals("America/New_York", anchor.occurredAt.zone?.id)
+    }
+
+    @Test
+    fun anAnchorWithANoteIsReadBackWithIt() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false, note = "reset by mistake")
+
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        assertEquals("reset by mistake", anchor.note)
+    }
+
+    @Test
+    fun anAnchorWithoutANoteReadsBackNull() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        assertNull(anchor.note)
     }
 
     @Test

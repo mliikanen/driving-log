@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -32,6 +34,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -57,8 +60,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
@@ -105,6 +115,21 @@ fun LogEventContent(
     onIntent: (LogEventIntent) -> Unit,
     onBack: () -> Unit,
 ) {
+    // The note editor (add-event-notes) replaces the whole screen's content in the same window while open, rather than a
+    // separate Dialog: a Dialog is a second Android window, and once its one text field has taken and released IME focus,
+    // this app's accessibility tree stops exposing that window's content at all (confirmed independently of Maestro, with
+    // plain `adb shell uiautomator dump`) — a real platform/tooling limitation, not a bug in the screen. Every other text
+    // field in the app lives in the ordinary single-window screens and has never shown this.
+    if (state.noteDraft != null) {
+        NoteEditorContent(
+            text = state.noteDraft,
+            onTextChanged = { onIntent(LogEventIntent.NoteDraftEdited(it)) },
+            onAttach = { onIntent(LogEventIntent.NoteAttached) },
+            onDiscard = { onIntent(LogEventIntent.NoteDiscarded) },
+        )
+        return
+    }
+
     // Read on every composition so a change of device locale shows the new separators.
     val symbols = deviceLocale.numberSymbols()
     var showDate by rememberSaveable { mutableStateOf(false) }
@@ -165,9 +190,21 @@ fun LogEventContent(
                         isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
                         errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
                     )
+                    NoteField(
+                        pendingNote = state.pendingNote,
+                        onOpen = { onIntent(LogEventIntent.NoteEditorOpened) },
+                        onRemove = { onIntent(LogEventIntent.NoteRemoveRequested) },
+                    )
                 }
             }
         }
+    }
+
+    if (state.noteRemovalPending) {
+        RemoveNoteDialog(
+            onConfirm = { onIntent(LogEventIntent.NoteRemoveConfirmed) },
+            onDismiss = { onIntent(LogEventIntent.NoteRemoveCancelled) },
+        )
     }
 
     if (showDate) {
@@ -382,6 +419,93 @@ private fun KnownOdometerInfo(state: LogEventState, symbols: com.mikonoma.drivin
             }
         }
     }
+}
+
+/**
+ * The optional note (`add-event-notes`): unobtrusive plain text, not a bordered field like the rest of the form. Before a note is
+ * pending it prompts "Add a note..." in a muted color; once one is pending it shows up to two rendered lines of it, end-ellipsized,
+ * in the normal text color, and a trash-can action appears beside it. Tapping the text opens the full-screen editor; the trash-can
+ * is a separate tap target, so removing a note never opens it.
+ */
+@Composable
+private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = pendingNote ?: "Add a note...",
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = if (pendingNote != null) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClickLabel = "Add a note", role = Role.Button, onClick = onOpen)
+                .padding(vertical = 8.dp)
+                .testTag("log_note"),
+        )
+        if (pendingNote != null) {
+            IconButton(onClick = onRemove, modifier = Modifier.testTag("log_note_remove")) {
+                Icon(Icons.Filled.Delete, contentDescription = "Remove note")
+            }
+        }
+    }
+}
+
+/**
+ * The full-screen note editor: a plain multi-line text field, seeded with the note pending so far. It replaces the log event
+ * form's own content in the same window while open — not a separate [Dialog] (a second Android window): once that window's
+ * one text field had taken and released IME focus, the accessibility tree stopped exposing its content at all, confirmed with
+ * plain `adb shell uiautomator dump`, independent of any test tooling. Every other text field in the app already lives in an
+ * ordinary single-window screen and has never shown this. Back navigation — the toolbar's arrow or the system's own
+ * gesture/button, both wired to [onAttach] — attaches what was typed; "Discard" is the one way to leave without attaching it.
+ * Not its own navigation destination: there is nothing to restore it into once the form itself is gone.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, onAttach: () -> Unit, onDiscard: () -> Unit) {
+    BackHandler(onBack = onAttach)
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text("Note") },
+                    navigationIcon = { BackButton(onAttach) },
+                    actions = {
+                        TextButton(
+                            colors = headerTextButtonColors(),
+                            onClick = onDiscard,
+                            modifier = Modifier.testTag("note_editor_discard"),
+                        ) { Text("Discard") }
+                    },
+                )
+                HeaderDivider()
+            }
+        },
+    ) { padding ->
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+        OutlinedTextField(
+            value = text,
+            onValueChange = onTextChanged,
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp)
+                .focusRequester(focus)
+                .testTag("note_editor_field"),
+        )
+    }
+}
+
+/** "Remove this note?" before the trash-can action on [NoteField] takes effect. */
+@Composable
+private fun RemoveNoteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remove this note?") },
+        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("note_remove_confirm")) { Text("Remove") } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.testTag("note_remove_cancel")) { Text("Cancel") } },
+    )
 }
 
 /** A secondary line under a button's main text: smaller and lighter, so the main text stays the first thing read. */

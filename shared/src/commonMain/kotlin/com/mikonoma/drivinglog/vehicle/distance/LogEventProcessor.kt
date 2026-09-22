@@ -113,6 +113,13 @@ class LogEventProcessor @AssistedInject constructor(
             if (chooseVehicle && vehicles.any { it.id == intent.vehicleId }) copy(selectedVehicleId = intent.vehicleId, error = null) else this
         }
         is LogEventIntent.KindSelected -> reduce { copy(kind = intent.kind) }
+        LogEventIntent.NoteEditorOpened -> reduce { copy(noteDraft = pendingNote ?: "") }
+        is LogEventIntent.NoteDraftEdited -> reduce { copy(noteDraft = intent.text) }
+        LogEventIntent.NoteAttached -> reduce { copy(pendingNote = noteDraft?.trim()?.ifBlank { null }, noteDraft = null) }
+        LogEventIntent.NoteDiscarded -> reduce { copy(noteDraft = null) }
+        LogEventIntent.NoteRemoveRequested -> reduce { copy(noteRemovalPending = true) }
+        LogEventIntent.NoteRemoveConfirmed -> reduce { copy(pendingNote = null, noteRemovalPending = false) }
+        LogEventIntent.NoteRemoveCancelled -> reduce { copy(noteRemovalPending = false) }
         LogEventIntent.Save -> save()
     }
 
@@ -124,10 +131,10 @@ class LogEventProcessor @AssistedInject constructor(
         return when (val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer)) {
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
             is LogDistanceResult.Valid -> saving {
-                repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths)
+                repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
             }
             is LogDistanceResult.Anchor -> saving {
-                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths)
+                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
             }
         }
     }

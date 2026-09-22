@@ -60,6 +60,15 @@ data class LogEventState(
     val selectedVehicleId: String = "",
     /** The id of the vehicle the unit was last set from, so switching to another vehicle (or, once, opening the form) sets it again but a restored state keeps what the user chose. */
     val unitFor: String = "",
+    /** The note attached to the event so far (`add-event-notes`), or null when none has been added. Persisted, not [Transient], so it
+     * survives rotation and process death, and so it is kept when the vehicle is changed, like every other field on this form. */
+    val pendingNote: String? = null,
+    /**
+     * The full-screen note editor's own state: null while it is closed, or the text being edited (including `""`) while it is open,
+     * seeded from [pendingNote] when opened. Persisted like [PictureEditState.cropSourceId] is, for the same reason: rotating the
+     * device or losing the process while the editor is open must not lose what was typed.
+     */
+    val noteDraft: String? = null,
     @Transient val isLoading: Boolean = true,
     @Transient val notFound: Boolean = false,
     @Transient val vehicleUnit: OdometerUnit = OdometerUnit.KILOMETERS,
@@ -69,6 +78,8 @@ data class LogEventState(
     @Transient val log: List<VehicleEvent> = emptyList(),
     @Transient val error: LogDistanceError? = null,
     @Transient val isSaving: Boolean = false,
+    /** True while the "Remove this note?" confirmation is shown. A confirmation mid-flight is not worth surviving process death. */
+    @Transient val noteRemovalPending: Boolean = false,
 ) : ViewState {
 
     /** The unit both fields are entered in. */
@@ -115,6 +126,27 @@ sealed interface LogEventIntent : ViewIntent {
     /** Chooses another kind of event in the Kind selector. The selector is disabled while [LogKind] has one entry, so nothing dispatches this yet. */
     data class KindSelected(val kind: LogKind) : LogEventIntent
     data object Save : LogEventIntent
+
+    /** Opens the full-screen note editor, seeding its draft from the note pending so far. */
+    data object NoteEditorOpened : LogEventIntent
+
+    /** The editor's text field changed. */
+    data class NoteDraftEdited(val text: String) : LogEventIntent
+
+    /** Back navigation out of the editor: attaches the draft (trimmed; blank becomes no note) as the pending note. */
+    data object NoteAttached : LogEventIntent
+
+    /** The editor's "Discard" action: closes it, leaving the note pending before it opened untouched. */
+    data object NoteDiscarded : LogEventIntent
+
+    /** The note element's trash-can action: asks for confirmation before removing the pending note. */
+    data object NoteRemoveRequested : LogEventIntent
+
+    /** Confirms the removal dialog: clears the pending note. */
+    data object NoteRemoveConfirmed : LogEventIntent
+
+    /** Cancels or dismisses the removal dialog: leaves the pending note as it was. */
+    data object NoteRemoveCancelled : LogEventIntent
 }
 
 sealed interface LogEventEffect : SideEffect {

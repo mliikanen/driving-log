@@ -43,6 +43,7 @@ interface VehicleRepository {
      * Adds one distance entry to the log at [occurredAt] (in the zone it was entered in). [distance] must be above zero.
      * [loggedOdometer] is the count the user typed when logging by odometer, for the log row only. [tenthsIncluded] is the tenths
      * choice used for the entry: it is remembered for the vehicle in the same transaction, so both are saved or neither.
+     * [note] is the pending note typed on the log event form (`add-event-notes`), or null when none was added.
      * Returns the new event id.
      */
     suspend fun addDistanceEntry(
@@ -51,11 +52,13 @@ interface VehicleRepository {
         distance: Distance,
         loggedOdometer: Distance?,
         tenthsIncluded: Boolean,
+        note: String? = null,
     ): String
 
     /**
      * Adds an odometer anchor at [occurredAt]: an odometer-setting event for a new odometer count logged where no odometer is
-     * known. [tenthsIncluded] is remembered for the vehicle in the same transaction, as for [addDistanceEntry].
+     * known. [tenthsIncluded] is remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
+     * pending note typed on the log event form (`add-event-notes`), or null when none was added.
      * Returns the new event id.
      */
     suspend fun addOdometerAnchor(
@@ -63,6 +66,7 @@ interface VehicleRepository {
         occurredAt: ZonedMoment,
         reading: Distance,
         tenthsIncluded: Boolean,
+        note: String? = null,
     ): String
 
     /**
