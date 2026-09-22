@@ -56,6 +56,10 @@ class VehicleDetailsProcessor @AssistedInject constructor(
             VehicleDetailsIntent.EditClicked -> sideEffect { VehicleDetailsEffect.ShowEdit(vehicleId) }
             VehicleDetailsIntent.ViewLogClicked -> sideEffect { VehicleDetailsEffect.ShowLog(vehicleId) }
             VehicleDetailsIntent.LogEventClicked -> sideEffect { VehicleDetailsEffect.ShowLogEvent(vehicleId) }
+            is VehicleDetailsIntent.EventClicked -> {
+                val eventId = intent.eventId
+                sideEffect { VehicleDetailsEffect.ShowEventDetails(vehicleId, eventId) }
+            }
         }
 
     companion object {

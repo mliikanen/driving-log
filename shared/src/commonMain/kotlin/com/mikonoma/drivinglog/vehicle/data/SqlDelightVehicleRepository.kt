@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
+import com.mikonoma.drivinglog.db.SelectEventById
 import com.mikonoma.drivinglog.db.SelectLog
 import com.mikonoma.drivinglog.db.SelectRecentEvents
 import com.mikonoma.drivinglog.db.SelectVehicleDetails
@@ -57,6 +58,9 @@ class SqlDelightVehicleRepository(
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> =
         events.selectLog(vehicleId).asFlow().mapToList(dispatcher)
             .map { rows -> rows.mapNotNull { it.toDomain() } }
+
+    override fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?> =
+        events.selectEventById(vehicleId, eventId).asFlow().mapToOneOrNull(dispatcher).map { it?.toDomain() }
 
     override fun observeLastLoggedVehicleId(): Flow<String?> =
         appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
@@ -216,6 +220,9 @@ class SqlDelightVehicleRepository(
         eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
 
     private fun SelectLog.toDomain(): VehicleEvent? =
+        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
+
+    private fun SelectEventById.toDomain(): VehicleEvent? =
         eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
 
     /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. */

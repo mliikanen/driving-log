@@ -145,6 +145,15 @@ class VehicleDetailsProcessorTest {
     }
 
     @Test
+    fun tappingAnEventNavigatesToItsDetails() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        processor().test {
+            dispatch(VehicleDetailsIntent.EventClicked("e2"))
+            expectSideEffect(VehicleDetailsEffect.ShowEventDetails("v1", "e2"))
+        }
+    }
+
+    @Test
     fun theCurrentOdometerIncludesDistanceEntries() {
         repository.seedVehicle("v1", "Family car")
         repository.seedEvents(

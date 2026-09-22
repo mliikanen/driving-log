@@ -154,7 +154,37 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: view_log
+    centerElement: true
+# Root cause, confirmed via `adb shell dumpsys window` and screenshots: at this point the log has all 5 recent
+# events (the display cap), so "View full log" sits at its lowest possible scroll position — within a few px of
+# the device's bottom `mandatorySystemGestures` inset (`frame=[0,2316][1080,2400]` on this 2400px-tall emulator,
+# button bounds `[42,2299][1038,2400]` without centering), where taps are not reliably delivered to the app. Every
+# earlier tap of this same button in this flow happens with only 4 events, safely above that zone, so this is the
+# first time the flow has ever scrolled to it at the full 5-event cap. `centerElement: true` keeps it clear of the
+# inset regardless of how many events are showing.
 - tapOn:
     id: view_log
+- assertVisible: Family car log
 - assertVisible:
     id: event_note_icon
+# Tapping a row opens its details (add-event-details-view): the full moment, figure and note, and back returns to
+# the list that opened it (the full log, here).
+- tapOn:
+    id: event_note_icon
+- assertVisible:
+    id: event_details_title
+    text: Distance
+- assertVisible:
+    id: event_details_figure
+    text: +1.0 km
+- assertVisible:
+    id: event_details_note
+    text: borrowed to Sam
+- tapOn:
+    id: back
+# A generous wait rather than a plain assertVisible: back navigation crossfades the details screen out over the
+# full log underneath (confirmed harmless with screenshots — a normal transition, not a stuck state), and a longer
+# timeout here is cheap insurance against that settling slower under load.
+- extendedWaitUntil:
+    visible: Family car log
+    timeout: 10000

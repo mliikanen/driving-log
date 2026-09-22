@@ -130,6 +130,9 @@ class FakeVehicleRepository : VehicleRepository {
 
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.map { it[vehicleId].orEmpty() }
 
+    override fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?> =
+        events.map { it[vehicleId].orEmpty().firstOrNull { event -> event.id == eventId } }
+
     override fun observeLastLoggedVehicleId(): Flow<String?> = lastLoggedVehicleId
 
     override suspend fun addVehicle(

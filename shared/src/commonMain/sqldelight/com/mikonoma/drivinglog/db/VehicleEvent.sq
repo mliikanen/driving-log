@@ -43,3 +43,10 @@ SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logg
 FROM vehicle_event
 WHERE vehicle_id = ?
 ORDER BY occurred_at DESC, rowid DESC;
+
+-- One event by id, for the details screen (add-event-details-view). Re-run whenever it might have changed, since
+-- nothing here caches it: the details screen is meant to stay live.
+selectEventById:
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note
+FROM vehicle_event
+WHERE vehicle_id = ? AND id = ?;

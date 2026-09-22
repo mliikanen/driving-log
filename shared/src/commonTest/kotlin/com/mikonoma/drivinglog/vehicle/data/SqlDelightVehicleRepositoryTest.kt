@@ -1181,4 +1181,48 @@ class SqlDelightVehicleRepositoryTest {
 
         assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
     }
+
+    // ---- One event by id, re-observed live (add-event-details-view)
+
+    @Test
+    fun observeEventReturnsTheMatchingEvent() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false, "borrowed to Sam")
+
+        val event = repository.observeEvent(id, entryId).first() as VehicleEvent.DistanceEntry
+        assertEquals(entryId, event.id)
+        assertEquals(Distance(30_000), event.distance)
+        assertEquals("borrowed to Sam", event.note)
+    }
+
+    @Test
+    fun observeEventReturnsNullForAnUnknownId() = runTest {
+        val id = addFamilyCar()
+
+        assertNull(repository.observeEvent(id, "no-such-event").first())
+    }
+
+    @Test
+    fun observeEventReturnsNullForAnEventOfAnotherVehicle() = runTest {
+        val id = addFamilyCar()
+        val otherId = repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1))
+        val otherEntryId = repository.addDistanceEntry(otherId, ZonedMoment(clock.current), Distance(1_000), null, false)
+
+        assertNull(repository.observeEvent(id, otherEntryId).first())
+    }
+
+    @Test
+    fun observeEventIsQueryBackedNotASnapshot() = runTest {
+        // Live re-observation by id has no update query to exercise yet (vehicle_event is still append-only,
+        // "deliberately no update query" per VehicleEvent.sq; add-event-editing adds one this flow will then also
+        // need to react to). What is testable now: a fresh read after the matching row starts existing sees it —
+        // the flow is backed by the query, not a value captured once and cached.
+        val id = addFamilyCar()
+        assertNull(repository.observeEvent(id, "id-3").first())
+
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
+
+        assertEquals("id-3", entryId)
+        assertEquals(entryId, (repository.observeEvent(id, entryId).first() as VehicleEvent.DistanceEntry).id)
+    }
 }

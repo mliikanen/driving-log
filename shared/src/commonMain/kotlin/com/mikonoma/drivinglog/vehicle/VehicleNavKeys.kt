@@ -14,6 +14,8 @@ import com.mikonoma.drivinglog.vehicle.distance.LogEventState
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleScreen
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleState
+import com.mikonoma.drivinglog.vehicle.eventdetails.EventDetailsProcessor
+import com.mikonoma.drivinglog.vehicle.eventdetails.EventDetailsScreen
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListScreen
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
@@ -94,6 +96,7 @@ class VehicleDetailsNavKey(private val graph: AppGraph, val vehicleId: String = 
             onShowEdit = { id -> ctx.navigateTo(EditVehicleNavKey(graph, id)) },
             onShowLog = { id -> ctx.navigateTo(VehicleLogNavKey(graph, id)) },
             onShowLogEvent = { id -> ctx.navigateTo(LogEventNavKey(graph, id)) },
+            onShowEventDetails = { vId, eId -> ctx.navigateTo(EventDetailsNavKey(graph, vId, eId)) },
             onBack = ctx.onBack,
         )
     }
@@ -137,7 +140,13 @@ class VehicleLogNavKey(private val graph: AppGraph, val vehicleId: String = "") 
     override fun restoreArgs(args: String): ScreenNavKey<VehicleLogProcessor> = VehicleLogNavKey(graph, args)
 
     override val screen: @Composable (ScreenContext<VehicleLogProcessor>) -> Unit = { ctx ->
-        VehicleLogScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
+        VehicleLogScreen(
+            processor = ctx.processor,
+            deviceLocale = graph.deviceLocale,
+            deviceTimeZone = graph.deviceTimeZone,
+            onShowEventDetails = { eventId -> ctx.navigateTo(EventDetailsNavKey(graph, vehicleId, eventId)) },
+            onBack = ctx.onBack,
+        )
     }
 }
 
@@ -165,6 +174,35 @@ class LogEventNavKey(private val graph: AppGraph, val vehicleId: String = "") : 
     }
 }
 
+/**
+ * Opens a logged event's read-only details (add-event-details-view). [vehicleId] and [eventId] are packed into one
+ * [saveArgs] string (`"$vehicleId|$eventId"`) since [ScreenNavKey.saveArgs] carries only one string; both ids are
+ * plain UUIDs (`Uuid.random().toString()`), which never contain `|`.
+ */
+class EventDetailsNavKey(private val graph: AppGraph, val vehicleId: String = "", val eventId: String = "") :
+    ScreenNavKey<EventDetailsProcessor> {
+    override val serialKey: String = "event-details"
+
+    override fun equals(other: Any?): Boolean = other is EventDetailsNavKey && other.vehicleId == vehicleId && other.eventId == eventId
+
+    override fun hashCode(): Int = 31 * (31 * serialKey.hashCode() + vehicleId.hashCode()) + eventId.hashCode()
+
+    override fun toString(): String = "EventDetailsNavKey($vehicleId, $eventId)"
+
+    override fun createProcessor(): EventDetailsProcessor = graph.eventDetailsProcessorFactory.create(vehicleId, eventId)
+
+    override fun saveArgs(): String = "$vehicleId|$eventId"
+
+    override fun restoreArgs(args: String): ScreenNavKey<EventDetailsProcessor> {
+        val (savedVehicleId, savedEventId) = args.split("|", limit = 2)
+        return EventDetailsNavKey(graph, savedVehicleId, savedEventId)
+    }
+
+    override val screen: @Composable (ScreenContext<EventDetailsProcessor>) -> Unit = { ctx ->
+        EventDetailsScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
+    }
+}
+
 private var registeredFor: AppGraph? = null
 
 /**
@@ -183,5 +221,6 @@ fun registerVehicleNavKeys(graph: AppGraph) {
     ScreenNavKeyRegistry.register(EditVehicleNavKey(graph))
     ScreenNavKeyRegistry.register(VehicleLogNavKey(graph))
     ScreenNavKeyRegistry.register(LogEventNavKey(graph))
+    ScreenNavKeyRegistry.register(EventDetailsNavKey(graph))
     registeredFor = graph
 }

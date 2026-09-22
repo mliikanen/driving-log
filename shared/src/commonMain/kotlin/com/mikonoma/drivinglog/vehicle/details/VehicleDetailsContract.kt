@@ -35,10 +35,13 @@ sealed interface VehicleDetailsIntent : ViewIntent {
     data object EditClicked : VehicleDetailsIntent
     data object ViewLogClicked : VehicleDetailsIntent
     data object LogEventClicked : VehicleDetailsIntent
+    /** A recent-events row was tapped (add-event-details-view). */
+    data class EventClicked(val eventId: String) : VehicleDetailsIntent
 }
 
 sealed interface VehicleDetailsEffect : SideEffect {
     data class ShowEdit(val vehicleId: String) : VehicleDetailsEffect
     data class ShowLog(val vehicleId: String) : VehicleDetailsEffect
     data class ShowLogEvent(val vehicleId: String) : VehicleDetailsEffect
+    data class ShowEventDetails(val vehicleId: String, val eventId: String) : VehicleDetailsEffect
 }

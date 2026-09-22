@@ -53,6 +53,7 @@ fun VehicleDetailsScreen(
     onShowEdit: (String) -> Unit,
     onShowLog: (String) -> Unit,
     onShowLogEvent: (String) -> Unit,
+    onShowEventDetails: (String, String) -> Unit,
     onBack: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
@@ -63,6 +64,7 @@ fun VehicleDetailsScreen(
                 is VehicleDetailsEffect.ShowEdit -> onShowEdit(effect.vehicleId)
                 is VehicleDetailsEffect.ShowLog -> onShowLog(effect.vehicleId)
                 is VehicleDetailsEffect.ShowLogEvent -> onShowLogEvent(effect.vehicleId)
+                is VehicleDetailsEffect.ShowEventDetails -> onShowEventDetails(effect.vehicleId, effect.eventId)
             }
         }
     }
@@ -74,6 +76,7 @@ fun VehicleDetailsScreen(
         onEdit = { processor.dispatch(VehicleDetailsIntent.EditClicked) },
         onViewLog = { processor.dispatch(VehicleDetailsIntent.ViewLogClicked) },
         onLogEvent = { processor.dispatch(VehicleDetailsIntent.LogEventClicked) },
+        onEventClick = { eventId -> processor.dispatch(VehicleDetailsIntent.EventClicked(eventId)) },
         onBack = onBack,
     )
 }
@@ -87,6 +90,7 @@ fun VehicleDetailsContent(
     onEdit: () -> Unit,
     onViewLog: () -> Unit,
     onLogEvent: () -> Unit,
+    onEventClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     // Read on every composition so a change of device locale shows the new separators.
@@ -156,7 +160,7 @@ fun VehicleDetailsContent(
                         }
                     }
                     items(state.recentEvents, key = { it.id }) { event ->
-                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("recent_event"))
+                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, onEventClick, Modifier.testTag("recent_event"))
                         HorizontalDivider()
                     }
                     item {

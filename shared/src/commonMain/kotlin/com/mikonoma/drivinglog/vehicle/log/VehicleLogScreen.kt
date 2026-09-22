@@ -29,14 +29,26 @@ import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.ui.EventRow
 
 @Composable
-fun VehicleLogScreen(processor: VehicleLogProcessor, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
+fun VehicleLogScreen(
+    processor: VehicleLogProcessor,
+    deviceLocale: DeviceLocale,
+    deviceTimeZone: DeviceTimeZone,
+    onShowEventDetails: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     val state by processor.states.collectAsState()
-    VehicleLogContent(state, deviceLocale, deviceTimeZone, onBack)
+    VehicleLogContent(state, deviceLocale, deviceTimeZone, onShowEventDetails, onBack)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
+fun VehicleLogContent(
+    state: VehicleLogState,
+    deviceLocale: DeviceLocale,
+    deviceTimeZone: DeviceTimeZone,
+    onShowEventDetails: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     val symbols = deviceLocale.numberSymbols()
     val deviceZone = deviceTimeZone.current()
     val timeFormat = deviceLocale.timeFormat()
@@ -63,7 +75,7 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = ScreenBottomSpace),
                 ) {
                     items(state.events, key = { it.id }) { event ->
-                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("log_history_row"))
+                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, onShowEventDetails, Modifier.testTag("log_history_row"))
                         HorizontalDivider()
                     }
                 }

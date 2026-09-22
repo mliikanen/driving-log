@@ -12,6 +12,7 @@ import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.SystemDeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
+import com.mikonoma.drivinglog.vehicle.eventdetails.EventDetailsProcessor
 import com.mikonoma.drivinglog.landing.LandingProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
 import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
@@ -44,6 +45,7 @@ interface AppGraph {
     val editVehicleProcessorFactory: EditVehicleProcessor.Factory
     val vehicleLogProcessorFactory: VehicleLogProcessor.Factory
     val logEventProcessorFactory: LogEventProcessor.Factory
+    val eventDetailsProcessorFactory: EventDetailsProcessor.Factory
 
     @DependencyGraph.Factory
     fun interface Factory {

@@ -1,35 +1,53 @@
-# Design (stub)
+# Design
 
 ## Context
 
 `EventRow`/`EventRowContent` (shared by the details screen's recent events and the full log) currently render a
-one-line summary of an event and are not tappable. `VehicleRepository` has no "one event by id" read; `observeLog`
-and `observeRecentEvents` return lists. `add-event-notes` adds a `note: String?` to `VehicleEvent` that is only
-ever shown as a presence icon, never as text, on those rows.
+one-line-plus-supporting-text summary of an event (`shared/src/commonMain/kotlin/com/mikonoma/drivinglog/vehicle/ui/EventRow.kt`)
+and are not tappable. `VehicleRepository` has no "one event by id" read; `observeLog`/`observeRecentEvents` return
+lists. `vehicle_event` already has a stable `id TEXT NOT NULL PRIMARY KEY` (`VehicleEvent.sq`), so a lookup by id
+needs no schema change. `add-event-notes` added `note: String?` to `VehicleEvent`, shown today only as a presence
+icon, never as text.
 
-## Decisions (proposed, to be confirmed)
+This change is filed and reviewed alongside `add-event-editing` and `add-event-pictures`, which both extend it
+(edit action, photo thumbnails/viewer) once it exists. See their own proposals for why editing and photos are split
+into their own changes rather than folded into this one.
 
-1. **A new nav key**, e.g. `EventDetailsNavKey(graph, vehicleId, eventId)`, following the existing `VehicleLogNavKey`
-   pattern, rather than a dialog: unlike the note editor (`add-event-notes`), this is a destination a user plausibly
-   returns to directly, and a full row of unbounded detail (once pictures exist, `add-event-pictures`) fits a screen
-   better than a dialog.
-2. **A repository read for one event.** `observeLog`/`observeRecentEvents` already carry every field a details
-   screen needs; the simplest option is finding the event by id in the already-loaded list the calling screen holds,
-   passed through nav args, rather than adding a new repository method. *Open question 1 keeps the alternative.*
+## Goals / Non-Goals
 
-## Open questions
+**Goals:**
+- A read-only screen showing everything currently stored about one event, for every event kind.
+- Live data: re-observed from the repository, not a snapshot from navigation time.
 
-1. Does the details screen re-observe the event from the repository (a `VehicleRepository.observeEvent(vehicleId,
-   eventId)` read, robust to being deep-linked to later) or is it handed the event's already-loaded data at
-   navigation time (simpler, but stale if something changed it — moot today, since nothing can, but `add-event-editing`
-   would change that)? Bears on whether this change should be ordered before or after `add-event-editing`.
-2. Should this ship before `add-event-pictures`, so the details screen's layout is designed once with a picture slot
-   already in mind, rather than revisited twice?
-3. Is every event kind (including "Initial odometer", which never has a note) worth a details screen, or only the
-   kinds that can carry more than the row already shows?
+**Non-Goals:**
+- Anything editable (`add-event-editing`).
+- Photos (`add-event-pictures`); this delta's requirement text intentionally does not mention them.
 
-## Risks
+## Decisions
 
-- **Sequencing**: this change, `add-event-pictures` and `add-event-editing` all touch the same rows and forms; the
-  order they are applied in changes how much each one has to revisit. None is applied yet, so the order is still
-  open.
+### A new nav key, not a dialog
+`EventDetailsNavKey(graph, vehicleId, eventId)`, following the existing `VehicleLogNavKey` pattern. Unlike the note
+editor (`add-event-notes`, a dialog-like full-screen overlay for a value not yet saved), this is a destination for
+data that already exists and that the user plausibly returns to directly; a full screen of unbounded detail (once
+`add-event-pictures` lands) fits a screen better than a dialog.
+
+### Re-observe from the repository by id, not handed-in row data
+`observeLog`/`observeRecentEvents` already carry every field a details screen needs, so the simplest option would be
+finding the tapped event in the already-loaded list the calling screen holds and passing it through nav args. That
+was flagged as an open question when this change was still a stub, contingent on whether anything could ever change
+an event after it was logged. It now can — `add-event-editing` and `add-event-pictures` both do — so a new
+`VehicleRepository.observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?>`, backed by a new
+`selectEventById` SQLDelight query, is added instead. The `Flow<VehicleEvent?>` shape (nullable) also gives a
+well-defined "this event no longer exists" case for free, though nothing can remove an event yet.
+
+### Every event kind gets a details screen
+Resolves the stub's third open question: consistency (every row behaves the same way when tapped) beats the small
+saving of excluding "Initial odometer," whose screen is simply sparser (no note section, and no photo section once
+`add-event-pictures` lands, since that capability also excludes it — see `vehicle-log`'s existing "The 'Initial
+odometer' event created when a vehicle is added SHALL NOT carry a note").
+
+## Risks / Trade-offs
+
+- **[Risk]** Re-observing by id adds a new repository method and query where reusing loaded data would have added
+  none → **Mitigation**: accepted; it is the only option that stays correct once `add-event-editing`/
+  `add-event-pictures` exist, and both are proposed in the same sitting as this change, not hypothetically later.
