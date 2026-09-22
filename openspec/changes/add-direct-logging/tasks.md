@@ -13,9 +13,9 @@
 
 ## 3. The Home tile
 
-- [ ] 3.1 Enable "Log event" in `landingTiles` when there is a vehicle (disabled otherwise, exactly like the other placeholder tiles: no extra hint or semantics added), add the effect `ShowLogEvent` and navigate to `LogDistanceNavKey(graph, "")`; verify by the landing tests (enabled with a vehicle and not without, the effect) and on the emulator that saving returns to the Home screen and back navigation from the form does too
+- [ ] 3.1 Enable the tile named "Log event" in `landingTiles` when there is a vehicle (disabled otherwise, exactly like the other placeholder tiles: no extra hint or semantics added), add the effect `ShowLogEvent` and navigate to `LogDistanceNavKey(graph, "")`; verify by the landing tests (enabled with a vehicle and not without, the effect) and on the emulator that saving returns to the Home screen and back navigation from the form does too
 
 ## 4. Flows and final verification
 
-- [ ] 4.1 Add `maestro/distance/log-from-home.yaml` (two vehicles: the Home screen's "Log event", the selector, choose the other vehicle and save, the Home screen; open again and the chosen vehicle is preselected; log from the other vehicle's details, which has no selector, and the Home route now preselects it) and list it in `manifests/distance.yaml`; verify by running the `distance` manifest
+- [ ] 4.1 Add `maestro/distance/log-from-home.yaml` (two vehicles: the Home screen's Log event action, the selector, choose the other vehicle and save, the Home screen; open again and the chosen vehicle is preselected; log from the other vehicle's details, which has no selector, and the Home route now preselects it) and list it in `manifests/distance.yaml`; verify by running the `distance` manifest
 - [ ] 4.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (the `distance` manifest was run in 4.1; Maestro is not part of the final regression run)
