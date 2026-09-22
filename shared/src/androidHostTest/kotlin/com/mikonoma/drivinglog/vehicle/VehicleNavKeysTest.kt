@@ -121,11 +121,11 @@ class VehicleNavKeysTest {
     @Test
     fun theLogDistanceStateSavesWhatTheUserTypedAndNotTheRepositoryData() {
         val descriptor = LogDistanceState.serializer().descriptor
-        for (saved in listOf("way", "tripDistance", "newOdometer", "localDateTime", "zoneId", "unitInitialized")) {
+        for (saved in listOf("way", "tripDistance", "newOdometer", "localDateTime", "zoneId", "selectedVehicleId", "unitFor")) {
             assertNotEquals(CompositeDecoder.UNKNOWN_NAME, descriptor.getElementIndex(saved), saved)
         }
         // Transient: rebuilt from the repository or only a message.
-        for (transient in listOf("log", "error", "isLoading", "notFound", "vehicleUnit", "isSaving")) {
+        for (transient in listOf("log", "error", "isLoading", "notFound", "vehicleUnit", "isSaving", "vehicles")) {
             assertEquals(CompositeDecoder.UNKNOWN_NAME, descriptor.getElementIndex(transient), transient)
         }
     }

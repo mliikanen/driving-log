@@ -54,7 +54,9 @@ class LogDistanceProcessorTest {
         repository.seedEvents("v1", entries + initialEvent("i1", initialAt, 45_200_000))
     }
 
-    private fun processor() = LogDistanceProcessor("v1", repository, clock, deviceZone)
+    private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore()
+
+    private fun processor(vehicleId: String = "v1") = LogDistanceProcessor(vehicleId, repository, pictures, clock, deviceZone)
 
     private fun LogDistanceProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(LogDistanceIntent.OdometerEdited(state.activeEntry.digits + d))
@@ -70,7 +72,7 @@ class LogDistanceProcessorTest {
             repository.seedVehicle(unit.name, unit.name, unit = unit)
             repository.seedEvents(unit.name, listOf(initialEvent("i-${unit.name}", initialAt, 1_000)))
 
-            val state = LogDistanceProcessor(unit.name, repository, clock, deviceZone).state
+            val state = LogDistanceProcessor(unit.name, repository, pictures, clock, deviceZone).state
 
             assertEquals(unit, state.unit, unit.name)
             assertEquals(unit, state.tripDistance.unit, unit.name)
@@ -565,7 +567,7 @@ class LogDistanceProcessorTest {
 
     @Test
     fun aMissingVehicleIsReportedAndCannotBeSaved() {
-        val processor = LogDistanceProcessor("missing", repository, clock, deviceZone)
+        val processor = LogDistanceProcessor("missing", repository, pictures, clock, deviceZone)
 
         assertTrue(processor.state.notFound)
         processor.type(5)
@@ -581,7 +583,7 @@ class LogDistanceProcessorTest {
         // Like the app: the restore happens right after construction, and the repository data arrives later.
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         seedVehicle()
-        val saved = LogDistanceProcessor("v1", repository, clock, deviceZone).let { first ->
+        val saved = LogDistanceProcessor("v1", repository, pictures, clock, deviceZone).let { first ->
             advanceUntilIdle()
             first.dispatch(LogDistanceIntent.UnitFamilySelected(miles = true))
             first.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
@@ -592,7 +594,7 @@ class LogDistanceProcessorTest {
             checkNotNull(first.stateToSave())
         }
 
-        val restored = LogDistanceProcessor("v1", repository, clock, deviceZone)
+        val restored = LogDistanceProcessor("v1", repository, pictures, clock, deviceZone)
         restored.restoreState(saved)
         advanceUntilIdle()
 
@@ -603,6 +605,146 @@ class LogDistanceProcessorTest {
         assertEquals(OdometerUnit.KILOMETERS, restored.state.vehicleUnit) // from the repository, loaded after the restore
         assertFalse(restored.state.isLoading)
         assertEquals(2, restored.state.log.size)
+    }
+
+    // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
+
+    private fun chooser() = LogDistanceProcessor("", repository, pictures, clock, deviceZone)
+
+    @Test
+    fun withNothingRememberedTheChooserStartsOnTheFirstVehicleByName() {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("Bike", OdometerUnit.KILOMETERS, remembered = null)
+
+        val processor = chooser()
+
+        assertEquals("Bike", processor.state.selectedVehicleId)
+        assertEquals(listOf("Bike", "van"), processor.state.vehicles.map { it.id })
+    }
+
+    @Test
+    fun theChooserStartsOnTheVehicleLastLoggedFor() {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("Bike", OdometerUnit.KILOMETERS, remembered = null)
+        repository.seedLastLoggedVehicleId("van")
+
+        assertEquals("van", chooser().state.selectedVehicleId)
+    }
+
+    @Test
+    fun aRememberedVehicleThatIsGoneFallsBackToTheFirstByName() {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        repository.seedLastLoggedVehicleId("gone")
+
+        assertEquals("van", chooser().state.selectedVehicleId)
+    }
+
+    @Test
+    fun aRestoredChoiceThatStillExistsIsKept() = runTest {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("Bike", OdometerUnit.KILOMETERS, remembered = null)
+        repository.seedLastLoggedVehicleId("van")
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val saved = chooser().let { first ->
+            advanceUntilIdle()
+            first.dispatch(LogDistanceIntent.VehicleSelected("Bike"))
+            advanceUntilIdle()
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = chooser()
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        // Not "van" (the remembered one): the restored choice, "Bike", is kept.
+        assertEquals("Bike", restored.state.selectedVehicleId)
+    }
+
+    @Test
+    fun choosingAVehicleSwitchesTheKnownOdometerAndTheLog() {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        repository.seedVehicle("bike", "Bike", unit = OdometerUnit.MILES)
+        repository.seedEvents("bike", listOf(initialEvent("i-bike", initialAt, 1_000_000)))
+        val processor = chooser()
+
+        processor.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+
+        assertEquals("bike", processor.state.selectedVehicleId)
+        assertEquals(Distance(1_000_000), processor.state.knownOdometer)
+        assertEquals(1, processor.state.log.size)
+    }
+
+    @Test
+    fun choosingAVehicleConvertsTheTypedDigitsToItsUnit() {
+        // Named so "aaa-van" sorts first: the chooser starts on it.
+        seedRemembered("aaa-van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("zzz-bike", OdometerUnit.MILES, remembered = null)
+        val processor = chooser()
+        assertEquals("aaa-van", processor.state.selectedVehicleId)
+        processor.type(1, 2, 3) // 123 (a whole-number unit)
+
+        processor.dispatch(LogDistanceIntent.VehicleSelected("zzz-bike"))
+
+        // The unit changed from kilometers to miles; the digits are kept and converted, as a manual unit change would.
+        assertEquals(OdometerUnit.MILES, processor.state.unit)
+        assertEquals("123", processor.state.tripDistance.digits)
+    }
+
+    @Test
+    fun choosingAnUnknownVehicleChangesNothing() {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        val processor = chooser()
+
+        processor.dispatch(LogDistanceIntent.VehicleSelected("not-a-vehicle"))
+
+        assertEquals("van", processor.state.selectedVehicleId)
+    }
+
+    @Test
+    fun savingAddsTheEntryToTheChosenVehicle() = runTest {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("bike", OdometerUnit.KILOMETERS, remembered = null)
+        val processor = chooser()
+        processor.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+        processor.type(5)
+
+        processor.test {
+            dispatch(LogDistanceIntent.Save)
+            expectSideEffect(LogDistanceEffect.Saved)
+        }
+
+        assertEquals("bike", repository.distanceCalls.single().vehicleId)
+    }
+
+    @Test
+    fun theChosenVehicleSurvivesRestoreState() = runTest {
+        seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("bike", OdometerUnit.KILOMETERS, remembered = null)
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val saved = chooser().let { first ->
+            advanceUntilIdle()
+            first.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = chooser()
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        assertEquals("bike", restored.state.selectedVehicleId)
+        assertEquals(OdometerUnit.KILOMETERS, restored.state.vehicleUnit)
+    }
+
+    @Test
+    fun theDetailsRouteHasNoSelectionAndBehavesAsBefore() {
+        seedVehicle()
+
+        val processor = processor()
+
+        assertEquals(emptyList(), processor.state.vehicles)
+        assertEquals("v1", processor.state.selectedVehicleId)
+        processor.dispatch(LogDistanceIntent.VehicleSelected("v1")) // has no selector; a stray intent changes nothing
+        assertEquals("v1", processor.state.selectedVehicleId)
     }
 
     // ---- The tenths choice remembered per vehicle
@@ -617,8 +759,8 @@ class LogDistanceProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
         seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.MILES, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -626,8 +768,8 @@ class LogDistanceProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
 
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -636,8 +778,8 @@ class LogDistanceProcessorTest {
         seedRemembered("m", OdometerUnit.MILES, remembered = true)
         seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
 
-        assertEquals(OdometerUnit.MILES_TENTHS, LogDistanceProcessor("m", repository, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("k", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES_TENTHS, LogDistanceProcessor("m", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("k", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -690,12 +832,12 @@ class LogDistanceProcessorTest {
     @Test
     fun aChoiceThatIsNotSavedIsNotRemembered() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = false)
-        val left = LogDistanceProcessor("a", repository, clock, deviceZone)
+        val left = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
         left.dispatch(LogDistanceIntent.TenthsChanged(included = true))
         left.type(1, 2)
         // The form is left without saving.
 
-        val next = LogDistanceProcessor("a", repository, clock, deviceZone)
+        val next = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
 
         assertEquals(OdometerUnit.KILOMETERS, next.state.unit)
         assertEquals(emptyList(), repository.distanceCalls)
@@ -704,20 +846,20 @@ class LogDistanceProcessorTest {
     @Test
     fun aRefusedSaveDoesNotRememberTheChoice() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
-        val processor = LogDistanceProcessor("a", repository, clock, deviceZone)
+        val processor = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
         processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
 
         processor.dispatch(LogDistanceIntent.Save) // nothing typed
 
         assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
     fun theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm() = runTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS, remembered = null)
-        val a = LogDistanceProcessor("a", repository, clock, deviceZone)
+        val a = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
         a.dispatch(LogDistanceIntent.TenthsChanged(included = true))
         a.type(4)
         a.test {
@@ -725,7 +867,7 @@ class LogDistanceProcessorTest {
             expectSideEffect(LogDistanceEffect.Saved)
         }
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("b", repository, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 }
