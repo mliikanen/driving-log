@@ -7,14 +7,14 @@ its current odometer.
 
 ## Requirements
 
-### Requirement: Log a distance from the vehicle details screen
-The system SHALL offer a "Log distance" action on the vehicle details screen that opens a form for one distance entry.
+### Requirement: Log an event from the vehicle details screen
+The system SHALL offer a "Log event" action on the vehicle details screen that opens a form for one distance entry.
 Saving a valid entry SHALL return to the details screen, where the entry appears in the recent events and the current
 odometer includes it. Leaving the form without saving SHALL add nothing.
 
 #### Scenario: Open the form
-- **WHEN** the user taps "Log distance" on a vehicle's details screen
-- **THEN** the log distance form for that vehicle is displayed
+- **WHEN** the user taps "Log event" on a vehicle's details screen
+- **THEN** the log event form for that vehicle is displayed
 
 #### Scenario: Save an entry
 - **WHEN** the user enters a valid entry and saves
@@ -25,7 +25,7 @@ odometer includes it. Leaving the form without saving SHALL add nothing.
 - **THEN** no entry is added and the vehicle's current odometer is unchanged
 
 ### Requirement: A distance is logged as a trip distance or as a new odometer count
-The system SHALL let the user choose, on the log distance form, between "Trip distance" and "New odometer". "Trip distance"
+The system SHALL let the user choose, on the log event form, between "Trip distance" and "New odometer". "Trip distance"
 SHALL be preselected. With "Trip distance" the number entered is the distance travelled. With "New odometer" the number
 entered is the odometer count now, and the distance logged is that count minus the previous known odometer at the entry's
 date and time (or, when no odometer is known at that time, an odometer anchor is saved instead). Each way SHALL keep its own typed number when the user switches between them.
@@ -39,7 +39,7 @@ date and time (or, when no odometer is known at that time, an odometer anchor is
 - **THEN** the log contains a distance entry of 50 km and the vehicle's current odometer is 45250 km
 
 #### Scenario: Preselected way
-- **WHEN** the user opens the log distance form
+- **WHEN** the user opens the log event form
 - **THEN** "Trip distance" is selected
 
 #### Scenario: Each way keeps its own number
@@ -271,11 +271,11 @@ SHALL provide the whole form without a network connection.
 **Platform note:** the behavior is the same on iOS; it is verified on Android now and on iOS once the Xcode project exists.
 
 ### Requirement: A distance can be logged from the Home screen
-The system SHALL make the Home screen's Log event action (an icon with no visible text, named "Log event" for a screen reader; `app-shell`, "Home screen offers the main actions") open the log distance form when the user has at least one vehicle. With no vehicle the action SHALL stay a disabled Material 3 component, exactly as the other not-yet-available Home screen actions are (`app-shell`, "Home screen offers the main actions"), and SHALL NOT react to a tap. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
+The system SHALL make the Home screen's Log event action (an icon with no visible text, named "Log event" for a screen reader; `app-shell`, "Home screen offers the main actions") open the log event form when the user has at least one vehicle. With no vehicle the action SHALL stay a disabled Material 3 component, exactly as the other not-yet-available Home screen actions are (`app-shell`, "Home screen offers the main actions"), and SHALL NOT react to a tap. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
 
 #### Scenario: Open the form from the Home screen
 - **WHEN** the user has a vehicle and taps the Home screen's Log event action
-- **THEN** the log distance form is displayed with a vehicle selector at the top
+- **THEN** the log event form is displayed with a vehicle selector at the top
 
 #### Scenario: No vehicle
 - **WHEN** the user has no vehicle and taps the Home screen's Log event action
@@ -290,7 +290,7 @@ The system SHALL make the Home screen's Log event action (an icon with no visibl
 - **THEN** the Home screen is displayed and no entry is added
 
 ### Requirement: The vehicle is chosen with a selector when logging starts from the Home screen
-When the log distance form is opened from the Home screen, the system SHALL show a vehicle selector at the top of the form: a dropdown that shows the chosen vehicle (its picture or icon and its name) and lists every vehicle the user has, in the order of the vehicle list. Choosing a vehicle SHALL make the form
+When the log event form is opened from the Home screen, the system SHALL show a vehicle selector at the top of the form: a dropdown that shows the chosen vehicle (its picture or icon and its name) and lists every vehicle the user has, in the order of the vehicle list. Choosing a vehicle SHALL make the form
 about that vehicle: the previous known odometer, the checks of a new odometer count and the log the entry will join are that vehicle's, and the unit starts as that vehicle's (its unit family and its remembered choice of tenths). The digits already typed, the way (trip distance or new odometer), the date, the time and the time zone SHALL be kept when the vehicle is changed, and the typed digits are converted to the new unit as when the unit is changed by hand. The chosen vehicle SHALL survive a rotation of the device and the restart of the process. When the form is opened from a vehicle's details screen the selector SHALL NOT be shown and the vehicle SHALL be that vehicle.
 
 #### Scenario: The selector lists the vehicles
@@ -306,7 +306,7 @@ about that vehicle: the previous known odometer, the checks of a new odometer co
 - **THEN** the unit starts as miles (with that vehicle's remembered choice of tenths) and the typed digits are kept
 
 #### Scenario: From the details screen there is no selector
-- **WHEN** the user taps "Log distance" on a vehicle's details screen
+- **WHEN** the user taps "Log event" on a vehicle's details screen
 - **THEN** the form has no vehicle selector and is about that vehicle
 
 #### Scenario: The choice survives a rotation
@@ -345,3 +345,22 @@ memory SHALL survive closing the app, work without a network, and SHALL NOT be f
 #### Scenario: A failed save does not change the memory
 - **WHEN** saving an entry fails
 - **THEN** the remembered vehicle is what it was
+
+### Requirement: The kind of event is chosen
+The system SHALL show a "Kind" selector at the top of the log event form: a dropdown, in the same style as the vehicle selector, listing the kinds of event the form can log — today only "Distance", which SHALL be selected. Since there is only one kind today, the selector SHALL be a disabled Material 3 component (shown in Material's disabled colors, exactly as the Home screen's not-yet-available actions are) and SHALL NOT react to a tap; it becomes usable once a later change adds a second kind. When the form is opened from the Home screen the Kind selector SHALL share one row with the vehicle selector, the two of equal width and height, the Kind selector first (on the left). When the form is opened from a vehicle's details screen (where there is no vehicle selector) the Kind selector SHALL take the row alone.
+
+#### Scenario: The kind selector is shown on both routes, disabled
+- **WHEN** the user opens the log event form, from the Home screen or from a vehicle's details screen
+- **THEN** a "Kind" selector is shown at the top of the form, showing "Distance" selected and disabled
+
+#### Scenario: Sharing the row with the vehicle selector
+- **WHEN** the form is opened from the Home screen
+- **THEN** the Kind selector and the vehicle selector are shown side by side, each half the row's width and the same height, the Kind selector on the left
+
+#### Scenario: Alone from the details screen
+- **WHEN** the form is opened from a vehicle's details screen
+- **THEN** the Kind selector is shown alone, the full width of the row, and no vehicle selector is shown
+
+#### Scenario: Tapping the disabled selector does nothing
+- **WHEN** the user taps the Kind selector
+- **THEN** nothing happens: it does not open, and the form is unchanged
