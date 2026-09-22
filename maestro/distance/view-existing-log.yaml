@@ -1,0 +1,48 @@
+# speed-up-tests-with-db-fixtures: this flow's subject is rendering (the recent events, the row icon, the full
+# log, the event details screen) for a vehicle's existing log, not the UI path that produces that log (add-vehicle
+# and log-distance already cover that). It starts from the vehicle-with-log-and-note fixture instead of building
+# the state through the UI — see its companion view-existing-log.fixture and docs/test-strategy.md.
+#
+# launchApp uses clearState: false deliberately: the fixture is already placed by the time this flow runs (run.sh
+# seeds it first, from the .fixture file next to this flow). Setting clearState: true here would wipe the seeded
+# data and this flow would fail on the very first assertion — see task 3.2, which confirms exactly that.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: landing_vehicles
+- tapOn: Fixture Car
+- assertVisible:
+    id: current_odometer
+    text: 45,240.0 km
+- assertVisible:
+    id: event_note_icon
+- scrollUntilVisible:
+    element:
+      id: view_log
+    centerElement: true
+- tapOn:
+    id: view_log
+- assertVisible: Fixture Car log
+- assertVisible: +30.0 km
+- assertVisible: +10.0 km
+- assertVisible: Initial odometer
+- assertVisible:
+    id: event_note_icon
+- tapOn:
+    id: event_note_icon
+- assertVisible:
+    id: event_details_title
+    text: Distance
+- assertVisible:
+    id: event_details_figure
+    text: +10.0 km
+- assertVisible:
+    id: event_details_note
+    text: borrowed to Sam
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible: Fixture Car log
+    timeout: 10000

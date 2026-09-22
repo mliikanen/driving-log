@@ -22,6 +22,11 @@ Project context and artifact rules live in `openspec/config.yaml`.
 - `androidApp/`: Android application shell
 - `iosApp/`: iOS shell (Xcode project is created on a Mac)
 - `openspec/`: specs and changes
+- `docs/`: operational documentation for how the project is built, tested and released — not app behavior (that's
+  `openspec/specs/`). Read the relevant file here before touching an area it covers, e.g. `docs/test-strategy.md`
+  before changing tests, `docs/test-fixtures.md` before adding a Maestro fixture or a `.sqm` migration (a migration
+  makes every checked-in fixture stale; that file says exactly what to run), `docs/color-palette.md` before a color
+  change.
 
 ## Commands
 

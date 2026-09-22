@@ -73,3 +73,38 @@ sqldelight {
         }
     }
 }
+
+// GenerateFixturesTest is a fixture-writing tool run only via :shared:generateMaestroFixtures (below), never as
+// part of the ordinary test suite: it needs a system property that task alone sets, and it writes files as a side
+// effect, which no other test should do. `withType(...).configureEach` (not `tasks.named`) since AGP registers
+// "testAndroidHostTest" lazily, after this script's own top-level statements already ran.
+//
+// The ordinary suite gets the fixtures directory too (as maestroFixturesDir), for FixtureFreshnessTest: it opens
+// every checked-in maestro/assets/fixtures/*.db and asserts its PRAGMA user_version still matches
+// DrivingLogDatabase.Schema.version, so a migration that outpaces the checked-in fixtures fails fast, here, in a
+// unit test - not later, mysteriously, in a slow Maestro flow on a device.
+tasks.withType<Test>().configureEach {
+    if (name == "testAndroidHostTest") {
+        filter { excludeTestsMatching("com.mikonoma.drivinglog.vehicle.fixtures.GenerateFixturesTest") }
+    }
+    systemProperty("maestroFixturesDir", rootDir.resolve("maestro/assets/fixtures").absolutePath)
+}
+
+// speed-up-tests-with-db-fixtures: regenerates maestro/assets/fixtures/*.db by running the real repository code
+// (GenerateFixtures.kt, an androidHostTest test that writes files as a side effect rather than asserting) on the
+// JVM. Run on demand when a fixture's scenario changes or the schema migrates; its output is checked in, not
+// regenerated on every build. Reuses testAndroidHostTest's own already-resolved classpath (rather than resolving
+// the compilation's dependencies again as a plain JavaExec, which hits AGP variant-ambiguity errors) filtered down
+// to just this one test.
+tasks.register<Test>("generateMaestroFixtures") {
+    group = "verification"
+    description = "Regenerates maestro/assets/fixtures/*.db from the real repository code (JVM)."
+    val hostTest = tasks.named<Test>("testAndroidHostTest").get()
+    dependsOn(hostTest.taskDependencies.getDependencies(hostTest))
+    testClassesDirs = hostTest.testClassesDirs
+    classpath = hostTest.classpath
+    filter { includeTestsMatching("com.mikonoma.drivinglog.vehicle.fixtures.GenerateFixturesTest") }
+    systemProperty("maestroFixturesDir", rootDir.resolve("maestro/assets/fixtures").absolutePath)
+    outputs.upToDateWhen { false }
+    testLogging { showStandardStreams = true }
+}

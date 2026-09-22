@@ -55,6 +55,12 @@ for area in "${areas[@]}"; do
   fi
   echo "== $area"
   if [ -n "${single_flow:-}" ]; then
+    # speed-up-tests-with-db-fixtures: a flow paired with a <flow>.fixture file (one line, the fixture's name) is
+    # seeded before it runs, in place of building its state through the UI - see docs/test-fixtures.md. Seeding
+    # happens here, not inside the flow's own .yaml, since Maestro has no generic "run a shell command" step.
+    if [ -f "$area/$single_flow.fixture" ]; then
+      ADB="$ADB" ./seed-fixture.sh "$(cat "$area/$single_flow.fixture")"
+    fi
     # One flow: a config listing the setup (when the area has one) and that flow, in that order.
     { echo "flows:"; [ -f "$area/setup.yaml" ] && echo "  - $area/setup.yaml"; echo "  - $area/$single_flow.yaml"
       echo "executionOrder:"; echo "  continueOnFailure: false"; echo "  flowsOrder:"; [ -f "$area/setup.yaml" ] && echo "    - setup"; echo "    - $single_flow"; } > "$config"

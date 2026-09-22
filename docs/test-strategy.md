@@ -55,6 +55,10 @@ The manifests are Maestro configuration files over the one `maestro/` workspace 
 
 `run.sh` also enables the device's "Show taps" setting once per invocation (not restored afterward), so a failing flow's recording shows exactly where each tap landed.
 
+A flow whose subject is how already-stored data renders (not the UI path that builds it) may instead start from a
+fixture database seeded directly onto the device, rather than building that state through the UI — see
+[`docs/test-fixtures.md`](test-fixtures.md), including how a fixture is kept in sync with the schema.
+
 ## What is run when
 
 | When | What |

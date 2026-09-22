@@ -93,16 +93,28 @@ true` to overwrite, not for that run's own end): a fixture-seeded flow simply st
 resulting state — whatever the flow's own steps changed — stays on the device exactly as the flow left it, so a
 failure's on-device state can be inspected afterward without re-running anything.
 
+### One fixture is reused by every case it already covers, not duplicated per flow
+Per the developer's explicit direction: before adding a new named fixture, an existing one that already holds the
+needed state is reused — a new *case* (in an existing flow, or a new flow that seeds the same fixture) rather than
+a near-duplicate fixture with slightly different data. `docs/test-fixtures.md` keeps a table of every fixture and
+what uses it specifically so this is checkable before adding one. The fewer fixtures there are, the less there is
+to keep in sync with the schema (see `FixtureFreshnessTest` above) and the more of `GenerateFixtures.kt`'s
+scenario-building code is shared rather than copy-pasted.
+
 ## Risks / Trade-offs
 
 - **[Risk]** `run-as` requires the target build to be debuggable and the emulator/device to allow it → **Mitigation**:
   every device this project's Maestro suite already runs on is the debug build on an emulator/device set up for
   testing; not a new constraint.
 - **[Risk]** A fixture `.db` can go stale relative to the schema (a migration adds a column the fixture generator's
-  scenario never touches, say) → **Mitigation**: the generator task is cheap to re-run and should be re-run whenever
-  a fixture's own scenario changes; because it goes through the real repository code, a schema change that breaks
-  compatibility fails the generator task loudly (a compile or runtime error) rather than silently producing a
-  fixture the app cannot read.
+  scenario never touches, say) → **Mitigation, strengthened during implementation**: not just documentation —
+  `FixtureFreshnessTest` (`shared/src/androidHostTest`) runs as part of the ordinary test suite and opens every
+  checked-in fixture, asserting its stamped `PRAGMA user_version` still matches `DrivingLogDatabase.Schema.version`.
+  A migration that outpaces the fixtures fails this fast, JVM-only test immediately, with a message naming the
+  fix (`./gradlew :shared:generateMaestroFixtures`) — not, mysteriously and much later, a Maestro flow on a device.
+  This was prompted directly by discovering, while building this change, that a *stale-in-the-other-direction* bug
+  (a fixture generated without stamping the version at all) silently broke the app's reactive queries on-device
+  with no error surfaced anywhere obvious — exactly the failure mode this test now catches at the source.
 - **[Risk]** The `clearState: false` requirement is easy to get wrong when writing a new fixture-seeded flow →
   **Mitigation**: called out explicitly in the how-to documentation and in a fixture-seeded flow's own header
   comment convention (task 5); no way to enforce it mechanically without teaching `run.sh` to inspect the flow's
