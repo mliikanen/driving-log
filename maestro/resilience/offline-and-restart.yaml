@@ -16,7 +16,7 @@ appId: com.mikonoma.drivinglog
     id: vehicle_picture
 - tapOn: Family car
 - tapOn:
-    id: log_distance
+    id: log_event
 - tapOn:
     id: odo_field
 - inputText: "300"

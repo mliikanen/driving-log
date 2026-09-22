@@ -14,7 +14,7 @@ appId: com.mikonoma.drivinglog
       ODOMETER: "1000"
 - tapOn: Family car
 - tapOn:
-    id: log_distance
+    id: log_event
 - assertVisible: ${TIME_PATTERN}
 - tapOn:
     id: log_time

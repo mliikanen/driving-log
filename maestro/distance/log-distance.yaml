@@ -19,7 +19,7 @@ appId: com.mikonoma.drivinglog
     text: 45,200.3 km
 # By trip distance (the way that is preselected): 100.5 km.
 - tapOn:
-    id: log_distance
+    id: log_event
 - assertVisible: Log distance
 - assertVisible:
     id: log_way_distance
@@ -42,7 +42,7 @@ appId: com.mikonoma.drivinglog
 - assertVisible: +100.5 km
 # By a new odometer count: the known odometer includes the distance just logged, and the distance is shown live.
 - tapOn:
-    id: log_distance
+    id: log_event
 - tapOn:
     id: log_way_odometer
 - assertVisible:
@@ -66,7 +66,7 @@ appId: com.mikonoma.drivinglog
 - assertVisible: +20.0 km
 # For yesterday, in another time zone chosen from the searchable list (the date picker takes the digits typed).
 - tapOn:
-    id: log_distance
+    id: log_event
 - tapOn:
     id: log_date
 - tapOn: Switch to text input mode

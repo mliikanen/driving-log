@@ -63,7 +63,7 @@ appId: com.mikonoma.drivinglog
     id: landing_vehicles
 - tapOn: Bike
 - tapOn:
-    id: log_distance
+    id: log_event
 - assertNotVisible:
     id: log_vehicle_selector
 - tapOn:

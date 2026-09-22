@@ -63,7 +63,7 @@ fun VehicleLogContent(state: VehicleLogState, deviceLocale: DeviceLocale, device
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = ScreenBottomSpace),
                 ) {
                     items(state.events, key = { it.id }) { event ->
-                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("log_event"))
+                        EventRow(event, state.unit, symbols, deviceZone, timeFormat, Modifier.testTag("log_history_row"))
                         HorizontalDivider()
                     }
                 }

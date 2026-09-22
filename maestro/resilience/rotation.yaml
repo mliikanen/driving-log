@@ -52,9 +52,9 @@ appId: com.mikonoma.drivinglog
 - runScript: ../subflows/yesterday.js
 - scrollUntilVisible:
     element:
-      id: log_distance
+      id: log_event
 - tapOn:
-    id: log_distance
+    id: log_event
 - tapOn:
     id: log_way_odometer
 - tapOn:

@@ -12,7 +12,7 @@ appId: com.mikonoma.drivinglog
       ODOMETER: "45200"
 - tapOn: Family car
 - tapOn:
-    id: log_distance
+    id: log_event
 - scrollUntilVisible:
     element:
       id: odo_field

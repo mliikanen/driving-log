@@ -92,11 +92,11 @@ about that vehicle: the previous known odometer, the checks of a new odometer co
 ## ADDED Requirements
 
 ### Requirement: The kind of event is chosen
-The system SHALL show a "Kind" selector at the top of the log event form: a dropdown, in the same style as the vehicle selector, listing the kinds of event the form can log — today only "Distance", which SHALL be selected. When the form is opened from the Home screen the Kind selector SHALL share one row with the vehicle selector, the two of equal width and height, the Kind selector first (on the left). When the form is opened from a vehicle's details screen (where there is no vehicle selector) the Kind selector SHALL take the row alone. Choosing the only kind SHALL leave the form as it is; further kinds and what choosing them does are added by later changes.
+The system SHALL show a "Kind" selector at the top of the log event form: a dropdown, in the same style as the vehicle selector, listing the kinds of event the form can log — today only "Distance", which SHALL be selected. Since there is only one kind today, the selector SHALL be a disabled Material 3 component (shown in Material's disabled colors, exactly as the Home screen's not-yet-available actions are) and SHALL NOT react to a tap; it becomes usable once a later change adds a second kind. When the form is opened from the Home screen the Kind selector SHALL share one row with the vehicle selector, the two of equal width and height, the Kind selector first (on the left). When the form is opened from a vehicle's details screen (where there is no vehicle selector) the Kind selector SHALL take the row alone.
 
-#### Scenario: The kind selector is shown on both routes
+#### Scenario: The kind selector is shown on both routes, disabled
 - **WHEN** the user opens the log event form, from the Home screen or from a vehicle's details screen
-- **THEN** a "Kind" selector is shown at the top of the form, showing "Distance" selected
+- **THEN** a "Kind" selector is shown at the top of the form, showing "Distance" selected and disabled
 
 #### Scenario: Sharing the row with the vehicle selector
 - **WHEN** the form is opened from the Home screen
@@ -106,6 +106,6 @@ The system SHALL show a "Kind" selector at the top of the log event form: a drop
 - **WHEN** the form is opened from a vehicle's details screen
 - **THEN** the Kind selector is shown alone, the full width of the row, and no vehicle selector is shown
 
-#### Scenario: Choosing the only kind changes nothing
-- **WHEN** the user opens the Kind selector and chooses "Distance" again
-- **THEN** the form is unchanged
+#### Scenario: Tapping the disabled selector does nothing
+- **WHEN** the user taps the Kind selector
+- **THEN** nothing happens: it does not open, and the form is unchanged
