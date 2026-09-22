@@ -1,56 +1,79 @@
-# Design (stub)
+# Design
 
 ## Context
 
-The project context (`openspec/config.yaml`) states a project-wide principle: *"The data model shall be additive,
-not accumulative: every trip, odometer reading, refueling and diary entry is stored as its own record, and records
-are only added, never merged into running totals."* The storage layer takes this literally: `VehicleEvent.sq`'s
-comment says *"The log is append-only: there is deliberately no update or delete query for events"*, and
-`distance-logging`'s "Logging only adds to the log" and `vehicle-log`'s "The log is not changed by editing the
-vehicle" both codify it as a spec requirement today. `add-event-details-view` gives a place to open an edit from;
-this change is what happens when the user acts on it.
+The project context states: *"The data model shall be additive, not accumulative: every trip, odometer reading,
+refueling and diary entry is stored as its own record, and records are only added, never merged into running
+totals."* `VehicleEvent.sq`'s comment says *"The log is append-only: there is deliberately no update or delete query
+for events"*, and `distance-logging`'s "Logging only adds to the log" and `vehicle-log`'s "The log is not changed by
+editing the vehicle" both codify it today. The previous version of this change's design (written as a stub) called
+the choice between mutating a row in place and appending a superseding correction record "the central open
+question... not a detail to settle while writing tasks... it must be decided before `/opsx:apply`, with the
+developer, not guessed." The developer has now made that decision directly: mutate in place, by the same reasoning
+notes already use (a note is a plain field that gets overwritten, not versioned).
 
-## The central open question: mutate in place, or append a correction
+See proposal.md for the motivation and the exact scope (note only). See the `event-details`, `vehicle-log` and
+`distance-logging` spec deltas for the precise behavior.
 
-**Option A — mutate the stored row.** An `updateEvent(...)` query is added; the edited fields are overwritten in
-place. Simple, and matches what a user pictures happening. But it breaks the append-only invariant the storage layer
-and two existing spec requirements currently guarantee, and every place that derives something from the log by
-folding over it in order (the current odometer, the previous known odometer at a time, the remembered tenths choice)
-needs re-auditing: none of them were written expecting an event's fields to change after the fact, only for new ones
-to be added after existing ones.
+## Goals / Non-Goals
 
-**Option B — append a correction record that supersedes the original.** A new kind of event (or a `supersedes`
-reference on a new row of the same kind) is added; the original event stays exactly as saved, and the derivation
-logic is taught to use the latest correction of an event instead of its original fields wherever it reads one. This
-keeps the additive principle intact and gives a natural audit trail for free, but is a materially bigger change: the
-current-odometer and previous-known-odometer folds (`vehicle-log`) need a "latest version of this event" step, and a
-correction of an old entry can retroactively change every current-odometer value computed since — including ones
-already shown or exported, if exporting exists by the time this is built.
+**Goals:**
+- Let an already-saved event's note be added, changed or cleared, reusing the existing note-editing UI as-is.
+- Keep the change small and low-risk by scoping it to the one field (note) that provably cannot affect any
+  derivation the log's other requirements depend on.
 
-Both read identically to the user in the common case (the figure they see is now what they typed). They differ in
-what the rest of the system can assume about the log, and in how much of `vehicle-log`'s derivation logic needs to
-change. **This is not a detail to settle while writing tasks — it changes the spec delta above and the shape of the
-implementation, so it must be decided before `/opsx:apply`, with the developer, not guessed.**
+**Non-Goals:**
+- Editing the figure, moment, unit, time zone, way or kind of a logged event. Nothing here touches
+  `distance-logging`'s validation requirements ("The new odometer must be higher than the previous known odometer",
+  etc.) or `vehicle-log`'s odometer-derivation requirements, because none of the fields those depend on become
+  editable.
+- Photos — `add-event-pictures` extends this same "Edit" action to manage them, as its own change.
+- Deleting an event outright. "Editing... info" is not "removing an event."
 
-## Open questions
+## Decisions
 
-1. Mutate in place (Option A) or append a correction (Option B)? This is the question that gates everything else
-   below.
-2. Which fields can be corrected — everything the log event form captures (figure, way, moment, zone, unit, note,
-   and eventually a picture), or a narrower set (say, not the vehicle it belongs to, not its kind)?
-3. Does correcting a "New odometer" entry re-run the "is this higher than the previous known odometer" check
-   (`distance-logging`, "The new odometer must be higher than the previous known odometer") against the log as it
-   now stands, and what happens if the correction would fail it?
-4. Is there a limit on what can be corrected once other events have been logged after it (say, correcting an old
-   odometer anchor whose reading many later distance entries build on)?
-5. Should the original figures remain visible anywhere (an audit trail), or does the corrected value simply replace
-   what is shown, with no record of the original kept? Option B gives this for free; Option A does not, unless a
-   history is added on top of it.
-6. Does this reuse the log event form as-is (pre-filled) or need its own, simpler form?
+### Mutate in place, narrowly scoped to the note field only
+The original stub weighed two options for editing *in general* (any field): mutate in place, or append a correction
+record that supersedes the original. Scoping this change to the note field only changes the shape of that trade-off
+completely: the note plays no part in `vehicle-log`'s current-odometer or previous-known-odometer folds (those read
+only `type`, `occurred_at`, `odometer_meters`, `distance_meters`), so a mutated note can never retroactively change a
+figure anywhere else in the log — the exact risk that made "append a correction" attractive for the general case
+(question 4 of the original design: *"a correction of an old entry can retroactively change every current-odometer
+value computed since"*) simply does not exist for a note-only edit. Mutating in place is therefore not just simpler,
+it has no downside here: no derivation logic needs re-auditing, and there is nothing to keep a correction history of
+that would be lost.
 
-## Risks
+If a future change widens editing to the figure or moment, that trade-off returns and would need its own decision —
+this change deliberately does not pre-commit to an approach for that case.
 
-- **This is the biggest architectural departure of the three follow-ups.** `add-event-details-view` and
-  `add-event-pictures` are additive; this one either breaks or reinterprets an explicit, currently-enforced
-  invariant. It should not be started until question 1 is answered, and answering it may be worth a design
-  discussion on its own rather than a quick pick during `/opsx:apply`.
+### Reuse the note editor as-is, in an "edit a saved note" mode
+`add-event-notes`' full-screen editor (`shared/.../vehicle/distance/LogEventScreen.kt`'s note editor content, and
+its processor's pending-note intents) already implements exactly the interaction wanted here: seeded with the
+current text, back navigation commits what was typed (attaching blank text as "no note"), and an explicit "Discard"
+returns without changing anything. The only difference is what "commit" does: attach to an in-memory pending draft
+(composing) vs. call `updateEventNote` directly (editing a saved event). The editor's own requirement text
+(`distance-logging`, "The full-screen note editor") is unchanged by this delta; only `event-details` gains a new
+requirement describing the "Edit" action that opens it in the second mode.
+
+### No separate "remove note" action on the details screen
+The compose-time note element has its own dedicated trash-can action with a confirmation dialog, because on that
+screen the note preview and the removal action sit side by side, at all times, as a compact form field. The details
+screen is different: "Edit" already opens the same editor, and clearing the text there and navigating back already
+removes the note (mirroring the compose-time editor's own "Attaching blank text clears the note" scenario), so a
+second, separate removal entry point on the details screen would just be a shortcut for the same two taps — not
+worth the extra UI for this change's narrow scope.
+
+### The "Edit" action is available whether or not a note exists yet
+Symmetric with the compose-time note element (tapping it opens the editor whether or not a note is currently
+pending): "Edit" lets a note be added to an event that was logged without one, not only changed or cleared. This
+needs no extra design — it is the same editor, seeded with an empty string when the event has no note.
+
+## Risks / Trade-offs
+
+- **[Risk]** Breaking the storage layer's literal "no update query" comment/convention, even scoped to one column →
+  **Mitigation**: the query is named and scoped narrowly (`updateEventNote`, note only, never touching
+  `odometer_meters`/`distance_meters`/`occurred_at`/`type`), and the spec carve-outs name exactly this one action,
+  so nothing else can widen it by accident without its own spec change.
+- **[Risk]** No audit trail — the previous note text is simply gone once overwritten → **Mitigation**: accepted,
+  matching how the compose-time editor already works (nothing keeps the text a user types over while composing,
+  either); revisit only if a future change asks for one.
