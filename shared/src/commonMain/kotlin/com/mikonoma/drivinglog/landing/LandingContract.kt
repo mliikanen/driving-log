@@ -27,7 +27,7 @@ fun landingTiles(hasVehicles: Boolean, isLoading: Boolean): List<LandingTile> = 
         hasVehicles -> LandingTile(LandingTileId.VEHICLES, "Vehicles", LandingIcon.VEHICLES, enabled = true)
         else -> LandingTile(LandingTileId.VEHICLES, "Add vehicle", LandingIcon.VEHICLES, enabled = true)
     },
-    LandingTile(LandingTileId.LOG_EVENT, "Log event", LandingIcon.LOG_EVENT, enabled = false),
+    LandingTile(LandingTileId.LOG_EVENT, "Log event", LandingIcon.LOG_EVENT, enabled = hasVehicles),
     LandingTile(LandingTileId.TRIP, "Trip", LandingIcon.TRIP, enabled = false),
     LandingTile(LandingTileId.PLACEHOLDER, "Placeholder", LandingIcon.PLACEHOLDER, enabled = false),
 )
@@ -43,9 +43,11 @@ data class LandingState(
 sealed interface LandingIntent : ViewIntent {
     data object OpenVehicles : LandingIntent
     data object AddVehicle : LandingIntent
+    data object OpenLogEvent : LandingIntent
 }
 
 sealed interface LandingEffect : SideEffect {
     data object ShowVehicles : LandingEffect
     data object ShowAddVehicle : LandingEffect
+    data object ShowLogEvent : LandingEffect
 }

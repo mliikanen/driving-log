@@ -75,12 +75,18 @@ class LandingProcessorTest {
     }
 
     @Test
-    fun exactlyTheThreePlaceholdersAreNotEnabled() {
+    fun theTripAndPlaceholderTilesAreNeverEnabled() {
         for (hasVehicles in listOf(true, false)) {
             val disabled = landingTiles(hasVehicles, isLoading = false).filterNot { it.enabled }.map { it.id }
 
-            assertEquals(listOf(LandingTileId.LOG_EVENT, LandingTileId.TRIP, LandingTileId.PLACEHOLDER), disabled)
+            assertTrue(disabled.containsAll(listOf(LandingTileId.TRIP, LandingTileId.PLACEHOLDER)))
         }
+    }
+
+    @Test
+    fun logEventIsEnabledOnlyWithAVehicle() {
+        assertTrue(tile(landingTiles(hasVehicles = true, isLoading = false), LandingTileId.LOG_EVENT).enabled)
+        assertFalse(tile(landingTiles(hasVehicles = false, isLoading = false), LandingTileId.LOG_EVENT).enabled)
     }
 
     @Test
@@ -136,6 +142,23 @@ class LandingProcessorTest {
         LandingProcessor(repository).test {
             dispatch(LandingIntent.AddVehicle)
             expectSideEffect(LandingEffect.ShowAddVehicle)
+        }
+    }
+
+    @Test
+    fun openingLogEventWithAVehicleShowsTheForm() = runTest {
+        repository.seedVehicle("v1", "Family car")
+
+        LandingProcessor(repository).test {
+            dispatch(LandingIntent.OpenLogEvent)
+            expectSideEffect(LandingEffect.ShowLogEvent)
+        }
+    }
+
+    @Test
+    fun openingLogEventWithNoVehicleDoesNothing() = runTest {
+        LandingProcessor(repository).test {
+            dispatch(LandingIntent.OpenLogEvent)
         }
     }
 }

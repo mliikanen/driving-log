@@ -56,6 +56,7 @@ fun LandingScreen(
     processor: LandingProcessor,
     onShowVehicles: () -> Unit,
     onShowAddVehicle: () -> Unit,
+    onShowLogEvent: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
 
@@ -64,6 +65,7 @@ fun LandingScreen(
             when (effect) {
                 LandingEffect.ShowVehicles -> onShowVehicles()
                 LandingEffect.ShowAddVehicle -> onShowAddVehicle()
+                LandingEffect.ShowLogEvent -> onShowLogEvent()
             }
         }
     }
@@ -72,12 +74,13 @@ fun LandingScreen(
         state = state,
         // The first tile is "Vehicles" or, with none, "Add vehicle": one tile, whose action follows what it says.
         onFirstTile = { processor.dispatch(if (state.hasVehicles) LandingIntent.OpenVehicles else LandingIntent.AddVehicle) },
+        onLogEvent = { processor.dispatch(LandingIntent.OpenLogEvent) },
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LandingContent(state: LandingState, onFirstTile: () -> Unit) {
+fun LandingContent(state: LandingState, onFirstTile: () -> Unit, onLogEvent: () -> Unit = {}) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -101,7 +104,7 @@ fun LandingContent(state: LandingState, onFirstTile: () -> Unit) {
                 val tiles = state.tiles
                 Row(horizontalArrangement = Arrangement.spacedBy(Gap)) {
                     LandingTileCard(tiles[0], tileWidth, tileHeight, onClick = onFirstTile)
-                    LandingTileCard(tiles[1], tileWidth, tileHeight, onClick = {})
+                    LandingTileCard(tiles[1], tileWidth, tileHeight, onClick = onLogEvent)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Gap)) {
                     LandingTileCard(tiles[2], tileWidth, tileHeight, onClick = {})

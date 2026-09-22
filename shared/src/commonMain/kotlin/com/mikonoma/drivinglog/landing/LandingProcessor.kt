@@ -21,5 +21,6 @@ class LandingProcessor(
     override suspend fun map(intent: LandingIntent): Action<LandingState, LandingEffect>? = when (intent) {
         LandingIntent.OpenVehicles -> sideEffect { LandingEffect.ShowVehicles }
         LandingIntent.AddVehicle -> sideEffect { LandingEffect.ShowAddVehicle }
+        LandingIntent.OpenLogEvent -> if (state.hasVehicles) sideEffect { LandingEffect.ShowLogEvent } else null
     }
 }

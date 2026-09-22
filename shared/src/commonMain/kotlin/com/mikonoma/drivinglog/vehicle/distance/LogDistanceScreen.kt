@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -25,10 +26,15 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -57,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.OdometerField
+import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.format.formatTimeOfDay
@@ -134,6 +141,10 @@ fun LogDistanceContent(
                 state.isLoading -> Unit
                 state.notFound -> Text("This vehicle no longer exists.")
                 else -> {
+                    // Only when the form was opened without a vehicle (from the Home screen): a vehicle's details screen fixes it and shows no selector.
+                    if (state.vehicles.isNotEmpty()) {
+                        VehicleSelector(state.vehicles, state.selectedVehicle) { onIntent(LogDistanceIntent.VehicleSelected(it)) }
+                    }
                     WayChoice(state.way) { onIntent(LogDistanceIntent.WayChanged(it)) }
                     MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
                     if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
@@ -178,6 +189,48 @@ fun LogDistanceContent(
             onPicked = { onIntent(LogDistanceIntent.ZoneChanged(it)) },
         )
     }
+}
+
+/**
+ * The vehicle to log for, when the form was opened without one: Material 3's own dropdown pattern
+ * ([ExposedDropdownMenuBox], [DropdownMenuItem], the trailing icon Material gives it), so its expansion, focus, keyboard and
+ * accessibility behavior and its colors are Material's, none of it re-implemented here.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleSelector(vehicles: List<VehicleChoice>, selected: VehicleChoice?, onSelect: (String) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selected?.name.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Vehicle") },
+            leadingIcon = { VehicleChoiceIcon(selected) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("log_vehicle_selector"),
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            for (vehicle in vehicles) {
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(vehicle.name)
+                            vehicle.licensePlate?.let { SubtleText(it) }
+                        }
+                    },
+                    leadingIcon = { VehicleChoiceIcon(vehicle) },
+                    onClick = { onSelect(vehicle.id); expanded = false },
+                    modifier = Modifier.testTag("log_vehicle_option_${vehicle.id}"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehicleChoiceIcon(vehicle: VehicleChoice?) {
+    VehiclePicture(vehicle?.pictureUri, vehicle?.type, vehicle?.color ?: com.mikonoma.drivinglog.vehicle.domain.VehicleColors.default, Modifier.size(24.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
