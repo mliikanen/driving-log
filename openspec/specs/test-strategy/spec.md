@@ -62,6 +62,19 @@ fresh emulator with the debug app installed SHALL be all a manifest needs, and o
 - **WHEN** the emulator holds many copies of the test photos from earlier runs
 - **THEN** the run command clears them before the setup flow uploads the photos again
 
+### Requirement: A test run shows where each tap lands
+The system SHALL enable the device's visual touch indicator ("Show taps") once at the start of a `run.sh`
+invocation, before any manifest's flows run, regardless of how many areas or flows that invocation covers. The
+system SHALL NOT disable it again after the run finishes.
+
+#### Scenario: One invocation, several manifests
+- **WHEN** `run.sh` is invoked with more than one manifest (or `--all`)
+- **THEN** the touch indicator is enabled once, before the first manifest's flows run, not once per manifest or per flow
+
+#### Scenario: `adb` unavailable
+- **WHEN** `run.sh` runs without `adb` available
+- **THEN** enabling the touch indicator is skipped the same way the existing test-photo cleanup already is, with a message, and the run continues
+
 ### Requirement: The final regression run does not include Maestro
 The final regression run of a change (the run before it is archived) SHALL be the shared unit and integration tests, the Android debug build and the validation of the specs, and
 SHALL NOT include Maestro. While a change is being applied, the manifests of the functionality it touches SHALL be run. The whole Maestro suite SHALL be run only for a major
