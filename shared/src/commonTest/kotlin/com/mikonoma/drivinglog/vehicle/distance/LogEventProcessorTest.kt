@@ -31,7 +31,7 @@ import kotlinx.datetime.TimeZone
 import org.fuusio.kide.test.test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class LogDistanceProcessorTest {
+class LogEventProcessorTest {
 
     /** 2026-09-20 13:30 UTC: 16:30 in Helsinki, 09:30 in New York. */
     private val now = Instant.parse("2026-09-20T13:30:00Z")
@@ -56,13 +56,13 @@ class LogDistanceProcessorTest {
 
     private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore()
 
-    private fun processor(vehicleId: String = "v1") = LogDistanceProcessor(vehicleId, repository, pictures, clock, deviceZone)
+    private fun processor(vehicleId: String = "v1") = LogEventProcessor(vehicleId, repository, pictures, clock, deviceZone)
 
-    private fun LogDistanceProcessor.type(vararg digits: Int) {
-        for (d in digits) dispatch(LogDistanceIntent.OdometerEdited(state.activeEntry.digits + d))
+    private fun LogEventProcessor.type(vararg digits: Int) {
+        for (d in digits) dispatch(LogEventIntent.OdometerEdited(state.activeEntry.digits + d))
     }
 
-    private fun LogDistanceProcessor.error() = state.error
+    private fun LogEventProcessor.error() = state.error
 
     // Defaults
 
@@ -72,7 +72,7 @@ class LogDistanceProcessorTest {
             repository.seedVehicle(unit.name, unit.name, unit = unit)
             repository.seedEvents(unit.name, listOf(initialEvent("i-${unit.name}", initialAt, 1_000)))
 
-            val state = LogDistanceProcessor(unit.name, repository, pictures, clock, deviceZone).state
+            val state = LogEventProcessor(unit.name, repository, pictures, clock, deviceZone).state
 
             assertEquals(unit, state.unit, unit.name)
             assertEquals(unit, state.tripDistance.unit, unit.name)
@@ -123,15 +123,15 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.type(3, 0)
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 5, 2, 5, 0)
 
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.TRIP_DISTANCE))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.TRIP_DISTANCE))
 
         assertEquals("30", processor.state.tripDistance.digits)
         assertEquals("45250", processor.state.newOdometer.digits)
         assertEquals("30", processor.state.activeEntry.digits)
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         assertEquals("45250", processor.state.activeEntry.digits)
     }
 
@@ -142,10 +142,10 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.type(1, 2, 3)
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 5, 6)
 
-        processor.dispatch(LogDistanceIntent.UnitFamilySelected(miles = true))
+        processor.dispatch(LogEventIntent.UnitFamilySelected(miles = true))
 
         assertEquals(OdometerUnit.MILES, processor.state.unit)
         assertEquals("123", processor.state.tripDistance.digits)
@@ -159,11 +159,11 @@ class LogDistanceProcessorTest {
         val processor = processor()
         processor.type(1, 2, 3)
 
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = true))
 
         assertEquals(OdometerUnit.KILOMETERS_TENTHS, processor.state.unit)
         assertEquals(1230L, processor.state.tripDistance.steps) // 123 km rescaled to 123.0 in tenths
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = false))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = false))
         assertEquals(OdometerUnit.KILOMETERS, processor.state.unit)
         assertEquals(123L, processor.state.tripDistance.steps)
     }
@@ -174,8 +174,8 @@ class LogDistanceProcessorTest {
         val processor = processor()
         val seen = mutableSetOf<OdometerUnit>()
         for (miles in listOf(false, true)) for (tenths in listOf(false, true)) {
-            processor.dispatch(LogDistanceIntent.UnitFamilySelected(miles))
-            processor.dispatch(LogDistanceIntent.TenthsChanged(tenths))
+            processor.dispatch(LogEventIntent.UnitFamilySelected(miles))
+            processor.dispatch(LogEventIntent.TenthsChanged(tenths))
             seen += processor.state.unit
             assertEquals(miles, processor.state.unit.isMiles)
             assertEquals(tenths, processor.state.unit.hasTenths)
@@ -191,7 +191,7 @@ class LogDistanceProcessorTest {
         val processor = processor()
         val before = processor.state.moment
 
-        processor.dispatch(LogDistanceIntent.ZoneChanged("America/New_York"))
+        processor.dispatch(LogEventIntent.ZoneChanged("America/New_York"))
 
         assertEquals(LocalDateTime(2026, 9, 20, 16, 30), processor.state.localDateTime)
         assertEquals("America/New_York", processor.state.zoneId)
@@ -204,8 +204,8 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
 
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 19)))
-        processor.dispatch(LogDistanceIntent.TimeChanged(8, 5))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 19)))
+        processor.dispatch(LogEventIntent.TimeChanged(8, 5))
 
         assertEquals(LocalDateTime(2026, 9, 19, 8, 5), processor.state.localDateTime)
     }
@@ -217,11 +217,11 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
 
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.FieldEmpty, processor.error())
 
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.FieldEmpty, processor.error())
         assertEquals(emptyList(), repository.distanceCalls)
     }
@@ -232,7 +232,7 @@ class LogDistanceProcessorTest {
         val processor = processor()
         processor.type(0)
 
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
         assertEquals(LogDistanceError.DistanceNotPositive, processor.error())
         assertEquals(emptyList(), repository.distanceCalls)
@@ -242,15 +242,15 @@ class LogDistanceProcessorTest {
     fun aLowerOrEqualCountIsRefusedNamingTheKnownOdometer() {
         seedVehicle() // known odometer now: 45 200 km + 30 km
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
 
         processor.type(4, 5, 1, 0, 0)
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.OdometerNotHigher(Distance(45_230_000)), processor.error())
 
-        processor.dispatch(LogDistanceIntent.OdometerCleared)
+        processor.dispatch(LogEventIntent.OdometerCleared)
         processor.type(4, 5, 2, 3, 0)
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.OdometerNotHigher(Distance(45_230_000)), processor.error())
         assertEquals(emptyList(), repository.distanceCalls)
     }
@@ -260,9 +260,9 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.type(1, 0)
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 21)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 21)))
 
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
         assertEquals(LogDistanceError.TimeInFuture, processor.error())
         assertEquals(emptyList(), repository.distanceCalls)
@@ -274,14 +274,14 @@ class LogDistanceProcessorTest {
         val processor = processor()
         processor.type(1)
         // 16:30 Helsinki now (09:30 New York). 10:00 New York has not happened; 09:00 New York has.
-        processor.dispatch(LogDistanceIntent.ZoneChanged("America/New_York"))
-        processor.dispatch(LogDistanceIntent.TimeChanged(10, 0))
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.ZoneChanged("America/New_York"))
+        processor.dispatch(LogEventIntent.TimeChanged(10, 0))
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.TimeInFuture, processor.error())
 
-        processor.dispatch(LogDistanceIntent.TimeChanged(9, 0))
+        processor.dispatch(LogEventIntent.TimeChanged(9, 0))
         assertNull(processor.error())
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertNull(processor.error())
         assertEquals(1, repository.distanceCalls.size)
     }
@@ -290,15 +290,15 @@ class LogDistanceProcessorTest {
     fun aNewOdometerBeforeTheInitialOdometerIsSavedAsAnAnchor() = runTest {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 4, 0, 0, 0)
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
 
         assertNull(processor.state.knownOdometer)
         assertNull(processor.state.previewDistance)
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertNull(processor.error())
@@ -315,13 +315,13 @@ class LogDistanceProcessorTest {
     fun anAnchorSavedWithTenthsRemembersThem() = runTest {
         seedVehicle(OdometerUnit.KILOMETERS_TENTHS)
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 4, 0, 0, 0, 5)
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         val call = repository.anchorCalls.single()
@@ -333,10 +333,10 @@ class LogDistanceProcessorTest {
     fun anAnchorWithNothingTypedIsRefused() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
 
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
         assertEquals(LogDistanceError.FieldEmpty, processor.error())
         assertEquals(emptyList(), repository.anchorCalls)
@@ -346,12 +346,12 @@ class LogDistanceProcessorTest {
     fun aFailedAnchorSaveLetsTheUserTryAgain() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 4, 0, 0, 0)
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
         repository.distanceFailure = IllegalStateException("disk full")
 
-        runCatching { processor.dispatch(LogDistanceIntent.Save) }
+        runCatching { processor.dispatch(LogEventIntent.Save) }
 
         assertFalse(processor.state.isSaving)
         assertEquals(emptyList(), repository.anchorCalls)
@@ -372,13 +372,13 @@ class LogDistanceProcessorTest {
             ),
         )
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 17))) // 16:30 Helsinki, after both
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 17))) // 16:30 Helsinki, after both
 
         assertEquals(Distance(44_030_000), processor.state.knownOdometer)
 
         // Before the anchor nothing is known again.
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 1)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 1)))
         assertNull(processor.state.knownOdometer)
     }
 
@@ -387,11 +387,11 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.type(3, 0)
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 12)))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertEquals(1, repository.distanceCalls.size)
@@ -406,7 +406,7 @@ class LogDistanceProcessorTest {
     fun anErrorClearsWhenTheUserTypes() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(LogDistanceError.FieldEmpty, processor.error())
 
         processor.type(5)
@@ -418,9 +418,9 @@ class LogDistanceProcessorTest {
     fun anErrorStaysWhileTheFieldIsCleared() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
-        processor.dispatch(LogDistanceIntent.OdometerCleared)
+        processor.dispatch(LogEventIntent.OdometerCleared)
 
         assertEquals(LogDistanceError.FieldEmpty, processor.error())
     }
@@ -430,15 +430,15 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         val changes = listOf<() -> Unit>(
-            { processor.dispatch(LogDistanceIntent.TimeChanged(10, 0)) },
-            { processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 19))) },
-            { processor.dispatch(LogDistanceIntent.ZoneChanged("Asia/Tokyo")) },
-            { processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER)) },
-            { processor.dispatch(LogDistanceIntent.UnitFamilySelected(miles = true)) },
-            { processor.dispatch(LogDistanceIntent.TenthsChanged(included = true)) },
+            { processor.dispatch(LogEventIntent.TimeChanged(10, 0)) },
+            { processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 19))) },
+            { processor.dispatch(LogEventIntent.ZoneChanged("Asia/Tokyo")) },
+            { processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER)) },
+            { processor.dispatch(LogEventIntent.UnitFamilySelected(miles = true)) },
+            { processor.dispatch(LogEventIntent.TenthsChanged(included = true)) },
         )
         for (change in changes) {
-            processor.dispatch(LogDistanceIntent.Save)
+            processor.dispatch(LogEventIntent.Save)
             assertEquals(LogDistanceError.FieldEmpty, processor.error())
             change()
             assertNull(processor.error())
@@ -458,11 +458,11 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         // The entry of 30 km is one hour after the initial event, at 13:00 UTC on the 19th (16:00 Helsinki).
-        processor.dispatch(LogDistanceIntent.DateChanged(LocalDate(2026, 9, 19)))
-        processor.dispatch(LogDistanceIntent.TimeChanged(15, 0))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 19)))
+        processor.dispatch(LogEventIntent.TimeChanged(15, 0))
         assertEquals(Distance(45_200_000), processor.state.knownOdometer)
 
-        processor.dispatch(LogDistanceIntent.TimeChanged(16, 30))
+        processor.dispatch(LogEventIntent.TimeChanged(16, 30))
         assertEquals(Distance(45_230_000), processor.state.knownOdometer)
     }
 
@@ -470,13 +470,13 @@ class LogDistanceProcessorTest {
     fun theLiveDistanceFollowsTheTypedCount() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         assertNull(processor.state.previewDistance)
 
         processor.type(4, 5, 2, 5, 0)
         assertEquals(Distance(20_000), processor.state.previewDistance)
 
-        processor.dispatch(LogDistanceIntent.OdometerCleared)
+        processor.dispatch(LogEventIntent.OdometerCleared)
         processor.type(4, 5, 1, 0, 0)
         assertNull(processor.state.previewDistance)
     }
@@ -499,12 +499,12 @@ class LogDistanceProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.type(1, 2)
-        processor.dispatch(LogDistanceIntent.ZoneChanged("America/New_York"))
-        processor.dispatch(LogDistanceIntent.TimeChanged(8, 30))
+        processor.dispatch(LogEventIntent.ZoneChanged("America/New_York"))
+        processor.dispatch(LogEventIntent.TimeChanged(8, 30))
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         val call = repository.distanceCalls.single()
@@ -520,12 +520,12 @@ class LogDistanceProcessorTest {
     fun aSavedNewOdometerAddsTheCalculatedDistanceAndTheTypedCount() = runTest {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         processor.type(4, 5, 2, 5, 0)
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         val call = repository.distanceCalls.single()
@@ -537,13 +537,13 @@ class LogDistanceProcessorTest {
     fun anEntryInAnotherUnitIsConvertedToMeters() = runTest {
         seedVehicle(OdometerUnit.KILOMETERS_TENTHS)
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.UnitFamilySelected(miles = true))
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = false))
+        processor.dispatch(LogEventIntent.UnitFamilySelected(miles = true))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = false))
         processor.type(1, 0)
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertEquals(Distance(16_093), repository.distanceCalls.single().distance)
@@ -556,22 +556,22 @@ class LogDistanceProcessorTest {
         processor.type(5)
         repository.distanceFailure = IllegalStateException("disk full")
 
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
         assertFalse(processor.state.isSaving)
         assertEquals(emptyList(), repository.distanceCalls)
         repository.distanceFailure = null
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
         assertEquals(1, repository.distanceCalls.size)
     }
 
     @Test
     fun aMissingVehicleIsReportedAndCannotBeSaved() {
-        val processor = LogDistanceProcessor("missing", repository, pictures, clock, deviceZone)
+        val processor = LogEventProcessor("missing", repository, pictures, clock, deviceZone)
 
         assertTrue(processor.state.notFound)
         processor.type(5)
-        processor.dispatch(LogDistanceIntent.Save)
+        processor.dispatch(LogEventIntent.Save)
 
         assertEquals(emptyList(), repository.distanceCalls)
     }
@@ -583,18 +583,18 @@ class LogDistanceProcessorTest {
         // Like the app: the restore happens right after construction, and the repository data arrives later.
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         seedVehicle()
-        val saved = LogDistanceProcessor("v1", repository, pictures, clock, deviceZone).let { first ->
+        val saved = LogEventProcessor("v1", repository, pictures, clock, deviceZone).let { first ->
             advanceUntilIdle()
-            first.dispatch(LogDistanceIntent.UnitFamilySelected(miles = true))
-            first.dispatch(LogDistanceIntent.WayChanged(LogWay.NEW_ODOMETER))
-            first.dispatch(LogDistanceIntent.ZoneChanged("Asia/Tokyo"))
+            first.dispatch(LogEventIntent.UnitFamilySelected(miles = true))
+            first.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+            first.dispatch(LogEventIntent.ZoneChanged("Asia/Tokyo"))
             advanceUntilIdle()
-            first.dispatch(LogDistanceIntent.OdometerEdited("123"))
+            first.dispatch(LogEventIntent.OdometerEdited("123"))
             advanceUntilIdle()
             checkNotNull(first.stateToSave())
         }
 
-        val restored = LogDistanceProcessor("v1", repository, pictures, clock, deviceZone)
+        val restored = LogEventProcessor("v1", repository, pictures, clock, deviceZone)
         restored.restoreState(saved)
         advanceUntilIdle()
 
@@ -609,7 +609,7 @@ class LogDistanceProcessorTest {
 
     // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
 
-    private fun chooser() = LogDistanceProcessor("", repository, pictures, clock, deviceZone)
+    private fun chooser() = LogEventProcessor("", repository, pictures, clock, deviceZone)
 
     @Test
     fun withNothingRememberedTheChooserStartsOnTheFirstVehicleByName() {
@@ -647,7 +647,7 @@ class LogDistanceProcessorTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val saved = chooser().let { first ->
             advanceUntilIdle()
-            first.dispatch(LogDistanceIntent.VehicleSelected("Bike"))
+            first.dispatch(LogEventIntent.VehicleSelected("Bike"))
             advanceUntilIdle()
             checkNotNull(first.stateToSave())
         }
@@ -667,7 +667,7 @@ class LogDistanceProcessorTest {
         repository.seedEvents("bike", listOf(initialEvent("i-bike", initialAt, 1_000_000)))
         val processor = chooser()
 
-        processor.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+        processor.dispatch(LogEventIntent.VehicleSelected("bike"))
 
         assertEquals("bike", processor.state.selectedVehicleId)
         assertEquals(Distance(1_000_000), processor.state.knownOdometer)
@@ -683,7 +683,7 @@ class LogDistanceProcessorTest {
         assertEquals("aaa-van", processor.state.selectedVehicleId)
         processor.type(1, 2, 3) // 123 (a whole-number unit)
 
-        processor.dispatch(LogDistanceIntent.VehicleSelected("zzz-bike"))
+        processor.dispatch(LogEventIntent.VehicleSelected("zzz-bike"))
 
         // The unit changed from kilometers to miles; the digits are kept and converted, as a manual unit change would.
         assertEquals(OdometerUnit.MILES, processor.state.unit)
@@ -695,7 +695,7 @@ class LogDistanceProcessorTest {
         seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
         val processor = chooser()
 
-        processor.dispatch(LogDistanceIntent.VehicleSelected("not-a-vehicle"))
+        processor.dispatch(LogEventIntent.VehicleSelected("not-a-vehicle"))
 
         assertEquals("van", processor.state.selectedVehicleId)
     }
@@ -705,12 +705,12 @@ class LogDistanceProcessorTest {
         seedRemembered("van", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("bike", OdometerUnit.KILOMETERS, remembered = null)
         val processor = chooser()
-        processor.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+        processor.dispatch(LogEventIntent.VehicleSelected("bike"))
         processor.type(5)
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertEquals("bike", repository.distanceCalls.single().vehicleId)
@@ -723,7 +723,7 @@ class LogDistanceProcessorTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val saved = chooser().let { first ->
             advanceUntilIdle()
-            first.dispatch(LogDistanceIntent.VehicleSelected("bike"))
+            first.dispatch(LogEventIntent.VehicleSelected("bike"))
             checkNotNull(first.stateToSave())
         }
 
@@ -743,7 +743,7 @@ class LogDistanceProcessorTest {
 
         assertEquals(emptyList(), processor.state.vehicles)
         assertEquals("v1", processor.state.selectedVehicleId)
-        processor.dispatch(LogDistanceIntent.VehicleSelected("v1")) // has no selector; a stray intent changes nothing
+        processor.dispatch(LogEventIntent.VehicleSelected("v1")) // has no selector; a stray intent changes nothing
         assertEquals("v1", processor.state.selectedVehicleId)
     }
 
@@ -759,8 +759,8 @@ class LogDistanceProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
         seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.MILES, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -768,8 +768,8 @@ class LogDistanceProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
 
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -778,20 +778,20 @@ class LogDistanceProcessorTest {
         seedRemembered("m", OdometerUnit.MILES, remembered = true)
         seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
 
-        assertEquals(OdometerUnit.MILES_TENTHS, LogDistanceProcessor("m", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("k", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
     fun savingHandsTheTenthsChoiceUsedToTheRepository() = runTest {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = true))
         processor.type(1, 2, 3)
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertEquals(true, repository.distanceCalls.single().tenthsIncluded)
@@ -801,12 +801,12 @@ class LogDistanceProcessorTest {
     fun savingWithoutTenthsHandsFalseEvenForAVehicleWithTenths() = runTest {
         seedVehicle(OdometerUnit.KILOMETERS_TENTHS)
         val processor = processor()
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = false))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = false))
         processor.type(5)
 
         processor.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         assertEquals(false, repository.distanceCalls.single().tenthsIncluded)
@@ -816,11 +816,11 @@ class LogDistanceProcessorTest {
     fun theNextFormForTheVehicleStartsWithTheChoiceThatWasSaved() = runTest {
         seedVehicle()
         val first = processor()
-        first.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        first.dispatch(LogEventIntent.TenthsChanged(included = true))
         first.type(1, 2, 3)
         first.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
         val next = processor()
@@ -832,12 +832,12 @@ class LogDistanceProcessorTest {
     @Test
     fun aChoiceThatIsNotSavedIsNotRemembered() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = false)
-        val left = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
-        left.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        val left = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        left.dispatch(LogEventIntent.TenthsChanged(included = true))
         left.type(1, 2)
         // The form is left without saving.
 
-        val next = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
+        val next = LogEventProcessor("a", repository, pictures, clock, deviceZone)
 
         assertEquals(OdometerUnit.KILOMETERS, next.state.unit)
         assertEquals(emptyList(), repository.distanceCalls)
@@ -846,28 +846,28 @@ class LogDistanceProcessorTest {
     @Test
     fun aRefusedSaveDoesNotRememberTheChoice() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
-        val processor = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
-        processor.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        val processor = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        processor.dispatch(LogEventIntent.TenthsChanged(included = true))
 
-        processor.dispatch(LogDistanceIntent.Save) // nothing typed
+        processor.dispatch(LogEventIntent.Save) // nothing typed
 
         assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
     }
 
     @Test
     fun theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm() = runTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS, remembered = null)
-        val a = LogDistanceProcessor("a", repository, pictures, clock, deviceZone)
-        a.dispatch(LogDistanceIntent.TenthsChanged(included = true))
+        val a = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        a.dispatch(LogEventIntent.TenthsChanged(included = true))
         a.type(4)
         a.test {
-            dispatch(LogDistanceIntent.Save)
-            expectSideEffect(LogDistanceEffect.Saved)
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
         }
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogDistanceProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS, LogDistanceProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
     }
 }

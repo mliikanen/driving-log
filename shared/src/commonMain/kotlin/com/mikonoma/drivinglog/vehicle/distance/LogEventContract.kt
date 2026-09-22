@@ -31,7 +31,7 @@ data class VehicleChoice(
  * the repository or is only a message ([Transient]) is rebuilt.
  */
 @Serializable
-data class LogDistanceState(
+data class LogEventState(
     val way: LogWay = LogWay.TRIP_DISTANCE,
     /** What is typed for the "Trip distance" way. Each way keeps its own number. */
     val tripDistance: OdometerEntry,
@@ -83,26 +83,26 @@ data class LogDistanceState(
         }
 }
 
-sealed interface LogDistanceIntent : ViewIntent {
-    data class WayChanged(val way: LogWay) : LogDistanceIntent
-    data class UnitFamilySelected(val miles: Boolean) : LogDistanceIntent
-    data class TenthsChanged(val included: Boolean) : LogDistanceIntent
+sealed interface LogEventIntent : ViewIntent {
+    data class WayChanged(val way: LogWay) : LogEventIntent
+    data class UnitFamilySelected(val miles: Boolean) : LogEventIntent
+    data class TenthsChanged(val included: Boolean) : LogEventIntent
 
     /** The active field's new text from the system keyboard. */
-    data class OdometerEdited(val text: String) : LogDistanceIntent
-    data object OdometerCleared : LogDistanceIntent
-    data class DateChanged(val date: LocalDate) : LogDistanceIntent
-    data class TimeChanged(val hour: Int, val minute: Int) : LogDistanceIntent
+    data class OdometerEdited(val text: String) : LogEventIntent
+    data object OdometerCleared : LogEventIntent
+    data class DateChanged(val date: LocalDate) : LogEventIntent
+    data class TimeChanged(val hour: Int, val minute: Int) : LogEventIntent
 
     /** Keeps the wall-clock date and time and changes the zone they are in. */
-    data class ZoneChanged(val zoneId: String) : LogDistanceIntent
+    data class ZoneChanged(val zoneId: String) : LogEventIntent
 
     /** Chooses another vehicle in the selector (only offered when the form was opened without one). */
-    data class VehicleSelected(val vehicleId: String) : LogDistanceIntent
-    data object Save : LogDistanceIntent
+    data class VehicleSelected(val vehicleId: String) : LogEventIntent
+    data object Save : LogEventIntent
 }
 
-sealed interface LogDistanceEffect : SideEffect {
+sealed interface LogEventEffect : SideEffect {
     /** The entry was saved; go back to whatever opened the form (a vehicle's details, or the Home screen). */
-    data object Saved : LogDistanceEffect
+    data object Saved : LogEventEffect
 }

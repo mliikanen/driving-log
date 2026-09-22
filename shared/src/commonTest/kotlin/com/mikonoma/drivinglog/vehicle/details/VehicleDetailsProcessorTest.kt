@@ -136,11 +136,11 @@ class VehicleDetailsProcessorTest {
     }
 
     @Test
-    fun logDistanceNavigatesToTheLogDistanceForm() = runTest {
+    fun logEventNavigatesToTheLogEventForm() = runTest {
         repository.seedVehicle("v1", "Family car")
         processor().test {
-            dispatch(VehicleDetailsIntent.LogDistanceClicked)
-            expectSideEffect(VehicleDetailsEffect.ShowLogDistance("v1"))
+            dispatch(VehicleDetailsIntent.LogEventClicked)
+            expectSideEffect(VehicleDetailsEffect.ShowLogEvent("v1"))
         }
     }
 

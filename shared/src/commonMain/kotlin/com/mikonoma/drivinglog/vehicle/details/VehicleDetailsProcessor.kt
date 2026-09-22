@@ -55,7 +55,7 @@ class VehicleDetailsProcessor @AssistedInject constructor(
         when (intent) {
             VehicleDetailsIntent.EditClicked -> sideEffect { VehicleDetailsEffect.ShowEdit(vehicleId) }
             VehicleDetailsIntent.ViewLogClicked -> sideEffect { VehicleDetailsEffect.ShowLog(vehicleId) }
-            VehicleDetailsIntent.LogDistanceClicked -> sideEffect { VehicleDetailsEffect.ShowLogDistance(vehicleId) }
+            VehicleDetailsIntent.LogEventClicked -> sideEffect { VehicleDetailsEffect.ShowLogEvent(vehicleId) }
         }
 
     companion object {

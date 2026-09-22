@@ -52,7 +52,7 @@ fun VehicleDetailsScreen(
     deviceTimeZone: DeviceTimeZone,
     onShowEdit: (String) -> Unit,
     onShowLog: (String) -> Unit,
-    onShowLogDistance: (String) -> Unit,
+    onShowLogEvent: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
@@ -62,7 +62,7 @@ fun VehicleDetailsScreen(
             when (effect) {
                 is VehicleDetailsEffect.ShowEdit -> onShowEdit(effect.vehicleId)
                 is VehicleDetailsEffect.ShowLog -> onShowLog(effect.vehicleId)
-                is VehicleDetailsEffect.ShowLogDistance -> onShowLogDistance(effect.vehicleId)
+                is VehicleDetailsEffect.ShowLogEvent -> onShowLogEvent(effect.vehicleId)
             }
         }
     }
@@ -73,7 +73,7 @@ fun VehicleDetailsScreen(
         deviceTimeZone = deviceTimeZone,
         onEdit = { processor.dispatch(VehicleDetailsIntent.EditClicked) },
         onViewLog = { processor.dispatch(VehicleDetailsIntent.ViewLogClicked) },
-        onLogDistance = { processor.dispatch(VehicleDetailsIntent.LogDistanceClicked) },
+        onLogEvent = { processor.dispatch(VehicleDetailsIntent.LogEventClicked) },
         onBack = onBack,
     )
 }
@@ -86,7 +86,7 @@ fun VehicleDetailsContent(
     deviceTimeZone: DeviceTimeZone,
     onEdit: () -> Unit,
     onViewLog: () -> Unit,
-    onLogDistance: () -> Unit,
+    onLogEvent: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Read on every composition so a change of device locale shows the new separators.
@@ -145,9 +145,9 @@ fun VehicleDetailsContent(
                                 modifier = Modifier.testTag("current_odometer"),
                             )
                             Button(
-                                onClick = onLogDistance,
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("log_distance"),
-                            ) { Text("Log distance") }
+                                onClick = onLogEvent,
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("log_event"),
+                            ) { Text("Log event") }
                             Text(
                                 "Recent activity",
                                 style = MaterialTheme.typography.titleMedium,

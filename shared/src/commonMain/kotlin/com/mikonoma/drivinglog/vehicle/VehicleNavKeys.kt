@@ -8,9 +8,9 @@ import com.mikonoma.drivinglog.vehicle.add.AddVehicleScreen
 import com.mikonoma.drivinglog.vehicle.add.AddVehicleState
 import com.mikonoma.drivinglog.vehicle.details.VehicleDetailsProcessor
 import com.mikonoma.drivinglog.vehicle.details.VehicleDetailsScreen
-import com.mikonoma.drivinglog.vehicle.distance.LogDistanceProcessor
-import com.mikonoma.drivinglog.vehicle.distance.LogDistanceScreen
-import com.mikonoma.drivinglog.vehicle.distance.LogDistanceState
+import com.mikonoma.drivinglog.vehicle.distance.LogEventProcessor
+import com.mikonoma.drivinglog.vehicle.distance.LogEventScreen
+import com.mikonoma.drivinglog.vehicle.distance.LogEventState
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleScreen
 import com.mikonoma.drivinglog.vehicle.edit.EditVehicleState
@@ -93,7 +93,7 @@ class VehicleDetailsNavKey(private val graph: AppGraph, val vehicleId: String = 
             deviceTimeZone = graph.deviceTimeZone,
             onShowEdit = { id -> ctx.navigateTo(EditVehicleNavKey(graph, id)) },
             onShowLog = { id -> ctx.navigateTo(VehicleLogNavKey(graph, id)) },
-            onShowLogDistance = { id -> ctx.navigateTo(LogDistanceNavKey(graph, id)) },
+            onShowLogEvent = { id -> ctx.navigateTo(LogEventNavKey(graph, id)) },
             onBack = ctx.onBack,
         )
     }
@@ -141,25 +141,27 @@ class VehicleLogNavKey(private val graph: AppGraph, val vehicleId: String = "") 
     }
 }
 
-class LogDistanceNavKey(private val graph: AppGraph, val vehicleId: String = "") : ScreenNavKey<LogDistanceProcessor> {
+/** Its [serialKey] keeps the old word ("vehicle-log-distance", from when the form only logged distances) on purpose: it is what a back stack saved by an earlier
+ * build has stored, and changing it would strand that saved key. Everything else here follows the form's current name, "Log event". */
+class LogEventNavKey(private val graph: AppGraph, val vehicleId: String = "") : ScreenNavKey<LogEventProcessor> {
     override val serialKey: String = "vehicle-log-distance"
 
-    override fun equals(other: Any?): Boolean = other is LogDistanceNavKey && other.vehicleId == vehicleId
+    override fun equals(other: Any?): Boolean = other is LogEventNavKey && other.vehicleId == vehicleId
 
     override fun hashCode(): Int = 31 * serialKey.hashCode() + vehicleId.hashCode()
 
-    override fun toString(): String = "LogDistanceNavKey(" + vehicleId + ")"
+    override fun toString(): String = "LogEventNavKey(" + vehicleId + ")"
 
-    override fun createProcessor(): LogDistanceProcessor = graph.logDistanceProcessorFactory.create(vehicleId)
+    override fun createProcessor(): LogEventProcessor = graph.logEventProcessorFactory.create(vehicleId)
 
-    override val stateSerializer: KSerializer<out ViewState> get() = LogDistanceState.serializer()
+    override val stateSerializer: KSerializer<out ViewState> get() = LogEventState.serializer()
 
     override fun saveArgs(): String = vehicleId
 
-    override fun restoreArgs(args: String): ScreenNavKey<LogDistanceProcessor> = LogDistanceNavKey(graph, args)
+    override fun restoreArgs(args: String): ScreenNavKey<LogEventProcessor> = LogEventNavKey(graph, args)
 
-    override val screen: @Composable (ScreenContext<LogDistanceProcessor>) -> Unit = { ctx ->
-        LogDistanceScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
+    override val screen: @Composable (ScreenContext<LogEventProcessor>) -> Unit = { ctx ->
+        LogEventScreen(ctx.processor, graph.deviceLocale, graph.deviceTimeZone, onBack = ctx.onBack)
     }
 }
 
@@ -180,6 +182,6 @@ fun registerVehicleNavKeys(graph: AppGraph) {
     ScreenNavKeyRegistry.register(VehicleDetailsNavKey(graph))
     ScreenNavKeyRegistry.register(EditVehicleNavKey(graph))
     ScreenNavKeyRegistry.register(VehicleLogNavKey(graph))
-    ScreenNavKeyRegistry.register(LogDistanceNavKey(graph))
+    ScreenNavKeyRegistry.register(LogEventNavKey(graph))
     registeredFor = graph
 }

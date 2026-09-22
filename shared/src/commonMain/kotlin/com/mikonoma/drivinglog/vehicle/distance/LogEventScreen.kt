@@ -71,8 +71,8 @@ import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 
 @Composable
-fun LogDistanceScreen(
-    processor: LogDistanceProcessor,
+fun LogEventScreen(
+    processor: LogEventProcessor,
     deviceLocale: DeviceLocale,
     deviceTimeZone: DeviceTimeZone,
     onBack: () -> Unit,
@@ -82,12 +82,12 @@ fun LogDistanceScreen(
     LaunchedEffect(processor) {
         processor.sideEffects.collect { effect ->
             when (effect) {
-                LogDistanceEffect.Saved -> onBack()
+                LogEventEffect.Saved -> onBack()
             }
         }
     }
 
-    LogDistanceContent(
+    LogEventContent(
         state = state,
         deviceLocale = deviceLocale,
         deviceTimeZoneId = deviceTimeZone.current().id,
@@ -98,11 +98,11 @@ fun LogDistanceScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogDistanceContent(
-    state: LogDistanceState,
+fun LogEventContent(
+    state: LogEventState,
     deviceLocale: DeviceLocale,
     deviceTimeZoneId: String,
-    onIntent: (LogDistanceIntent) -> Unit,
+    onIntent: (LogEventIntent) -> Unit,
     onBack: () -> Unit,
 ) {
     // Read on every composition so a change of device locale shows the new separators.
@@ -122,7 +122,7 @@ fun LogDistanceContent(
                     actions = {
                         TextButton(
                             colors = headerTextButtonColors(),
-                            onClick = { onIntent(LogDistanceIntent.Save) },
+                            onClick = { onIntent(LogEventIntent.Save) },
                             enabled = !state.isLoading && !state.notFound && !state.isSaving,
                             modifier = Modifier.testTag("save_entry"),
                         ) { Text("Save") }
@@ -143,9 +143,9 @@ fun LogDistanceContent(
                 else -> {
                     // Only when the form was opened without a vehicle (from the Home screen): a vehicle's details screen fixes it and shows no selector.
                     if (state.vehicles.isNotEmpty()) {
-                        VehicleSelector(state.vehicles, state.selectedVehicle) { onIntent(LogDistanceIntent.VehicleSelected(it)) }
+                        VehicleSelector(state.vehicles, state.selectedVehicle) { onIntent(LogEventIntent.VehicleSelected(it)) }
                     }
-                    WayChoice(state.way) { onIntent(LogDistanceIntent.WayChanged(it)) }
+                    WayChoice(state.way) { onIntent(LogEventIntent.WayChanged(it)) }
                     MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
                     if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
                     UnitChoice(state, onIntent)
@@ -153,8 +153,8 @@ fun LogDistanceContent(
                     OdometerField(
                         entry = state.activeEntry,
                         symbols = symbols,
-                        onEdit = { onIntent(LogDistanceIntent.OdometerEdited(it)) },
-                        onClear = { onIntent(LogDistanceIntent.OdometerCleared) },
+                        onEdit = { onIntent(LogEventIntent.OdometerEdited(it)) },
+                        onClear = { onIntent(LogEventIntent.OdometerCleared) },
                         label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance" else "New odometer",
                         isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
                         errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
@@ -168,7 +168,7 @@ fun LogDistanceContent(
         DateDialog(
             initialDateMillis = dateToPicker(state.localDateTime.date),
             onDismiss = { showDate = false },
-            onPicked = { onIntent(LogDistanceIntent.DateChanged(dateFromPicker(it))) },
+            onPicked = { onIntent(LogEventIntent.DateChanged(dateFromPicker(it))) },
         )
     }
     if (showTime) {
@@ -177,7 +177,7 @@ fun LogDistanceContent(
             minute = state.localDateTime.minute,
             is24Hour = deviceLocale.timeFormat().is24Hour,
             onDismiss = { showTime = false },
-            onPicked = { hour, minute -> onIntent(LogDistanceIntent.TimeChanged(hour, minute)) },
+            onPicked = { hour, minute -> onIntent(LogEventIntent.TimeChanged(hour, minute)) },
         )
     }
     if (showZone) {
@@ -186,7 +186,7 @@ fun LogDistanceContent(
             deviceZoneId = deviceTimeZoneId,
             selectedId = state.zoneId,
             onDismiss = { showZone = false },
-            onPicked = { onIntent(LogDistanceIntent.ZoneChanged(it)) },
+            onPicked = { onIntent(LogEventIntent.ZoneChanged(it)) },
         )
     }
 }
@@ -254,7 +254,7 @@ private fun WayChoice(selected: LogWay, onSelect: (LogWay) -> Unit) {
 
 @Composable
 private fun MomentRow(
-    state: LogDistanceState,
+    state: LogEventState,
     deviceLocale: DeviceLocale,
     onDate: () -> Unit,
     onTime: () -> Unit,
@@ -295,19 +295,19 @@ private fun MomentButton(onClick: () -> Unit, testTag: String, content: @Composa
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitChoice(state: LogDistanceState, onIntent: (LogDistanceIntent) -> Unit) {
+private fun UnitChoice(state: LogEventState, onIntent: (LogEventIntent) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Unit", style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(
                 selected = !state.unit.isMiles,
-                onClick = { onIntent(LogDistanceIntent.UnitFamilySelected(miles = false)) },
+                onClick = { onIntent(LogEventIntent.UnitFamilySelected(miles = false)) },
                 shape = SegmentedButtonDefaults.itemShape(0, 2),
                 modifier = Modifier.testTag("log_unit_km"),
             ) { Text("Kilometers") }
             SegmentedButton(
                 selected = state.unit.isMiles,
-                onClick = { onIntent(LogDistanceIntent.UnitFamilySelected(miles = true)) },
+                onClick = { onIntent(LogEventIntent.UnitFamilySelected(miles = true)) },
                 shape = SegmentedButtonDefaults.itemShape(1, 2),
                 modifier = Modifier.testTag("log_unit_mi"),
             ) { Text("Miles") }
@@ -316,7 +316,7 @@ private fun UnitChoice(state: LogDistanceState, onIntent: (LogDistanceIntent) ->
             Text("Include tenths")
             Switch(
                 checked = state.unit.hasTenths,
-                onCheckedChange = { onIntent(LogDistanceIntent.TenthsChanged(it)) },
+                onCheckedChange = { onIntent(LogEventIntent.TenthsChanged(it)) },
                 modifier = Modifier.testTag("log_tenths"),
             )
         }
@@ -324,7 +324,7 @@ private fun UnitChoice(state: LogDistanceState, onIntent: (LogDistanceIntent) ->
 }
 
 @Composable
-private fun KnownOdometerInfo(state: LogDistanceState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols) {
+private fun KnownOdometerInfo(state: LogEventState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols) {
     val known = state.knownOdometer
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (known == null) {
@@ -360,7 +360,7 @@ private fun ErrorText(message: String) {
     Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("log_error"))
 }
 
-private fun errorMessage(state: LogDistanceState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols): String =
+private fun errorMessage(state: LogEventState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols): String =
     when (val error = state.error) {
         null -> ""
         LogDistanceError.FieldEmpty ->

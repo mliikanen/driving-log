@@ -3,7 +3,7 @@ package com.mikonoma.drivinglog.landing
 import androidx.compose.runtime.Composable
 import com.mikonoma.drivinglog.di.AppGraph
 import com.mikonoma.drivinglog.vehicle.AddVehicleNavKey
-import com.mikonoma.drivinglog.vehicle.LogDistanceNavKey
+import com.mikonoma.drivinglog.vehicle.LogEventNavKey
 import com.mikonoma.drivinglog.vehicle.VehicleListNavKey
 import org.fuusio.kide.navigation.ScreenContext
 import org.fuusio.kide.navigation.ScreenNavKey
@@ -28,7 +28,7 @@ class LandingNavKey(private val graph: AppGraph) : ScreenNavKey<LandingProcessor
             processor = ctx.processor,
             onShowVehicles = { ctx.navigateTo(VehicleListNavKey(graph)) },
             onShowAddVehicle = { ctx.navigateTo(AddVehicleNavKey(graph)) },
-            onShowLogEvent = { ctx.navigateTo(LogDistanceNavKey(graph, "")) },
+            onShowLogEvent = { ctx.navigateTo(LogEventNavKey(graph, "")) },
         )
     }
 }

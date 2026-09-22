@@ -25,17 +25,17 @@ import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
 
-class LogDistanceProcessor @AssistedInject constructor(
+class LogEventProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
     private val pictures: VehiclePictureStore,
     private val clock: Clock,
     deviceTimeZone: DeviceTimeZone,
-) : PresentationProcessor<LogDistanceIntent, LogDistanceState, LogDistanceEffect>(openedState(clock, deviceTimeZone, vehicleId)) {
+) : PresentationProcessor<LogEventIntent, LogEventState, LogEventEffect>(openedState(clock, deviceTimeZone, vehicleId)) {
 
     @AssistedFactory
     fun interface Factory {
-        fun create(vehicleId: String): LogDistanceProcessor
+        fun create(vehicleId: String): LogEventProcessor
     }
 
     /** True when the form was opened from the Home screen (no vehicle given): it offers the selector and picks a vehicle to start on. False from a vehicle's details screen, which fixes it and never shows the selector. */
@@ -100,22 +100,22 @@ class LogDistanceProcessor @AssistedInject constructor(
 
     private suspend fun Vehicle.toChoice() = VehicleChoice(id, name, licensePlate, type, color, pictureId?.let { pictures.uri(it, PictureSize.SMALL) })
 
-    override suspend fun map(intent: LogDistanceIntent): Action<LogDistanceState, LogDistanceEffect>? = when (intent) {
-        is LogDistanceIntent.WayChanged -> reduce { copy(way = intent.way, error = null) }
-        is LogDistanceIntent.UnitFamilySelected -> reduce { withUnit(unitOf(intent.miles, unit.hasTenths)) }
-        is LogDistanceIntent.TenthsChanged -> reduce { withUnit(unitOf(unit.isMiles, intent.included)) }
-        is LogDistanceIntent.OdometerEdited -> reduce { withActiveEntry(activeEntry.applyEdit(intent.text)) }
-        LogDistanceIntent.OdometerCleared -> reduce { withActiveEntry(activeEntry.clear(), keepError = true) }
-        is LogDistanceIntent.DateChanged -> reduce { copy(localDateTime = withDate(localDateTime, intent.date), error = null) }
-        is LogDistanceIntent.TimeChanged -> reduce { copy(localDateTime = withTime(localDateTime, intent.hour, intent.minute), error = null) }
-        is LogDistanceIntent.ZoneChanged -> reduce { copy(zoneId = intent.zoneId, error = null) }
-        is LogDistanceIntent.VehicleSelected -> reduce {
+    override suspend fun map(intent: LogEventIntent): Action<LogEventState, LogEventEffect>? = when (intent) {
+        is LogEventIntent.WayChanged -> reduce { copy(way = intent.way, error = null) }
+        is LogEventIntent.UnitFamilySelected -> reduce { withUnit(unitOf(intent.miles, unit.hasTenths)) }
+        is LogEventIntent.TenthsChanged -> reduce { withUnit(unitOf(unit.isMiles, intent.included)) }
+        is LogEventIntent.OdometerEdited -> reduce { withActiveEntry(activeEntry.applyEdit(intent.text)) }
+        LogEventIntent.OdometerCleared -> reduce { withActiveEntry(activeEntry.clear(), keepError = true) }
+        is LogEventIntent.DateChanged -> reduce { copy(localDateTime = withDate(localDateTime, intent.date), error = null) }
+        is LogEventIntent.TimeChanged -> reduce { copy(localDateTime = withTime(localDateTime, intent.hour, intent.minute), error = null) }
+        is LogEventIntent.ZoneChanged -> reduce { copy(zoneId = intent.zoneId, error = null) }
+        is LogEventIntent.VehicleSelected -> reduce {
             if (chooseVehicle && vehicles.any { it.id == intent.vehicleId }) copy(selectedVehicleId = intent.vehicleId, error = null) else this
         }
-        LogDistanceIntent.Save -> save()
+        LogEventIntent.Save -> save()
     }
 
-    private fun save(): Action<LogDistanceState, LogDistanceEffect>? {
+    private fun save(): Action<LogEventState, LogEventEffect>? {
         val form = state
         val vehicleId = form.selectedVehicleId
         if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
@@ -131,7 +131,7 @@ class LogDistanceProcessor @AssistedInject constructor(
         }
     }
 
-    private fun saving(write: suspend () -> Unit): Action<LogDistanceState, LogDistanceEffect> = async("save") {
+    private fun saving(write: suspend () -> Unit): Action<LogEventState, LogEventEffect> = async("save") {
         reduce { copy(isSaving = true, error = null) }
         try {
             write()
@@ -140,15 +140,15 @@ class LogDistanceProcessor @AssistedInject constructor(
             reduce { copy(isSaving = false) }
             throw throwable
         }
-        emit(LogDistanceEffect.Saved)
+        emit(LogEventEffect.Saved)
     }
 
     private companion object {
         /** The form as it is when opened: the time is now, in the device's zone, the unit a placeholder until the vehicle loads, and the
          * vehicle [vehicleId] when the details screen opened it, or none yet (the selector picks one) when the Home screen did. */
-        fun openedState(clock: Clock, deviceTimeZone: DeviceTimeZone, vehicleId: String): LogDistanceState {
+        fun openedState(clock: Clock, deviceTimeZone: DeviceTimeZone, vehicleId: String): LogEventState {
             val zone = deviceTimeZone.current()
-            return LogDistanceState(
+            return LogEventState(
                 tripDistance = OdometerEntry(OdometerUnit.KILOMETERS),
                 newOdometer = OdometerEntry(OdometerUnit.KILOMETERS),
                 localDateTime = openedAt(clock.now(), zone),
@@ -166,11 +166,11 @@ class LogDistanceProcessor @AssistedInject constructor(
         }
 
         /** Both fields change unit together, keeping their digits as when adding a vehicle. */
-        fun LogDistanceState.withUnit(newUnit: OdometerUnit): LogDistanceState =
+        fun LogEventState.withUnit(newUnit: OdometerUnit): LogEventState =
             copy(tripDistance = tripDistance.withUnit(newUnit), newOdometer = newOdometer.withUnit(newUnit), error = null)
 
         /** Replaces the active way's entry; a typed digit clears the error, unless [keepError]. */
-        fun LogDistanceState.withActiveEntry(entry: OdometerEntry, keepError: Boolean = false): LogDistanceState {
+        fun LogEventState.withActiveEntry(entry: OdometerEntry, keepError: Boolean = false): LogEventState {
             val error = if (keepError || entry.isEmpty) error else null
             return if (way == LogWay.TRIP_DISTANCE) copy(tripDistance = entry, error = error) else copy(newOdometer = entry, error = error)
         }

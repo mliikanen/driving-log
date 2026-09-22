@@ -9,7 +9,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.encoding.CompositeDecoder
-import com.mikonoma.drivinglog.vehicle.distance.LogDistanceState
+import com.mikonoma.drivinglog.vehicle.distance.LogEventState
 import org.fuusio.kide.navigation.ScreenNavKeyRegistry
 
 class VehicleNavKeysTest {
@@ -104,23 +104,23 @@ class VehicleNavKeysTest {
     }
 
     @Test
-    fun logDistanceKeysAreEqualByVehicleAndRestoredKeysEqualTheOriginal() {
+    fun logEventKeysAreEqualByVehicleAndRestoredKeysEqualTheOriginal() {
         val graph = testGraph()
         registerVehicleNavKeys(graph)
 
-        assertEquals(LogDistanceNavKey(graph, "v1"), LogDistanceNavKey(graph, "v1"))
-        assertEquals(LogDistanceNavKey(graph, "v1").hashCode(), LogDistanceNavKey(graph, "v1").hashCode())
-        assertNotEquals(LogDistanceNavKey(graph, "v1"), LogDistanceNavKey(graph, "v2"))
-        assertNotEquals<Any>(LogDistanceNavKey(graph, "v1"), VehicleLogNavKey(graph, "v1"))
-        val key = LogDistanceNavKey(graph, "v7")
+        assertEquals(LogEventNavKey(graph, "v1"), LogEventNavKey(graph, "v1"))
+        assertEquals(LogEventNavKey(graph, "v1").hashCode(), LogEventNavKey(graph, "v1").hashCode())
+        assertNotEquals(LogEventNavKey(graph, "v1"), LogEventNavKey(graph, "v2"))
+        assertNotEquals<Any>(LogEventNavKey(graph, "v1"), VehicleLogNavKey(graph, "v1"))
+        val key = LogEventNavKey(graph, "v7")
         val restored = ScreenNavKeyRegistry.get(key.serialKey).restoreArgs(checkNotNull(key.saveArgs()))
         assertEquals<Any>(key, restored)
-        assertEquals("v7", (restored as LogDistanceNavKey).vehicleId)
+        assertEquals("v7", (restored as LogEventNavKey).vehicleId)
     }
 
     @Test
-    fun theLogDistanceStateSavesWhatTheUserTypedAndNotTheRepositoryData() {
-        val descriptor = LogDistanceState.serializer().descriptor
+    fun theLogEventStateSavesWhatTheUserTypedAndNotTheRepositoryData() {
+        val descriptor = LogEventState.serializer().descriptor
         for (saved in listOf("way", "tripDistance", "newOdometer", "localDateTime", "zoneId", "selectedVehicleId", "unitFor")) {
             assertNotEquals(CompositeDecoder.UNKNOWN_NAME, descriptor.getElementIndex(saved), saved)
         }
