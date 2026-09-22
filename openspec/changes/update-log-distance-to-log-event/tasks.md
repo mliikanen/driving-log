@@ -9,11 +9,11 @@
 ## 2. Visible text
 
 - [x] 2.1 Change the details screen's action text and the form's title to "Log event"; verify by hand on the emulator that both read "Log event" and by a unit test on `VehicleDetailsScreen`'s content if one exists for its actions, or an updated flow assertion otherwise
-- [ ] 2.2 Update the specs (already drafted in this change's delta) by archiving; before that, `openspec validate update-log-distance-to-log-event --strict` passes
+- [x] 2.2 Update the specs (already drafted in this change's delta) by archiving; before that, `openspec validate update-log-distance-to-log-event --strict` passes
 
 ## 3. The Kind selector
 
-- [ ] 3.1 Add `LogKind` (one entry, `DISTANCE`, with a `label` "Distance") and `LogEventState.kind: LogKind = LogKind.DISTANCE` (persisted) and `LogEventIntent.KindSelected(kind: LogKind)` to `LogEventContract.kt`; handle it in `LogEventProcessor.map` (`reduce { copy(kind = intent.kind) }`). Verify by `LogEventProcessorTest`: the form starts with `kind = DISTANCE`, dispatching `KindSelected(DISTANCE)` changes nothing else, the field is in the serialized state (add "kind" to `VehicleNavKeysTest`'s saved-fields list) and survives `restoreState`
+- [x] 3.1 Add `LogKind` (one entry, `DISTANCE`, with a `label` "Distance") and `LogEventState.kind: LogKind = LogKind.DISTANCE` (persisted) and `LogEventIntent.KindSelected(kind: LogKind)` to `LogEventContract.kt`; handle it in `LogEventProcessor.map` (`reduce { copy(kind = intent.kind) }`). Verify by `LogEventProcessorTest`: the form starts with `kind = DISTANCE`, dispatching `KindSelected(DISTANCE)` changes nothing else, the field is in the serialized state (add "kind" to `VehicleNavKeysTest`'s saved-fields list) and survives `restoreState`
 - [ ] 3.2 Add `KindSelector` to `LogEventScreen.kt` (`ExposedDropdownMenuBox`, `enabled = LogKind.entries.size > 1` — `false` today — one `DropdownMenuItem` "Distance", tag `log_kind_selector`, item tag `log_kind_option_distance`), and lay it out in a `Row` with the vehicle selector when the form has one (`Modifier.weight(1f)` each, Kind first) or alone (`Modifier.fillMaxWidth()`) when it does not. Verify it compiles for Android and iOS, that a tap on it does nothing (disabled: no menu opens, no `KindSelected` dispatched), and by hand on the emulator (light and dark, portrait and landscape, both routes) that it is visibly disabled (Material's disabled colors, not the vehicle selector's enabled ones) and that the row splits evenly with equal height from the Home route while the Kind selector alone looks right from a vehicle's details screen
 
 ## 4. Flows and final verification

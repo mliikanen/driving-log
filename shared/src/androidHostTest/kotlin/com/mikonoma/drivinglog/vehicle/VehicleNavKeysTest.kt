@@ -121,7 +121,7 @@ class VehicleNavKeysTest {
     @Test
     fun theLogEventStateSavesWhatTheUserTypedAndNotTheRepositoryData() {
         val descriptor = LogEventState.serializer().descriptor
-        for (saved in listOf("way", "tripDistance", "newOdometer", "localDateTime", "zoneId", "selectedVehicleId", "unitFor")) {
+        for (saved in listOf("kind", "way", "tripDistance", "newOdometer", "localDateTime", "zoneId", "selectedVehicleId", "unitFor")) {
             assertNotEquals(CompositeDecoder.UNKNOWN_NAME, descriptor.getElementIndex(saved), saved)
         }
         // Transient: rebuilt from the repository or only a message.

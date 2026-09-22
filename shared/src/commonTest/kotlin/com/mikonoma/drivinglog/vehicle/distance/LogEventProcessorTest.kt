@@ -607,6 +607,46 @@ class LogEventProcessorTest {
         assertEquals(2, restored.state.log.size)
     }
 
+    // ---- The kind of event (a disabled selector: only Distance exists today)
+
+    @Test
+    fun theFormStartsWithTheDistanceKind() {
+        seedVehicle()
+
+        assertEquals(LogKind.DISTANCE, processor().state.kind)
+    }
+
+    @Test
+    fun choosingTheOnlyKindLeavesTheFormAsItIs() {
+        // With one LogKind entry this cannot observably tell a real reduce from a no-op (both leave the state identical); it
+        // guards that dispatching the intent does not crash or disturb the rest of the form. The reduce itself is exercised
+        // for real once a second kind exists.
+        seedVehicle()
+        val processor = processor()
+        processor.type(3, 0)
+
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.DISTANCE))
+
+        assertEquals(LogKind.DISTANCE, processor.state.kind)
+        assertEquals("30", processor.state.tripDistance.digits)
+    }
+
+    @Test
+    fun theKindSurvivesRestoreState() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        seedVehicle()
+        val saved = processor().let { first ->
+            advanceUntilIdle()
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = processor()
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        assertEquals(LogKind.DISTANCE, restored.state.kind)
+    }
+
     // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
 
     private fun chooser() = LogEventProcessor("", repository, pictures, clock, deviceZone)

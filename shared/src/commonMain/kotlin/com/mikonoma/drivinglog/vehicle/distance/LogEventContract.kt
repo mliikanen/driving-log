@@ -16,6 +16,15 @@ import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
 
+/**
+ * A kind of event the form can log. Only [DISTANCE] exists today; the Kind selector is disabled until a second one is added by a
+ * later change, so [entries] having one member is what keeps it that way ([LogEventScreen]'s `KindSelector` reads it, not a
+ * hand-written flag).
+ */
+enum class LogKind(val label: String) {
+    DISTANCE("Distance"),
+}
+
 /** One vehicle as the selector draws it: its picture or icon, its name and, when it has one, its plate. In the order of [com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder]. */
 data class VehicleChoice(
     val id: String,
@@ -32,6 +41,9 @@ data class VehicleChoice(
  */
 @Serializable
 data class LogEventState(
+    /** The kind of event being logged. Only [LogKind.DISTANCE] exists today, and the selector that shows it is disabled; persisted (not [Transient]) so a later
+     * kind's choice survives rotation and process death the way the vehicle choice does. */
+    val kind: LogKind = LogKind.DISTANCE,
     val way: LogWay = LogWay.TRIP_DISTANCE,
     /** What is typed for the "Trip distance" way. Each way keeps its own number. */
     val tripDistance: OdometerEntry,
@@ -99,6 +111,9 @@ sealed interface LogEventIntent : ViewIntent {
 
     /** Chooses another vehicle in the selector (only offered when the form was opened without one). */
     data class VehicleSelected(val vehicleId: String) : LogEventIntent
+
+    /** Chooses another kind of event in the Kind selector. The selector is disabled while [LogKind] has one entry, so nothing dispatches this yet. */
+    data class KindSelected(val kind: LogKind) : LogEventIntent
     data object Save : LogEventIntent
 }
 

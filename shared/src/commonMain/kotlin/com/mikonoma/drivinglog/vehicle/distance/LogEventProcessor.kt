@@ -112,6 +112,7 @@ class LogEventProcessor @AssistedInject constructor(
         is LogEventIntent.VehicleSelected -> reduce {
             if (chooseVehicle && vehicles.any { it.id == intent.vehicleId }) copy(selectedVehicleId = intent.vehicleId, error = null) else this
         }
+        is LogEventIntent.KindSelected -> reduce { copy(kind = intent.kind) }
         LogEventIntent.Save -> save()
     }
 
