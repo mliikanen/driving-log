@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.list
 
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
+import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
@@ -31,8 +32,6 @@ class VehicleListProcessor(
         VehicleListItem(id, name, licensePlate, pictureId?.let { pictures.uri(it, PictureSize.SMALL) }, type, color)
 
     private companion object {
-        /** By name without regard to letter case (SQLite's NOCASE only folds ASCII), then by when it was added. */
-        fun List<Vehicle>.sortedForList(): List<Vehicle> =
-            sortedWith(compareBy<Vehicle>({ it.name.lowercase() }, { it.createdAt }))
+        fun List<Vehicle>.sortedForList(): List<Vehicle> = sortedWith(VehicleNameOrder)
     }
 }
