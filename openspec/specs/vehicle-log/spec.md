@@ -129,6 +129,19 @@ newest first by its date and time, each shown as it is in the recent events. Goi
 - **WHEN** the user navigates back from the full log screen
 - **THEN** the vehicle's details screen is displayed
 
+### Requirement: An event row opens its details
+The system SHALL make every event row tappable, in the recent events on the vehicle's details screen (`vehicle-log`,
+"Recent events on the details screen") and in the full log (`vehicle-log`, "Full log"), opening that event's details
+screen (`event-details`).
+
+#### Scenario: Tap a row in recent events
+- **WHEN** the user taps an event row in the recent events section
+- **THEN** that event's details screen opens
+
+#### Scenario: Tap a row in the full log
+- **WHEN** the user taps an event row in the full log
+- **THEN** that event's details screen opens
+
 ### Requirement: The log is not changed by editing the vehicle
 The system SHALL leave a vehicle's log unchanged when the vehicle's name, license plate or picture is edited. Existing log events SHALL
 NOT be modified or removed by any action; the log is only ever added to.
