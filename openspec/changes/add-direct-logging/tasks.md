@@ -17,5 +17,5 @@
 
 ## 4. Flows and final verification
 
-- [ ] 4.1 Add `maestro/distance/log-from-home.yaml` (two vehicles: the Home screen's Log event action, the selector, choose the other vehicle and save, the Home screen; open again and the chosen vehicle is preselected; log from the other vehicle's details, which has no selector, and the Home route now preselects it) and list it in `manifests/distance.yaml`; verify by running the `distance` manifest
-- [ ] 4.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (the `distance` manifest was run in 4.1; Maestro is not part of the final regression run)
+- [x] 4.1 Add `maestro/distance/log-from-home.yaml` (two vehicles: the Home screen's Log event action, the selector, choose the other vehicle and save, the Home screen; open again and the chosen vehicle is preselected; log from the other vehicle's details, which has no selector, and the Home route now preselects it) and list it in `manifests/distance.yaml`; verify by running the `distance` manifest
+- [x] 4.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (the `distance` manifest was run in 4.1; Maestro is not part of the final regression run)

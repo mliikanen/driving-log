@@ -1,0 +1,87 @@
+# Happy path: logging directly from the Home screen. "Log event" is disabled with no vehicle; with two vehicles it opens the log distance form with a
+# vehicle selector, preselected on the one last logged for. Choosing the other vehicle and saving returns to the Home screen; opening the form again preselects
+# it (the memory follows the last save, not the log's dates); logging from that vehicle's details screen (no selector there) makes it the remembered one, and
+# the Home route then preselects it.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: landing_log_event
+    enabled: false
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Family car
+      PLATE: ABC-123
+      UNIT: unit_KILOMETERS
+      ODOMETER: "45200"
+- tapOn:
+    id: back
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Bike
+      TYPE: MOTORCYCLE
+      PLATE: ""
+      UNIT: unit_MILES
+      ODOMETER: "1200"
+- tapOn:
+    id: back
+- assertVisible:
+    id: landing_log_event
+    enabled: true
+# The selector starts on Bike, the vehicle last added (and so last touched); choose Family car and save.
+- tapOn:
+    id: landing_log_event
+- assertVisible:
+    id: log_vehicle_selector
+- tapOn:
+    id: log_vehicle_selector
+- tapOn: Family car
+- assertVisible:
+    id: log_unit_km
+    checked: true
+- tapOn:
+    id: odo_field
+- inputText: "45300"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: landing_vehicles
+# Opening the form again preselects Family car, the one just logged for.
+- tapOn:
+    id: landing_log_event
+- assertVisible:
+    id: log_vehicle_selector
+    text: Family car
+- tapOn:
+    id: back
+# Logging from Bike's details screen (no selector there) makes Bike the remembered one.
+- tapOn:
+    id: landing_vehicles
+- tapOn: Bike
+- tapOn:
+    id: log_distance
+- assertNotVisible:
+    id: log_vehicle_selector
+- tapOn:
+    id: odo_field
+- inputText: "1"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+- tapOn:
+    id: back
+- tapOn:
+    id: back
+- assertVisible:
+    id: landing_vehicles
+- tapOn:
+    id: landing_log_event
+- assertVisible:
+    id: log_vehicle_selector
+    text: Bike

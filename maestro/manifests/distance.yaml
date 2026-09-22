@@ -5,3 +5,4 @@ executionOrder:
   continueOnFailure: false
   flowsOrder:
     - log-distance
+    - log-from-home
