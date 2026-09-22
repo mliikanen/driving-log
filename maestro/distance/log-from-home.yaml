@@ -35,6 +35,10 @@ appId: com.mikonoma.drivinglog
 - tapOn:
     id: landing_log_event
 - assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
+- assertVisible:
     id: log_vehicle_selector
 - tapOn:
     id: log_vehicle_selector
@@ -64,6 +68,10 @@ appId: com.mikonoma.drivinglog
 - tapOn: Bike
 - tapOn:
     id: log_event
+- assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
 - assertNotVisible:
     id: log_vehicle_selector
 - tapOn:

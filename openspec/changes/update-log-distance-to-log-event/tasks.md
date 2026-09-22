@@ -18,5 +18,5 @@
 
 ## 4. Flows and final verification
 
-- [ ] 4.1 Update `maestro/distance/log-distance.yaml`, `maestro/distance/log-from-home.yaml` and `maestro/resilience/rotation.yaml` to assert the Kind selector is present (`log_kind_selector`, showing "Distance") alongside their existing checks; verify by running the `distance` and `resilience` manifests
+- [x] 4.1 Update `maestro/distance/log-distance.yaml`, `maestro/distance/log-from-home.yaml` and `maestro/resilience/rotation.yaml` to assert the Kind selector is present (`log_kind_selector`, showing "Distance") alongside their existing checks; verify by running the `distance` and `resilience` manifests
 - [ ] 4.2 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`, and verify all pass (the `distance`, `resilience` and `theme` manifests were run in tasks 1.3 and 4.1; Maestro is not part of the final regression run)

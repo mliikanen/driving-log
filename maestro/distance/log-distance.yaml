@@ -22,6 +22,10 @@ appId: com.mikonoma.drivinglog
     id: log_event
 - assertVisible: Log event
 - assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
+- assertVisible:
     id: log_way_distance
     checked: true
 - tapOn:

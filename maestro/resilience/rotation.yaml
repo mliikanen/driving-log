@@ -55,6 +55,10 @@ appId: com.mikonoma.drivinglog
       id: log_event
 - tapOn:
     id: log_event
+- assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
 - tapOn:
     id: log_way_odometer
 - tapOn:
@@ -76,11 +80,19 @@ appId: com.mikonoma.drivinglog
 - hideKeyboard
 - setOrientation: LANDSCAPE_LEFT
 - assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
+- assertVisible:
     id: log_way_odometer
     checked: true
 - assertVisible:
     id: log_unit_mi
     checked: true
+- scrollUntilVisible:
+    element:
+      id: log_tenths
+    centerElement: true
 - assertVisible:
     id: log_tenths
     checked: true
@@ -94,6 +106,10 @@ appId: com.mikonoma.drivinglog
     id: odo_field
     text: "1,234.5"
 - setOrientation: PORTRAIT
+- assertVisible:
+    id: log_kind_selector
+    text: Distance
+    enabled: false
 - assertVisible:
     id: log_way_odometer
     checked: true
