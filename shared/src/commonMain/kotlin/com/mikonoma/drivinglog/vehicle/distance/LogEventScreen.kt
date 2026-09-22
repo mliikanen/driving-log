@@ -7,7 +7,9 @@ import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -40,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -68,6 +71,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
@@ -422,30 +428,59 @@ private fun KnownOdometerInfo(state: LogEventState, symbols: com.mikonoma.drivin
 }
 
 /**
- * The optional note (`add-event-notes`): unobtrusive plain text, not a bordered field like the rest of the form. Before a note is
- * pending it prompts "Add a note..." in a muted color; once one is pending it shows up to two rendered lines of it, end-ellipsized,
- * in the normal text color, and a trash-can action appears beside it. Tapping the text opens the full-screen editor; the trash-can
- * is a separate tap target, so removing a note never opens it.
+ * The optional note (`add-event-notes`, restyled by `restyle-note-field`): a Material 3 outlined field — the same
+ * visual family as [KindSelector]/[VehicleSelector] — with a "Note" label, built from
+ * [OutlinedTextFieldDefaults.DecorationBox] rather than a real [OutlinedTextField]: a real field's `value` has no
+ * ellipsis support (only clipping), and the two-line end-ellipsized preview is an existing, unchanged requirement.
+ * [innerTextField] is a plain [Text] (the prompt or the truncated note), never a real text field, so there is no
+ * cursor, focus or keyboard to trigger — tapping only ever opens the full-screen editor. The `value` passed to the
+ * decoration box is the same text that is shown, always non-empty, purely to keep the "Note" label minimized and
+ * floated (the box never receives real focus, so an empty, never-focused field would otherwise show a large,
+ * centered label with no visible content). `DecorationBox` has no `modifier` of its own — in the usual pattern it
+ * decorates a `BasicTextField`, which carries one — so the tap target, width and test tag are on the wrapping [Box].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = pendingNote ?: "Add a note...",
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            color = if (pendingNote != null) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClickLabel = "Add a note", role = Role.Button, onClick = onOpen)
-                .padding(vertical = 8.dp)
-                .testTag("log_note"),
+    val shown = pendingNote ?: "Add a note..."
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Add a note", role = Role.Button, onClick = onOpen)
+            .testTag("log_note")
+            // The "Note" label and the shown text are separate child nodes of the DecorationBox (there is no real
+            // OutlinedTextField merging them onto this element's own semantics the way it normally would); adding
+            // (not clearing) a contentDescription is what makes this element's own accessible text/label include
+            // the shown text, without touching the trailing icon's own, separate semantics below.
+            .semantics { contentDescription = shown },
+        // DecorationBox has no modifier of its own (see the class doc); propagating this Box's min
+        // constraints down is what makes it actually stretch to fillMaxWidth instead of wrapping its content.
+        propagateMinConstraints = true,
+    ) {
+        OutlinedTextFieldDefaults.DecorationBox(
+            value = shown,
+            innerTextField = {
+                Text(
+                    text = shown,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (pendingNote != null) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            },
+            enabled = true,
+            singleLine = false,
+            visualTransformation = VisualTransformation.None,
+            interactionSource = interactionSource,
+            label = { Text("Note") },
+            trailingIcon = if (pendingNote != null) {
+                {
+                    IconButton(onClick = onRemove, modifier = Modifier.testTag("log_note_remove")) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Remove note")
+                    }
+                }
+            } else null,
         )
-        if (pendingNote != null) {
-            IconButton(onClick = onRemove, modifier = Modifier.testTag("log_note_remove")) {
-                Icon(Icons.Filled.Delete, contentDescription = "Remove note")
-            }
-        }
     }
 }
 

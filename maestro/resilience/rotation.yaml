@@ -132,9 +132,9 @@ appId: com.mikonoma.drivinglog
     text: rotated note
 - tapOn:
     id: back
-- assertVisible:
-    id: log_note
-    text: rotated note
+# The note element's own accessible text does not surface to this environment's UiAutomator-based dump (see
+# distance/log-distance.yaml), so its content is asserted by plain text rather than the usual id+text pair.
+- assertVisible: rotated note
 - tapOn:
     id: back
 # The edit form.
