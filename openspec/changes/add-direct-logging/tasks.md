@@ -2,7 +2,7 @@
 
 ## 1. Storage of the last vehicle logged for
 
-- [ ] 1.1 Add migration `6.sqm` (the `app_state` table), `AppState.sq` (select and upsert by key) and bump the schema to 7; verify by the migration test in `VehicleMigrationJvmTest`: a version-6 database with vehicles and events migrates, the vehicles and the log are unchanged and the table is empty
+- [x] 1.1 Add migration `6.sqm` (the `app_state` table), `AppState.sq` (select and upsert by key) and bump the schema to 7; verify by the migration test in `VehicleMigrationJvmTest`: a version-6 database with vehicles and events migrates, the vehicles and the log are unchanged and the table is empty
 - [ ] 1.2 Add `VehicleRepository.observeLastLoggedVehicleId()` and make `addDistanceEntry` and `addOdometerAnchor` upsert `last_logged_vehicle_id` in their transactions (`SqlDelightVehicleRepository` and `FakeVehicleRepository`); verify by `SqlDelightVehicleRepositoryTest`: nothing remembered on a new database, a saved entry from either way remembers its vehicle, **a backdated entry still makes its vehicle the remembered one** (the point of not deriving it), the last save wins, a failed insert leaves the memory as it was, and the flow emits when it changes
 
 ## 2. The log form with a vehicle chosen

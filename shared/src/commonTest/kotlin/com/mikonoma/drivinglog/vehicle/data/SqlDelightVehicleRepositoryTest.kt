@@ -312,8 +312,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionSix() {
-        assertEquals(6L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionSeven() {
+        assertEquals(7L, DrivingLogDatabase.Schema.version)
     }
 
     @Test

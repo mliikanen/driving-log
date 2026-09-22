@@ -1,0 +1,7 @@
+-- Version 6 to 7: a small table for the application's own state, not a vehicle's. It starts with one key, the vehicle last logged for (set by
+-- AppState.sq's upsert, read by VehicleRepository.observeLastLoggedVehicleId), written whenever a distance entry or an odometer anchor is saved. It is
+-- not derived from the events (see add-direct-logging's design): a backdated entry still makes its vehicle the remembered one. No rows on a fresh migration.
+CREATE TABLE app_state (
+    key   TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);

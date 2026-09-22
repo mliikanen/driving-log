@@ -1,0 +1,13 @@
+-- The application's own state, a small key-value table, kept apart from a vehicle's data. Today it holds one key, `last_logged_vehicle_id`, the vehicle
+-- last logged for (see VehicleRepository.observeLastLoggedVehicleId). New in migration 6.sqm (schema version 7); a database from before it has no rows.
+CREATE TABLE app_state (
+    key   TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+-- The dialect this project builds with (SQLite 3.18) has no ON CONFLICT upsert; REPLACE is the same for a single-column primary key.
+upsertAppState:
+INSERT OR REPLACE INTO app_state (key, value) VALUES (?, ?);
+
+selectAppState:
+SELECT value FROM app_state WHERE key = ?;
