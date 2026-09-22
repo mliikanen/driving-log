@@ -38,7 +38,15 @@ fi
 
 ADB="${ADB:-adb}"
 if ! command -v "$ADB" >/dev/null 2>&1 && [ -x "$HOME/Android/Sdk/platform-tools/adb" ]; then ADB="$HOME/Android/Sdk/platform-tools/adb"; fi
-if command -v "$ADB" >/dev/null 2>&1; then ADB="$ADB" ./reset-media.sh; else echo "adb not found: old test photos are not removed (set ADB=/path/to/adb)"; fi
+if command -v "$ADB" >/dev/null 2>&1; then
+  ADB="$ADB" ./reset-media.sh
+  # Visible touch markers make a failing flow's screen recording (or a live watch) show exactly where each tap
+  # landed. Once per invocation, not restored afterward: a harmless, purely visual overlay on a dedicated test
+  # device.
+  "$ADB" shell settings put system show_touches 1
+else
+  echo "adb not found: old test photos are not removed and taps will not be shown (set ADB=/path/to/adb)"
+fi
 
 config="$(mktemp)"; trap 'rm -f "$config"' EXIT
 for area in "${areas[@]}"; do
