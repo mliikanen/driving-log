@@ -13,7 +13,7 @@
 
 ## 3. The Home tile
 
-- [ ] 3.1 Enable "Log event" in `landingTiles` when there is a vehicle (and give the disabled one its name), add the effect `ShowLogEvent` and navigate to `LogDistanceNavKey(graph, "")`; verify by the landing tests (enabled with a vehicle and not without, the effect) and on the emulator that saving returns to the Home screen and back navigation from the form does too
+- [ ] 3.1 Enable "Log event" in `landingTiles` when there is a vehicle (disabled otherwise, exactly like the other placeholder tiles: no extra hint or semantics added), add the effect `ShowLogEvent` and navigate to `LogDistanceNavKey(graph, "")`; verify by the landing tests (enabled with a vehicle and not without, the effect) and on the emulator that saving returns to the Home screen and back navigation from the form does too
 
 ## 4. Flows and final verification
 
