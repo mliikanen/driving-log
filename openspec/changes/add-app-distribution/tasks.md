@@ -85,6 +85,16 @@ from tracked, initially-placeholder config), only its end-to-end verification.
       and confirming every command it names matches what the script and build actually do.
 - [ ] 5.4 Add a one-line pointer to `docs/distribution.md` from `README.md`. Verify with `grep -n
       distribution.md README.md`.
+- [ ] 5.5 Write `docs/app-distribution.md`: a design-facing doc for agents (and developers) working near this area,
+      distinct from `docs/distribution.md`'s practical runbook — what's fully automated versus what's a one-time
+      manual step and why (signing, `appId`/no `google-services.json`, CLI-login auth), the versioning scheme
+      (`<commitCount>-<shortSha>`, both values always derived, never hand-edited) and why it was chosen over the
+      alternatives in `design.md`'s table, and the release-notes-MUST-be-generated-from-the-archive requirement
+      (including the one exception). This is the durable summary of `design.md`'s decisions, since `design.md`
+      itself moves under `openspec/changes/archive/` once this change is archived and becomes less discoverable to
+      a future agent working in this area. Add a pointer to it from `CLAUDE.md`'s `docs/` list, matching the
+      existing entries for `docs/test-strategy.md`, `docs/test-fixtures.md` and `docs/color-palette.md`. Verify by
+      re-reading it against `design.md` and confirming no decision or its rationale was dropped in the summary.
 
 ## 6. Regression
 

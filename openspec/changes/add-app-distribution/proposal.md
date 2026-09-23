@@ -51,8 +51,14 @@ to the testers already in the existing Firebase project, with release notes a re
   tester-group/release-notes wiring.
 - `gradle/libs.versions.toml`: new entry for the Firebase App Distribution Gradle plugin only — no
   `google-services.json`/plugin (see design.md's decision on why).
-- `.gitignore`: the keystore and any local-only credential files must never be committed.
+- `.gitignore`: `keystore.properties` (paths and passwords) must never be committed. The keystore file itself is never
+  placed inside the repo at all, gitignored or not — see design.md's signing decision.
 - New: `scripts/distribute.sh`, which computes `versionCode`/`versionName` from git and generates release notes from
   `openspec/changes/archive/` since the last `dist-v*` tag.
-- `docs/`: a new runbook doc for the one-time Firebase console setup and the day-to-day "cut a release" steps.
+- `docs/distribution.md`: a runbook for the one-time Firebase console setup and the day-to-day "cut a release" steps.
+- `docs/app-distribution.md`: a design-facing doc for agents (and developers) working near this area — what's
+  automated versus manual, the versioning scheme and why, and the release-notes-from-archive requirement — so a
+  future change doesn't have to re-derive these decisions from `design.md` once this change is archived and that
+  file is harder to find. `CLAUDE.md`'s `docs/` list gains a pointer to it, matching the existing pattern for
+  `docs/test-strategy.md` etc.
 - No changes to app runtime behavior, the database, or any existing spec.
