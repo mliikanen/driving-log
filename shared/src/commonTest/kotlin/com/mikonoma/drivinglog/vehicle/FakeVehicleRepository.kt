@@ -60,6 +60,8 @@ data class UpdateCall(
     val color: Rgb = VehicleColors.default,
 )
 
+data class UpdateNoteCall(val vehicleId: String, val eventId: String, val note: String?)
+
 /** An in-memory repository for processor tests. Events are kept newest first, as the real one returns them. */
 class FakeVehicleRepository : VehicleRepository {
     private val vehicles = MutableStateFlow<List<Vehicle>>(emptyList())
@@ -69,6 +71,7 @@ class FakeVehicleRepository : VehicleRepository {
 
     val addCalls = mutableListOf<AddCall>()
     val updateCalls = mutableListOf<UpdateCall>()
+    val updateNoteCalls = mutableListOf<UpdateNoteCall>()
     val distanceCalls = mutableListOf<DistanceCall>()
     val anchorCalls = mutableListOf<AnchorCall>()
     var distanceFailure: Throwable? = null
@@ -194,6 +197,19 @@ class FakeVehicleRepository : VehicleRepository {
         updateFailure?.let { throw it }
         updateCalls += UpdateCall(id, name, licensePlate, type, picture, color)
         vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type, color = color) else it }
+    }
+
+    override suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?) {
+        updateNoteCalls += UpdateNoteCall(vehicleId, eventId, note)
+        val updated = eventsOf(vehicleId).map { event ->
+            if (event.id != eventId) event
+            else when (event) {
+                is VehicleEvent.DistanceEntry -> event.copy(note = note)
+                is VehicleEvent.OdometerAnchor -> event.copy(note = note)
+                is VehicleEvent.InitialOdometer -> event // never carries a note; nothing to change
+            }
+        }
+        seedEvents(vehicleId, updated)
     }
 }
 

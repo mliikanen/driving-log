@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import com.mikonoma.drivinglog.vehicle.UpdateNoteCall
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -87,5 +88,93 @@ class EventDetailsProcessorTest {
         val state = processor(eventId = "e2").state
 
         assertEquals("borrowed to Sam", state.event?.note)
+    }
+
+    @Test
+    fun anOdometerAnchorEventCarriesItsNote() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(VehicleEvent.OdometerAnchor("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(45_200_000), note = "note")),
+        )
+
+        val state = processor(eventId = "e2").state
+
+        assertEquals("note", state.event?.note)
+    }
+
+    // ---- Editing the note (add-event-editing)
+
+    private fun distanceEventProcessor(note: String? = null): EventDetailsProcessor {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", listOf(VehicleEvent.DistanceEntry("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(30_000), note = note)))
+        return processor(eventId = "e2")
+    }
+
+    @Test
+    fun editOpensTheEditorSeededWithTheCurrentNote() {
+        val processor = distanceEventProcessor(note = "borrowed to Sam")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertEquals("borrowed to Sam", processor.state.noteDraft)
+    }
+
+    @Test
+    fun editOpensTheEditorEmptyWhenThereIsNoNoteYet() {
+        val processor = distanceEventProcessor(note = null)
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertEquals("", processor.state.noteDraft)
+    }
+
+    @Test
+    fun addingANoteToAnEventThatHadNone() {
+        val processor = distanceEventProcessor(note = null)
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.NoteDraftEdited("added later"))
+        processor.dispatch(EventDetailsIntent.NoteAttached)
+
+        assertEquals("added later", processor.state.event?.note)
+        assertNull(processor.state.noteDraft)
+        assertEquals(listOf(UpdateNoteCall("v1", "e2", "added later")), repository.updateNoteCalls)
+    }
+
+    @Test
+    fun changingAnExistingNote() {
+        val processor = distanceEventProcessor(note = "old note")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.NoteDraftEdited("new note"))
+        processor.dispatch(EventDetailsIntent.NoteAttached)
+
+        assertEquals("new note", processor.state.event?.note)
+    }
+
+    @Test
+    fun clearingANoteByEditingItBlank() {
+        val processor = distanceEventProcessor(note = "borrowed to Sam")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.NoteDraftEdited("   "))
+        processor.dispatch(EventDetailsIntent.NoteAttached)
+
+        assertNull(processor.state.event?.note)
+        assertEquals(listOf(UpdateNoteCall("v1", "e2", null)), repository.updateNoteCalls)
+    }
+
+    @Test
+    fun discardDropsTheEdit() {
+        val processor = distanceEventProcessor(note = "borrowed to Sam")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.NoteDraftEdited("changed but discarded"))
+        processor.dispatch(EventDetailsIntent.NoteDiscarded)
+
+        assertEquals("borrowed to Sam", processor.state.event?.note)
+        assertNull(processor.state.noteDraft)
+        assertEquals(emptyList(), repository.updateNoteCalls)
     }
 }

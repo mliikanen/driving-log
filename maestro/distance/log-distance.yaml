@@ -188,3 +188,32 @@ appId: com.mikonoma.drivinglog
 - extendedWaitUntil:
     visible: Family car log
     timeout: 10000
+# Editing an already-saved event's note (add-event-editing): change it, then clear it, and confirm the row's note
+# icon disappears once nothing is left to show. The details screen is still open from the case above.
+- tapOn:
+    id: event_note_icon
+- tapOn:
+    id: edit_event
+- assertVisible: borrowed to Sam
+- eraseText: 20
+- inputText: lent to a friend
+- tapOn:
+    id: back
+- assertVisible:
+    id: event_details_note
+    text: lent to a friend
+- tapOn:
+    id: edit_event
+- assertVisible: lent to a friend
+- eraseText: 20
+- tapOn:
+    id: back
+- assertNotVisible:
+    id: event_details_note
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible: Family car log
+    timeout: 10000
+- assertNotVisible:
+    id: event_note_icon

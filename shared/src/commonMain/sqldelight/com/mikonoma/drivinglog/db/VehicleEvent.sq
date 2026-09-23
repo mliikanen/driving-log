@@ -21,7 +21,8 @@ CREATE TABLE vehicle_event (
 
 CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
 
--- The log is append-only: there is deliberately no update or delete query for events.
+-- The log is append-only, except for the one narrow exception below (add-event-editing): there is deliberately no
+-- delete query for events, and updateEventNote is the only update query, touching only the note column.
 insertEvent:
 INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds, note)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -49,4 +50,11 @@ ORDER BY occurred_at DESC, rowid DESC;
 selectEventById:
 SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note
 FROM vehicle_event
+WHERE vehicle_id = ? AND id = ?;
+
+-- The one, narrowly-scoped exception to "append-only" (add-event-editing): changes only the note of one event,
+-- never any other column of it or any other event.
+updateEventNote:
+UPDATE vehicle_event
+SET note = ?
 WHERE vehicle_id = ? AND id = ?;

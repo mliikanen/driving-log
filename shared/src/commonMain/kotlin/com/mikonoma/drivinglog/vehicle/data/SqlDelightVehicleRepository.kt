@@ -176,6 +176,12 @@ class SqlDelightVehicleRepository(
         }
     }
 
+    override suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?) {
+        withContext(dispatcher) {
+            events.updateEventNote(note, vehicleId, eventId)
+        }
+    }
+
     /** Moves a pending picture into use. The pending files are gone or incomplete when the save cannot go on. */
     private suspend fun promoted(picture: PendingPicture): String =
         pictures.promote(picture.pendingId) ?: error("The picture ${picture.pendingId} is no longer available")

@@ -90,4 +90,10 @@ interface VehicleRepository {
         color: Rgb,
         picture: PictureChange = PictureChange.Keep,
     )
+
+    /**
+     * Changes only the note of one event (add-event-editing), the log's one, narrowly-scoped exception to being
+     * append-only. Null clears it. No other field of the event, and no other event, is touched.
+     */
+    suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?)
 }

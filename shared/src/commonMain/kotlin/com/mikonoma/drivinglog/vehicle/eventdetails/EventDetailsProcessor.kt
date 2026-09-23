@@ -7,11 +7,13 @@ import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.flow.combine
 import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
+import org.fuusio.kide.presentation.async
+import org.fuusio.kide.presentation.reduce
 
 class EventDetailsProcessor @AssistedInject constructor(
-    @Assisted vehicleId: String,
-    @Assisted eventId: String,
-    repository: VehicleRepository,
+    @Assisted private val vehicleId: String,
+    @Assisted private val eventId: String,
+    private val repository: VehicleRepository,
 ) : PresentationProcessor<EventDetailsIntent, EventDetailsState, EventDetailsEffect>(EventDetailsState()) {
 
     @AssistedFactory
@@ -35,5 +37,21 @@ class EventDetailsProcessor @AssistedInject constructor(
         }
     }
 
-    override suspend fun map(intent: EventDetailsIntent): Action<EventDetailsState, EventDetailsEffect>? = null
+    override suspend fun map(intent: EventDetailsIntent): Action<EventDetailsState, EventDetailsEffect>? = when (intent) {
+        EventDetailsIntent.EditClicked -> reduce { copy(noteDraft = event?.note ?: "") }
+        is EventDetailsIntent.NoteDraftEdited -> reduce { copy(noteDraft = intent.text) }
+        EventDetailsIntent.NoteAttached -> attachNote()
+        EventDetailsIntent.NoteDiscarded -> reduce { copy(noteDraft = null) }
+    }
+
+    private fun attachNote(): Action<EventDetailsState, EventDetailsEffect>? {
+        val draft = state.noteDraft ?: return null
+        val note = draft.trim().ifBlank { null }
+        return async("update-note") {
+            repository.updateEventNote(vehicleId, eventId, note)
+            // observeEvent picks up the change live; closing the editor only after the write completes means the
+            // details screen never shows a stale note even briefly.
+            reduce { copy(noteDraft = null) }
+        }
+    }
 }

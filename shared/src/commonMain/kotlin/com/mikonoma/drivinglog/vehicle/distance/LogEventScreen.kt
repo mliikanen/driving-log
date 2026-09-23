@@ -73,6 +73,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -492,10 +494,14 @@ private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> 
  * ordinary single-window screen and has never shown this. Back navigation — the toolbar's arrow or the system's own
  * gesture/button, both wired to [onAttach] — attaches what was typed; "Discard" is the one way to leave without attaching it.
  * Not its own navigation destination: there is nothing to restore it into once the form itself is gone.
+ *
+ * `internal`, not `private` (add-event-editing): reused as-is by the event details screen's "Edit" action, in a
+ * mode where [onAttach] saves directly to the stored event instead of attaching to an in-memory pending draft —
+ * the only difference, per this requirement's own design.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-private fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, onAttach: () -> Unit, onDiscard: () -> Unit) {
+internal fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, onAttach: () -> Unit, onDiscard: () -> Unit) {
     BackHandler(onBack = onAttach)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -519,9 +525,20 @@ private fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, onA
     ) { padding ->
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+        // Seeded once per time the editor opens (this composable is only in composition while it is open, so a
+        // fresh `rememberTextFieldState` runs each time). Its own default `initialSelection` places the cursor at
+        // the end of any existing text — not position 0, `TextFieldValue`'s default for a freshly focused field,
+        // which left an edit of a non-empty note (add-event-editing) inserting new text before the old instead of
+        // replacing it. `TextFieldValue` itself (even with its default, zero selection) was tried first and
+        // rejected: on this Compose Multiplatform version, an `OutlinedTextField` bound to it froze the whole
+        // screen's touch and back handling after any edit, reproduced independent of the selection value — a
+        // library-level interaction bug, not this screen's own state. `TextFieldState` doesn't share it. Not
+        // re-seeded on every keystroke: after this, the field's own edits are the source of truth, fed back up via
+        // onTextChanged.
+        val fieldState = rememberTextFieldState(initialText = text)
+        LaunchedEffect(fieldState) { snapshotFlow { fieldState.text.toString() }.collect(onTextChanged) }
         OutlinedTextField(
-            value = text,
-            onValueChange = onTextChanged,
+            state = fieldState,
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()

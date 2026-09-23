@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -24,7 +28,9 @@ import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.vehicle.distance.NoteEditorContent
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
 
 @Composable
@@ -35,7 +41,7 @@ fun EventDetailsScreen(
     onBack: () -> Unit,
 ) {
     val state by processor.states.collectAsState()
-    EventDetailsContent(state, deviceLocale, deviceTimeZone, onBack)
+    EventDetailsContent(state, deviceLocale, deviceTimeZone, onIntent = processor::dispatch, onBack = onBack)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,14 +50,29 @@ fun EventDetailsContent(
     state: EventDetailsState,
     deviceLocale: DeviceLocale,
     deviceTimeZone: DeviceTimeZone,
+    onIntent: (EventDetailsIntent) -> Unit,
     onBack: () -> Unit,
 ) {
+    // add-event-editing: the note editor replaces the whole screen's content in the same window while open, the
+    // same reason distance-logging's compose-time form does (see NoteEditorContent's own doc comment).
+    if (state.noteDraft != null) {
+        NoteEditorContent(
+            text = state.noteDraft,
+            onTextChanged = { onIntent(EventDetailsIntent.NoteDraftEdited(it)) },
+            onAttach = { onIntent(EventDetailsIntent.NoteAttached) },
+            onDiscard = { onIntent(EventDetailsIntent.NoteDiscarded) },
+        )
+        return
+    }
+
     // Read on every composition so a change of device locale shows the new separators.
     val symbols = deviceLocale.numberSymbols()
     val deviceZone = deviceTimeZone.current()
     val timeFormat = deviceLocale.timeFormat()
     // Reuses the row's own formatting (EventRowContent) so the details screen never drifts from what the row shows.
     val content = state.event?.let { eventRowContent(it, state.unit, symbols, deviceZone, timeFormat) }
+    // Only Distance and Odometer reading events can carry a note (add-event-notes); Initial odometer never can.
+    val canEditNote = state.event is VehicleEvent.DistanceEntry || state.event is VehicleEvent.OdometerAnchor
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -61,6 +82,14 @@ fun EventDetailsContent(
                     colors = drivingLogTopAppBarColors(),
                     title = { Text(content?.label ?: "Event", modifier = Modifier.testTag("event_details_title")) },
                     navigationIcon = { BackButton(onBack) },
+                    actions = {
+                        if (canEditNote) {
+                            IconButton(
+                                onClick = { onIntent(EventDetailsIntent.EditClicked) },
+                                modifier = Modifier.testTag("edit_event"),
+                            ) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
+                        }
+                    },
                 )
                 HeaderDivider()
             }

@@ -1213,10 +1213,8 @@ class SqlDelightVehicleRepositoryTest {
 
     @Test
     fun observeEventIsQueryBackedNotASnapshot() = runTest {
-        // Live re-observation by id has no update query to exercise yet (vehicle_event is still append-only,
-        // "deliberately no update query" per VehicleEvent.sq; add-event-editing adds one this flow will then also
-        // need to react to). What is testable now: a fresh read after the matching row starts existing sees it —
-        // the flow is backed by the query, not a value captured once and cached.
+        // A fresh read after the matching row starts existing sees it — the flow is backed by the query, not a
+        // value captured once and cached. (add-event-editing below now also exercises this with a real update.)
         val id = addFamilyCar()
         assertNull(repository.observeEvent(id, "id-3").first())
 
@@ -1224,5 +1222,65 @@ class SqlDelightVehicleRepositoryTest {
 
         assertEquals("id-3", entryId)
         assertEquals(entryId, (repository.observeEvent(id, entryId).first() as VehicleEvent.DistanceEntry).id)
+    }
+
+    @Test
+    fun observeEventSeesANoteUpdateLive() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
+
+        repository.updateEventNote(id, entryId, "borrowed to Sam")
+
+        assertEquals("borrowed to Sam", repository.observeEvent(id, entryId).first()?.note)
+    }
+
+    // ---- Editing a saved event's note (add-event-editing)
+
+    @Test
+    fun updateEventNoteChangesOnlyTheTargetEventsNote() = runTest {
+        val id = addFamilyCar()
+        val untouchedId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(10_000), null, false, "keep me")
+        val targetId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(20_000), null, false, "old note")
+
+        repository.updateEventNote(id, targetId, "new note")
+
+        val log = repository.observeLog(id).first()
+        assertEquals("new note", log.single { it.id == targetId }.note)
+        assertEquals("keep me", log.single { it.id == untouchedId }.note)
+        // Every other field of the target event is unchanged.
+        val target = log.single { it.id == targetId } as VehicleEvent.DistanceEntry
+        assertEquals(Distance(20_000), target.distance)
+    }
+
+    @Test
+    fun updateEventNoteCanClearANote() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false, "borrowed to Sam")
+
+        repository.updateEventNote(id, entryId, null)
+
+        assertNull(repository.observeLog(id).first().single { it.id == entryId }.note)
+    }
+
+    @Test
+    fun updateEventNoteCanAddANoteWhereThereWasNone() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
+
+        repository.updateEventNote(id, entryId, "added later")
+
+        assertEquals("added later", repository.observeLog(id).first().single { it.id == entryId }.note)
+    }
+
+    @Test
+    fun updateEventNoteOnOneVehicleDoesNotTouchAnothersEvent() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false, "mine")
+        val otherId = repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1))
+
+        // Wrong vehicle id for this event: the WHERE clause matches vehicle_id AND id, so nothing changes.
+        repository.updateEventNote(otherId, entryId, "hijacked")
+
+        assertEquals("mine", repository.observeLog(id).first().single { it.id == entryId }.note)
     }
 }
