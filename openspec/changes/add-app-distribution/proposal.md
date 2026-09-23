@@ -11,9 +11,11 @@ to the testers already in the existing Firebase project, with release notes a re
 
 ## What Changes
 
-- Add a release signing config for `androidApp`'s `release` build type, backed by a keystore the developer creates
-  themselves (a credential, not something this change or its tasks generate on the developer's behalf) and keeps out
-  of git, referenced through `local.properties`-style local, untracked values.
+- Add a release signing config for `androidApp`'s `release` build type, backed by a keystore generated once as part
+  of applying this change, with two independently generated, high-entropy random passwords. The keystore and its
+  passwords (`keystore.properties`) live at `~/.android-keystores/`, entirely outside the repository — not merely
+  gitignored-in-place. See design.md's signing decision for the security reasoning (including the `.gitignore`-only
+  and commit-the-encrypted-keystore alternatives that were considered and declined).
 - Add the Firebase App Distribution Gradle plugin to `androidApp`, wired to upload the signed release build to a
   tester group, authenticated via the developer's own `firebase login` CLI session (no service-account key file to
   manage for this local-only flow).
@@ -51,8 +53,9 @@ to the testers already in the existing Firebase project, with release notes a re
   tester-group/release-notes wiring.
 - `gradle/libs.versions.toml`: new entry for the Firebase App Distribution Gradle plugin only — no
   `google-services.json`/plugin (see design.md's decision on why).
-- `.gitignore`: `keystore.properties` (paths and passwords) must never be committed. The keystore file itself is never
-  placed inside the repo at all, gitignored or not — see design.md's signing decision.
+- No `.gitignore` entry needed for the keystore: both the keystore file and `keystore.properties` live at
+  `~/.android-keystores/`, outside the repository entirely, so neither is ever in a position to be committed — see
+  design.md's signing decision.
 - New: `scripts/distribute.sh`, which computes `versionCode`/`versionName` from git and generates release notes from
   `openspec/changes/archive/` since the last `dist-v*` tag.
 - `docs/distribution.md`: a runbook for the one-time Firebase console setup and the day-to-day "cut a release" steps.
