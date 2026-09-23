@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
 
 @Composable
@@ -72,7 +72,7 @@ fun EditVehicleContent(
                 TopAppBar(
                     colors = drivingLogTopAppBarColors(),
                     title = { Text("Edit vehicle") },
-                    navigationIcon = { BackButton(onBack) },
+                    navigationIcon = { CloseButton(onBack) },
                     actions = {
                         TextButton(
                             colors = headerTextButtonColors(),

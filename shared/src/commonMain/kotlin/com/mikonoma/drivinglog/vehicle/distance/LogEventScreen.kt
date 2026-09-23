@@ -80,6 +80,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
@@ -151,7 +152,7 @@ fun LogEventContent(
                 TopAppBar(
                     colors = drivingLogTopAppBarColors(),
                     title = { Text("Log event") },
-                    navigationIcon = { BackButton(onBack) },
+                    navigationIcon = { CloseButton(onBack) },
                     actions = {
                         TextButton(
                             colors = headerTextButtonColors(),

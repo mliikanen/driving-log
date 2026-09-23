@@ -39,7 +39,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
-import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
@@ -90,7 +90,7 @@ fun AddVehicleContent(
                 TopAppBar(
                     colors = drivingLogTopAppBarColors(),
                     title = { Text("Add vehicle") },
-                    navigationIcon = { BackButton(onBack) },
+                    navigationIcon = { CloseButton(onBack) },
                     actions = {
                         TextButton(
                             colors = headerTextButtonColors(),
