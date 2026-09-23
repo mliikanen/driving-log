@@ -19,7 +19,9 @@ capability), choosing
 the vehicle's odometer unit and entering its current odometer reading in the odometer field (required: the user
 SHALL type at least one digit, and a typed 0 is a valid reading). After a successful save the system SHALL return to
 the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
-share the same name or license plate.
+share the same name or license plate. The add screen's dismiss action, in the top-left of its top app bar, SHALL be a
+close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always discards
+whatever was entered.
 
 #### Scenario: Add a vehicle with all fields
 - **WHEN** the user enters the name "Family car" and the plate "ABC-123", chooses the type "Car" and the unit "Kilometers", types the odometer 45200 and saves
@@ -62,6 +64,10 @@ share the same name or license plate.
 #### Scenario: Cancel adding
 - **WHEN** the user leaves the add screen without saving
 - **THEN** no vehicle is added
+
+#### Scenario: The dismiss action is a close icon
+- **WHEN** the user opens the add-vehicle screen
+- **THEN** the top-left action of the screen's top app bar is a close "X", not a back arrow
 
 ### Requirement: Odometer unit is a per-vehicle setting with a default from the device region
 The system SHALL let the user choose one of four odometer units for each vehicle when adding it: "Kilometers" (a
@@ -365,7 +371,9 @@ Going back SHALL return to the vehicle list.
 The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
 SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
 NOT allow changing the odometer reading or the odometer unit. After a successful save the system SHALL return to the details screen showing
-the new values, and the vehicle list SHALL show them too.
+the new values, and the vehicle list SHALL show them too. The edit screen's dismiss action, in the top-left of its
+top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the
+screen always discards whatever was changed.
 
 #### Scenario: Change name and plate
 - **WHEN** the user edits "Family car" to the name " Estate car " and the plate "XYZ-789 " and saves
@@ -399,6 +407,10 @@ the new values, and the vehicle list SHALL show them too.
 #### Scenario: Cancel editing
 - **WHEN** the user changes the fields and then leaves the edit screen without saving
 - **THEN** the vehicle keeps its previously saved name, plate, type, color and picture
+
+#### Scenario: The dismiss action is a close icon
+- **WHEN** the user opens the edit-vehicle screen
+- **THEN** the top-left action of the screen's top app bar is a close "X", not a back arrow
 
 ### Requirement: Vehicles persist and work offline
 The system SHALL keep vehicles on the device so that they are still present after the app is closed and reopened,
