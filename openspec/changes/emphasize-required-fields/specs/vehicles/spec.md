@@ -76,9 +76,10 @@ entered.
 The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
 SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
 NOT allow changing the odometer reading or the odometer unit. The name label SHALL carry a trailing "*" (its one
-required field, matching the add form's convention), and the form SHALL show the same "* indicates a required field"
-line near its actions. While the name is blank (after trimming), the edit screen's Save action SHALL be disabled and
-SHALL NOT be tappable. After a successful save the system SHALL return to the details screen showing the new values,
+required field, matching the add form's convention), the license plate field's `(optional)` suffix SHALL be dropped
+(redundant once the required field carries its own mark, same as the add form), and the form SHALL show the same
+"* indicates a required field" line near its actions. While the name is blank (after trimming), the edit screen's
+Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system SHALL return to the details screen showing the new values,
 and the vehicle list SHALL show them too. The edit screen's dismiss action, in the top-left of its top app bar, SHALL
 be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always
 discards whatever was changed.
@@ -122,4 +123,4 @@ discards whatever was changed.
 
 #### Scenario: The required field is marked
 - **WHEN** the user opens the edit-vehicle form
-- **THEN** the name label carries a trailing "*", and a line near the form's actions reads "* indicates a required field"
+- **THEN** the name label carries a trailing "*", the license plate field does not say "(optional)", and a line near the form's actions reads "* indicates a required field"

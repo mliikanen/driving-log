@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.CloseButton
+import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
@@ -195,7 +196,7 @@ fun LogEventContent(
                         symbols = symbols,
                         onEdit = { onIntent(LogEventIntent.OdometerEdited(it)) },
                         onClear = { onIntent(LogEventIntent.OdometerCleared) },
-                        label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance" else "New odometer",
+                        label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance *" else "New odometer *",
                         isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
                         errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
                     )
@@ -204,6 +205,7 @@ fun LogEventContent(
                         onOpen = { onIntent(LogEventIntent.NoteEditorOpened) },
                         onRemove = { onIntent(LogEventIntent.NoteRemoveRequested) },
                     )
+                    RequiredFieldNote()
                 }
             }
         }

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.ui.CloseButton
+import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
 
 @Composable
@@ -114,7 +115,7 @@ fun EditVehicleContent(
                     value = state.name,
                     onValueChange = { onIntent(EditVehicleIntent.NameChanged(it)) },
                     modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
-                    label = { Text("Name") },
+                    label = { Text("Name *") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 )
@@ -122,7 +123,7 @@ fun EditVehicleContent(
                     value = state.licensePlate,
                     onValueChange = { onIntent(EditVehicleIntent.LicensePlateChanged(it)) },
                     modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
-                    label = { Text("License plate (optional)") },
+                    label = { Text("License plate") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 )
@@ -137,6 +138,7 @@ fun EditVehicleContent(
                     savedColor = state.savedColor,
                     onSelect = { onIntent(EditVehicleIntent.ColorSelected(it)) },
                 )
+                RequiredFieldNote()
             }
         }
     }

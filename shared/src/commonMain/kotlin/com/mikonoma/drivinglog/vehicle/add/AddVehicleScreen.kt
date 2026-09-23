@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.OdometerField
+import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
 import com.mikonoma.drivinglog.vehicle.ui.label
@@ -127,7 +128,7 @@ fun AddVehicleContent(
                 value = state.name,
                 onValueChange = { onIntent(AddVehicleIntent.NameChanged(it)) },
                 modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
-                label = { Text("Name") },
+                label = { Text("Name *") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             )
@@ -135,9 +136,20 @@ fun AddVehicleContent(
                 value = state.licensePlate,
                 onValueChange = { onIntent(AddVehicleIntent.LicensePlateChanged(it)) },
                 modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
-                label = { Text("License plate (optional)") },
+                label = { Text("License plate") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            )
+            UnitChoice(
+                selected = state.entry.unit,
+                onSelect = { onIntent(AddVehicleIntent.UnitSelected(it)) },
+            )
+            OdometerField(
+                entry = state.entry,
+                symbols = deviceLocale.numberSymbols(),
+                onEdit = { onIntent(AddVehicleIntent.OdometerEdited(it)) },
+                onClear = { onIntent(AddVehicleIntent.OdometerCleared) },
+                label = "Current odometer *",
             )
             VehicleTypeChoice(
                 selected = state.type,
@@ -150,17 +162,7 @@ fun AddVehicleContent(
                 savedColor = null,
                 onSelect = { onIntent(AddVehicleIntent.ColorSelected(it)) },
             )
-            UnitChoice(
-                selected = state.entry.unit,
-                onSelect = { onIntent(AddVehicleIntent.UnitSelected(it)) },
-            )
-            OdometerField(
-                entry = state.entry,
-                symbols = deviceLocale.numberSymbols(),
-                onEdit = { onIntent(AddVehicleIntent.OdometerEdited(it)) },
-                onClear = { onIntent(AddVehicleIntent.OdometerCleared) },
-                label = "Current odometer",
-            )
+            RequiredFieldNote()
         }
     }
 }
