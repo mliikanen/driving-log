@@ -108,6 +108,10 @@ class EditVehicleProcessorTest {
         assertEquals(null, repository.updateCalls.single().licensePlate)
     }
 
+    // disable-invalid-save: the screen disables Save while the name is blank (see EditVehicleScreen.kt), so a
+    // direct dispatch in that state is a defense-in-depth no-op, not a path a tap can reach; there is no longer an
+    // error flag to assert.
+
     @Test
     fun anEmptyNameIsRefusedAndTheSavedValuesAreKept() {
         val processor = processor()
@@ -115,7 +119,6 @@ class EditVehicleProcessorTest {
 
         processor.dispatch(EditVehicleIntent.Save)
 
-        assertTrue(processor.state.nameError)
         assertEquals(emptyList(), repository.updateCalls)
     }
 
@@ -126,7 +129,6 @@ class EditVehicleProcessorTest {
 
         processor.dispatch(EditVehicleIntent.Save)
 
-        assertTrue(processor.state.nameError)
         assertEquals(emptyList(), repository.updateCalls)
     }
 

@@ -86,8 +86,6 @@ class AddVehicleProcessorTest {
         assertEquals("", state.name)
         assertEquals("", state.licensePlate)
         assertTrue(state.entry.isEmpty)
-        assertFalse(state.nameError)
-        assertFalse(state.odometerError)
     }
 
     @Test
@@ -275,10 +273,12 @@ class AddVehicleProcessorTest {
         processor.edit("0")
         processor.edit("")
 
+        // disable-invalid-save: dispatching Save directly (bypassing the now-disabled button) is a no-op while the
+        // odometer is empty, not an error.
         processor.dispatch(AddVehicleIntent.Save)
 
         assertEquals("", processor.shown())
-        assertTrue(processor.state.odometerError)
+        assertFalse(processor.state.isSaving)
         assertEquals(emptyList(), repository.addCalls)
     }
 
@@ -434,6 +434,10 @@ class AddVehicleProcessorTest {
         assertEquals(null, repository.addCalls.single().licensePlate)
     }
 
+    // disable-invalid-save: the screen disables Save while the name is blank or the odometer is empty (see
+    // AddVehicleScreen.kt), so a direct dispatch in that state — as every test below does — is a defense-in-depth
+    // no-op, not a path a tap can reach; there is no longer an error flag to assert.
+
     @Test
     fun anEmptyNameIsRefusedAndNothingIsSaved() {
         val processor = processor()
@@ -441,8 +445,6 @@ class AddVehicleProcessorTest {
 
         processor.dispatch(AddVehicleIntent.Save)
 
-        assertTrue(processor.state.nameError)
-        assertFalse(processor.state.odometerError)
         assertEquals(emptyList(), repository.addCalls)
     }
 
@@ -453,44 +455,16 @@ class AddVehicleProcessorTest {
 
         processor.dispatch(AddVehicleIntent.Save)
 
-        assertTrue(processor.state.odometerError)
-        assertFalse(processor.state.nameError)
         assertEquals(emptyList(), repository.addCalls)
     }
 
     @Test
-    fun aMissingNameAndAMissingOdometerAreBothReported() {
+    fun aMissingNameAndAMissingOdometerBothBlockSaving() {
         val processor = processor()
 
         processor.dispatch(AddVehicleIntent.Save)
 
-        assertTrue(processor.state.nameError)
-        assertTrue(processor.state.odometerError)
         assertEquals(emptyList(), repository.addCalls)
-    }
-
-    @Test
-    fun theOdometerErrorClearsWhenADigitIsTyped() {
-        val processor = processor()
-        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
-        processor.dispatch(AddVehicleIntent.Save)
-        assertTrue(processor.state.odometerError)
-
-        processor.type(5)
-
-        assertFalse(processor.state.odometerError)
-    }
-
-    @Test
-    fun theOdometerErrorStaysWhileNothingIsEntered() {
-        val processor = processor()
-        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
-        processor.dispatch(AddVehicleIntent.Save)
-
-        processor.dispatch(AddVehicleIntent.OdometerEdited("."))
-        processor.dispatch(AddVehicleIntent.OdometerCleared)
-
-        assertTrue(processor.state.odometerError)
     }
 
     @Test
@@ -517,7 +491,6 @@ class AddVehicleProcessorTest {
 
         processor.dispatch(AddVehicleIntent.Save)
 
-        assertFalse(processor.state.odometerError)
         assertEquals(Distance.ZERO, repository.addCalls.single().initialOdometer)
     }
 
@@ -529,19 +502,7 @@ class AddVehicleProcessorTest {
 
         processor.dispatch(AddVehicleIntent.Save)
 
-        assertTrue(processor.state.nameError)
         assertEquals(emptyList(), repository.addCalls)
-    }
-
-    @Test
-    fun theNameErrorClearsWhenTheUserTypes() {
-        val processor = processor()
-        processor.dispatch(AddVehicleIntent.Save)
-        assertTrue(processor.state.nameError)
-
-        processor.dispatch(AddVehicleIntent.NameChanged("V"))
-
-        assertFalse(processor.state.nameError)
     }
 
     @Test
@@ -825,17 +786,6 @@ class AddVehicleProcessorTest {
         }
 
         assertEquals(VehicleType.CAR, repository.addCalls.single().type)
-    }
-
-    @Test
-    fun theNameAndOdometerErrorsShowWithoutAnyTypeError() {
-        val processor = processor()
-
-        processor.dispatch(AddVehicleIntent.Save)
-
-        assertTrue(processor.state.nameError)
-        assertTrue(processor.state.odometerError)
-        assertEquals(emptyList(), repository.addCalls)
     }
 
     @Test

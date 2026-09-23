@@ -212,6 +212,9 @@ class LogEventProcessorTest {
 
     // Validation
 
+    // disable-invalid-save: the screen now disables Save while the active field is empty, so this exercises the
+    // processor directly (as every test here does), a defense-in-depth check behind the UI gate rather than the
+    // primary coverage of "empty is refused".
     @Test
     fun anEmptyFieldIsRefusedInBothWays() {
         seedVehicle()

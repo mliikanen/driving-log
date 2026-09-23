@@ -77,7 +77,7 @@ fun EditVehicleContent(
                         TextButton(
                             colors = headerTextButtonColors(),
                             onClick = { onIntent(EditVehicleIntent.Save) },
-                            enabled = state.loaded && !state.notFound && !state.isSaving,
+                            enabled = state.loaded && !state.notFound && !state.isSaving && state.name.isNotBlank(),
                             modifier = Modifier.testTag("save_vehicle"),
                         ) { Text("Save") }
                     },
@@ -116,8 +116,6 @@ fun EditVehicleContent(
                     modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
                     label = { Text("Name") },
                     singleLine = true,
-                    isError = state.nameError,
-                    supportingText = if (state.nameError) ({ Text("Enter a name") }) else null,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 )
                 OutlinedTextField(

@@ -35,15 +35,12 @@ class AddVehicleProcessor(
     private val editor = PictureDraftEditor(pictures, codec, PictureDraft.None)
 
     override suspend fun map(intent: AddVehicleIntent): Action<AddVehicleState, AddVehicleEffect>? = when (intent) {
-        is AddVehicleIntent.NameChanged -> reduce { copy(name = intent.text, nameError = false) }
+        is AddVehicleIntent.NameChanged -> reduce { copy(name = intent.text) }
         is AddVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is AddVehicleIntent.UnitSelected -> reduce { copy(entry = entry.withUnit(intent.unit)) }
         is AddVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
         is AddVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
-        is AddVehicleIntent.OdometerEdited -> reduce {
-            val edited = entry.applyEdit(intent.text)
-            copy(entry = edited, odometerError = odometerError && edited.isEmpty)
-        }
+        is AddVehicleIntent.OdometerEdited -> reduce { copy(entry = entry.applyEdit(intent.text)) }
         AddVehicleIntent.OdometerCleared -> reduce { copy(entry = entry.clear()) }
         AddVehicleIntent.Save -> save()
         is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
@@ -88,17 +85,11 @@ class AddVehicleProcessor(
         if (state.isSaving) return null
         val fields = validateVehicleFields(state.name, state.licensePlate)
         val initialOdometer = state.entry.toDistance()
-        // Every error is shown together, so the user sees everything that is missing at once.
-        if (fields !is VehicleFieldsResult.Valid || initialOdometer == null) {
-            return reduce {
-                copy(
-                    nameError = fields is VehicleFieldsResult.NameRequired,
-                    odometerError = initialOdometer == null,
-                )
-            }
-        }
+        // disable-invalid-save: the screen disables Save while either is missing, so this is a defense-in-depth
+        // no-op against a direct dispatch, not a path a tap can reach.
+        if (fields !is VehicleFieldsResult.Valid || initialOdometer == null) return null
         return async("save") {
-            reduce { copy(isSaving = true, nameError = false, odometerError = false) }
+            reduce { copy(isSaving = true) }
             try {
                 repository.addVehicle(
                     fields.fields.name, fields.fields.licensePlate, state.type, state.color, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),

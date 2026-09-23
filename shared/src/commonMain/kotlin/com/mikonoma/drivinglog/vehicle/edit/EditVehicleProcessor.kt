@@ -63,7 +63,7 @@ class EditVehicleProcessor @AssistedInject constructor(
     }
 
     override suspend fun map(intent: EditVehicleIntent): Action<EditVehicleState, EditVehicleEffect>? = when (intent) {
-        is EditVehicleIntent.NameChanged -> reduce { copy(name = intent.text, nameError = false) }
+        is EditVehicleIntent.NameChanged -> reduce { copy(name = intent.text) }
         is EditVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is EditVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
         is EditVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
@@ -111,10 +111,12 @@ class EditVehicleProcessor @AssistedInject constructor(
         // A loaded vehicle always has a type and a color; without them there is nothing to save.
         val type = state.type ?: return null
         val color = state.color ?: return null
+        // disable-invalid-save: the screen disables Save while the name is blank, so NameRequired here is a
+        // defense-in-depth no-op against a direct dispatch, not a path a tap can reach.
         return when (val result = validateVehicleFields(state.name, state.licensePlate)) {
-            VehicleFieldsResult.NameRequired -> reduce { copy(nameError = true) }
+            VehicleFieldsResult.NameRequired -> null
             is VehicleFieldsResult.Valid -> async("save") {
-                reduce { copy(isSaving = true, nameError = false) }
+                reduce { copy(isSaving = true) }
                 try {
                     repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, type, color, state.picture.draft.toChange())
                 } catch (throwable: Throwable) {

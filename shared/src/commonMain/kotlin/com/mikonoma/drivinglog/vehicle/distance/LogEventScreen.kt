@@ -157,7 +157,7 @@ fun LogEventContent(
                         TextButton(
                             colors = headerTextButtonColors(),
                             onClick = { onIntent(LogEventIntent.Save) },
-                            enabled = !state.isLoading && !state.notFound && !state.isSaving,
+                            enabled = !state.isLoading && !state.notFound && !state.isSaving && !state.activeEntry.isEmpty,
                             modifier = Modifier.testTag("save_entry"),
                         ) { Text("Save") }
                     },

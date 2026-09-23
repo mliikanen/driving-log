@@ -95,7 +95,7 @@ fun AddVehicleContent(
                         TextButton(
                             colors = headerTextButtonColors(),
                             onClick = { onIntent(AddVehicleIntent.Save) },
-                            enabled = !state.isSaving,
+                            enabled = !state.isSaving && state.name.isNotBlank() && !state.entry.isEmpty,
                             modifier = Modifier.testTag("save_vehicle"),
                         ) { Text("Save") }
                     },
@@ -129,8 +129,6 @@ fun AddVehicleContent(
                 modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
                 label = { Text("Name") },
                 singleLine = true,
-                isError = state.nameError,
-                supportingText = if (state.nameError) ({ Text("Enter a name") }) else null,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             )
             OutlinedTextField(
@@ -162,8 +160,6 @@ fun AddVehicleContent(
                 onEdit = { onIntent(AddVehicleIntent.OdometerEdited(it)) },
                 onClear = { onIntent(AddVehicleIntent.OdometerCleared) },
                 label = "Current odometer",
-                isError = state.odometerError,
-                errorText = "Enter the odometer reading",
             )
         }
     }

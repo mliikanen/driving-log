@@ -29,7 +29,6 @@ data class EditVehicleState(
     val savedColor: Rgb? = null,
     /** The color taken from a crop confirmed in this form, offered as a swatch of its own; null until then (and after the picture is removed). */
     val pictureColor: Rgb? = null,
-    val nameError: Boolean = false,
     val isSaving: Boolean = false,
     /** The picture: [PictureDraft.Unchanged] until the user changes or removes it. Names files, holds no pixels. */
     val picture: PictureEditState = PictureEditState(draft = PictureDraft.Unchanged),
