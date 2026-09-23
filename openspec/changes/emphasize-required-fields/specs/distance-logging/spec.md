@@ -3,14 +3,15 @@
 ## MODIFIED Requirements
 
 ### Requirement: A trip distance must be entered and above zero
-The system SHALL require a number in the active field. A trip distance SHALL be more than zero. The system SHALL show an
-error on the field and SHALL NOT save the entry when the field is empty, or when a trip distance is zero. The
-field's label ("Trip distance" or "New odometer", whichever is active) SHALL carry a trailing "*", and the form SHALL
-show a line near its Save action explaining the convention: "* indicates a required field".
+The system SHALL require a number in the active field: while it is empty, the form's Save action SHALL be disabled
+and SHALL NOT be tappable. A trip distance SHALL be more than zero: once the field is non-empty, the system SHALL
+show an error on the field and SHALL NOT save the entry when a typed trip distance is zero. The field's label ("Trip
+distance" or "New odometer", whichever is active) SHALL carry a trailing "*", and the form SHALL show a line near
+its Save action explaining the convention: "* indicates a required field".
 
 #### Scenario: Empty field
-- **WHEN** the user tries to save with nothing typed in the field
-- **THEN** the system shows an error on the field and adds nothing
+- **WHEN** the active field has nothing typed
+- **THEN** the form's Save action is disabled
 
 #### Scenario: Zero distance
 - **WHEN** the user types 0 as the trip distance and saves

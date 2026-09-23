@@ -17,8 +17,9 @@ The system SHALL allow the user to add a vehicle by entering a name (required), 
 capability), the vehicle's color (preselected as the application's main theme color, changeable, as specified in the `vehicle-color`
 capability), choosing
 the vehicle's odometer unit and entering its current odometer reading in the odometer field (required: the user
-SHALL type at least one digit, and a typed 0 is a valid reading). After a successful save the system SHALL return to
-the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
+SHALL type at least one digit, and a typed 0 is a valid reading). While the name is blank (after trimming) or the
+odometer field is empty, the add screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful
+save the system SHALL return to the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
 share the same name or license plate. The add screen's dismiss action, in the top-left of its top app bar, SHALL be a
 close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always discards
 whatever was entered.
@@ -42,20 +43,20 @@ whatever was entered.
 - **AND** its details screen shows a current odometer of 0 in the preselected unit
 
 #### Scenario: Odometer is required
-- **WHEN** the user enters the name "Van", chooses the type "Van" but types no digit in the odometer field and tries to save
-- **THEN** the system shows an error on the odometer field, stays on the add screen and does not save anything
+- **WHEN** the user enters the name "Van", chooses the type "Van" but types no digit in the odometer field
+- **THEN** the add screen's Save action is disabled
 
 #### Scenario: The odometer error clears when the user types
-- **WHEN** the odometer error is shown and the user types a digit in the odometer field
-- **THEN** the odometer error is no longer shown
+- **WHEN** Save is disabled because the odometer field is empty and the user types a digit
+- **THEN** Save becomes enabled, provided the name is filled in too
 
 #### Scenario: Name and odometer are both missing
-- **WHEN** the user tries to save with an empty name and no odometer digits
-- **THEN** the system shows the error on the name field and the error on the odometer field, and does not save anything
+- **WHEN** the user has typed no name and no odometer digits
+- **THEN** the add screen's Save action is disabled
 
 #### Scenario: Name is required
-- **WHEN** the user chooses a type and an odometer but tries to save a vehicle with an empty name
-- **THEN** the system shows an error on the name field, stays on the add screen and does not save anything
+- **WHEN** the user chooses a type and types an odometer but has entered no name
+- **THEN** the add screen's Save action is disabled
 
 #### Scenario: Duplicate names are allowed
 - **WHEN** the user adds a vehicle named "Van", choosing a type, while another vehicle named "Van" already exists
@@ -370,10 +371,11 @@ Going back SHALL return to the vehicle list.
 ### Requirement: Edit a vehicle
 The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
 SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
-NOT allow changing the odometer reading or the odometer unit. After a successful save the system SHALL return to the details screen showing
-the new values, and the vehicle list SHALL show them too. The edit screen's dismiss action, in the top-left of its
-top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the
-screen always discards whatever was changed.
+NOT allow changing the odometer reading or the odometer unit. While the name is blank (after trimming), the edit
+screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system SHALL return to
+the details screen showing the new values, and the vehicle list SHALL show them too. The edit screen's dismiss
+action, in the top-left of its top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not
+a back arrow, since leaving the screen always discards whatever was changed.
 
 #### Scenario: Change name and plate
 - **WHEN** the user edits "Family car" to the name " Estate car " and the plate "XYZ-789 " and saves
@@ -397,8 +399,8 @@ screen always discards whatever was changed.
 - **THEN** the vehicle no longer shows a license plate
 
 #### Scenario: Name cannot be emptied
-- **WHEN** the user clears the name, or replaces it with only spaces, and saves
-- **THEN** the system shows the name error, stays on the edit screen and keeps the previously saved values
+- **WHEN** the user clears the name, or replaces it with only spaces
+- **THEN** the edit screen's Save action is disabled, and the vehicle keeps its previously saved values
 
 #### Scenario: Odometer and unit are not editable
 - **WHEN** the user opens the edit screen of a vehicle
