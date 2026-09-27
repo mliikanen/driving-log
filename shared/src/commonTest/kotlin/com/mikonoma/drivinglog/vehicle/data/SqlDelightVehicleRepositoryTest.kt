@@ -34,6 +34,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 
@@ -1393,6 +1394,43 @@ class SqlDelightVehicleRepositoryTest {
         repository.updateEventNote(id, entryId, "borrowed to Sam")
 
         assertEquals("borrowed to Sam", repository.observeEvent(id, entryId).first()?.note)
+    }
+
+    @Test
+    fun anAlreadyOpenObserverSeesAnAddedPhotoWithoutResubscribing() = runTest {
+        // A one-shot `.first()` on a fresh subscription always re-runs the query, so it would pass even if
+        // event_picture changes alone never notified vehicle_event's own listeners (the bug touchEvent fixes,
+        // VehicleEvent.sq): this instead keeps one subscription open throughout, the way a details screen already
+        // showing the event does, and checks it is pushed the change without ever resubscribing.
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
+        val seen = mutableListOf<List<String>>()
+        val job = launch { repository.observeEvent(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
+        advanceUntilIdle()
+
+        repository.addEventPhoto(id, entryId, PendingPicture(pictureStore.addPending()))
+        advanceUntilIdle()
+
+        assertEquals(1, seen.last().size)
+        job.cancel()
+    }
+
+    @Test
+    fun anAlreadyOpenObserverSeesARemovedPhotoWithoutResubscribing() = runTest {
+        val id = addFamilyCar()
+        val entryId = repository.addDistanceEntry(
+            id, ZonedMoment(clock.current), Distance(30_000), null, false, photos = listOf(PendingPicture(pictureStore.addPending())),
+        )
+        val photoId = repository.observeEvent(id, entryId).first()!!.photoIds.single()
+        val seen = mutableListOf<List<String>>()
+        val job = launch { repository.observeEvent(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
+        advanceUntilIdle()
+
+        repository.removeEventPhoto(id, entryId, photoId)
+        advanceUntilIdle()
+
+        assertEquals(emptyList(), seen.last())
+        job.cancel()
     }
 
     // ---- Editing a saved event's note (add-event-editing)

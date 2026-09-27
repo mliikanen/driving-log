@@ -58,3 +58,12 @@ updateEventNote:
 UPDATE vehicle_event
 SET note = ?
 WHERE vehicle_id = ? AND id = ?;
+
+-- A no-op write (add-event-pictures): SQLDelight's reactive queries above (selectEventById, selectLog,
+-- selectRecentEvents) only re-run when vehicle_event itself changes — they never read event_picture, a separate
+-- table, so attaching or removing a photo through EventPicture.sq's queries alone would never make an already-open
+-- details screen, recent-events list or full log notice the change live. Running this alongside those queries, in
+-- the same transaction, makes SQLDelight's table-change tracking treat a photo change as a vehicle_event change too,
+-- without touching any real column.
+touchEvent:
+UPDATE vehicle_event SET id = id WHERE id = ?;

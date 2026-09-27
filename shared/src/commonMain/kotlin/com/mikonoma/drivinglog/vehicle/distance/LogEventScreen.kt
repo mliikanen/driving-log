@@ -490,8 +490,11 @@ private fun KnownOdometerInfo(state: LogEventState, symbols: com.mikonoma.drivin
  * decorates a `BasicTextField`, which carries one — so the tap target, width and test tag are on the wrapping [Box].
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/** `internal`, not `private` (add-event-editing): reused as-is by the event details screen's "Edit" action, where
+ * [showRemoveAction] is false — that screen's only way to clear a note is opening the editor and blanking the text
+ * (see its own spec scenario), not a separate trash-can action. */
 @Composable
-private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> Unit) {
+internal fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> Unit, showRemoveAction: Boolean = true) {
     val shown = pendingNote ?: "Add a note..."
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -523,7 +526,7 @@ private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> 
             visualTransformation = VisualTransformation.None,
             interactionSource = interactionSource,
             label = { Text("Note") },
-            trailingIcon = if (pendingNote != null) {
+            trailingIcon = if (pendingNote != null && showRemoveAction) {
                 {
                     IconButton(onClick = onRemove, modifier = Modifier.testTag("log_note_remove")) {
                         Icon(Icons.Filled.Delete, contentDescription = "Remove note")
@@ -546,15 +549,30 @@ private fun PhotoStripField(
     previewUris: List<Pair<String, String>>,
     onPhotoPicked: (PhotoResult) -> Unit,
     onRemoveRequested: (String) -> Unit,
+) = PhotoStripField(isFull = photos.isFull, error = photos.error, previewUris = previewUris, onPhotoPicked = onPhotoPicked, onRemoveRequested = onRemoveRequested)
+
+/**
+ * The strip itself, decoupled from [EventPhotoDraft]: `internal`, not `private` (add-event-editing), reused as-is by
+ * the event details screen's "Edit" action, whose photos come from two sources (already-saved and newly picked)
+ * rather than one [EventPhotoDraft] — the caller merges [previewUris] and computes [isFull]/[error] from whichever
+ * source(s) apply, and decides which removal path [onRemoveRequested]'s id means.
+ */
+@Composable
+internal fun PhotoStripField(
+    isFull: Boolean,
+    error: PictureError?,
+    previewUris: List<Pair<String, String>>,
+    onPhotoPicked: (PhotoResult) -> Unit,
+    onRemoveRequested: (String) -> Unit,
 ) {
     val picker = rememberPhotoPicker(onPhotoPicked)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Photos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for ((pendingId, uri) in previewUris) {
-                PhotoThumbnail(uri, pendingId, onRemove = { onRemoveRequested(pendingId) }, modifier = Modifier.testTag("event_photo_$pendingId"))
+            for ((id, uri) in previewUris) {
+                PhotoThumbnail(uri, id, onRemove = { onRemoveRequested(id) }, modifier = Modifier.testTag("event_photo_$id"))
             }
-            if (!photos.isFull) {
+            if (!isFull) {
                 Box(
                     Modifier
                         .size(72.dp)
@@ -568,9 +586,9 @@ private fun PhotoStripField(
                 }
             }
         }
-        photos.error?.let { error ->
+        error?.let {
             Text(
-                when (error) {
+                when (it) {
                     PictureError.COULD_NOT_OPEN -> "The photo could not be opened"
                     PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
                 },
@@ -583,7 +601,7 @@ private fun PhotoStripField(
 }
 
 @Composable
-private fun PhotoThumbnail(uri: String, pendingId: String, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PhotoThumbnail(uri: String, pendingId: String, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.size(72.dp)) {
         SubcomposeAsyncImage(
             model = uri,
@@ -672,9 +690,10 @@ internal fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, on
     }
 }
 
-/** "Remove this photo?" before a thumbnail's remove action takes effect (`add-event-pictures`). */
+/** "Remove this photo?" before a thumbnail's remove action takes effect (`add-event-pictures`). `internal`, not
+ * `private` (add-event-editing): reused as-is by the event details screen's "Edit" action, for either photo source. */
 @Composable
-private fun RemovePhotoDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun RemovePhotoDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Remove this photo?") },

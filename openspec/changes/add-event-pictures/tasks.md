@@ -44,10 +44,13 @@ thumbnails extend the details screen they add. Do not start section 4 before bot
 
 *(Do not start until `add-event-details-view` and `add-event-editing` are applied — see the apply-order note above.)*
 
-- [ ] 4.1 Add the photo thumbnails and full-size viewer to the event details screen. Verify with unit tests of the
+- [x] 4.1 Add the photo thumbnails and full-size viewer to the event details screen. Verify with unit tests of the
       details processor's state (thumbnails present/absent, in attach order) and a Compose test that tapping one
-      opens the viewer.
-- [ ] 4.2 Extend the "Edit" screen `add-event-editing` adds with the photo strip (seeded with the event's current
+      opens the viewer. (No Compose/Roborazzi UI-test tier exists yet in this repo — `docs/test-strategy.md` marks
+      it "Not yet adopted" — so "tapping opens the viewer" is instead verified by the processor unit tests
+      (`PhotoClicked` sets `viewingPhotoId`/loads `viewingPhotoUri`) and confirmed manually end to end on a real
+      emulator: tapping a thumbnail opened the full-size viewer correctly, screenshotted during this apply.)
+- [x] 4.2 Extend the "Edit" screen `add-event-editing` adds with the photo strip (seeded with the event's current
       photos, add/remove up to 5) and an explicit "Save" action committing the note and the photo set together.
       Verify with unit tests: add-after-save, remove-after-save, both together, and leaving without saving changes
       nothing.

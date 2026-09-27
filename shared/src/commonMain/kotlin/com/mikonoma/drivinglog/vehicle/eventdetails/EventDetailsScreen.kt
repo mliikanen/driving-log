@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,28 +9,46 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import coil3.compose.SubcomposeAsyncImage
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.vehicle.distance.NoteEditorContent
+import com.mikonoma.drivinglog.vehicle.distance.NoteField
+import com.mikonoma.drivinglog.vehicle.distance.PhotoStripField
+import com.mikonoma.drivinglog.vehicle.distance.RemovePhotoDialog
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
@@ -53,15 +73,11 @@ fun EventDetailsContent(
     onIntent: (EventDetailsIntent) -> Unit,
     onBack: () -> Unit,
 ) {
-    // add-event-editing: the note editor replaces the whole screen's content in the same window while open, the
-    // same reason distance-logging's compose-time form does (see NoteEditorContent's own doc comment).
-    if (state.noteDraft != null) {
-        NoteEditorContent(
-            text = state.noteDraft,
-            onTextChanged = { onIntent(EventDetailsIntent.NoteDraftEdited(it)) },
-            onAttach = { onIntent(EventDetailsIntent.NoteAttached) },
-            onDiscard = { onIntent(EventDetailsIntent.NoteDiscarded) },
-        )
+    // The "Edit" screen (add-event-editing, extended by add-event-pictures) replaces this screen's own content
+    // while open, the same reason the compose-time form's note editor does.
+    val edit = state.edit
+    if (edit != null) {
+        EventEditContent(edit, onIntent = onIntent, onBack = { onIntent(EventDetailsIntent.EditLeft) })
         return
     }
 
@@ -71,8 +87,9 @@ fun EventDetailsContent(
     val timeFormat = deviceLocale.timeFormat()
     // Reuses the row's own formatting (EventRowContent) so the details screen never drifts from what the row shows.
     val content = state.event?.let { eventRowContent(it, state.unit, symbols, deviceZone, timeFormat) }
-    // Only Distance and Odometer reading events can carry a note (add-event-notes); Initial odometer never can.
-    val canEditNote = state.event is VehicleEvent.DistanceEntry || state.event is VehicleEvent.OdometerAnchor
+    // Only Distance and Odometer reading events can carry a note or photos (add-event-notes, add-event-pictures);
+    // Initial odometer never can.
+    val canEdit = state.event is VehicleEvent.DistanceEntry || state.event is VehicleEvent.OdometerAnchor
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -83,7 +100,7 @@ fun EventDetailsContent(
                     title = { Text(content?.label ?: "Event", modifier = Modifier.testTag("event_details_title")) },
                     navigationIcon = { BackButton(onBack) },
                     actions = {
-                        if (canEditNote) {
+                        if (canEdit) {
                             IconButton(
                                 onClick = { onIntent(EventDetailsIntent.EditClicked) },
                                 modifier = Modifier.testTag("edit_event"),
@@ -131,10 +148,143 @@ fun EventDetailsContent(
                                 Text("Note", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp))
                                 Text(note, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("event_details_note"))
                             }
+                            // A thumbnail per attached photo (add-event-pictures); no section at all without one.
+                            if (state.photoThumbnailUris.isNotEmpty()) {
+                                Text("Photos", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp))
+                                LazyRow(Modifier.testTag("event_details_photos").padding(top = 8.dp)) {
+                                    items(state.photoThumbnailUris, key = { it.first }) { (photoId, uri) ->
+                                        Box(Modifier.padding(end = 8.dp).size(72.dp)) {
+                                            SubcomposeAsyncImage(
+                                                model = uri,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickable(onClickLabel = "View photo") { onIntent(EventDetailsIntent.PhotoClicked(photoId)) }
+                                                    .testTag("event_photo_thumbnail_$photoId"),
+                                                loading = {},
+                                                error = {},
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (state.viewingPhotoId != null) {
+        PhotoViewerDialog(uri = state.viewingPhotoUri, onDismiss = { onIntent(EventDetailsIntent.PhotoViewerClosed) })
+    }
+}
+
+/** A full-size viewer for a tapped thumbnail (add-event-pictures): the whole screen, dismissed by tapping it or the
+ * system back gesture. Shows a spinner while [uri] is still loading. */
+@Composable
+private fun PhotoViewerDialog(uri: String?, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClickLabel = "Close") { onDismiss() }
+                .testTag("photo_viewer"),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (uri == null) {
+                CircularProgressIndicator(color = Color.White)
+            } else {
+                SubcomposeAsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                    loading = { CircularProgressIndicator(color = Color.White) },
+                    error = {},
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The "Edit" screen (`add-event-editing`, extended by `add-event-pictures`): the note element and the photo strip,
+ * with an explicit "Save" action. Leaving without saving — the toolbar's arrow or the system's own gesture/button,
+ * both wired to [onBack] — discards the session (see [EventDetailsIntent.EditLeft]); nothing here reaches the saved
+ * event until "Save" is tapped.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EventEditContent(edit: EventEditState, onIntent: (EventDetailsIntent) -> Unit, onBack: () -> Unit) {
+    if (edit.noteEditorText != null) {
+        NoteEditorContent(
+            text = edit.noteEditorText,
+            onTextChanged = { onIntent(EventDetailsIntent.EditNoteTextEdited(it)) },
+            onAttach = { onIntent(EventDetailsIntent.EditNoteAttached) },
+            onDiscard = { onIntent(EventDetailsIntent.EditNoteDiscarded) },
+        )
+        return
+    }
+
+    // Kept (already-saved) photos first, then newly picked ones, matching the order they will end up in once saved.
+    val previewUris = edit.keptPhotos + edit.newPhotoPreviewUris
+    val keptIds = edit.keptPhotos.map { it.first }.toSet()
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            Column {
+                TopAppBar(
+                    colors = drivingLogTopAppBarColors(),
+                    title = { Text("Edit event") },
+                    navigationIcon = { CloseButton(onBack) },
+                    actions = {
+                        TextButton(
+                            onClick = { onIntent(EventDetailsIntent.EditSaved) },
+                            enabled = !edit.isSaving,
+                            modifier = Modifier.testTag("edit_event_save"),
+                        ) { Text("Save") }
+                    },
+                )
+                HeaderDivider()
+            }
+        },
+    ) { padding ->
+        Column(
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+        ) {
+            NoteField(
+                pendingNote = edit.noteDraft.ifBlank { null },
+                onOpen = { onIntent(EventDetailsIntent.EditNoteOpened) },
+                onRemove = {},
+                showRemoveAction = false,
+            )
+            PhotoStripField(
+                isFull = edit.isFull,
+                error = edit.newPhotos.error,
+                previewUris = previewUris,
+                onPhotoPicked = { onIntent(EventDetailsIntent.EditPhotoPicked(it)) },
+                onRemoveRequested = { id ->
+                    if (id in keptIds) onIntent(EventDetailsIntent.EditSavedPhotoRemoveRequested(id))
+                    else onIntent(EventDetailsIntent.EditNewPhotoRemoveRequested(id))
+                },
+            )
+        }
+    }
+
+    if (edit.savedPhotoRemovalPendingId != null) {
+        RemovePhotoDialog(
+            onConfirm = { onIntent(EventDetailsIntent.EditSavedPhotoRemoveConfirmed) },
+            onDismiss = { onIntent(EventDetailsIntent.EditSavedPhotoRemoveCancelled) },
+        )
+    }
+    if (edit.newPhotos.removalPendingId != null) {
+        RemovePhotoDialog(
+            onConfirm = { onIntent(EventDetailsIntent.EditNewPhotoRemoveConfirmed) },
+            onDismiss = { onIntent(EventDetailsIntent.EditNewPhotoRemoveCancelled) },
+        )
     }
 }

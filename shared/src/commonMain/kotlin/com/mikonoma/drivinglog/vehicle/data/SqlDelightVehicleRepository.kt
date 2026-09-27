@@ -209,7 +209,12 @@ class SqlDelightVehicleRepository(
         withContext(dispatcher) {
             val photoId = promotedEventPhoto(photo)
             try {
-                database.transaction { insertEventPhotos(eventId, listOf(photoId)) }
+                // touchEvent: see its own doc comment — event_picture alone does not make a live-observed event
+                // (details screen, recent events, full log) notice this change.
+                database.transaction {
+                    insertEventPhotos(eventId, listOf(photoId))
+                    events.touchEvent(eventId)
+                }
             } catch (throwable: Throwable) {
                 eventPictures.delete(photoId)
                 throw throwable
@@ -222,7 +227,10 @@ class SqlDelightVehicleRepository(
             // Only delete the files when that photo actually belonged to that event: a mismatched pair must not
             // delete a picture another event still references.
             if (pictureId in eventPhotos.selectPhotoIdsForEvent(eventId).executeAsList()) {
-                eventPhotos.deleteEventPicture(eventId, pictureId)
+                database.transaction {
+                    eventPhotos.deleteEventPicture(eventId, pictureId)
+                    events.touchEvent(eventId)
+                }
                 eventPictures.delete(pictureId)
             }
         }

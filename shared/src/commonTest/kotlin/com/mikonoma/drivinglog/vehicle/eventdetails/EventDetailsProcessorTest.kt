@@ -8,10 +8,14 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.initialEvent
+import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -25,6 +29,8 @@ import kotlinx.coroutines.test.setMain
 class EventDetailsProcessorTest {
 
     private val repository = FakeVehicleRepository()
+    private val eventPictures = FakePictureStore()
+    private val codec = FakeImageCodec()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -32,7 +38,7 @@ class EventDetailsProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor(vehicleId: String = "v1", eventId: String) = EventDetailsProcessor(vehicleId, eventId, repository)
+    private fun processor(vehicleId: String = "v1", eventId: String) = EventDetailsProcessor(vehicleId, eventId, repository, eventPictures, codec)
 
     @Test
     fun showsTheMatchingEventAndTheVehiclesUnit() {
@@ -103,78 +109,235 @@ class EventDetailsProcessorTest {
         assertEquals("note", state.event?.note)
     }
 
-    // ---- Editing the note (add-event-editing)
+    // ---- Editing the note and photos (add-event-editing, extended by add-event-pictures)
 
-    private fun distanceEventProcessor(note: String? = null): EventDetailsProcessor {
+    private fun distanceEventProcessor(note: String? = null, photoIds: List<String> = emptyList()): EventDetailsProcessor {
         repository.seedVehicle("v1", "Family car")
-        repository.seedEvents("v1", listOf(VehicleEvent.DistanceEntry("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(30_000), note = note)))
+        repository.seedEvents(
+            "v1",
+            listOf(VehicleEvent.DistanceEntry("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(30_000), note = note, photoIds = photoIds)),
+        )
+        for (id in photoIds) eventPictures.pictures[id] = FakePictureStore.Versions(FakePictureStore.image(1), FakePictureStore.image(2))
         return processor(eventId = "e2")
     }
 
     @Test
-    fun editOpensTheEditorSeededWithTheCurrentNote() {
+    fun editClickedOpensTheEditScreenSeededWithTheCurrentNote() {
         val processor = distanceEventProcessor(note = "borrowed to Sam")
 
         processor.dispatch(EventDetailsIntent.EditClicked)
 
-        assertEquals("borrowed to Sam", processor.state.noteDraft)
+        assertEquals("borrowed to Sam", processor.state.edit?.noteDraft)
     }
 
     @Test
-    fun editOpensTheEditorEmptyWhenThereIsNoNoteYet() {
+    fun editClickedOpensTheEditScreenEmptyWhenThereIsNoNoteYet() {
         val processor = distanceEventProcessor(note = null)
 
         processor.dispatch(EventDetailsIntent.EditClicked)
 
-        assertEquals("", processor.state.noteDraft)
+        assertEquals("", processor.state.edit?.noteDraft)
     }
 
     @Test
-    fun addingANoteToAnEventThatHadNone() {
-        val processor = distanceEventProcessor(note = null)
+    fun editClickedSeedsTheEditScreenWithTheEventsPhotos() {
+        val processor = distanceEventProcessor(photoIds = listOf("p1", "p2"))
 
         processor.dispatch(EventDetailsIntent.EditClicked)
-        processor.dispatch(EventDetailsIntent.NoteDraftEdited("added later"))
-        processor.dispatch(EventDetailsIntent.NoteAttached)
+
+        assertEquals(listOf("p1", "p2"), processor.state.edit?.keptPhotos?.map { it.first })
+    }
+
+    @Test
+    fun nothingIsSavedUntilTheEditScreensSaveIsTapped() {
+        val processor = distanceEventProcessor(note = null)
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("added later"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        assertNull(processor.state.event?.note)
+        assertEquals(emptyList(), repository.updateNoteCalls)
+        assertEquals("added later", processor.state.edit?.noteDraft)
+    }
+
+    @Test
+    fun savingAddsANoteToAnEventThatHadNone() {
+        val processor = distanceEventProcessor(note = null)
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("added later"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
 
         assertEquals("added later", processor.state.event?.note)
-        assertNull(processor.state.noteDraft)
+        assertNull(processor.state.edit)
         assertEquals(listOf(UpdateNoteCall("v1", "e2", "added later")), repository.updateNoteCalls)
     }
 
     @Test
-    fun changingAnExistingNote() {
+    fun savingChangesAnExistingNote() {
         val processor = distanceEventProcessor(note = "old note")
-
         processor.dispatch(EventDetailsIntent.EditClicked)
-        processor.dispatch(EventDetailsIntent.NoteDraftEdited("new note"))
-        processor.dispatch(EventDetailsIntent.NoteAttached)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("new note"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
 
         assertEquals("new note", processor.state.event?.note)
     }
 
     @Test
-    fun clearingANoteByEditingItBlank() {
+    fun savingClearsANoteByEditingItBlank() {
         val processor = distanceEventProcessor(note = "borrowed to Sam")
-
         processor.dispatch(EventDetailsIntent.EditClicked)
-        processor.dispatch(EventDetailsIntent.NoteDraftEdited("   "))
-        processor.dispatch(EventDetailsIntent.NoteAttached)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("   "))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
 
         assertNull(processor.state.event?.note)
         assertEquals(listOf(UpdateNoteCall("v1", "e2", null)), repository.updateNoteCalls)
     }
 
     @Test
-    fun discardDropsTheEdit() {
+    fun discardingTheNoteEditorKeepsTheEditSessionsPreviousDraft() {
         val processor = distanceEventProcessor(note = "borrowed to Sam")
-
         processor.dispatch(EventDetailsIntent.EditClicked)
-        processor.dispatch(EventDetailsIntent.NoteDraftEdited("changed but discarded"))
-        processor.dispatch(EventDetailsIntent.NoteDiscarded)
 
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("changed but discarded"))
+        processor.dispatch(EventDetailsIntent.EditNoteDiscarded)
+
+        assertEquals("borrowed to Sam", processor.state.edit?.noteDraft)
+        assertNull(processor.state.edit?.noteEditorText)
+    }
+
+    @Test
+    fun leavingTheEditScreenWithoutSavingLeavesTheNoteAndPhotosExactlyAsTheyWere() {
+        val processor = distanceEventProcessor(note = "borrowed to Sam", photoIds = listOf("p1"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("changed but not saved"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveRequested("p1"))
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveConfirmed)
+
+        processor.dispatch(EventDetailsIntent.EditLeft)
+
+        assertNull(processor.state.edit)
         assertEquals("borrowed to Sam", processor.state.event?.note)
-        assertNull(processor.state.noteDraft)
+        assertEquals(listOf("p1"), processor.state.event?.photoIds)
         assertEquals(emptyList(), repository.updateNoteCalls)
+        assertEquals(emptyList(), repository.removeEventPhotoCalls)
+    }
+
+    @Test
+    fun addingAPhotoInTheEditScreenIsNotSavedUntilSave() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+        assertEquals(1, processor.state.edit?.newPhotos?.pendingIds?.size)
+        assertEquals(emptyList(), repository.addEventPhotoCalls)
+    }
+
+    @Test
+    fun savingAddsANewlyPickedPhotoToTheEvent() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        assertEquals(1, processor.state.event?.photoIds?.size)
+        assertEquals(1, repository.addEventPhotoCalls.size)
+    }
+
+    @Test
+    fun savingKeepsTheExistingPhotoAndAddsTheNewOneToTheEventImmediately() {
+        val processor = distanceEventProcessor(photoIds = listOf("p1"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+        assertEquals(1, processor.state.edit?.newPhotos?.pendingIds?.size, "pending photo not picked up")
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        // The very first state after Save already reflects both photos on the event itself — not just the kept
+        // one, waiting on the separate live observer to catch up a frame later.
+        assertEquals(2, processor.state.event?.photoIds?.size)
+        assertEquals(1, repository.addEventPhotoCalls.size)
+    }
+
+    @Test
+    fun savingAfterRemovingAPhotoImmediatelyUpdatesTheThumbnailsNoStaleFrame() {
+        val processor = distanceEventProcessor(photoIds = listOf("p1", "p2"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveRequested("p1"))
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveConfirmed)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        // The very first state after Save already shows only the kept photo's thumbnail — not both, waiting on the
+        // separate live observer to catch up a frame later.
+        assertEquals(listOf("p2"), processor.state.photoThumbnailUris.map { it.first })
+    }
+
+    @Test
+    fun removingASavedPhotoAndSavingDetachesIt() {
+        val processor = distanceEventProcessor(photoIds = listOf("p1", "p2"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveRequested("p1"))
+        assertEquals("p1", processor.state.edit?.savedPhotoRemovalPendingId)
+
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveConfirmed)
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        assertEquals(listOf("p2"), processor.state.event?.photoIds)
+        assertEquals(listOf("v1" to "p1"), repository.removeEventPhotoCalls.map { it.vehicleId to it.pictureId })
+    }
+
+    @Test
+    fun cancellingASavedPhotoRemovalKeepsIt() {
+        val processor = distanceEventProcessor(photoIds = listOf("p1"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveRequested("p1"))
+
+        processor.dispatch(EventDetailsIntent.EditSavedPhotoRemoveCancelled)
+
+        assertEquals(listOf("p1"), processor.state.edit?.keptPhotos?.map { it.first })
+        assertNull(processor.state.edit?.savedPhotoRemovalPendingId)
+    }
+
+    @Test
+    fun removingANewlyPickedPhotoDiscardsItImmediately() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+        val pendingId = processor.state.edit?.newPhotos?.pendingIds?.single()!!
+
+        processor.dispatch(EventDetailsIntent.EditNewPhotoRemoveRequested(pendingId))
+        processor.dispatch(EventDetailsIntent.EditNewPhotoRemoveConfirmed)
+
+        assertEquals(emptyList(), processor.state.edit?.newPhotos?.pendingIds)
+        assertFalse(pendingId in eventPictures.pending)
+    }
+
+    @Test
+    fun leavingTheEditScreenDiscardsNewlyPickedPendingPhotoFiles() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+        val pendingId = processor.state.edit?.newPhotos?.pendingIds?.single()!!
+
+        processor.dispatch(EventDetailsIntent.EditLeft)
+
+        assertFalse(pendingId in eventPictures.pending)
+        assertEquals(emptyList(), repository.addEventPhotoCalls)
     }
 }
