@@ -28,9 +28,10 @@ initially-placeholder config), only its end-to-end verification.
       --project <project-id>`.
 
       Group `testers` ("Testers") created in `driving-log-49c48`. Alias already matches `gradle.properties`'
-      `firebaseTesterGroup`, no change needed there. 0 testers in it yet — the developer adds testers themselves
-      (`firebase appdistribution:testers:add <emails> --group-alias testers --project <project-id>`), not part of
-      this change's scope.
+      `firebaseTesterGroup`, no change needed there. Adding testers themselves is not part of this change's scope,
+      but the developer asked for their own email added: `firebase appdistribution:testers:add
+      mikko.liikanen@gmail.com --group-alias testers --project driving-log-49c48` — 1 tester in the group now. This
+      means a real 4.2 upload would now actually notify someone, not upload to an empty group.
 
 ## 2. Release signing in the Android build
 
