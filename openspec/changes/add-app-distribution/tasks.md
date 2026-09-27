@@ -132,15 +132,28 @@ initially-placeholder config), only its end-to-end verification.
       default, per design — an empty path will fail the upload task's own way if the caller omits the property).
       Verified: `appDistributionUploadRelease`, `appDistributionUploadDebug`, `appDistributionAddTesters`,
       `appDistributionRemoveTesters` all listed by `:androidApp:tasks --all`.
-- [ ] 4.2 Fill in the real `firebaseAppId` and `firebaseTesterGroup` values from tasks 1.2/1.3. With a signed
+- [x] 4.2 Fill in the real `firebaseAppId` and `firebaseTesterGroup` values from tasks 1.2/1.3. With a signed
       release build available (task 2.4) and the developer logged in to the Firebase CLI (task 1.1), run
       `./gradlew :androidApp:appDistributionUploadRelease -PdistributionReleaseNotesFile=<a scratch notes file>`
       once as a real end-to-end check. This uploads a real build to real testers — pause and get the developer's
       go-ahead before running it, rather than running it unprompted. Verify the build appears in the Firebase
       console's App Distribution release history for the configured tester group.
-- [ ] 4.3 Run the same command signed out of the Firebase CLI (`firebase logout`, then log back in afterward) and
+
+      Got explicit go-ahead first. Upload succeeded — real release created in `driving-log-49c48`'s App
+      Distribution history, notifying the one real tester in the group. Found and fixed a real issue along the
+      way: the plugin warned "Detected use of deprecated firebaseAppDistribution { } block... import
+      `com.google.firebase.appdistribution.gradle.firebaseAppDistribution` to fix this issue" — added that import
+      to `androidApp/build.gradle.kts`; a follow-up `assembleRelease` confirmed the warning is gone.
+- [x] 4.3 Run the same command signed out of the Firebase CLI (`firebase logout`, then log back in afterward) and
       verify the upload fails with an error that tells the developer to run `firebase login`, not a generic
       stack trace.
+
+      Tested without disrupting the real login: temporarily moved aside the Firebase CLI's stored credentials file
+      (`~/.config/configstore/firebase-tools.json`) instead of `firebase logout` + a full re-login, restored
+      immediately after. The upload failed with a clear, actionable error listing four ways to authenticate,
+      including "Log in with the Firebase CLI" — not a generic stack trace. No version tag was created (the
+      failure happened before `distribute.sh`'s own tag step would ever run). Confirmed `firebase projects:list`
+      still works after restoring the credentials file.
 
 ## 5. The distribute script and documentation
 
