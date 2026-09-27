@@ -13,6 +13,7 @@ kide = "2.2.0"
 metro = "1.4.4"
 sqldelight = "2.4.0"
 serialization = "1.11.0"
+firebaseAppDistribution = "5.3.0"
 
 android-compileSdk = "37"
 android-minSdk = "33"
@@ -52,3 +53,4 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+firebaseAppDistribution = { id = "com.google.firebase.appdistribution", version.ref = "firebaseAppDistribution" }

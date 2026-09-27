@@ -77,14 +77,21 @@ version tag recording what was distributed, so a later distribution can find it 
 - **WHEN** the developer runs the distribution command without an active Firebase CLI login
 - **THEN** the upload fails with an error telling the developer to run the Firebase CLI login, and no version tag is created
 
-### Requirement: One-time Firebase project setup is documented for the developer to perform
-The system SHALL document, as steps for the developer to carry out themselves (registering the Android app in the
-existing Firebase project, obtaining its Firebase App ID, enabling App Distribution, and creating the tester group),
-every part of the setup that requires the developer's own Firebase account access and that the build tooling cannot
-perform on their behalf.
+### Requirement: One-time Firebase project setup is documented, with only the developer's own login left manual
+The system SHALL document the one-time Firebase setup a new developer needs before their first distribution. Only
+the developer's own interactive Firebase CLI login is a step the build tooling cannot perform on their behalf — it
+requires a browser-based sign-in tied to their own Google account. Registering the Android app in the existing
+Firebase project (obtaining its Firebase App ID) and creating a tester group both have Firebase CLI equivalents, so
+the documentation SHALL cover both the manual login step and the CLI commands for the rest, letting the developer
+choose to run those commands themselves or have them run on their behalf once logged in.
 
 #### Scenario: A new developer sets up distribution for the first time
-- **WHEN** a developer who has not distributed a build before follows the documented setup steps
-- **THEN** they end up with everything the distribution command needs (a registered Android app, its Firebase App ID
-  configured, App Distribution enabled, and a tester group to upload to) without any step being performed for them
-  by the build tooling
+- **WHEN** a developer who has not distributed a build before logs in to the Firebase CLI and runs the documented
+  app-registration and tester-group commands (or has them run on their behalf)
+- **THEN** they end up with everything the distribution command needs: a registered Android app, its Firebase App ID
+  configured, and a tester group to upload to
+
+#### Scenario: Only the login step is irreducibly manual
+- **WHEN** a developer sets up distribution for the first time
+- **THEN** the documented steps require their own interactive action only for the Firebase CLI login; app
+  registration and tester-group creation are documented as CLI commands, not console-only manual steps

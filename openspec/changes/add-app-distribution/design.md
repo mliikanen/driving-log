@@ -65,10 +65,14 @@ agreeing — recorded here since it's a real decision, not a default.
 `androidApp/build.gradle.kts` loads `keystore.properties` (`storeFile` as an absolute path, `storePassword`,
 `keyAlias`, `keyPassword`) from a fixed path, `~/.android-keystores/keystore.properties`, and wires them into a
 `release` `signingConfig`. Both the keystore file and `keystore.properties` live there — outside the repository
-entirely, not merely gitignored-in-place. Generating the keystore (`keytool -genkeypair ...`) and its two
-independent, high-entropy random passwords is now something I do as part of applying this change (task 2.1), not a
-step the developer performs by hand — a script-generated random password is stronger than what a human tends to
-pick, and `keytool` is deterministic and safe to automate. Regenerating the keystore itself remains something that
+entirely, not merely gitignored-in-place. Generating the keystore (`keytool -genkeypair ...`) and its high-entropy
+random password is now something I do as part of applying this change (task 2.1), not a step the developer performs
+by hand — a script-generated random password is stronger than what a human tends to pick, and `keytool` is
+deterministic and safe to automate. One password, not two: PKCS12 keystores (the modern default since JDK 9) don't
+support a key password different from the store password — `keytool` warns and silently ignores `-keypass`,
+discovered when the first attempt (two independently generated passwords) produced a keystore `apksigner` couldn't
+actually sign with (`storePassword` opened the keystore; the separately-generated `keyPassword` didn't decrypt the
+key). Fixed to generate one password and use it for both. Regenerating the keystore itself remains something that
 must never happen by accident (it would invalidate every previously-distributed build's upgrade path), so the task
 generates it once and leaves it alone afterward; I flag this explicitly to the developer before running it.
 
@@ -100,10 +104,15 @@ is instead solved by an explicit backup task, not by using git as the backup mec
 deliberately kept out of it.
 
 If `~/.android-keystores/keystore.properties` is missing, the `release` signing config is left unconfigured, and a
-`doFirst` check on the tasks that build a release artifact (`assembleRelease`, `bundleRelease`, and transitively the
-App Distribution upload task) throws a clear `GradleException` naming the missing file — satisfying the spec's
-"fails before producing or uploading any artifact" requirement explicitly, rather than relying on whatever the App
-Distribution plugin happens to do with an unsigned build.
+dedicated `checkReleaseSigning` task throws a clear `GradleException` naming the missing file. It's not a `doFirst`
+on `assembleRelease`/`bundleRelease` themselves: those are lifecycle tasks whose own `doFirst` only runs after every
+dependency — including the tasks that actually write the APK/AAB — has already executed, which is too late (found
+by hitting it directly: a real, unsigned-by-the-check-yet build ran to completion before the lifecycle task's
+`doFirst` fired). Fixed by making `checkReleaseSigning` a dependency of the tasks that actually write the artifact
+(`packageRelease` for the APK, `packageReleaseBundle` for the AAB, and transitively the App Distribution upload
+task, which depends on one of them) — satisfying the spec's "fails before producing or uploading any artifact"
+requirement for real, rather than relying on whatever the App Distribution plugin happens to do with an unsigned
+build.
 
 ### Both `versionCode` and `versionName` are fully automated — no hand-edited version value anywhere
 **Revised from the original design**, which had the developer hand-edit `versionName` as a deliberate semver
@@ -202,12 +211,13 @@ without an explicit, separate request.
   can't catch a deliberate rewrite. `versionName`'s appended short SHA at least keeps two builds from ever looking
   identical even if this happened.
 - **[Risk]** The keystore is a single file on one developer's machine with no backup → **Mitigation**: task 2.1
-  explicitly tells the developer to back up `~/.android-keystores/` (both the keystore and its passwords) to a
-  password manager or encrypted drive right after it's generated, since losing it means every future release cannot
-  upgrade-install over an earlier one on a tester's device. Deliberately not solved by committing the (encrypted)
-  keystore to git instead — see the signing decision above for why that trade was considered and declined.
-- **[Risk]** Both `~/.android-keystores/driving-log-release.jks` and its passwords are generated and briefly visible
-  to whatever ran task 2.1 (a terminal session, an agent's tool output/transcript) → **Mitigation**: accepted; the
-  passwords are only ever written to `keystore.properties` and the `keytool` invocation that creates the keystore,
+  explicitly tells the developer to back up `~/.android-keystores/` (both the keystore file and `keystore.properties`)
+  to a password manager or encrypted drive right after it's generated, since losing it means every future release
+  cannot upgrade-install over an earlier one on a tester's device. Deliberately not solved by committing the
+  (encrypted) keystore to git instead — see the signing decision above for why that trade was considered and
+  declined.
+- **[Risk]** `~/.android-keystores/driving-log-release.jks` and its password are generated and briefly visible to
+  whatever ran task 2.1 (a terminal session, an agent's tool output/transcript) → **Mitigation**: accepted; the
+  password is only ever written to `keystore.properties` and the `keytool` invocation that creates the keystore,
   never to a file this change commits or a log this change persists beyond that one-time setup. This is the same
   exposure any locally-run `keytool`/password-generation step has; nothing about automating it widens it.

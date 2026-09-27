@@ -12,8 +12,9 @@ to the testers already in the existing Firebase project, with release notes a re
 ## What Changes
 
 - Add a release signing config for `androidApp`'s `release` build type, backed by a keystore generated once as part
-  of applying this change, with two independently generated, high-entropy random passwords. The keystore and its
-  passwords (`keystore.properties`) live at `~/.android-keystores/`, entirely outside the repository — not merely
+  of applying this change, with one high-entropy random password (PKCS12 keystores, the modern default, don't
+  support a separate key password — `keytool` ignores one if given). The keystore and its password
+  (`keystore.properties`) live at `~/.android-keystores/`, entirely outside the repository — not merely
   gitignored-in-place. See design.md's signing decision for the security reasoning (including the `.gitignore`-only
   and commit-the-encrypted-keystore alternatives that were considered and declined).
 - Add the Firebase App Distribution Gradle plugin to `androidApp`, wired to upload the signed release build to a
@@ -31,9 +32,11 @@ to the testers already in the existing Firebase project, with release notes a re
   archive history: every distributed build's notes are literally the list of specced changes it contains. The
   developer reviews and can edit the generated draft before the upload runs; hand-typing notes from nothing is only
   reached when there is genuinely nothing archived to generate from.
-- Document the one-time manual Firebase console setup this change cannot do on the developer's behalf: registering
-  the Android app in the existing Firebase project, obtaining its Firebase App ID (no `google-services.json` needed
-  — see design.md), enabling App Distribution, and creating/naming a tester group.
+- Document the one-time Firebase setup. Only the developer's own interactive `firebase login` is a step this change
+  truly cannot do on their behalf (it needs a browser OAuth flow tied to their Google account); registering the
+  Android app (obtaining its Firebase App ID, no `google-services.json` needed — see design.md) and creating a
+  tester group both have real Firebase CLI equivalents (`apps:create`, `appdistribution:group:create`), so once the
+  developer has logged in, this change's tooling can run them too.
 - Out of scope for this change (noted as explicit follow-ups, since this is already sizeable and CI needs its own
   secret-management design): CI-triggered distribution (GitHub Actions, `workflow_dispatch` or on-push), and any
   real app store submission (Play Store), which the project context says isn't happening yet regardless.
