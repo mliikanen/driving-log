@@ -54,8 +54,8 @@ alone, and why the user picks from labeled candidates rather than the app silent
   picked once): needs its own camera-permission and CameraX-preview design, explicitly deferred to a future,
   separate proposal per the request.
 - **Auto-suggesting which vehicle a reading belongs to**, from the detected odometer value matched against each
-  vehicle's own known current odometer (useful once a user has several vehicles and isn't sure which one a stray
-  photo was of): noted as a future idea, not designed or built here.
+  vehicle's own known current odometer: split out into its own proposal, `suggest-vehicle-from-odometer` (idea-stage,
+  with open design questions, depends on this change existing first).
 - **One-tap access from the Home screen**: a camera/image icon on the Home screen's action grid that jumps directly
   into this scan flow (today's grid — car/Vehicles, note/Log event, route/Trip, question-mark/Placeholder, per
   `app-shell` — would have Vehicles move to the bottom row, into the Placeholder slot, freeing a more prominent spot
