@@ -129,4 +129,49 @@ class EventRowContentTest {
     fun anInitialOdometerNeverHasANote() {
         assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasNote)
     }
+
+    // ---- The photo icon (add-event-pictures)
+
+    @Test
+    fun aDistanceEntryWithNeitherNoteNorPhotosHasNeitherFlag() {
+        val row = row(distance(30_000))
+        assertEquals(false, row.hasNote)
+        assertEquals(false, row.hasPhotos)
+    }
+
+    @Test
+    fun aDistanceEntryWithOnlyANoteHasNoteButNotPhotos() {
+        val row = row(VehicleEvent.DistanceEntry("d", at, Distance(30_000), note = "borrowed to Sam"))
+        assertEquals(true, row.hasNote)
+        assertEquals(false, row.hasPhotos)
+    }
+
+    @Test
+    fun aDistanceEntryWithOnlyPhotosHasPhotosButNotANote() {
+        val row = row(VehicleEvent.DistanceEntry("d", at, Distance(30_000), photoIds = listOf("p1")))
+        assertEquals(false, row.hasNote)
+        assertEquals(true, row.hasPhotos)
+    }
+
+    @Test
+    fun aDistanceEntryWithBothANoteAndPhotosHasBothFlags() {
+        val row = row(VehicleEvent.DistanceEntry("d", at, Distance(30_000), note = "borrowed to Sam", photoIds = listOf("p1", "p2")))
+        assertEquals(true, row.hasNote)
+        assertEquals(true, row.hasPhotos)
+    }
+
+    @Test
+    fun anAnchorWithPhotosHasPhotosTrue() {
+        assertEquals(true, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000), photoIds = listOf("p1"))).hasPhotos)
+    }
+
+    @Test
+    fun anAnchorWithoutPhotosHasPhotosFalse() {
+        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).hasPhotos)
+    }
+
+    @Test
+    fun anInitialOdometerNeverHasPhotos() {
+        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasPhotos)
+    }
 }

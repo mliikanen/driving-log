@@ -20,6 +20,8 @@ data class EventRowContent(
     val isDistance: Boolean = false,
     /** True when the event has a non-empty note (`add-event-notes`); the row shows an icon, never the note's text. */
     val hasNote: Boolean = false,
+    /** True when the event has one or more photos (`add-event-pictures`); the row shows an icon, never a thumbnail. */
+    val hasPhotos: Boolean = false,
 )
 
 fun eventRowContent(
@@ -42,6 +44,7 @@ fun eventRowContent(
             trailing = formatOdometer(event.reading, unit, symbols),
             loggedOdometer = null,
             hasNote = event.note != null,
+            hasPhotos = event.photoIds.isNotEmpty(),
         )
         is VehicleEvent.DistanceEntry -> EventRowContent(
             label = event.label,
@@ -50,5 +53,6 @@ fun eventRowContent(
             loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
             isDistance = true,
             hasNote = event.note != null,
+            hasPhotos = event.photoIds.isNotEmpty(),
         )
     }

@@ -35,7 +35,7 @@ thumbnails extend the details screen they add. Do not start section 4 before bot
 
 ## 3. The row icon
 
-- [ ] 3.1 Redesign `EventRow` so the note and photo presence icons are anchored together at the row's bottom-end
+- [x] 3.1 Redesign `EventRow` so the note and photo presence icons are anchored together at the row's bottom-end
       corner (replacing the note icon's current `leadingContent` placement), in the order note-then-photo, showing
       only the icons that apply. Verify with a Compose test or the existing `EventRowContentTest` tier (whichever
       `docs/test-strategy.md` calls for) covering all four combinations (neither, note only, photos only, both).
