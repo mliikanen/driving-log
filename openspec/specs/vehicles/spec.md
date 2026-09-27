@@ -12,17 +12,20 @@ odometer field, so "entering the odometer 45200" means typing the digits 4, 5, 2
 ## Requirements
 
 ### Requirement: Add a vehicle
-The system SHALL allow the user to add a vehicle by entering a name (required), a license plate (optional), a picture
-(optional, as specified in the `vehicle-picture` capability), the vehicle's type (preselected as Car, changeable, as specified in the `vehicle-type`
-capability), the vehicle's color (preselected as the application's main theme color, changeable, as specified in the `vehicle-color`
-capability), choosing
-the vehicle's odometer unit and entering its current odometer reading in the odometer field (required: the user
-SHALL type at least one digit, and a typed 0 is a valid reading). While the name is blank (after trimming) or the
-odometer field is empty, the add screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful
-save the system SHALL return to the vehicle list showing the new vehicle. The system SHALL allow several vehicles to
-share the same name or license plate. The add screen's dismiss action, in the top-left of its top app bar, SHALL be a
-close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always discards
-whatever was entered.
+The system SHALL allow the user to add a vehicle by entering a name (required), choosing the vehicle's odometer unit
+and entering its current odometer reading in the odometer field (required: the user SHALL type at least one digit,
+and a typed 0 is a valid reading), a license plate (optional), the vehicle's type (preselected as Car, changeable, as
+specified in the `vehicle-type` capability), and the vehicle's color (preselected as the application's main theme
+color, changeable, as specified in the `vehicle-color` capability). The form SHALL present these fields in that
+order: picture, name, license plate, unit, odometer, type, color — the two required fields (name, odometer) grouped
+with the identity fields ahead of type and color, both of which always have a default and can never be left empty.
+Every required field's label SHALL carry a trailing "*", and the form SHALL show a line near its actions explaining
+the convention: "* indicates a required field". While the name is blank (after trimming) or the odometer field is
+empty, the add screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system
+SHALL return to the vehicle list showing the new vehicle. The system SHALL allow several vehicles to share the same
+name or license plate. The add screen's dismiss action, in the top-left of its top app bar, SHALL be a close "X" (a
+Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always discards whatever was
+entered.
 
 #### Scenario: Add a vehicle with all fields
 - **WHEN** the user enters the name "Family car" and the plate "ABC-123", chooses the type "Car" and the unit "Kilometers", types the odometer 45200 and saves
@@ -69,6 +72,14 @@ whatever was entered.
 #### Scenario: The dismiss action is a close icon
 - **WHEN** the user opens the add-vehicle screen
 - **THEN** the top-left action of the screen's top app bar is a close "X", not a back arrow
+
+#### Scenario: Required fields are marked
+- **WHEN** the user opens the add-vehicle form
+- **THEN** the name and odometer labels each carry a trailing "*", the license plate, type and color fields do not, and a line near the form's actions reads "* indicates a required field"
+
+#### Scenario: The required fields come before type and color
+- **WHEN** the user opens the add-vehicle form
+- **THEN** the fields appear in the order picture, name, license plate, unit, odometer, type, color
 
 ### Requirement: Odometer unit is a per-vehicle setting with a default from the device region
 The system SHALL let the user choose one of four odometer units for each vehicle when adding it: "Kilometers" (a
@@ -371,11 +382,14 @@ Going back SHALL return to the vehicle list.
 ### Requirement: Edit a vehicle
 The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
 SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
-NOT allow changing the odometer reading or the odometer unit. While the name is blank (after trimming), the edit
-screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system SHALL return to
-the details screen showing the new values, and the vehicle list SHALL show them too. The edit screen's dismiss
-action, in the top-left of its top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not
-a back arrow, since leaving the screen always discards whatever was changed.
+NOT allow changing the odometer reading or the odometer unit. The name label SHALL carry a trailing "*" (its one
+required field, matching the add form's convention), the license plate field's `(optional)` suffix SHALL be dropped
+(redundant once the required field carries its own mark, same as the add form), and the form SHALL show the same
+"* indicates a required field" line near its actions. While the name is blank (after trimming), the edit screen's
+Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system SHALL return to the details screen showing the new values,
+and the vehicle list SHALL show them too. The edit screen's dismiss action, in the top-left of its top app bar, SHALL
+be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always
+discards whatever was changed.
 
 #### Scenario: Change name and plate
 - **WHEN** the user edits "Family car" to the name " Estate car " and the plate "XYZ-789 " and saves
@@ -413,6 +427,10 @@ a back arrow, since leaving the screen always discards whatever was changed.
 #### Scenario: The dismiss action is a close icon
 - **WHEN** the user opens the edit-vehicle screen
 - **THEN** the top-left action of the screen's top app bar is a close "X", not a back arrow
+
+#### Scenario: The required field is marked
+- **WHEN** the user opens the edit-vehicle form
+- **THEN** the name label carries a trailing "*", the license plate field does not say "(optional)", and a line near the form's actions reads "* indicates a required field"
 
 ### Requirement: Vehicles persist and work offline
 The system SHALL keep vehicles on the device so that they are still present after the app is closed and reopened,
