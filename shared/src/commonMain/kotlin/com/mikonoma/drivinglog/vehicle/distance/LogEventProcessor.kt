@@ -9,7 +9,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
-import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -28,7 +28,7 @@ import org.fuusio.kide.presentation.reduce
 class LogEventProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
-    private val pictures: VehiclePictureStore,
+    private val pictures: PictureStore,
     private val clock: Clock,
     deviceTimeZone: DeviceTimeZone,
 ) : PresentationProcessor<LogEventIntent, LogEventState, LogEventEffect>(openedState(clock, deviceTimeZone, vehicleId)) {

@@ -9,6 +9,7 @@ import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -39,6 +40,16 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             val square = Bitmap.createBitmap(bitmap, x, y, side, side)
             EncodedPicture(encode(square, sides.small), encode(square, sides.large))
         }
+
+    override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? = withContext(dispatcher) {
+        val bitmap = decodeBitmap(bytes) ?: return@withContext null
+        caps.map { cap ->
+            val (width, height) = scaledToFit(bitmap.width, bitmap.height, cap)
+            val out = ByteArrayOutputStream()
+            scaledTo(bitmap, width, height).compress(Bitmap.CompressFormat.WEBP_LOSSY, WEBP_QUALITY, out)
+            EncodedImage(out.toByteArray(), "webp", width, height)
+        }
+    }
 
     override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {
         try {
@@ -87,6 +98,20 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             current = Bitmap.createScaledBitmap(current, step, step, true)
         }
         return current
+    }
+
+    /** The same halving-then-smooth-step scaling as [scaledTo], for a non-square target (an event photo, kept at its
+     * aspect ratio, not cropped to a square — `add-event-pictures`). */
+    private fun scaledTo(bitmap: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        var current = bitmap
+        for (step in downscaleSteps(max(current.width, current.height), max(targetWidth, targetHeight))) {
+            val stepScale = step.toDouble() / max(current.width, current.height)
+            val stepWidth = maxOf(1, (current.width * stepScale).roundToInt())
+            val stepHeight = maxOf(1, (current.height * stepScale).roundToInt())
+            current = Bitmap.createScaledBitmap(current, stepWidth, stepHeight, true)
+        }
+        return if (current.width == targetWidth && current.height == targetHeight) current
+        else Bitmap.createScaledBitmap(current, targetWidth, targetHeight, true)
     }
 
     private companion object {

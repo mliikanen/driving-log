@@ -54,7 +54,7 @@ class LogEventProcessorTest {
         repository.seedEvents("v1", entries + initialEvent("i1", initialAt, 45_200_000))
     }
 
-    private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore()
+    private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
 
     private fun processor(vehicleId: String = "v1") = LogEventProcessor(vehicleId, repository, pictures, clock, deviceZone)
 

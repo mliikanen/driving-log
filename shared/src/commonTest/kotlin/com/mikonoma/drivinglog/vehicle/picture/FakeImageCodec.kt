@@ -9,8 +9,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec {
 
     class Encode(val bytes: ByteArray, val crop: CropRect, val sides: PictureSides, val quarterTurns: Int = 0)
+    class ScaledEncode(val bytes: ByteArray, val caps: List<Int>)
 
     val encodes = mutableListOf<Encode>()
+    val scaledEncodes = mutableListOf<ScaledEncode>()
     var decodeCount = 0
 
     /** What [sample] gives for bytes that are an image: a flat mid grey unless a test sets something else. */
@@ -36,6 +38,16 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
         if (bytes.isEmpty()) return null
         encodes += Encode(bytes, crop, sides, quarterTurns)
         return EncodedPicture(version(crop, sides.small, 0), version(crop, sides.large, 1))
+    }
+
+    override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? {
+        encodeFailure?.let { throw it }
+        if (bytes.isEmpty()) return null
+        scaledEncodes += ScaledEncode(bytes, caps)
+        return caps.map { cap ->
+            val (w, h) = scaledToFit(width, height, cap)
+            EncodedImage(byteArrayOf(cap.toByte()), "webp", w, h)
+        }
     }
 
     override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? {

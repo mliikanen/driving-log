@@ -8,7 +8,7 @@ import kotlinx.coroutines.test.runTest
 class PictureSweepTest {
 
     private val repository = FakeVehicleRepository()
-    private val pictures = FakeVehiclePictureStore()
+    private val pictures = FakePictureStore()
 
     @Test
     fun theFilesOfPicturesNoVehicleUsesAreDeletedAndTheOthersKept() = runTest {

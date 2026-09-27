@@ -9,7 +9,7 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import java.io.File
 import kotlin.test.Test
 import kotlin.time.Clock
@@ -71,7 +71,7 @@ private fun generateVehicleWithLogAndNote(target: File) {
         newId = { "fixture-${++counter}" },
         dispatcher = Dispatchers.Unconfined,
         deviceTimeZone = FixedDeviceTimeZone(TimeZone.UTC),
-        pictures = FakeVehiclePictureStore(),
+        pictures = FakePictureStore(),
     )
 
     runBlocking {

@@ -20,6 +20,13 @@ sealed interface VehicleEvent {
      */
     val note: String?
 
+    /**
+     * The ids of photos attached to the event (`add-event-pictures`), in the order they were attached; empty when it has
+     * none. Only [DistanceEntry] and [OdometerAnchor] can carry any; [InitialOdometer] always reads empty here, for the
+     * same reason it never carries a [note].
+     */
+    val photoIds: List<String>
+
     /** Written once, when the vehicle is added. It sets the odometer. */
     data class InitialOdometer(
         override val id: String,
@@ -28,6 +35,7 @@ sealed interface VehicleEvent {
     ) : VehicleEvent {
         override val odometer: Distance get() = reading
         override val note: String? get() = null
+        override val photoIds: List<String> get() = emptyList()
     }
 
     /**
@@ -41,6 +49,8 @@ sealed interface VehicleEvent {
         val reading: Distance,
         /** A note the user typed while logging it, or null. See [DistanceEntry.note]. */
         override val note: String? = null,
+        /** Photos attached while logging it, or later through the "Edit" action. See [DistanceEntry.photoIds]. */
+        override val photoIds: List<String> = emptyList(),
     ) : VehicleEvent {
         override val odometer: Distance get() = reading
     }
@@ -57,6 +67,8 @@ sealed interface VehicleEvent {
         val loggedOdometer: Distance? = null,
         /** A note the user typed while logging it (`add-event-notes`), or null when none was added. Immutable once saved. */
         override val note: String? = null,
+        /** Photos attached while logging it, or later through the "Edit" action (`add-event-pictures`), in attach order. */
+        override val photoIds: List<String> = emptyList(),
     ) : VehicleEvent {
         override val odometer: Distance? get() = null
     }

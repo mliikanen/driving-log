@@ -4,7 +4,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -29,7 +29,7 @@ import org.fuusio.kide.test.test
 class VehicleDetailsProcessorTest {
 
     private val repository = FakeVehicleRepository()
-    private val pictures = FakeVehiclePictureStore()
+    private val pictures = FakePictureStore()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -200,7 +200,7 @@ class VehicleDetailsProcessorTest {
         val pictureId = pictures.addPicture()
         repository.seedVehicle("v1", "Family car", pictureId = pictureId)
 
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.LARGE), processor().state.pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", pictureId, PictureSize.LARGE), processor().state.pictureUri)
     }
 
     @Test
@@ -225,7 +225,7 @@ class VehicleDetailsProcessorTest {
 
         val second = pictures.addPicture()
         repository.setPicture("v1", second)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", second, PictureSize.LARGE), processor.state.pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", second, PictureSize.LARGE), processor.state.pictureUri)
 
         repository.setPicture("v1", null)
         assertNull(processor.state.pictureUri)

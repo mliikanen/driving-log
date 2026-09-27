@@ -7,12 +7,18 @@ enum class PictureSize { SMALL, LARGE }
 class EncodedImage(val bytes: ByteArray, val extension: String, val width: Int, val height: Int)
 
 /**
- * The picture files in the application's private storage. A picture in use is named by a picture id, which is what the vehicle
- * stores. A picture the user is still working on (a photo waiting to be cropped, a crop waiting for the vehicle to be saved) is
- * *pending*, named by a pending id, and is moved under a new picture id by [promote] when the vehicle is saved.
+ * The picture files in the application's private storage. A picture in use is named by a picture id, which is what the owning
+ * record (a vehicle, or an event, `add-event-pictures`) stores. A picture the user is still working on (a photo waiting to be
+ * cropped, or one already encoded but waiting for its owning record to be saved) is *pending*, named by a pending id, and is
+ * moved under a new picture id by [promote] when the owning record is saved.
  */
-interface VehiclePictureStore {
-    /** Keeps the bytes of a chosen photo while the user crops it. Returns the new pending id. */
+interface PictureStore {
+    /**
+     * Keeps the bytes of a chosen photo and mints a new pending id for it. A caller that crops reads it back with
+     * [readPendingSource] once the user confirms a crop; a caller that does not crop (`add-event-pictures`) encodes
+     * straight from the bytes it already has and only uses the returned id, discarding the source immediately with
+     * [discardPendingSource].
+     */
     suspend fun putPendingSource(bytes: ByteArray): String
 
     suspend fun readPendingSource(pendingId: String): ByteArray?

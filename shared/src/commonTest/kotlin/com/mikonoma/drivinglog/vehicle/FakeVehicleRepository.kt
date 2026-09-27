@@ -32,6 +32,7 @@ data class DistanceCall(
     val loggedOdometer: Distance?,
     val tenthsIncluded: Boolean,
     val note: String? = null,
+    val photos: List<PendingPicture> = emptyList(),
 )
 
 data class AnchorCall(
@@ -40,7 +41,11 @@ data class AnchorCall(
     val reading: Distance,
     val tenthsIncluded: Boolean,
     val note: String? = null,
+    val photos: List<PendingPicture> = emptyList(),
 )
+
+data class AddEventPhotoCall(val vehicleId: String, val eventId: String, val photo: PendingPicture)
+data class RemoveEventPhotoCall(val vehicleId: String, val eventId: String, val pictureId: String)
 
 data class AddCall(
     val name: String,
@@ -74,6 +79,8 @@ class FakeVehicleRepository : VehicleRepository {
     val updateNoteCalls = mutableListOf<UpdateNoteCall>()
     val distanceCalls = mutableListOf<DistanceCall>()
     val anchorCalls = mutableListOf<AnchorCall>()
+    val addEventPhotoCalls = mutableListOf<AddEventPhotoCall>()
+    val removeEventPhotoCalls = mutableListOf<RemoveEventPhotoCall>()
     var distanceFailure: Throwable? = null
     var addFailure: Throwable? = null
     var updateFailure: Throwable? = null
@@ -162,15 +169,16 @@ class FakeVehicleRepository : VehicleRepository {
         loggedOdometer: Distance?,
         tenthsIncluded: Boolean,
         note: String?,
+        photos: List<PendingPicture>,
     ): String {
         distanceFailure?.let { throw it }
-        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded, note)
+        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded, note, photos)
         // The choice is remembered with the entry, like the real repository does.
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "d${++counter}"
         // Keep the log newest first by instant, the way the real repository returns it.
-        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer, note)
+        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer, note, photos.map(::fakePhotoId))
         val updated = (listOf(entry) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant }
         seedEvents(vehicleId, updated)
         return id
@@ -182,16 +190,19 @@ class FakeVehicleRepository : VehicleRepository {
         reading: Distance,
         tenthsIncluded: Boolean,
         note: String?,
+        photos: List<PendingPicture>,
     ): String {
         distanceFailure?.let { throw it }
-        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded, note)
+        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded, note, photos)
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "a${++counter}"
-        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading, note)
+        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading, note, photos.map(::fakePhotoId))
         seedEvents(vehicleId, (listOf(anchor) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
         return id
     }
+
+    private fun fakePhotoId(photo: PendingPicture) = "photo-${photo.pendingId}"
 
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
         updateFailure?.let { throw it }
@@ -207,6 +218,34 @@ class FakeVehicleRepository : VehicleRepository {
                 is VehicleEvent.DistanceEntry -> event.copy(note = note)
                 is VehicleEvent.OdometerAnchor -> event.copy(note = note)
                 is VehicleEvent.InitialOdometer -> event // never carries a note; nothing to change
+            }
+        }
+        seedEvents(vehicleId, updated)
+    }
+
+    override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String {
+        addEventPhotoCalls += AddEventPhotoCall(vehicleId, eventId, photo)
+        val photoId = fakePhotoId(photo)
+        val updated = eventsOf(vehicleId).map { event ->
+            if (event.id != eventId) event
+            else when (event) {
+                is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds + photoId)
+                is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds + photoId)
+                is VehicleEvent.InitialOdometer -> event // never carries a photo; nothing to change
+            }
+        }
+        seedEvents(vehicleId, updated)
+        return photoId
+    }
+
+    override suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String) {
+        removeEventPhotoCalls += RemoveEventPhotoCall(vehicleId, eventId, pictureId)
+        val updated = eventsOf(vehicleId).map { event ->
+            if (event.id != eventId) event
+            else when (event) {
+                is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds - pictureId)
+                is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds - pictureId)
+                is VehicleEvent.InitialOdometer -> event
             }
         }
         seedEvents(vehicleId, updated)

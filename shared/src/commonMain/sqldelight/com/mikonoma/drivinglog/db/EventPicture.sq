@@ -1,0 +1,25 @@
+-- A photo attached to a "Distance" or "Odometer reading" event (add-event-pictures). Up to 5 per event.
+CREATE TABLE event_picture (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    event_id    TEXT    NOT NULL REFERENCES vehicle_event(id),
+    -- 0-based order the photos were attached in; how they are shown in the strip and the details screen.
+    position    INTEGER NOT NULL,
+    created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX event_picture_by_event ON event_picture (event_id, position);
+
+insertEventPicture:
+INSERT INTO event_picture (id, event_id, position, created_at)
+VALUES (?, ?, ?, ?);
+
+-- In attach order, for one event.
+selectPhotoIdsForEvent:
+SELECT id FROM event_picture WHERE event_id = ? ORDER BY position;
+
+-- The next photo's position when appending to an already-saved event (the "Edit" screen's "Add photo").
+selectNextPosition:
+SELECT IFNULL(MAX(position), -1) + 1 FROM event_picture WHERE event_id = ?;
+
+deleteEventPicture:
+DELETE FROM event_picture WHERE event_id = ? AND id = ?;

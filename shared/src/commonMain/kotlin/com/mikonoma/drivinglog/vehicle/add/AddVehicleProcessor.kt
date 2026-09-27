@@ -13,7 +13,7 @@ import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
-import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import com.mikonoma.drivinglog.vehicle.picture.forAdd
 import dev.zacsweers.metro.Inject
 import org.fuusio.kide.presentation.Action
@@ -25,7 +25,7 @@ import org.fuusio.kide.presentation.reduce
 class AddVehicleProcessor(
     private val repository: VehicleRepository,
     deviceLocale: DeviceLocale,
-    pictures: VehiclePictureStore,
+    pictures: PictureStore,
     codec: ImageCodec,
     private val colors: ColorExtractor,
 ) : PresentationProcessor<AddVehicleIntent, AddVehicleState, AddVehicleEffect>(

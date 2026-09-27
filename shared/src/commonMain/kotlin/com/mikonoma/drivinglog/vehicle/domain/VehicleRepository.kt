@@ -50,7 +50,9 @@ interface VehicleRepository {
      * [loggedOdometer] is the count the user typed when logging by odometer, for the log row only. [tenthsIncluded] is the tenths
      * choice used for the entry: it is remembered for the vehicle in the same transaction, so both are saved or neither.
      * [note] is the pending note typed on the log event form (`add-event-notes`), or null when none was added.
-     * Returns the new event id.
+     * [photos] are the pending photos attached on the log event form (`add-event-pictures`, 0 to 5), promoted and saved
+     * with the entry in the same transaction, in the order given, or none of them: a failed save leaves no photo files
+     * behind. Returns the new event id.
      */
     suspend fun addDistanceEntry(
         vehicleId: String,
@@ -59,13 +61,15 @@ interface VehicleRepository {
         loggedOdometer: Distance?,
         tenthsIncluded: Boolean,
         note: String? = null,
+        photos: List<PendingPicture> = emptyList(),
     ): String
 
     /**
      * Adds an odometer anchor at [occurredAt]: an odometer-setting event for a new odometer count logged where no odometer is
      * known, or one lower than the known odometer, confirmed by the user (`confirm-lower-odometer`). [tenthsIncluded] is
      * remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
-     * pending note typed on the log event form (`add-event-notes`), or null when none was added.
+     * pending note typed on the log event form (`add-event-notes`), or null when none was added. [photos] are the pending
+     * photos attached on the log event form (`add-event-pictures`), saved the same way as for [addDistanceEntry].
      * Returns the new event id.
      */
     suspend fun addOdometerAnchor(
@@ -74,6 +78,7 @@ interface VehicleRepository {
         reading: Distance,
         tenthsIncluded: Boolean,
         note: String? = null,
+        photos: List<PendingPicture> = emptyList(),
     ): String
 
     /**
@@ -97,4 +102,17 @@ interface VehicleRepository {
      * append-only. Null clears it. No other field of the event, and no other event, is touched.
      */
     suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?)
+
+    /**
+     * Adds one photo to an already-saved event's photo strip (`add-event-pictures`, the details screen's "Edit"
+     * action), appended after whatever photos it already has. Promotes [photo] from pending to a permanent id.
+     * Returns the new photo's id.
+     */
+    suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String
+
+    /**
+     * Removes one photo, by its id, from an already-saved event (`add-event-pictures`, the details screen's "Edit"
+     * action, after the removal is confirmed). Deletes the photo's files. Not finding it is not an error.
+     */
+    suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String)
 }

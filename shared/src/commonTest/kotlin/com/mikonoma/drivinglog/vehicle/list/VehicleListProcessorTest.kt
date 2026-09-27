@@ -4,7 +4,7 @@ import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -24,7 +24,7 @@ import org.fuusio.kide.test.test
 class VehicleListProcessorTest {
 
     private val repository = FakeVehicleRepository()
-    private val pictures = FakeVehiclePictureStore()
+    private val pictures = FakePictureStore()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -127,7 +127,7 @@ class VehicleListProcessorTest {
 
         val item = VehicleListProcessor(repository, pictures).state.vehicles.single()
 
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), item.pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), item.pictureUri)
     }
 
     @Test
@@ -151,13 +151,13 @@ class VehicleListProcessorTest {
         repository.seedVehicle("v1", "A", pictureId = a)
         repository.seedVehicle("v2", "B", pictureId = b)
         val processor = VehicleListProcessor(repository, pictures)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", a, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", b, PictureSize.SMALL), processor.state.vehicles[1].pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", a, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", b, PictureSize.SMALL), processor.state.vehicles[1].pictureUri)
 
         val replacement = pictures.addPicture()
         repository.setPicture("v1", replacement)
 
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", replacement, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", replacement, PictureSize.SMALL), processor.state.vehicles[0].pictureUri)
     }
 
     @Test
@@ -167,7 +167,7 @@ class VehicleListProcessorTest {
 
         val text = VehicleListProcessor(repository, pictures).state.vehicles.single().toString()
 
-        assertEquals(false, pictureId in text.replace(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), ""))
+        assertEquals(false, pictureId in text.replace(FakePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), ""))
     }
 
     // ---- The vehicle's type

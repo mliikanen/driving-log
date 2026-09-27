@@ -15,14 +15,15 @@ import com.mikonoma.drivinglog.vehicle.edit.EditVehicleProcessor
 import com.mikonoma.drivinglog.vehicle.eventdetails.EventDetailsProcessor
 import com.mikonoma.drivinglog.landing.LandingProcessor
 import com.mikonoma.drivinglog.vehicle.list.VehicleListProcessor
-import com.mikonoma.drivinglog.vehicle.picture.FileVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FilePictureStore
 import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
 import com.mikonoma.drivinglog.vehicle.color.HistogramColorExtractor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
-import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
@@ -36,7 +37,11 @@ interface AppGraph {
     val deviceLocale: DeviceLocale
     val deviceTimeZone: DeviceTimeZone
     val vehicleRepository: VehicleRepository
-    val vehiclePictureStore: VehiclePictureStore
+    val vehiclePictureStore: PictureStore
+
+    /** A separate store from [vehiclePictureStore], pointed at its own root (`add-event-pictures`). */
+    @get:Named("event")
+    val eventPictureStore: PictureStore
 
     val landingProcessor: LandingProcessor
     val vehicleListProcessor: VehicleListProcessor
@@ -68,8 +73,17 @@ interface AppGraph {
     @OptIn(ExperimentalUuidApi::class)
     @Provides
     @SingleIn(AppScope::class)
-    fun provideVehiclePictureStore(picturesRoot: Path, clock: Clock): VehiclePictureStore =
-        FileVehiclePictureStore(picturesRoot, ioDispatcher, clock) { Uuid.random().toString() }
+    fun providePictureStore(picturesRoot: Path, clock: Clock): PictureStore =
+        FilePictureStore(picturesRoot, ioDispatcher, clock) { Uuid.random().toString() }
+
+    /** A separate root (`{picturesRoot}/events`) from the vehicle pictures instance above, so an independent sweep
+     * policy per kind never has to filter one shared directory by prefix (`add-event-pictures`, design.md). */
+    @OptIn(ExperimentalUuidApi::class)
+    @Provides
+    @SingleIn(AppScope::class)
+    @Named("event")
+    fun provideEventPictureStore(picturesRoot: Path, clock: Clock): PictureStore =
+        FilePictureStore(Path(picturesRoot, "events"), ioDispatcher, clock) { Uuid.random().toString() }
 
     @OptIn(ExperimentalUuidApi::class)
     @Provides
@@ -78,7 +92,8 @@ interface AppGraph {
         database: DrivingLogDatabase,
         clock: Clock,
         deviceTimeZone: DeviceTimeZone,
-        pictures: VehiclePictureStore,
+        pictures: PictureStore,
+        @Named("event") eventPictures: PictureStore,
     ): VehicleRepository =
         SqlDelightVehicleRepository(
             database = database,
@@ -87,6 +102,7 @@ interface AppGraph {
             dispatcher = ioDispatcher,
             deviceTimeZone = deviceTimeZone,
             pictures = pictures,
+            eventPictures = eventPictures,
         )
 }
 

@@ -15,12 +15,12 @@ import kotlinx.io.readByteArray
  * with the time it was made (`{epochMillis}-{uuid}`), because kotlinx-io does not tell a file's age and the sweep needs it.
  * [newId] makes the unique part of an id.
  */
-class FileVehiclePictureStore(
+class FilePictureStore(
     private val root: Path,
     private val dispatcher: CoroutineDispatcher,
     private val clock: Clock,
     private val newId: () -> String,
-) : VehiclePictureStore {
+) : PictureStore {
 
     private val fs = SystemFileSystem
     private val pending = Path(root, PENDING_DIR)

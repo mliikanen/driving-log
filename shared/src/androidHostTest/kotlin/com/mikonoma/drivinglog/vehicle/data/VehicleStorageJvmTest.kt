@@ -40,7 +40,7 @@ class VehicleStorageJvmTest {
         newId = generateSequence(1) { it + 1 }.map { "id-$it" }.iterator().let { ids -> { ids.next() } },
         dispatcher = UnconfinedTestDispatcher(),
         deviceTimeZone = com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone(),
-        pictures = com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore(),
+        pictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore(),
     )
 
     @Test

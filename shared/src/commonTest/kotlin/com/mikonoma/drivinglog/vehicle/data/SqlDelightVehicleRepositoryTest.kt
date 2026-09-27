@@ -11,7 +11,7 @@ import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -49,7 +50,7 @@ class SqlDelightVehicleRepositoryTest {
     private val clock = FakeClock()
     private var idCounter = 0
     private val deviceTimeZone = com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone()
-    private val pictureStore = FakeVehiclePictureStore()
+    private val pictureStore = FakePictureStore()
     private val repository = SqlDelightVehicleRepository(
         database = database,
         clock = clock,
@@ -312,8 +313,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionEight() {
-        assertEquals(8L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionNine() {
+        assertEquals(9L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -367,6 +368,75 @@ class SqlDelightVehicleRepositoryTest {
 
         val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
         assertNull(entry.note)
+    }
+
+    @Test
+    fun aDistanceEntryWithPhotosIsReadBackWithThemInAttachOrder() = runTest {
+        val id = vehicleAtNoon()
+        val first = PendingPicture(pictureStore.addPending())
+        val second = PendingPicture(pictureStore.addPending())
+
+        repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(first, second))
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertEquals(2, entry.photoIds.size)
+        assertTrue(entry.photoIds[0] in pictureStore.pictures)
+        assertTrue(entry.photoIds[1] in pictureStore.pictures)
+        assertNotEquals(entry.photoIds[0], entry.photoIds[1])
+    }
+
+    @Test
+    fun aDistanceEntryWithoutPhotosReadsBackEmpty() = runTest {
+        val id = vehicleAtNoon()
+
+        addEntry(id, at(1.hours), Distance(30_000), null)
+
+        val entry = repository.observeLog(id).first().first() as VehicleEvent.DistanceEntry
+        assertTrue(entry.photoIds.isEmpty())
+    }
+
+    @Test
+    fun aFailingDiskFailsTheDistanceEntrySaveAndSavesNothing() = runTest {
+        val id = vehicleAtNoon()
+        val pending = pictureStore.addPending()
+        pictureStore.promoteFailure = IllegalStateException("disk full")
+
+        assertFails {
+            repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pending)))
+        }
+
+        assertEquals(1, repository.observeLog(id).first().size) // only the initial odometer event
+    }
+
+    @Test
+    fun eventPhotosUseTheSeparateEventPictureStoreNotTheVehicleOne() = runTest {
+        // A repository with two distinct store instances, as AppGraph.kt wires them (add-event-pictures).
+        val eventPictureStore = FakePictureStore()
+        val repositoryWithSeparateStores = SqlDelightVehicleRepository(
+            database = database,
+            clock = clock,
+            newId = { "id-${++idCounter}" },
+            dispatcher = UnconfinedTestDispatcher(),
+            deviceTimeZone = deviceTimeZone,
+            pictures = pictureStore,
+            eventPictures = eventPictureStore,
+        )
+        val id = repositoryWithSeparateStores.addVehicle(
+            "Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(45_200_000),
+        )
+        val eventPhoto = PendingPicture(eventPictureStore.addPending())
+
+        val eventId = repositoryWithSeparateStores.addDistanceEntry(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, photos = listOf(eventPhoto),
+        )
+
+        val entry = repositoryWithSeparateStores.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
+        val photoId = entry.photoIds.single()
+        assertTrue(photoId in eventPictureStore.pictures)
+        assertTrue(photoId !in pictureStore.pictures)
+        // Not derived from the owning event's or vehicle's own id — a fresh, independent id (design.md).
+        assertFalse(photoId.contains(eventId))
+        assertFalse(photoId.contains(id))
     }
 
     @Test
@@ -602,6 +672,97 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
+    fun anAnchorWithPhotosIsReadBackWithThem() = runTest {
+        val id = vehicleAtNoon()
+        val photo = PendingPicture(pictureStore.addPending())
+
+        val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false, photos = listOf(photo))
+
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        assertEquals(1, anchor.photoIds.size)
+    }
+
+    @Test
+    fun anAnchorWithoutPhotosReadsBackEmpty() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        assertTrue(anchor.photoIds.isEmpty())
+    }
+
+    @Test
+    fun theInitialOdometerEventNeverHasPhotos() = runTest {
+        val id = vehicleAtNoon()
+
+        val event = repository.observeLog(id).first().single()
+
+        assertTrue(event.photoIds.isEmpty())
+    }
+
+    // ---- Adding and removing a photo on an already-saved event (add-event-pictures, the details screen's "Edit" action)
+
+    @Test
+    fun addEventPhotoAppendsToAnAlreadySavedEvent() = runTest {
+        val id = vehicleAtNoon()
+        val eventId = addEntry(id, at(1.hours), Distance(30_000), null)
+        val first = pictureStore.addPending()
+
+        repository.addEventPhoto(id, eventId, PendingPicture(first))
+
+        val entry = repository.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
+        assertEquals(1, entry.photoIds.size)
+    }
+
+    @Test
+    fun addEventPhotoAppendsAfterPhotosAlreadyThere() = runTest {
+        val id = vehicleAtNoon()
+        val eventId = repository.addDistanceEntry(
+            id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+        )
+
+        repository.addEventPhoto(id, eventId, PendingPicture(pictureStore.addPending()))
+
+        val entry = repository.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
+        assertEquals(2, entry.photoIds.size)
+    }
+
+    @Test
+    fun removeEventPhotoDropsItAndDeletesItsFiles() = runTest {
+        val id = vehicleAtNoon()
+        val first = PendingPicture(pictureStore.addPending())
+        val second = PendingPicture(pictureStore.addPending())
+        val eventId = repository.addDistanceEntry(id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(first, second))
+        val entryBefore = repository.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
+        val removedId = entryBefore.photoIds[0]
+        val keptId = entryBefore.photoIds[1]
+
+        repository.removeEventPhoto(id, eventId, removedId)
+
+        val entryAfter = repository.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
+        assertEquals(listOf(keptId), entryAfter.photoIds)
+        assertTrue(removedId !in pictureStore.pictures)
+    }
+
+    @Test
+    fun removingAPhotoFromOneEventDoesNotTouchAnothers() = runTest {
+        val id = vehicleAtNoon()
+        val firstEvent = repository.addDistanceEntry(
+            id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+        )
+        val secondEvent = repository.addDistanceEntry(
+            id, at(2.hours), Distance(10_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+        )
+        val secondPhotoId = (repository.observeLog(id).first().first { it.id == secondEvent } as VehicleEvent.DistanceEntry).photoIds.single()
+
+        repository.removeEventPhoto(id, firstEvent, secondPhotoId)
+
+        val second = repository.observeLog(id).first().first { it.id == secondEvent } as VehicleEvent.DistanceEntry
+        assertEquals(listOf(secondPhotoId), second.photoIds)
+    }
+
+    @Test
     fun anAnchorBeforeTheInitialEventDoesNotChangeTheCurrentOdometer() = runTest {
         val id = vehicleAtNoon()
         repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
@@ -820,8 +981,8 @@ class SqlDelightVehicleRepositoryTest {
 
     @Test
     fun aVehicleAddedWithAPictureRefersToItsPromotedFiles() = runTest {
-        val small = FakeVehiclePictureStore.image(1, 1)
-        val large = FakeVehiclePictureStore.image(2, 2)
+        val small = FakePictureStore.image(1, 1)
+        val large = FakePictureStore.image(2, 2)
         val pending = pictureStore.addPending(small, large)
 
         val id = repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(45_200_000), PendingPicture(pending))
@@ -882,7 +1043,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun replacingThePictureUsesANewIdAndDeletesTheOldFiles() = runTest {
         val (id, oldPictureId) = addCarWithPicture()
-        val replacement = pictureStore.addPending(FakeVehiclePictureStore.image(7), FakeVehiclePictureStore.image(8))
+        val replacement = pictureStore.addPending(FakePictureStore.image(7), FakePictureStore.image(8))
 
         repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, PictureChange.Replace(PendingPicture(replacement)))
 

@@ -13,7 +13,7 @@ import kotlinx.coroutines.test.runTest
 
 class PictureDraftEditorTest {
 
-    private val store = FakeVehiclePictureStore()
+    private val store = FakePictureStore()
     private val codec = FakeImageCodec(width = 4000, height = 3000)
     private val adding = PictureDraftEditor(store, codec, PictureDraft.None)
     private val editing = PictureDraftEditor(store, codec, PictureDraft.Removed)
@@ -291,7 +291,7 @@ class PictureDraftEditorTest {
         val pending = adding.cropConfirmed(adding.photoPicked(start, PhotoResult.Chosen(photo)), crop)
         val id = (pending.draft as PictureDraft.Pending).pendingId
 
-        assertEquals(FakeVehiclePictureStore.fakeUri("pending", id, PictureSize.SMALL), adding.previewUri(pending, null))
+        assertEquals(FakePictureStore.fakeUri("pending", id, PictureSize.SMALL), adding.previewUri(pending, null))
     }
 
     @Test
@@ -299,7 +299,7 @@ class PictureDraftEditorTest {
         val saved = store.addPicture()
 
         assertEquals(
-            FakeVehiclePictureStore.fakeUri("pictures", saved, PictureSize.SMALL),
+            FakePictureStore.fakeUri("pictures", saved, PictureSize.SMALL),
             editing.previewUri(PictureEditState(draft = PictureDraft.Unchanged), saved),
         )
     }

@@ -28,7 +28,7 @@ const val MAX_PHOTO_BYTES = 40L * 1024 * 1024
  * [PictureDraft.Removed] when editing.
  */
 class PictureDraftEditor(
-    private val store: VehiclePictureStore,
+    private val store: PictureStore,
     private val codec: ImageCodec,
     private val removedDraft: PictureDraft,
 ) {

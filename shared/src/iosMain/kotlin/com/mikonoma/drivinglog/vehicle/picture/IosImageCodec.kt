@@ -65,6 +65,19 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
             EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
         }
 
+    override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? = withContext(dispatcher) {
+        val image = upright(bytes) ?: return@withContext null
+        val (width, height) = image.size.useContents { width to height }
+        caps.map { cap ->
+            val (targetWidth, targetHeight) = scaledToFit(width.roundToInt(), height.roundToInt(), cap)
+            val scaled = renderImage(targetWidth.toDouble(), targetHeight.toDouble()) { context ->
+                CGContextSetInterpolationQuality(context?.CGContext, kCGInterpolationHigh)
+                image.drawInRect(CGRectMake(0.0, 0.0, targetWidth.toDouble(), targetHeight.toDouble()))
+            }
+            EncodedImage(requireNotNull(UIImagePNGRepresentation(scaled)).toByteArray(), "png", targetWidth, targetHeight)
+        }
+    }
+
     override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {
         val image = upright(bytes) ?: return@withContext null
         val (width, height) = image.size.useContents { width to height }

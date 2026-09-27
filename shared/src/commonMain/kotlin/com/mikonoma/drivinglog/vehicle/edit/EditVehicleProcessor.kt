@@ -10,7 +10,7 @@ import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
-import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import com.mikonoma.drivinglog.vehicle.picture.toChange
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -23,7 +23,7 @@ import org.fuusio.kide.presentation.reduce
 class EditVehicleProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
-    pictures: VehiclePictureStore,
+    pictures: PictureStore,
     codec: ImageCodec,
     private val colors: ColorExtractor,
 ) : PresentationProcessor<EditVehicleIntent, EditVehicleState, EditVehicleEffect>(EditVehicleState()) {

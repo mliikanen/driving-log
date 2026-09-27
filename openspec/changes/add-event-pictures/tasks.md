@@ -6,17 +6,17 @@ thumbnails extend the details screen they add. Do not start section 4 before bot
 
 ## 1. Storage
 
-- [ ] 1.1 Rename `VehiclePictureStore`/`FileVehiclePictureStore` to a vehicle-agnostic `PictureStore`/
+- [x] 1.1 Rename `VehiclePictureStore`/`FileVehiclePictureStore` to a vehicle-agnostic `PictureStore`/
       `FilePictureStore` (no logic change — see design.md). Verify the existing vehicle-picture test suite still
       passes unchanged under the new name.
-- [ ] 1.2 Add a new `event_picture` table (id, event id, position, created-at) and its migration, plus queries to
+- [x] 1.2 Add a new `event_picture` table (id, event id, position, created-at) and its migration, plus queries to
       insert a photo, select a saved event's photos in order, and delete one by id. Add repository methods to read
       an event's photos and to attach/detach one. Verify with unit and migration tests.
-- [ ] 1.3 Add the new size-cap constants (reuse `SMALL_SIDE = 256`; add a new `EVENT_PHOTO_LARGE_SIDE = 2048`) and an
+- [x] 1.3 Add the new size-cap constants (reuse `SMALL_SIDE = 256`; add a new `EVENT_PHOTO_LARGE_SIDE = 2048`) and an
       aspect-ratio-preserving scale function (bounds the longer side, keeps the ratio, never enlarges — no square
       crop). Verify with unit tests covering a large photo being downscaled, a small photo not being enlarged, and
       orientation being respected.
-- [ ] 1.4 Wire a second `FilePictureStore` instance in `AppGraph.kt`, pointed at a separate root for event pictures,
+- [x] 1.4 Wire a second `FilePictureStore` instance in `AppGraph.kt`, pointed at a separate root for event pictures,
       alongside the existing vehicle-pictures instance. Verify with a unit test that an event picture's id and a
       vehicle picture's id are drawn from independent random id generation (never derived from each other or from
       the owning record's id).

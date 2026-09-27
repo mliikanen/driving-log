@@ -12,7 +12,7 @@ import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.format.formatSteps
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
@@ -43,7 +43,7 @@ private class FakeLocale(override val regionCode: String?) : DeviceLocale {
 class AddVehicleProcessorTest {
 
     private val repository = FakeVehicleRepository()
-    private val pictures = FakeVehiclePictureStore()
+    private val pictures = FakePictureStore()
     private val codec = FakeImageCodec()
     private val colors = FakeColorExtractor()
 
@@ -627,7 +627,7 @@ class AddVehicleProcessorTest {
         val draft = processor.state.picture.draft as PictureDraft.Pending
         assertFalse(processor.state.picture.isCropping)
         assertNull(processor.state.cropImage)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pending", draft.pendingId, PictureSize.SMALL), processor.state.previewUri)
+        assertEquals(FakePictureStore.fakeUri("pending", draft.pendingId, PictureSize.SMALL), processor.state.previewUri)
     }
 
     @Test
@@ -721,7 +721,7 @@ class AddVehicleProcessorTest {
 
         processor.dispatch(AddVehicleIntent.PictureRefresh)
 
-        assertEquals(FakeVehiclePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
+        assertEquals(FakePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
     }
 
     @Test

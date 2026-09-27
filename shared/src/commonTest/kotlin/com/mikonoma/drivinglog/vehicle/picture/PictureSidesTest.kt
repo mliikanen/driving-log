@@ -84,4 +84,44 @@ class PictureSidesTest {
         assertEquals(emptyList(), downscaleSteps(200, 256))
         assertEquals(emptyList(), downscaleSteps(256, 256))
     }
+
+    // ---- Aspect-ratio-preserving scaling for an uncropped event photo (add-event-pictures)
+
+    @Test
+    fun aLargePhotoIsDownscaledKeepingItsAspectRatio() {
+        assertEquals(2048 to 1536, scaledToFit(4000, 3000, 2048))
+        assertEquals(256 to 192, scaledToFit(4000, 3000, 256))
+    }
+
+    @Test
+    fun aSmallPhotoIsNotEnlarged() {
+        assertEquals(600 to 400, scaledToFit(600, 400, 2048))
+        assertEquals(256 to 171, scaledToFit(600, 400, 256))
+    }
+
+    @Test
+    fun aPortraitPhotoScalesByItsTallerSide() {
+        assertEquals(1536 to 2048, scaledToFit(3000, 4000, 2048))
+    }
+
+    @Test
+    fun exactlyTheCapIsKeptAsIs() {
+        assertEquals(2048 to 1536, scaledToFit(2048, 1536, 2048))
+    }
+
+    @Test
+    fun theLongerSideNeverExceedsTheCapAndNeitherSideIsEnlarged() {
+        for (width in listOf(100, 600, 2048, 4000)) for (height in listOf(100, 400, 2048, 3000)) for (cap in listOf(256, 2048)) {
+            val (w, h) = scaledToFit(width, height, cap)
+            assertTrue(maxOf(w, h) <= cap, "$width x $height capped at $cap")
+            assertTrue(w <= width && h <= height, "$width x $height capped at $cap is not enlarged")
+        }
+    }
+
+    @Test
+    fun aPhotoWithNoSizeIsRefused() {
+        assertFailsWith<IllegalArgumentException> { scaledToFit(0, 100, 256) }
+        assertFailsWith<IllegalArgumentException> { scaledToFit(100, 0, 256) }
+        assertFailsWith<IllegalArgumentException> { scaledToFit(100, 100, 0) }
+    }
 }

@@ -4,7 +4,7 @@ import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
-import com.mikonoma.drivinglog.vehicle.picture.VehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import dev.zacsweers.metro.Inject
 import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
@@ -13,7 +13,7 @@ import org.fuusio.kide.presentation.sideEffect
 @Inject
 class VehicleListProcessor(
     repository: VehicleRepository,
-    private val pictures: VehiclePictureStore,
+    private val pictures: PictureStore,
 ) : PresentationProcessor<VehicleListIntent, VehicleListState, VehicleListEffect>(VehicleListState()) {
 
     init {

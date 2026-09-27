@@ -1,0 +1,9 @@
+-- Version 8 to 9: up to 5 photos attached to a "Distance" or "Odometer reading" event (add-event-pictures).
+CREATE TABLE event_picture (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    event_id    TEXT    NOT NULL REFERENCES vehicle_event(id),
+    position    INTEGER NOT NULL,
+    created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX event_picture_by_event ON event_picture (event_id, position);

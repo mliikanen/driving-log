@@ -11,7 +11,7 @@ import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
-import com.mikonoma.drivinglog.vehicle.picture.FakeVehiclePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
@@ -37,7 +37,7 @@ import org.fuusio.kide.test.test
 class EditVehicleProcessorTest {
 
     private val repository = FakeVehicleRepository()
-    private val pictures = FakeVehiclePictureStore()
+    private val pictures = FakePictureStore()
     private val codec = FakeImageCodec()
     private val colors = FakeColorExtractor()
 
@@ -237,7 +237,7 @@ class EditVehicleProcessorTest {
 
         assertEquals(PictureDraft.Unchanged, state.picture.draft)
         assertEquals(pictureId, state.savedPictureId)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), state.previewUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", pictureId, PictureSize.SMALL), state.previewUri)
     }
 
     @Test
@@ -266,7 +266,7 @@ class EditVehicleProcessorTest {
         val processor = EditVehicleProcessor("v3", repository, pictures, codec, colors)
         processor.pickAndCrop()
         val pendingId = (processor.state.picture.draft as PictureDraft.Pending).pendingId
-        assertEquals(FakeVehiclePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
+        assertEquals(FakePictureStore.fakeUri("pending", pendingId, PictureSize.SMALL), processor.state.previewUri)
 
         processor.test {
             dispatch(EditVehicleIntent.Save)
@@ -367,7 +367,7 @@ class EditVehicleProcessorTest {
         repository.setPicture("v3", second)
 
         assertEquals(second, processor.state.savedPictureId)
-        assertEquals(FakeVehiclePictureStore.fakeUri("pictures", second, PictureSize.SMALL), processor.state.previewUri)
+        assertEquals(FakePictureStore.fakeUri("pictures", second, PictureSize.SMALL), processor.state.previewUri)
     }
 
     // ---- The vehicle's type

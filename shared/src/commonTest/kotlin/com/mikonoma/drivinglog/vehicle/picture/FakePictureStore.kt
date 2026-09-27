@@ -1,7 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
 /** An in-memory picture store for tests, with a few ways to look inside it and to make it fail. */
-class FakeVehiclePictureStore : VehiclePictureStore {
+class FakePictureStore : PictureStore {
 
     class Versions(val small: EncodedImage, val large: EncodedImage)
 

@@ -2,12 +2,20 @@ package com.mikonoma.drivinglog.vehicle.picture
 
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** A small version is at most this many pixels on a side. */
 const val SMALL_SIDE = 256
 
 /** A large version is at most this many pixels on a side. */
 const val LARGE_SIDE = 1024
+
+/**
+ * An event photo's large version (`add-event-pictures`) is at most this many pixels on its longer side — larger than
+ * [LARGE_SIDE], since an event photo (a dashboard, a fuel pump, a receipt) may be pinch-zoomed into for a detail,
+ * unlike a vehicle's own small, always-square avatar (see design.md).
+ */
+const val EVENT_PHOTO_LARGE_SIDE = 2048
 
 /** A photo is decoded no larger than this on its longer side, which bounds the memory the crop uses (about 28 MB as a bitmap). */
 const val MAX_DECODE_SIDE = 3072
@@ -42,6 +50,18 @@ fun downscaleSteps(from: Int, to: Int): List<Int> {
 /** The two encoded versions of one crop. */
 class EncodedPicture(val small: EncodedImage, val large: EncodedImage)
 
+/** [width] x [height], scaled so its longer side is at most [maxSide], keeping the aspect ratio; never enlarged — a
+ * photo already no larger than [maxSide] on its longer side keeps its own size. Used for an event photo
+ * (`add-event-pictures`), which is not cropped to a square, unlike [pictureSides]. */
+fun scaledToFit(width: Int, height: Int, maxSide: Int): Pair<Int, Int> {
+    require(width > 0 && height > 0) { "A photo has a size" }
+    require(maxSide > 0) { "A cap has a size" }
+    val longer = maxOf(width, height)
+    if (longer <= maxSide) return width to height
+    val scale = maxSide.toDouble() / longer
+    return maxOf(1, (width * scale).roundToInt()) to maxOf(1, (height * scale).roundToInt())
+}
+
 /** A photo decoded for the crop screen: its size in pixels and, on demand, the bitmap to draw. */
 interface DecodedImage {
     val width: Int
@@ -67,6 +87,14 @@ interface ImageCodec {
      * the platform can write it), or null when the bytes cannot be decoded.
      */
     suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int = 0): EncodedPicture?
+
+    /**
+     * The whole photo (no crop), scaled to each of [caps] on its longer side (see [scaledToFit]), respecting its
+     * orientation, and encoded in the platform's size-efficient format — the path an event photo takes instead of
+     * [encodeSquare] (`add-event-pictures`). One [EncodedImage] per cap, in the order given; null when the bytes
+     * cannot be decoded.
+     */
+    suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>?
 
     /**
      * The image reduced to at most [maxSide] pixels on its longer side, as ARGB pixels (the photo's orientation applied), for taking a color from it;

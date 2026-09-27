@@ -20,12 +20,12 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FileVehiclePictureStoreTest {
+class FilePictureStoreTest {
 
     private val root = Path(SystemTemporaryDirectory, "driving-log-pictures-${counter++}-${kotlin.random.Random.nextLong()}")
     private val clock = FakeClock()
     private var ids = 0
-    private val store = FileVehiclePictureStore(root, UnconfinedTestDispatcher(), clock) { "id${++ids}" }
+    private val store = FilePictureStore(root, UnconfinedTestDispatcher(), clock) { "id${++ids}" }
 
     @AfterTest
     fun cleanUp() = deleteRecursively(root)
@@ -322,7 +322,7 @@ class FileVehiclePictureStoreTest {
     @Test
     fun aRootWithSpacesAndUnsafeCharactersIsPercentEncoded() = runTest {
         val odd = Path(root, "Application Support", "we!rd #1 ä")
-        val oddStore = FileVehiclePictureStore(odd, UnconfinedTestDispatcher(), clock) { "odd${++ids}" }
+        val oddStore = FilePictureStore(odd, UnconfinedTestDispatcher(), clock) { "odd${++ids}" }
         val pendingId = oddStore.putPendingSource(byteArrayOf(1)).also { oddStore.putPending(it, small, large) }
         val pictureId = oddStore.promote(pendingId)!!
 
