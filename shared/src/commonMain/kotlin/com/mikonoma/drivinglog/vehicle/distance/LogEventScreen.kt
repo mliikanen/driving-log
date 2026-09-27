@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -66,9 +69,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -78,15 +83,21 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.CloseButton
+import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.format.formatTimeOfDay
+import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
+import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 
@@ -107,12 +118,20 @@ fun LogEventScreen(
         }
     }
 
+    // A restored form's attached photo ids survive, but their thumbnail URIs do not (add-event-pictures).
+    LaunchedEffect(processor) { processor.dispatch(LogEventIntent.PhotoPreviewRefresh) }
+
     LogEventContent(
         state = state,
         deviceLocale = deviceLocale,
         deviceTimeZoneId = deviceTimeZone.current().id,
         onIntent = processor::dispatch,
-        onBack = onBack,
+        // Leaving without saving deletes any attached photo's pending files (add-event-pictures); a rotation is not
+        // leaving and keeps them.
+        onBack = {
+            processor.dispatch(LogEventIntent.Left)
+            onBack()
+        },
     )
 }
 
@@ -205,6 +224,12 @@ fun LogEventContent(
                         onOpen = { onIntent(LogEventIntent.NoteEditorOpened) },
                         onRemove = { onIntent(LogEventIntent.NoteRemoveRequested) },
                     )
+                    PhotoStripField(
+                        photos = state.photos,
+                        previewUris = state.photoPreviewUris,
+                        onPhotoPicked = { onIntent(LogEventIntent.PhotoPicked(it)) },
+                        onRemoveRequested = { onIntent(LogEventIntent.PhotoRemoveRequested(it)) },
+                    )
                     RequiredFieldNote()
                 }
             }
@@ -215,6 +240,13 @@ fun LogEventContent(
         RemoveNoteDialog(
             onConfirm = { onIntent(LogEventIntent.NoteRemoveConfirmed) },
             onDismiss = { onIntent(LogEventIntent.NoteRemoveCancelled) },
+        )
+    }
+
+    if (state.photos.removalPendingId != null) {
+        RemovePhotoDialog(
+            onConfirm = { onIntent(LogEventIntent.PhotoRemoveConfirmed) },
+            onDismiss = { onIntent(LogEventIntent.PhotoRemoveCancelled) },
         )
     }
 
@@ -503,6 +535,81 @@ private fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> 
 }
 
 /**
+ * Up to 5 photos attached to the entry (`add-event-pictures`): a thumbnail per attached photo, each with its own
+ * remove action, and an "Add photo" tile while under the cap. Tapping "Add photo" opens the system's own chooser of
+ * image sources, and the chosen photo appears in the strip with no crop step — an event photo is looked at for its
+ * content, not shown as a small square avatar the way a vehicle's own picture is.
+ */
+@Composable
+private fun PhotoStripField(
+    photos: EventPhotoDraft,
+    previewUris: List<Pair<String, String>>,
+    onPhotoPicked: (PhotoResult) -> Unit,
+    onRemoveRequested: (String) -> Unit,
+) {
+    val picker = rememberPhotoPicker(onPhotoPicked)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Photos", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((pendingId, uri) in previewUris) {
+                PhotoThumbnail(uri, pendingId, onRemove = { onRemoveRequested(pendingId) }, modifier = Modifier.testTag("event_photo_$pendingId"))
+            }
+            if (!photos.isFull) {
+                Box(
+                    Modifier
+                        .size(72.dp)
+                        .testTag("add_photo")
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable(onClickLabel = "Add photo", role = Role.Button, onClick = picker.launch),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(PhotoIcons.Camera, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        photos.error?.let { error ->
+            Text(
+                when (error) {
+                    PictureError.COULD_NOT_OPEN -> "The photo could not be opened"
+                    PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
+                },
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("photo_error"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoThumbnail(uri: String, pendingId: String, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.size(72.dp)) {
+        SubcomposeAsyncImage(
+            model = uri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+            loading = {},
+            error = {},
+        )
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
+                .clickable(onClickLabel = "Remove photo", role = Role.Button, onClick = onRemove)
+                .testTag("photo_remove_$pendingId"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+        }
+    }
+}
+
+/**
  * The full-screen note editor: a plain multi-line text field, seeded with the note pending so far. It replaces the log event
  * form's own content in the same window while open — not a separate [Dialog] (a second Android window): once that window's
  * one text field had taken and released IME focus, the accessibility tree stopped exposing its content at all, confirmed with
@@ -563,6 +670,17 @@ internal fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, on
                 .testTag("note_editor_field"),
         )
     }
+}
+
+/** "Remove this photo?" before a thumbnail's remove action takes effect (`add-event-pictures`). */
+@Composable
+private fun RemovePhotoDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remove this photo?") },
+        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("photo_remove_confirm")) { Text("Remove") } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.testTag("photo_remove_cancel")) { Text("Cancel") } },
+    )
 }
 
 /** "Remove this note?" before the trash-can action on [NoteField] takes effect. */

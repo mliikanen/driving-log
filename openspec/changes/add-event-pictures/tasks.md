@@ -23,12 +23,12 @@ thumbnails extend the details screen they add. Do not start section 4 before bot
 
 ## 2. The log event form's photo element
 
-- [ ] 2.1 Add the photo strip element (thumbnails + "Add photo") below the note element on the log event form, for
+- [x] 2.1 Add the photo strip element (thumbnails + "Add photo") below the note element on the log event form, for
       "Distance"/"Odometer reading" entries only, reusing the system chooser with no crop step, capped at 5. Verify
       with unit tests of the processor: attach, cap enforcement (no "Add photo" at 5, it reappears after a removal).
-- [ ] 2.2 Add per-photo removal with a confirmation dialog. Verify with unit tests: confirm removes, cancel/dismiss
+- [x] 2.2 Add per-photo removal with a confirmation dialog. Verify with unit tests: confirm removes, cancel/dismiss
       keeps it.
-- [ ] 2.3 Wire save/discard: saving promotes attached photos to permanent ids and `event_picture` rows with the new
+- [x] 2.3 Wire save/discard: saving promotes attached photos to permanent ids and `event_picture` rows with the new
       event, in one atomic write; leaving without saving discards the pending photo files. Verify with unit tests
       (saved event holds the photos; a failed or abandoned save leaves no orphaned reference) and that attached
       photos survive a rotation.

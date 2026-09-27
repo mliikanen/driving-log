@@ -8,6 +8,8 @@ import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.initialEvent
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -55,8 +57,11 @@ class LogEventProcessorTest {
     }
 
     private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
+    private val eventPictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
+    private val codec = com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec()
 
-    private fun processor(vehicleId: String = "v1") = LogEventProcessor(vehicleId, repository, pictures, clock, deviceZone)
+    private fun processor(vehicleId: String = "v1") =
+        LogEventProcessor(vehicleId, repository, pictures, eventPictures, codec, clock, deviceZone)
 
     private fun LogEventProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(LogEventIntent.OdometerEdited(state.activeEntry.digits + d))
@@ -72,7 +77,7 @@ class LogEventProcessorTest {
             repository.seedVehicle(unit.name, unit.name, unit = unit)
             repository.seedEvents(unit.name, listOf(initialEvent("i-${unit.name}", initialAt, 1_000)))
 
-            val state = LogEventProcessor(unit.name, repository, pictures, clock, deviceZone).state
+            val state = LogEventProcessor(unit.name, repository, pictures, eventPictures, codec, clock, deviceZone).state
 
             assertEquals(unit, state.unit, unit.name)
             assertEquals(unit, state.tripDistance.unit, unit.name)
@@ -640,7 +645,7 @@ class LogEventProcessorTest {
 
     @Test
     fun aMissingVehicleIsReportedAndCannotBeSaved() {
-        val processor = LogEventProcessor("missing", repository, pictures, clock, deviceZone)
+        val processor = LogEventProcessor("missing", repository, pictures, eventPictures, codec, clock, deviceZone)
 
         assertTrue(processor.state.notFound)
         processor.type(5)
@@ -656,7 +661,7 @@ class LogEventProcessorTest {
         // Like the app: the restore happens right after construction, and the repository data arrives later.
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         seedVehicle()
-        val saved = LogEventProcessor("v1", repository, pictures, clock, deviceZone).let { first ->
+        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone).let { first ->
             advanceUntilIdle()
             first.dispatch(LogEventIntent.UnitFamilySelected(miles = true))
             first.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
@@ -667,7 +672,7 @@ class LogEventProcessorTest {
             checkNotNull(first.stateToSave())
         }
 
-        val restored = LogEventProcessor("v1", repository, pictures, clock, deviceZone)
+        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone)
         restored.restoreState(saved)
         advanceUntilIdle()
 
@@ -881,9 +886,186 @@ class LogEventProcessorTest {
         assertNull(repository.distanceCalls.single().note)
     }
 
+    // ---- Photos (add-event-pictures)
+
+    private fun LogEventProcessor.pick() = dispatch(LogEventIntent.PhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+    @Test
+    fun theFormStartsWithNoPhotosAttached() {
+        seedVehicle()
+
+        val state = processor().state
+
+        assertEquals(emptyList(), state.photos.pendingIds)
+        assertEquals(emptyList(), state.photoPreviewUris)
+    }
+
+    @Test
+    fun pickingAPhotoAddsItToTheStrip() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.pick()
+
+        assertEquals(1, processor.state.photos.pendingIds.size)
+        assertEquals(1, processor.state.photoPreviewUris.size)
+        assertNull(processor.state.photos.error)
+    }
+
+    @Test
+    fun theLimitIsReachedAfterFivePhotos() {
+        seedVehicle()
+        val processor = processor()
+        repeat(5) { processor.pick() }
+
+        assertTrue(processor.state.photos.isFull)
+        assertEquals(5, processor.state.photos.pendingIds.size)
+
+        processor.pick() // a 6th pick while full changes nothing
+
+        assertEquals(5, processor.state.photos.pendingIds.size)
+    }
+
+    @Test
+    fun removingOneAllowsAnotherAfterTheCap() {
+        seedVehicle()
+        val processor = processor()
+        repeat(5) { processor.pick() }
+        val firstId = processor.state.photos.pendingIds.first()
+
+        processor.dispatch(LogEventIntent.PhotoRemoveRequested(firstId))
+        processor.dispatch(LogEventIntent.PhotoRemoveConfirmed)
+        assertFalse(processor.state.photos.isFull)
+
+        processor.pick()
+
+        assertEquals(5, processor.state.photos.pendingIds.size)
+    }
+
+    @Test
+    fun pickingAnUnreadablePhotoSetsAnErrorAndAddsNothing() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.photos.error)
+        assertEquals(emptyList(), processor.state.photos.pendingIds)
+    }
+
+    @Test
+    fun removingAPhotoAsksForConfirmationFirst() {
+        seedVehicle()
+        val processor = processor()
+        processor.pick()
+        val id = processor.state.photos.pendingIds.single()
+
+        processor.dispatch(LogEventIntent.PhotoRemoveRequested(id))
+
+        assertEquals(id, processor.state.photos.removalPendingId)
+        assertEquals(listOf(id), processor.state.photos.pendingIds)
+    }
+
+    @Test
+    fun confirmingRemovalDropsThePhoto() {
+        seedVehicle()
+        val processor = processor()
+        processor.pick()
+        val id = processor.state.photos.pendingIds.single()
+        processor.dispatch(LogEventIntent.PhotoRemoveRequested(id))
+
+        processor.dispatch(LogEventIntent.PhotoRemoveConfirmed)
+
+        assertEquals(emptyList(), processor.state.photos.pendingIds)
+        assertNull(processor.state.photos.removalPendingId)
+        assertEquals(emptyList(), processor.state.photoPreviewUris)
+    }
+
+    @Test
+    fun cancellingRemovalKeepsThePhoto() {
+        seedVehicle()
+        val processor = processor()
+        processor.pick()
+        val id = processor.state.photos.pendingIds.single()
+        processor.dispatch(LogEventIntent.PhotoRemoveRequested(id))
+
+        processor.dispatch(LogEventIntent.PhotoRemoveCancelled)
+
+        assertEquals(listOf(id), processor.state.photos.pendingIds)
+        assertNull(processor.state.photos.removalPendingId)
+    }
+
+    @Test
+    fun leavingWithoutSavingDiscardsThePendingPhotoFiles() {
+        seedVehicle()
+        val processor = processor()
+        processor.pick()
+        val id = processor.state.photos.pendingIds.single()
+        assertTrue(id in eventPictures.pending)
+
+        processor.dispatch(LogEventIntent.Left)
+
+        assertEquals(false, id in eventPictures.pending)
+        assertEquals(emptyList(), repository.distanceCalls)
+    }
+
+    @Test
+    fun savingWithPhotosReachesTheRepository() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 2)
+        processor.pick()
+        processor.pick()
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(2, repository.distanceCalls.single().photos.size)
+    }
+
+    @Test
+    fun savingWithoutPhotosReachesTheRepositoryWithNone() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 2)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(emptyList(), repository.distanceCalls.single().photos)
+    }
+
+    @Test
+    fun photosSurviveRestoreState() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        seedVehicle()
+        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone).let { first ->
+            advanceUntilIdle()
+            first.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+            advanceUntilIdle()
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone)
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        assertEquals(1, restored.state.photos.pendingIds.size)
+        // The screen always dispatches this once on open (LogEventScreen.kt), so the strip's thumbnail is never left
+        // stale even where a real platform restore does drop transient fields the in-memory restoreState() used
+        // above does not.
+        restored.dispatch(LogEventIntent.PhotoPreviewRefresh)
+        advanceUntilIdle()
+        assertEquals(1, restored.state.photoPreviewUris.size)
+    }
+
     // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
 
-    private fun chooser() = LogEventProcessor("", repository, pictures, clock, deviceZone)
+    private fun chooser() = LogEventProcessor("", repository, pictures, eventPictures, codec, clock, deviceZone)
 
     @Test
     fun withNothingRememberedTheChooserStartsOnTheFirstVehicleByName() {
@@ -1048,8 +1230,8 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
         seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -1057,8 +1239,8 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
 
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -1067,8 +1249,8 @@ class LogEventProcessorTest {
         seedRemembered("m", OdometerUnit.MILES, remembered = true)
         seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
 
-        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
     }
 
     @Test
@@ -1121,12 +1303,12 @@ class LogEventProcessorTest {
     @Test
     fun aChoiceThatIsNotSavedIsNotRemembered() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = false)
-        val left = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        val left = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
         left.dispatch(LogEventIntent.TenthsChanged(included = true))
         left.type(1, 2)
         // The form is left without saving.
 
-        val next = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        val next = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
 
         assertEquals(OdometerUnit.KILOMETERS, next.state.unit)
         assertEquals(emptyList(), repository.distanceCalls)
@@ -1135,20 +1317,20 @@ class LogEventProcessorTest {
     @Test
     fun aRefusedSaveDoesNotRememberTheChoice() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
-        val processor = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        val processor = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
         processor.dispatch(LogEventIntent.TenthsChanged(included = true))
 
         processor.dispatch(LogEventIntent.Save) // nothing typed
 
         assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
     }
 
     @Test
     fun theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm() = runTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS, remembered = null)
-        val a = LogEventProcessor("a", repository, pictures, clock, deviceZone)
+        val a = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
         a.dispatch(LogEventIntent.TenthsChanged(included = true))
         a.type(4)
         a.test {
@@ -1156,7 +1338,7 @@ class LogEventProcessorTest {
             expectSideEffect(LogEventEffect.Saved)
         }
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
     }
 }

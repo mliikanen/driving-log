@@ -8,11 +8,15 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
+import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraftEditor
+import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metro.Named
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -29,6 +33,8 @@ class LogEventProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
     private val pictures: PictureStore,
+    @Named("event") private val eventPictures: PictureStore,
+    private val codec: ImageCodec,
     private val clock: Clock,
     deviceTimeZone: DeviceTimeZone,
 ) : PresentationProcessor<LogEventIntent, LogEventState, LogEventEffect>(openedState(clock, deviceTimeZone, vehicleId)) {
@@ -40,6 +46,8 @@ class LogEventProcessor @AssistedInject constructor(
 
     /** True when the form was opened from the Home screen (no vehicle given): it offers the selector and picks a vehicle to start on. False from a vehicle's details screen, which fixes it and never shows the selector. */
     private val chooseVehicle = vehicleId.isEmpty()
+
+    private val photoEditor = EventPhotoDraftEditor(eventPictures, codec)
 
     init {
         if (chooseVehicle) {
@@ -122,8 +130,22 @@ class LogEventProcessor @AssistedInject constructor(
         LogEventIntent.NoteRemoveCancelled -> reduce { copy(noteRemovalPending = false) }
         LogEventIntent.LowerOdometerConfirmed -> saveConfirmedLowerOdometer()
         LogEventIntent.LowerOdometerCancelled -> reduce { copy(lowerOdometerConfirmationPending = false) }
+        LogEventIntent.PhotoPreviewRefresh -> photoStep { it }
+        is LogEventIntent.PhotoPicked -> photoStep { photoEditor.photoPicked(it, intent.result) }
+        is LogEventIntent.PhotoRemoveRequested -> reduce { copy(photos = photoEditor.removeRequested(photos, intent.pendingId)) }
+        LogEventIntent.PhotoRemoveConfirmed -> photoStep { photoEditor.removeConfirmed(it) }
+        LogEventIntent.PhotoRemoveCancelled -> reduce { copy(photos = photoEditor.removeCancelled(photos)) }
+        LogEventIntent.Left -> async("leave") { photoEditor.discardAll(state.photos) }
         LogEventIntent.Save -> save()
     }
+
+    /** Applies a photo-strip change, then rebuilds the thumbnail URIs it means (`add-event-pictures`). */
+    private fun photoStep(change: suspend (EventPhotoDraft) -> EventPhotoDraft): Action<LogEventState, LogEventEffect> =
+        async("photo") {
+            val next = change(state.photos)
+            val previews = photoEditor.previewUris(next)
+            reduce { copy(photos = next, photoPreviewUris = previews) }
+        }
 
     private fun save(): Action<LogEventState, LogEventEffect>? {
         val form = state
@@ -136,10 +158,16 @@ class LogEventProcessor @AssistedInject constructor(
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
             LogDistanceResult.NeedsLowerOdometerConfirmation -> reduce { copy(lowerOdometerConfirmationPending = true) }
             is LogDistanceResult.Valid -> saving {
-                repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
+                repository.addDistanceEntry(
+                    vehicleId, moment, result.distance, result.loggedOdometer,
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
             }
             is LogDistanceResult.Anchor -> saving {
-                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
+                repository.addOdometerAnchor(
+                    vehicleId, moment, result.reading,
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
             }
         }
     }
@@ -157,7 +185,10 @@ class LogEventProcessor @AssistedInject constructor(
             )
         ) {
             is LogDistanceResult.Anchor -> saving {
-                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
+                repository.addOdometerAnchor(
+                    vehicleId, moment, result.reading,
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
             }
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
             LogDistanceResult.NeedsLowerOdometerConfirmation, is LogDistanceResult.Valid -> reduce { copy(lowerOdometerConfirmationPending = false) }

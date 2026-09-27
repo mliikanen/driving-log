@@ -9,6 +9,8 @@ import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
@@ -84,6 +86,12 @@ data class LogEventState(
     /** True while the "save a lower odometer count anyway?" confirmation is shown (`confirm-lower-odometer`). A confirmation
      * mid-flight is not worth surviving process death. */
     @Transient val lowerOdometerConfirmationPending: Boolean = false,
+    /** Up to 5 photos attached so far (`add-event-pictures`), for a "Distance" or "Odometer reading" entry. Persisted,
+     * not [Transient], like [PictureEditState.cropSourceId] is: rotating the device or losing the process while a
+     * photo is attached must not lose it. */
+    val photos: EventPhotoDraft = EventPhotoDraft(),
+    /** [photos]' thumbnail URIs, paired with each photo's pending id: rebuilt from the store, not persisted. */
+    @Transient val photoPreviewUris: List<Pair<String, String>> = emptyList(),
 ) : ViewState {
 
     /** The unit both fields are entered in. */
@@ -161,6 +169,26 @@ sealed interface LogEventIntent : ViewIntent {
 
     /** Cancels or dismisses the lower-odometer confirmation dialog: saves nothing. */
     data object LowerOdometerCancelled : LogEventIntent
+
+    /** Rebuilds the photo strip's thumbnail URIs from the store: dispatched once when the screen opens, since a
+     * restored form's photo ids survive but their URIs ([LogEventState.photoPreviewUris]) do not (`add-event-pictures`,
+     * mirroring [com.mikonoma.drivinglog.vehicle.add.AddVehicleIntent.PictureRefresh]). */
+    data object PhotoPreviewRefresh : LogEventIntent
+
+    /** The system chooser gave back a photo, or nothing, for the photo strip (`add-event-pictures`). */
+    data class PhotoPicked(val result: PhotoResult) : LogEventIntent
+
+    /** A thumbnail's remove action: asks for confirmation before removing that photo. */
+    data class PhotoRemoveRequested(val pendingId: String) : LogEventIntent
+
+    /** Confirms the removal dialog: the photo is deleted and leaves the strip. */
+    data object PhotoRemoveConfirmed : LogEventIntent
+
+    /** Cancels or dismisses the removal dialog: the photo stays attached. */
+    data object PhotoRemoveCancelled : LogEventIntent
+
+    /** The user left the form without saving (add-event-pictures): every attached photo's pending files are deleted. */
+    data object Left : LogEventIntent
 }
 
 sealed interface LogEventEffect : SideEffect {
