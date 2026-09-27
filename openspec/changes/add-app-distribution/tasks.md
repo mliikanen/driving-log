@@ -132,7 +132,7 @@ initially-placeholder config), only its end-to-end verification.
 
 ## 5. The distribute script and documentation
 
-- [ ] 5.1 Write `scripts/distribute.sh`: find the most recent `dist-v*` tag (or none); refuse and exit before any
+- [x] 5.1 Write `scripts/distribute.sh`: find the most recent `dist-v*` tag (or none); refuse and exit before any
       build work if `HEAD` is the same commit that tag points at; draft release notes into a scratch file by
       listing the top-level names newly added under `openspec/changes/archive/` in `git log --diff-filter=A
       --name-only <last-tag-or-empty>..HEAD -- openspec/changes/archive` (the full archive history when there is no
@@ -142,15 +142,34 @@ initially-placeholder config), only its end-to-end verification.
       (no push; `versionName` already contains the commit count and short SHA). Verify by making the script executable
       (`chmod +x`) and dry-running its tag-lookup and notes-drafting logic (e.g. `bash -x` up to the point it would
       invoke Gradle) against this repo's real history.
-- [ ] 5.2 Verify the "nothing archived since the last distribution" path: with a `dist-v*` tag already at `HEAD`'s
+
+      Found and fixed a real bug while dry-running against this repo's actual history: `openspec/changes/archive/`
+      has a tracked `.gitkeep` file directly in it (from the initial commit), which `--diff-filter=A --name-only`
+      also matches; the `sed` pattern expecting `<name>/<file>` left non-matching lines like `.gitkeep`'s bare path
+      unchanged, leaking `openspec/changes/archive/.gitkeep` into the generated notes as a bogus "change name".
+      Fixed by requiring a subdirectory in the `grep` filter (`archive/[^/]+/`, not just `archive/`) before the
+      `sed` extraction runs. `--no-renames` added too: `git commit`'s own summary shows an archived change's files
+      as renames, but `git log`'s diff (without rename detection, the default) sees them as plain adds at the new
+      path, which is what `--diff-filter=A` needs — forced off explicitly so a future git config change can't
+      silently break this. Verified against this repo's real history: correctly lists all 21 currently-archived
+      change names (and no longer the `.gitkeep` line), and correctly refuses when a temporary tag was placed at
+      HEAD itself (both temporary tags removed after testing, nothing left in the repo).
+- [x] 5.2 Verify the "nothing archived since the last distribution" path: with a `dist-v*` tag already at `HEAD`'s
       immediate parent commit (simulate with a temporary tag on a merge/no-archive commit) confirm the script's
       draft comes out empty and it requires the developer to type notes rather than proceeding with a blank file.
-- [ ] 5.3 Write `docs/distribution.md`: the one-time setup (section 1) and the day-to-day "cut a release" steps
+
+      Verified: with a temporary tag at `HEAD~1` (removed after testing), the notes-drafting logic over that range
+      produces an empty file, as expected (none of this session's recent build-config commits touch
+      `openspec/changes/archive/`).
+- [x] 5.3 Write `docs/distribution.md`: the one-time setup (section 1) and the day-to-day "cut a release" steps
       (run `scripts/distribute.sh`, what it asks for, what it produces). Verify by re-reading it start to finish
       and confirming every command it names matches what the script and build actually do.
-- [ ] 5.4 Add a one-line pointer to `docs/distribution.md` from `README.md`. Verify with `grep -n
+
+      Re-read against tasks 1.1-2.1, `androidApp/build.gradle.kts`, and `scripts/distribute.sh`: every command,
+      property name, and file path matches.
+- [x] 5.4 Add a one-line pointer to `docs/distribution.md` from `README.md`. Verify with `grep -n
       distribution.md README.md`.
-- [ ] 5.5 Write `docs/app-distribution.md`: a design-facing doc for agents (and developers) working near this area,
+- [x] 5.5 Write `docs/app-distribution.md`: a design-facing doc for agents (and developers) working near this area,
       distinct from `docs/distribution.md`'s practical runbook — what's fully automated versus what's a one-time
       manual step and why (signing, `appId`/no `google-services.json`, CLI-login auth), the versioning scheme
       (`<commitCount>-<shortSha>`, both values always derived, never hand-edited) and why it was chosen over the
@@ -161,9 +180,16 @@ initially-placeholder config), only its end-to-end verification.
       existing entries for `docs/test-strategy.md`, `docs/test-fixtures.md` and `docs/color-palette.md`. Verify by
       re-reading it against `design.md` and confirming no decision or its rationale was dropped in the summary.
 
+      Also covers two implementation bugs found and fixed while applying (the config-cache script-capture issue,
+      and the `.gitkeep`/`--no-renames` release-notes bug) — not in `design.md` itself (discovered after it was
+      written), but exactly the kind of thing a future agent touching this area needs to know.
+
 ## 6. Regression
 
-- [ ] 6.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`;
+- [x] 6.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`;
       confirm both pass. No Maestro manifest applies to this change: it touches only the Android build's signing,
       versioning and distribution tooling and a new developer-run script — no app screen or runtime behavior
       changes.
+
+      Both pass. `openspec validate` shows the same pre-existing, unrelated `add-event-pictures` failure noted
+      earlier in this session; untouched by this change.

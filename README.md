@@ -24,3 +24,7 @@ Then in Claude Code: `/opsx:propose <first-feature>`, review, `/opsx:apply`, `/o
 ./gradlew :shared:allTests
 ./gradlew :androidApp:assembleDebug
 ```
+
+## Distributing a build to testers
+
+See `docs/distribution.md`.
