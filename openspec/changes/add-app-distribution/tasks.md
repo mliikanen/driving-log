@@ -9,17 +9,28 @@ equivalents (`apps:create`, `appdistribution:group:create`), so once 1.1 is done
 None of these block writing the code in sections 2-5 (which reads the values these produce from tracked,
 initially-placeholder config), only its end-to-end verification.
 
-- [ ] 1.1 Install the Firebase CLI if not already present and run `firebase login` (interactive; the developer does
+- [x] 1.1 Install the Firebase CLI if not already present and run `firebase login` (interactive; the developer does
       this themselves). Verify with `firebase projects:list` showing the existing project.
-- [ ] 1.2 Register an Android app with package `com.mikonoma.drivinglog`:
+
+      Done by the developer. Logged in as `mikko.liikanen@gmail.com`; `firebase projects:list` shows the one
+      existing project, "Driving Log" (`driving-log-49c48`).
+- [x] 1.2 Register an Android app with package `com.mikonoma.drivinglog`:
       `firebase apps:create ANDROID "Driving Log" --package-name com.mikonoma.drivinglog --project <project-id>`.
       App Distribution needs no separate "enable" step — it's usable for any registered app. Verify by noting the
       Firebase App ID the command prints (`1:...:android:...`), or `firebase apps:list ANDROID --project
       <project-id>`.
-- [ ] 1.3 Create a tester group: `firebase appdistribution:group:create "Testers" testers --project <project-id>`
+
+      App ID `1:892237737183:android:024f21b3af486575294d6a` (project `driving-log-49c48`). Set as `firebaseAppId`
+      in `gradle.properties`, replacing the placeholder.
+- [x] 1.3 Create a tester group: `firebase appdistribution:group:create "Testers" testers --project <project-id>`
       (the alias `testers` matches `firebaseTesterGroup`'s placeholder in `gradle.properties`, task 4.1 — use a
       different alias only if updating that placeholder to match). Verify with `firebase appdistribution:group:list
       --project <project-id>`.
+
+      Group `testers` ("Testers") created in `driving-log-49c48`. Alias already matches `gradle.properties`'
+      `firebaseTesterGroup`, no change needed there. 0 testers in it yet — the developer adds testers themselves
+      (`firebase appdistribution:testers:add <emails> --group-alias testers --project <project-id>`), not part of
+      this change's scope.
 
 ## 2. Release signing in the Android build
 
