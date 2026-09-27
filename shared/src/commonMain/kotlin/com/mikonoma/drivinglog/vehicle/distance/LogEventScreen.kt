@@ -218,6 +218,19 @@ fun LogEventContent(
         )
     }
 
+    if (state.lowerOdometerConfirmationPending) {
+        val known = state.knownOdometer
+        val typed = state.activeEntry.toDistance()
+        if (known != null && typed != null) {
+            LowerOdometerDialog(
+                typedText = formatOdometer(typed, state.vehicleUnit, symbols),
+                knownText = formatOdometer(known, state.vehicleUnit, symbols),
+                onConfirm = { onIntent(LogEventIntent.LowerOdometerConfirmed) },
+                onDismiss = { onIntent(LogEventIntent.LowerOdometerCancelled) },
+            )
+        }
+    }
+
     if (showDate) {
         DateDialog(
             initialDateMillis = dateToPicker(state.localDateTime.date),
@@ -560,6 +573,18 @@ private fun RemoveNoteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = { Text("Remove this note?") },
         confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("note_remove_confirm")) { Text("Remove") } },
         dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.testTag("note_remove_cancel")) { Text("Cancel") } },
+    )
+}
+
+/** Before saving a new odometer count lower than the known odometer (`confirm-lower-odometer`). */
+@Composable
+private fun LowerOdometerDialog(typedText: String, knownText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save $typedText?") },
+        text = { Text("That's lower than the vehicle's last known odometer, $knownText.") },
+        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("lower_odometer_confirm")) { Text("Save anyway") } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.testTag("lower_odometer_cancel")) { Text("Cancel") } },
     )
 }
 

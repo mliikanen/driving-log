@@ -28,7 +28,9 @@ class LogDistanceRulesTest {
         entry: OdometerEntry,
         moment: ZonedMoment = past,
         known: Distance? = null,
-    ) = validateLogDistance(way, entry, moment, now, known)
+        mostRecentKnown: Distance? = known,
+        lowerOdometerConfirmed: Boolean = false,
+    ) = validateLogDistance(way, entry, moment, now, known, mostRecentKnown, lowerOdometerConfirmed)
 
     private fun valid(result: LogDistanceResult) = result as LogDistanceResult.Valid
 
@@ -127,16 +129,43 @@ class LogDistanceRulesTest {
     }
 
     @Test
-    fun aLowerCountIsRefusedNamingTheKnownOdometer() {
+    fun aLowerCountNeedsConfirmationBeforeSaving() {
         val known = Distance(45_230_000)
-        val error = errorOf(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45100), known = known))
-        assertEquals(LogDistanceError.OdometerNotHigher(known), error)
+        val result = validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45100), known = known)
+        assertEquals(LogDistanceResult.NeedsLowerOdometerConfirmation, result)
+    }
+
+    @Test
+    fun aLowerCountConfirmedBecomesAnAnchorAtTheTypedCount() {
+        val known = Distance(45_230_000)
+        val typed = distanceEntry(OdometerUnit.KILOMETERS, 45100)
+        val result = validate(LogWay.NEW_ODOMETER, typed, known = known, lowerOdometerConfirmed = true)
+        assertEquals(Distance(45_100_000), anchor(result))
+    }
+
+    @Test
+    fun aBackdatedLowerCountIsSavedDirectlyWithoutConfirmation() {
+        // The known odometer at this backdated moment is 45 230 km, but a later event already brought the vehicle's
+        // current odometer to 45 400 km — this entry is history, not a correction to what the odometer now reads.
+        val known = Distance(45_230_000)
+        val mostRecentKnown = Distance(45_400_000)
+        val typed = distanceEntry(OdometerUnit.KILOMETERS, 45100)
+        val result = validate(LogWay.NEW_ODOMETER, typed, known = known, mostRecentKnown = mostRecentKnown)
+        assertEquals(Distance(45_100_000), anchor(result))
     }
 
     @Test
     fun anEqualCountIsRefused() {
         val known = Distance(45_230_000)
         val error = errorOf(validate(LogWay.NEW_ODOMETER, distanceEntry(OdometerUnit.KILOMETERS, 45230), known = known))
+        assertEquals(LogDistanceError.OdometerNotHigher(known), error)
+    }
+
+    @Test
+    fun anEqualCountIsRefusedEvenWhenConfirmed() {
+        val known = Distance(45_230_000)
+        val typed = distanceEntry(OdometerUnit.KILOMETERS, 45230)
+        val error = errorOf(validate(LogWay.NEW_ODOMETER, typed, known = known, lowerOdometerConfirmed = true))
         assertEquals(LogDistanceError.OdometerNotHigher(known), error)
     }
 

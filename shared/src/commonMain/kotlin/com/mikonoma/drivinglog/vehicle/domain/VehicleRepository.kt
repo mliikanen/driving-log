@@ -63,7 +63,8 @@ interface VehicleRepository {
 
     /**
      * Adds an odometer anchor at [occurredAt]: an odometer-setting event for a new odometer count logged where no odometer is
-     * known. [tenthsIncluded] is remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
+     * known, or one lower than the known odometer, confirmed by the user (`confirm-lower-odometer`). [tenthsIncluded] is
+     * remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
      * pending note typed on the log event form (`add-event-notes`), or null when none was added.
      * Returns the new event id.
      */

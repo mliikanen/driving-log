@@ -120,6 +120,8 @@ class LogEventProcessor @AssistedInject constructor(
         LogEventIntent.NoteRemoveRequested -> reduce { copy(noteRemovalPending = true) }
         LogEventIntent.NoteRemoveConfirmed -> reduce { copy(pendingNote = null, noteRemovalPending = false) }
         LogEventIntent.NoteRemoveCancelled -> reduce { copy(noteRemovalPending = false) }
+        LogEventIntent.LowerOdometerConfirmed -> saveConfirmedLowerOdometer()
+        LogEventIntent.LowerOdometerCancelled -> reduce { copy(lowerOdometerConfirmationPending = false) }
         LogEventIntent.Save -> save()
     }
 
@@ -128,8 +130,11 @@ class LogEventProcessor @AssistedInject constructor(
         val vehicleId = form.selectedVehicleId
         if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
         val moment = form.moment
-        return when (val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer)) {
+        return when (
+            val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer)
+        ) {
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
+            LogDistanceResult.NeedsLowerOdometerConfirmation -> reduce { copy(lowerOdometerConfirmationPending = true) }
             is LogDistanceResult.Valid -> saving {
                 repository.addDistanceEntry(vehicleId, moment, result.distance, result.loggedOdometer, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
             }
@@ -139,8 +144,30 @@ class LogEventProcessor @AssistedInject constructor(
         }
     }
 
+    /** Re-validates with confirmation, in case the moment or field changed underneath an open dialog; on anything but
+     * an anchor, clears the pending flag and surfaces whatever validation now says instead of saving unexpectedly. */
+    private fun saveConfirmedLowerOdometer(): Action<LogEventState, LogEventEffect>? {
+        val form = state
+        val vehicleId = form.selectedVehicleId
+        if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
+        val moment = form.moment
+        return when (
+            val result = validateLogDistance(
+                form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer, lowerOdometerConfirmed = true,
+            )
+        ) {
+            is LogDistanceResult.Anchor -> saving {
+                repository.addOdometerAnchor(vehicleId, moment, result.reading, tenthsIncluded = form.unit.hasTenths, note = form.pendingNote)
+            }
+            is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
+            LogDistanceResult.NeedsLowerOdometerConfirmation, is LogDistanceResult.Valid -> reduce { copy(lowerOdometerConfirmationPending = false) }
+        }
+    }
+
     private fun saving(write: suspend () -> Unit): Action<LogEventState, LogEventEffect> = async("save") {
-        reduce { copy(isSaving = true, error = null) }
+        // Clearing this here too (besides LowerOdometerCancelled/the defensive branches above) covers the confirmed-anchor
+        // path, which reaches this same helper the no-known-odometer anchor path already uses.
+        reduce { copy(isSaving = true, error = null, lowerOdometerConfirmationPending = false) }
         try {
             write()
         } catch (throwable: Throwable) {

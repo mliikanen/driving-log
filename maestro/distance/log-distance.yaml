@@ -217,3 +217,57 @@ appId: com.mikonoma.drivinglog
     timeout: 10000
 - assertNotVisible:
     id: event_note_icon
+- tapOn:
+    id: back
+# A new odometer count lower than the current one (confirm-lower-odometer): current odometer is 45,321.8 km here
+# (45,200.3 initial + 100.5 + 20.0 + 1.0; the earlier "yesterday" +10.0 km entry is dated before the initial odometer
+# and so does not chain into the running total). Cancelling the confirmation changes nothing; confirming saves the
+# lower count as the new odometer, and a later trip distance builds on it.
+- assertVisible:
+    id: current_odometer
+    text: 45,321.8 km
+- tapOn:
+    id: log_event
+- tapOn:
+    id: log_way_odometer
+- tapOn:
+    id: odo_field
+- inputText: "440000"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible: "Save 44,000.0 km?"
+- assertVisible: "That's lower than the vehicle's last known odometer, 45,321.8 km."
+- tapOn: Cancel
+- assertNotVisible: "Save 44,000.0 km?"
+- tapOn:
+    id: back
+- assertVisible:
+    id: current_odometer
+    text: 45,321.8 km
+- tapOn:
+    id: log_event
+- tapOn:
+    id: log_way_odometer
+- tapOn:
+    id: odo_field
+- inputText: "440000"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible: "Save 44,000.0 km?"
+- tapOn: Save anyway
+- assertVisible:
+    id: current_odometer
+    text: 44,000.0 km
+- tapOn:
+    id: log_event
+- tapOn:
+    id: odo_field
+- inputText: "500"
+- hideKeyboard
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 44,050.0 km

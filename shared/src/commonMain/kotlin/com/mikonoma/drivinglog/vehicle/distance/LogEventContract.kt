@@ -6,6 +6,7 @@ import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import kotlinx.datetime.LocalDate
@@ -80,6 +81,9 @@ data class LogEventState(
     @Transient val isSaving: Boolean = false,
     /** True while the "Remove this note?" confirmation is shown. A confirmation mid-flight is not worth surviving process death. */
     @Transient val noteRemovalPending: Boolean = false,
+    /** True while the "save a lower odometer count anyway?" confirmation is shown (`confirm-lower-odometer`). A confirmation
+     * mid-flight is not worth surviving process death. */
+    @Transient val lowerOdometerConfirmationPending: Boolean = false,
 ) : ViewState {
 
     /** The unit both fields are entered in. */
@@ -96,6 +100,10 @@ data class LogEventState(
 
     /** The previous known odometer at the chosen moment, or null when none is known at that time. */
     val knownOdometer: Distance? get() = knownOdometerAt(log.asReversed(), moment.instant)
+
+    /** The vehicle's actual current odometer, independent of the chosen moment (`confirm-lower-odometer`) — distinct
+     * from [knownOdometer] when the chosen moment is backdated before a later logged event. */
+    val mostRecentKnownOdometer: Distance? get() = currentOdometer(log.asReversed())
 
     /** For "New odometer": the distance the typed count means, once something is typed and it is higher than the known one. */
     val previewDistance: Distance?
@@ -147,6 +155,12 @@ sealed interface LogEventIntent : ViewIntent {
 
     /** Cancels or dismisses the removal dialog: leaves the pending note as it was. */
     data object NoteRemoveCancelled : LogEventIntent
+
+    /** Confirms saving a new odometer count lower than the known odometer (`confirm-lower-odometer`). */
+    data object LowerOdometerConfirmed : LogEventIntent
+
+    /** Cancels or dismisses the lower-odometer confirmation dialog: saves nothing. */
+    data object LowerOdometerCancelled : LogEventIntent
 }
 
 sealed interface LogEventEffect : SideEffect {

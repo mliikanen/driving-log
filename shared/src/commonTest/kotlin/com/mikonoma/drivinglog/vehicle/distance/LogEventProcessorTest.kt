@@ -242,20 +242,90 @@ class LogEventProcessorTest {
     }
 
     @Test
-    fun aLowerOrEqualCountIsRefusedNamingTheKnownOdometer() {
+    fun anEqualCountIsRefusedNamingTheKnownOdometer() {
+        seedVehicle() // known odometer now: 45 200 km + 30 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+
+        processor.type(4, 5, 2, 3, 0)
+        processor.dispatch(LogEventIntent.Save)
+        assertEquals(LogDistanceError.OdometerNotHigher(Distance(45_230_000)), processor.error())
+        assertEquals(emptyList(), repository.distanceCalls)
+        assertFalse(processor.state.lowerOdometerConfirmationPending)
+    }
+
+    @Test
+    fun aLowerCountAsksForConfirmationInsteadOfSaving() {
         seedVehicle() // known odometer now: 45 200 km + 30 km
         val processor = processor()
         processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
 
         processor.type(4, 5, 1, 0, 0)
         processor.dispatch(LogEventIntent.Save)
-        assertEquals(LogDistanceError.OdometerNotHigher(Distance(45_230_000)), processor.error())
 
-        processor.dispatch(LogEventIntent.OdometerCleared)
-        processor.type(4, 5, 2, 3, 0)
+        assertTrue(processor.state.lowerOdometerConfirmationPending)
+        assertNull(processor.error())
+        assertEquals(emptyList(), repository.anchorCalls)
+    }
+
+    @Test
+    fun confirmingALowerCountSavesItAsAnAnchorAndClearsThePending() = runTest {
+        seedVehicle() // known odometer now: 45 200 km + 30 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 5, 1, 0, 0)
         processor.dispatch(LogEventIntent.Save)
-        assertEquals(LogDistanceError.OdometerNotHigher(Distance(45_230_000)), processor.error())
+        assertTrue(processor.state.lowerOdometerConfirmationPending)
+
+        processor.test {
+            dispatch(LogEventIntent.LowerOdometerConfirmed)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertFalse(processor.state.lowerOdometerConfirmationPending)
+        val call = repository.anchorCalls.single()
+        assertEquals(Distance(45_100_000), call.reading)
+    }
+
+    @Test
+    fun cancellingALowerCountSavesNothingAndLeavesTheTypedFieldUntouched() {
+        seedVehicle() // known odometer now: 45 200 km + 30 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 5, 1, 0, 0)
+        processor.dispatch(LogEventIntent.Save)
+        assertTrue(processor.state.lowerOdometerConfirmationPending)
+
+        processor.dispatch(LogEventIntent.LowerOdometerCancelled)
+
+        assertFalse(processor.state.lowerOdometerConfirmationPending)
+        assertEquals(emptyList(), repository.anchorCalls)
         assertEquals(emptyList(), repository.distanceCalls)
+        assertEquals("45100", processor.state.newOdometer.digits)
+    }
+
+    @Test
+    fun aBackdatedLowerCountIsSavedDirectlyWithoutConfirmation() = runTest {
+        seedVehicle() // initial odometer 45,200 km at initialAt; a +30 km entry an hour later (current odometer 45,230 km)
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 19)))
+        processor.dispatch(LogEventIntent.TimeChanged(15, 30)) // between the initial odometer and the later +30 km entry
+        assertEquals(Distance(45_200_000), processor.state.knownOdometer)
+
+        processor.type(4, 4, 0, 0, 0) // 44 000 km: lower than the known-at-moment odometer, but not the vehicle's current one
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertFalse(processor.state.lowerOdometerConfirmationPending)
+        val call = repository.anchorCalls.single()
+        assertEquals(Distance(44_000_000), call.reading)
+        // The later +30 km entry chains forward from the new anchor, exactly as it would from a higher backdated
+        // anchor (`vehicle-log`, "A later anchor replaces the running total") — this change doesn't alter that.
+        assertEquals(Distance(44_030_000), repository.observeVehicleOdometer("v1"))
     }
 
     @Test

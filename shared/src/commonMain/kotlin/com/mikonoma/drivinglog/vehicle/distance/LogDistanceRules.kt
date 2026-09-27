@@ -29,6 +29,12 @@ sealed interface LogDistanceResult {
     /** A new odometer count where no odometer is known: saved as an odometer anchor that sets the odometer to [reading]. */
     data class Anchor(val reading: Distance) : LogDistanceResult
 
+    /**
+     * A new odometer count lower than the known odometer (`confirm-lower-odometer`), not yet confirmed. Re-checking with
+     * `lowerOdometerConfirmed = true` turns this into [Anchor] instead. An equal count is [Invalid] instead, unaffected.
+     */
+    data object NeedsLowerOdometerConfirmation : LogDistanceResult
+
     data class Invalid(val error: LogDistanceError) : LogDistanceResult
 }
 
@@ -44,7 +50,13 @@ fun distanceByOdometer(entered: Distance, known: Distance): Distance? =
  * rules of the way: a trip distance must be above zero; a new odometer must be higher than the known odometer, or, when none is known, becomes an odometer anchor.
  * Wall-clock times are never compared across zones: the future check is on instants.
  *
- * [known] is the previous known odometer at the chosen moment, as `knownOdometerAt` gives it.
+ * [known] is the previous known odometer at the chosen moment, as `knownOdometerAt` gives it. [mostRecentKnown]
+ * (`confirm-lower-odometer`) is the vehicle's actual current odometer (`currentOdometer`), independent of the chosen
+ * moment; it defaults to [known] so a caller logging for now — where the two are always equal — needs no extra
+ * argument. When they differ, a later event already exists in the log and this entry is backdated into history
+ * rather than replacing the vehicle's current odometer. [lowerOdometerConfirmed] (`confirm-lower-odometer`) is true
+ * only on a second call, after the user confirmed a lower count than [known] once already asked; it has no effect
+ * unless the typed count is actually lower than [known] and [known] equals [mostRecentKnown].
  */
 fun validateLogDistance(
     way: LogWay,
@@ -52,6 +64,8 @@ fun validateLogDistance(
     moment: ZonedMoment,
     now: Instant,
     known: Distance?,
+    mostRecentKnown: Distance? = known,
+    lowerOdometerConfirmed: Boolean = false,
 ): LogDistanceResult {
     val typed = entry.toDistance() ?: return LogDistanceResult.Invalid(LogDistanceError.FieldEmpty)
     if (moment.instant > now) return LogDistanceResult.Invalid(LogDistanceError.TimeInFuture)
@@ -63,6 +77,15 @@ fun validateLogDistance(
         LogWay.NEW_ODOMETER -> {
             // Nothing to compare with: the count itself becomes the odometer at that time.
             if (known == null) return LogDistanceResult.Anchor(typed)
+            if (typed.meters < known.meters) {
+                return when {
+                    // A later event already exists: this entry is backdated into history, not replacing the
+                    // vehicle's current odometer, so it needs no confirmation.
+                    known.meters != mostRecentKnown?.meters -> LogDistanceResult.Anchor(typed)
+                    lowerOdometerConfirmed -> LogDistanceResult.Anchor(typed)
+                    else -> LogDistanceResult.NeedsLowerOdometerConfirmation
+                }
+            }
             val distance = distanceByOdometer(typed, known)
                 ?: return LogDistanceResult.Invalid(LogDistanceError.OdometerNotHigher(known))
             LogDistanceResult.Valid(distance, loggedOdometer = typed)
