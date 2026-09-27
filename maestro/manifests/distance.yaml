@@ -5,10 +5,12 @@
 # ("run.sh distance view-existing-log") does. A glob here would silently sweep it into this whole-manifest run too,
 # unseeded, and it would fail (confirmed: exactly that happened before this was made explicit).
 flows:
+  - "distance/setup.yaml"
   - "distance/log-distance.yaml"
   - "distance/log-from-home.yaml"
 executionOrder:
   continueOnFailure: false
   flowsOrder:
+    - setup
     - log-distance
     - log-from-home

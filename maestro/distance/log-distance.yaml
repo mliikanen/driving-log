@@ -190,24 +190,39 @@ appId: com.mikonoma.drivinglog
     timeout: 10000
 # Editing an already-saved event's note (add-event-editing): change it, then clear it, and confirm the row's note
 # icon disappears once nothing is left to show. The details screen is still open from the case above.
+# "Edit" opens an intermediate "Edit event" screen (add-event-pictures) showing the note element's current preview;
+# tapping it opens the same full-screen editor as before, and "back" there only attaches the draft to the edit
+# session — "Save" on the Edit screen is what actually persists it (and, on save, returns straight to the details
+# screen, with no separate "leave the Edit screen" tap needed).
 - tapOn:
     id: event_note_icon
 - tapOn:
     id: edit_event
+- assertVisible: Edit event
 - assertVisible: borrowed to Sam
+- tapOn:
+    id: log_note
 - eraseText: 20
 - inputText: lent to a friend
 - tapOn:
     id: back
+- assertVisible: lent to a friend
+- tapOn:
+    id: edit_event_save
 - assertVisible:
     id: event_details_note
     text: lent to a friend
 - tapOn:
     id: edit_event
 - assertVisible: lent to a friend
+- tapOn:
+    id: log_note
 - eraseText: 20
 - tapOn:
     id: back
+- assertVisible: Add a note...
+- tapOn:
+    id: edit_event_save
 - assertNotVisible:
     id: event_details_note
 - tapOn:
@@ -271,3 +286,94 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 44,050.0 km
+# Photos (add-event-pictures): attach two while composing, remove one (cancel then confirm), save; the row shows the
+# photo icon, and, with a note also attached, both icons together. The details screen shows the kept photo's
+# thumbnail and its full-size viewer; "Edit" adds one photo and removes the one already there.
+- tapOn:
+    id: log_event
+- tapOn:
+    id: odo_field
+- inputText: "300"
+- hideKeyboard
+- tapOn:
+    id: log_note
+- inputText: two photos then one removed
+- tapOn:
+    id: back
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 1
+- assertVisible:
+    id: "event_photo_.*"
+- tapOn:
+    id: "photo_remove_.*"
+- tapOn: Cancel
+- tapOn:
+    id: "photo_remove_.*"
+- tapOn: Remove
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 44,080.0 km
+- scrollUntilVisible:
+    element:
+      id: event_photo_icon
+- assertVisible:
+    id: event_note_icon
+- assertVisible:
+    id: event_photo_icon
+- tapOn:
+    id: event_photo_icon
+- assertVisible:
+    id: event_details_title
+- assertVisible:
+    id: "event_photo_thumbnail_.*"
+- tapOn:
+    id: "event_photo_thumbnail_.*"
+- pressKey: back
+- tapOn:
+    id: edit_event
+- assertVisible: Edit event
+- tapOn:
+    id: "photo_remove_.*"
+- tapOn: Remove
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- tapOn:
+    id: edit_event_save
+- assertVisible:
+    id: event_details_title
+- assertVisible:
+    id: "event_photo_thumbnail_.*"

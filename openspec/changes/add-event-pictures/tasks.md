@@ -57,11 +57,11 @@ thumbnails extend the details screen they add. Do not start section 4 before bot
 
 ## 5. Verification
 
-- [ ] 5.1 Add cases to the `distance` Maestro manifest: attach and remove photos while composing an event; save and
+- [x] 5.1 Add cases to the `distance` Maestro manifest: attach and remove photos while composing an event; save and
       confirm the row shows the photo icon (and, with a note also attached, both icons together at the row's
       corner). Run `maestro/run.sh distance` and confirm it passes.
-- [ ] 5.2 Add a case (to the `distance` manifest, or wherever `add-event-details-view`/`add-event-editing`'s own
+- [x] 5.2 Add a case (to the `distance` manifest, or wherever `add-event-details-view`/`add-event-editing`'s own
       Maestro cases live) opening a photo's details thumbnail, viewing it full-size, and using "Edit" to add/remove
       a photo on an already-saved event. Run that manifest and confirm it passes.
-- [ ] 5.3 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`; confirm
+- [x] 5.3 Run `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`; confirm
       both pass before archiving.

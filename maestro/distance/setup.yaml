@@ -1,0 +1,6 @@
+# Once for the distance manifest: the photos its flows attach to a logged event (add-event-pictures).
+appId: com.mikonoma.drivinglog
+---
+- addMedia:
+    - ../assets/photo-car-red.jpg
+    - ../assets/photo-car-blue.jpg
