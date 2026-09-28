@@ -1,12 +1,6 @@
-# odometer-ocr-capture Specification
+# Spec Delta
 
-## Purpose
-
-Lets a user fill the log event form's odometer or trip-distance field from a photo instead of typing: a photo is
-scanned offline for numeric readings, each is classified as odometer- or trip-meter-like, and the user picks which
-one (if any) to accept. The photo and every detection are kept privately for debugging, never shown to the user.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: A photo is chosen to scan for a reading
 The system SHALL offer a "Scan a reading" action on the log event form. Tapping it SHALL open the live scanner ("The
@@ -36,71 +30,6 @@ action SHALL NOT be shown.
 #### Scenario: Leave the photo review
 - **WHEN** the user chose a photo and leaves its review without accepting a candidate
 - **THEN** the live scanner is shown again
-
-### Requirement: Numeric readings are detected offline in the chosen photo
-The system SHALL recognize text in the chosen photo using on-device OCR that works without a network connection, and
-SHALL identify, among the recognized text, every numeric reading plausible as an odometer or trip-meter value as a
-candidate. A photo with no plausible candidate SHALL say so and let the user choose another photo or leave.
-
-#### Scenario: Offline detection
-- **WHEN** the device has no network connection and the user scans a photo
-- **THEN** candidates are detected and no network error is shown
-
-#### Scenario: No plausible reading
-- **WHEN** the user scans a photo with no numeric reading plausible as an odometer or trip-meter value
-- **THEN** the system says no reading was found, and the user can choose another photo or leave
-
-### Requirement: A detected reading is classified as an odometer or a trip-meter reading
-The system SHALL classify each candidate as odometer-like or trip-meter-like using, in order: a recognized text label
-next to it in the photo ("ODO", "ODOMETER" or "TOTAL DISTANCE" read as odometer-like, "TRIP", "TRIP A", "TRIP B"
-or "T" as trip-like), and, when no such label is recognized next to it, the candidate's magnitude against the vehicle's
-current known odometer at the entry's date and time (already defined by `distance-logging`, "The previous known
-odometer"): a value at or plausibly above the known odometer reads as odometer-like, and a value clearly smaller,
-plausible as a trip distance, reads as trip-meter-like. A candidate with neither a recognized label nor a plausible
-magnitude either way SHALL NOT be presented to the user.
-
-#### Scenario: Classified by label
-- **WHEN** a candidate has the recognized text "ODO" next to it in the photo
-- **THEN** it is classified as an odometer reading, regardless of its magnitude
-
-#### Scenario: Classified by a label below it
-- **WHEN** a candidate has the recognized text "Total distance" directly below it in the photo
-- **THEN** it is classified as an odometer reading
-
-#### Scenario: Classified by magnitude when there is no label
-- **WHEN** a candidate has no recognized odometer/trip label next to it, and its value is close to the vehicle's current known odometer
-- **THEN** it is classified as an odometer reading
-
-#### Scenario: A small unlabeled value reads as a trip
-- **WHEN** a candidate has no recognized label next to it, and its value is much smaller than the vehicle's current known odometer, in the range a trip distance would plausibly be
-- **THEN** it is classified as a trip reading
-
-#### Scenario: An implausible reading is not shown
-- **WHEN** a numeric value recognized elsewhere in the photo (for example a clock or a temperature) has no odometer/trip label and is neither close to the known odometer nor plausible as a trip distance
-- **THEN** it is not presented as a candidate
-
-### Requirement: The user picks a candidate to accept, or leaves without picking one
-The system SHALL show the chosen photo with a box drawn around every candidate and its classification ("ODO" or
-"TRIP") shown as text next to the box, every box and its text in a neutral color until the user taps it, and in a
-distinct, confirmable color once tapped. Tapping a candidate SHALL select it in place of whichever was selected
-before, if any. The system SHALL let the user confirm the selected candidate, or navigate back without confirming
-one, in which case the log event form is unchanged and nothing is kept.
-
-#### Scenario: One candidate
-- **WHEN** the photo has exactly one candidate
-- **THEN** it is shown as one box with its classification text, in the neutral color
-
-#### Scenario: Several candidates
-- **WHEN** the photo has more than one candidate
-- **THEN** each is shown with its own box and classification text
-
-#### Scenario: Selecting a candidate
-- **WHEN** the user taps a candidate's box or text
-- **THEN** that candidate changes to the selected color and any previously selected candidate returns to the neutral color
-
-#### Scenario: Leaving without accepting
-- **WHEN** the user navigates back without confirming a selected candidate
-- **THEN** the log event form is shown exactly as it was, and nothing is kept
 
 ### Requirement: Accepting a candidate sets the field and the way
 The system SHALL, when the user confirms a selected candidate on the photo review, or taps a reading in the live
@@ -156,29 +85,7 @@ SHALL NOT remove them.
 - **WHEN** an event saved from an accepted scan is viewed anywhere in the application (its row, its details screen, the full log)
 - **THEN** neither the photo nor any detection is shown
 
-### Requirement: Readings in seven-segment digits are detected
-The system SHALL detect, in the scanned photo, numeric readings shown in seven-segment (LCD) digits as well as those
-shown in ordinary printed digits, both offline and on the device, and SHALL treat a reading detected either way the
-same: it SHALL become a candidate by the same rules, be classified by the same label and magnitude rules, and be
-presented for review in the same way. A reading SHALL be presented once even when both kinds of recognition find it.
-On iOS the scan action is not offered (`odometer-ocr-capture`, "A photo is chosen to scan for a reading"), so none of
-this applies there.
-
-#### Scenario: An LCD odometer reading is found
-- **WHEN** the user scans a photo of a motorcycle's LCD display showing "ODO 5034 Km"
-- **THEN** 5034 is presented as a candidate classified as an odometer reading
-
-#### Scenario: An LCD trip reading is found
-- **WHEN** the user scans a photo of an LCD display showing "TRIP 168.1 Km"
-- **THEN** 168.1 is presented as a candidate classified as a trip reading
-
-#### Scenario: A printed reading is still found
-- **WHEN** the user scans a photo of a car cluster showing "ODO 71140 km" in ordinary digits
-- **THEN** 71140 is presented as a candidate classified as an odometer reading, as before
-
-#### Scenario: One reading, one candidate
-- **WHEN** a reading is found both as printed text and as seven-segment digits
-- **THEN** it is presented as one candidate, not two
+## ADDED Requirements
 
 ### Requirement: The live scanner shows readings as the camera sees them
 The system SHALL show, in the live scanner, the back camera's live preview filling the screen, and SHALL draw over it a
@@ -219,22 +126,3 @@ preview. On iOS the scan action is not offered, so none of this applies there.
 #### Scenario: Granted
 - **WHEN** the user grants the camera permission
 - **THEN** the live scanner shows the camera's preview
-
-### Requirement: A scan accepted when adding a vehicle is kept with its initial odometer
-The system SHALL keep the photo (or, from the live scanner, the camera frame) and the full detection result of a reading
-accepted on the add-vehicle form, and SHALL store them with the vehicle's initial odometer event when the vehicle is
-saved, under the same rules as a scan accepted on the log event form: leaving the add-vehicle form without saving SHALL
-discard them, scanning again before saving SHALL keep only the latest accepted scan, they SHALL NOT appear in any
-user-facing screen, and removing the event SHALL NOT remove them.
-
-#### Scenario: Saved with the new vehicle
-- **WHEN** the user accepts a scanned reading on the add-vehicle form and saves the vehicle
-- **THEN** the photo or frame and its full detection result are stored, linked to the vehicle's initial odometer event
-
-#### Scenario: Discarded when the vehicle is not added
-- **WHEN** the user accepts a scanned reading on the add-vehicle form and leaves it without saving
-- **THEN** neither the photo nor its detections are stored anywhere
-
-#### Scenario: A typed odometer keeps no scan
-- **WHEN** the user types the odometer by hand and saves the vehicle
-- **THEN** no scan is stored with its initial odometer event

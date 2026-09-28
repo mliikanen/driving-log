@@ -104,17 +104,19 @@ screen, and a refusal SHALL be explained to the user and SHALL NOT stop the appl
 
 #### Scenario: Nothing is declared that no function needs
 - **WHEN** the installed Android application's requested permissions are listed
-- **THEN** it requests no permission of the system (its own internal ones aside)
+- **THEN** the only system permission it requests is the camera, which the live scanner of `odometer-ocr-capture` needs (its own internal ones aside)
 
 #### Scenario: A permission is asked for at the action
-- **WHEN** a function needs a permission (on iOS, taking a photo needs camera access) and the user has not been asked for it
+- **WHEN** a function needs a permission (on iOS, taking a photo needs camera access; on Android, the live scanner needs it) and the user has not been asked for it
 - **THEN** the system asks for it at the moment the user triggers that function, and not before
 
 #### Scenario: A refusal does not stop the application
 - **WHEN** the user refuses a permission the function needs
 - **THEN** the system explains that the function needs it and that it can be allowed in the device settings, and the rest of the application keeps working
 
-**Platform note:** on Android the image functions use the system chooser and the camera app through intents and need no permission. On iOS only the camera needs one.
+**Platform note:** on Android the image functions use the system chooser and the camera app through intents and need no permission; the
+one exception is the live scanner (`odometer-ocr-capture`), whose in-app camera preview no chooser or intent can provide, and which asks for
+the camera permission when "Scan a reading" is tapped. On iOS only the camera needs one.
 
 ### Requirement: Screens respect the system bars and the keyboard
 The system SHALL keep the content of every screen out from under the status bar, the gesture bar or the three-button navigation bar, the display
