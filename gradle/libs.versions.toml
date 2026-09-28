@@ -16,6 +16,7 @@ serialization = "1.11.0"
 firebaseAppDistribution = "5.3.0"
 mlkit-text-recognition = "16.0.1"
 onnxruntime = "1.30.0"
+camerax = "1.6.2"
 
 android-compileSdk = "37"
 android-minSdk = "33"
@@ -49,6 +50,10 @@ sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", versi
 mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text-recognition" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 onnxruntime-jvm = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
+camerax-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

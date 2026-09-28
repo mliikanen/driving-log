@@ -31,7 +31,8 @@ interface VehicleRepository {
 
     /**
      * Saves the vehicle, its initial odometer event and its [picture] (when it has one) together, or none of them: a failed save
-     * leaves no picture files behind. Returns the new vehicle id.
+     * leaves no picture files behind. [capture] is the accepted scan the initial odometer came from (`scan-initial-odometer`), or null
+     * when it was typed: stored with the initial odometer event in the same transaction. Returns the new vehicle id.
      */
     suspend fun addVehicle(
         name: String,
@@ -43,6 +44,7 @@ interface VehicleRepository {
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture? = null,
+        capture: PendingCapture? = null,
     ): String
 
     /**

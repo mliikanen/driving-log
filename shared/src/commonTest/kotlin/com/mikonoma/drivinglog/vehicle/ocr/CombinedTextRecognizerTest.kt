@@ -17,6 +17,7 @@ class CombinedTextRecognizerTest {
     private object Failing : TextRecognizer {
         override val isAvailable = true
         override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? = error("the model failed to load")
+        override suspend fun recognize(frame: com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage): RecognizedPhoto? = error("the model failed to load")
     }
 
     @Test
@@ -52,5 +53,16 @@ class CombinedTextRecognizerTest {
     fun availableWhenEitherIs() {
         assertTrue(CombinedTextRecognizer(UnavailableTextRecognizer, lcd).isAvailable)
         assertFalse(CombinedTextRecognizer(UnavailableTextRecognizer).isAvailable)
+    }
+
+    @Test
+    fun aFrameGoesToBoth() = runTest {
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(4, 2, IntArray(8))
+
+        val photo = CombinedTextRecognizer(printed, lcd).recognize(frame)!!
+
+        assertEquals(listOf("71140km", "5034"), photo.lines.map { it.text })
+        assertEquals(listOf(frame), printed.frames)
+        assertEquals(listOf(frame), lcd.frames)
     }
 }

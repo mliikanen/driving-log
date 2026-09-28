@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlinx.serialization.Serializable
 
 /** A rectangle in the pixels of a [RecognizedPhoto]: [left] and [top] inclusive, [right] and [bottom] exclusive. */
@@ -33,12 +34,19 @@ interface TextRecognizer {
 
     /** The text in the photo, or null when the bytes are not an image the platform can decode. */
     suspend fun recognize(bytes: ByteArray): RecognizedPhoto?
+
+    /**
+     * The text in an already decoded, upright image: a camera frame of the live scanner (`add-live-scanner`). The boxes are in
+     * [frame]'s pixels.
+     */
+    suspend fun recognize(frame: RgbImage): RecognizedPhoto?
 }
 
 /** The recognizer of a platform that has none yet: nothing offers a scan, and a scan would read nothing. */
 object UnavailableTextRecognizer : TextRecognizer {
     override val isAvailable: Boolean = false
     override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? = null
+    override suspend fun recognize(frame: RgbImage): RecognizedPhoto? = null
 }
 
 /** A photo is recognized with its longer side scaled up to this when it is smaller (design.md). */

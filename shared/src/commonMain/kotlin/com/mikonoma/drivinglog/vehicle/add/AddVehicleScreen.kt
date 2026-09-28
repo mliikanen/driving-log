@@ -44,6 +44,13 @@ import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
+import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
+import com.mikonoma.drivinglog.vehicle.ocr.ui.LiveScannerContent
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanCallbacks
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanProgressContent
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReadingAction
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReviewContent
+import androidx.compose.runtime.remember
 import com.mikonoma.drivinglog.vehicle.ui.label
 
 @Composable
@@ -62,10 +69,15 @@ fun AddVehicleScreen(
         }
     }
 
+    // A restored form's scanned photo (scan-initial-odometer) needs its URI rebuilt even while the review, not the form's picture field
+    // that refreshes it otherwise, is on screen.
+    LaunchedEffect(processor) { processor.dispatch(AddVehicleIntent.PictureRefresh) }
+
     AddVehicleContent(
         state = state,
         deviceLocale = deviceLocale,
         onIntent = processor::dispatch,
+        newLiveScanner = processor::liveScanner,
         // Leaving without saving deletes the pending picture files; a rotation is not leaving and keeps them.
         onBack = {
             processor.dispatch(AddVehicleIntent.Left)
@@ -81,7 +93,32 @@ fun AddVehicleContent(
     deviceLocale: DeviceLocale,
     onIntent: (AddVehicleIntent) -> Unit,
     onBack: () -> Unit,
+    newLiveScanner: () -> LiveScanner = { error("No live scanner") },
 ) {
+    // The odometer's scan (scan-initial-odometer): the same scanner and photo review as the log event form, shown in place of the form.
+    val scanCallbacks = remember(onIntent) {
+        ScanCallbacks(
+            onClose = { onIntent(AddVehicleIntent.ScannerClosed) },
+            onReadingTapped = { onIntent(AddVehicleIntent.LiveReadingTapped(it)) },
+            onPhotoPicked = { onIntent(AddVehicleIntent.ScanPhotoPicked(it)) },
+            onCandidateSelected = { onIntent(AddVehicleIntent.ScanCandidateSelected(it)) },
+            onConfirm = { onIntent(AddVehicleIntent.ScanConfirmed) },
+            onCancel = { onIntent(AddVehicleIntent.ScanCancelled) },
+            onErrorDismissed = { onIntent(AddVehicleIntent.ScanErrorDismissed) },
+        )
+    }
+    if (state.isScanning) {
+        ScanProgressContent()
+        return
+    }
+    state.scan.review?.let { review ->
+        ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
+        return
+    }
+    if (state.scan.scannerOpen) {
+        LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
+        return
+    }
     // One animated color for the whole screen: everything drawn from the vehicle's color takes it from here, so it all moves together.
     val animatedColor = rememberAnimatedColor(state.color)
     Scaffold(
@@ -151,6 +188,9 @@ fun AddVehicleContent(
                 onClear = { onIntent(AddVehicleIntent.OdometerCleared) },
                 label = "Current odometer *",
             )
+            if (state.canScan) {
+                ScanReadingAction(onOpen = { onIntent(AddVehicleIntent.ScannerOpened) })
+            }
             VehicleTypeChoice(
                 selected = state.type,
                 onSelect = { onIntent(AddVehicleIntent.TypeSelected(it)) },

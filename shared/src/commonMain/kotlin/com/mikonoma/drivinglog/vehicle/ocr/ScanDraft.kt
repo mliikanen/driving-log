@@ -34,6 +34,8 @@ data class ScanDraft(
     val review: ScanReview? = null,
     val accepted: PendingCapture? = null,
     val error: PictureError? = null,
+    /** True while the live scanner is open (`add-live-scanner`); the photo review opens on top of it and returns to it. */
+    val scannerOpen: Boolean = false,
 )
 
 /**
@@ -46,12 +48,11 @@ class ScanEditor(
     private val store: CaptureStore,
 ) {
     /**
-     * The system's chooser gave [result]. A photo is encoded once, full size and uncropped, kept pending, recognized and classified
-     * against [knownOdometer] (in the vehicle's odometer unit, or null when none is known at the entry's time); the review opens on it,
-     * replacing a review already open (choosing another photo from "no reading found"). Leaving the chooser changes nothing; a photo that
-     * cannot be opened or a refused camera set the error.
+     * The system's chooser gave [result]. A photo is encoded once, full size and uncropped, kept pending, recognized and classified by
+     * [classify] (the form's own rule, as for [LiveScanner]); the review opens on it, replacing a review already open (choosing another
+     * photo from "no reading found"). Leaving the chooser changes nothing; a photo that cannot be opened or a refused camera set the error.
      */
-    suspend fun photoPicked(draft: ScanDraft, result: PhotoResult, knownOdometer: Double?): ScanDraft = when (result) {
+    suspend fun photoPicked(draft: ScanDraft, result: PhotoResult, classify: (RecognizedPhoto) -> List<Detection>): ScanDraft = when (result) {
         PhotoResult.Cancelled -> draft
         PhotoResult.Unreadable -> draft.copy(error = PictureError.COULD_NOT_OPEN)
         PhotoResult.CameraDenied -> draft.copy(error = PictureError.CAMERA_DENIED)
@@ -64,7 +65,7 @@ class ScanEditor(
             } else {
                 draft.review?.let { store.discardPending(it.pendingId) }
                 val pendingId = store.putPending(photo)
-                val review = ScanReview(pendingId, recognized.width, recognized.height, detectReadings(recognized, knownOdometer))
+                val review = ScanReview(pendingId, recognized.width, recognized.height, classify(recognized))
                 draft.copy(review = review, error = null)
             }
         }
@@ -86,8 +87,28 @@ class ScanEditor(
         val index = review.selectedIndex ?: return null
         draft.accepted?.let { store.discardPending(it.pendingId) }
         val accepted = PendingCapture(review.pendingId, ScanResult(review.width, review.height, review.detections, index))
-        return draft.copy(review = null, accepted = accepted) to review.detections[index]
+        return draft.copy(review = null, accepted = accepted, scannerOpen = false) to review.detections[index]
     }
+
+    /**
+     * A reading was tapped in the live scanner (`add-live-scanner`): the frame it was read in is encoded once and kept as the pending
+     * scan, with that frame's detections and the tapped one accepted, replacing (and deleting) one accepted before; the scanner closes.
+     * Null, and nothing changed, when the frame cannot be encoded or the reading is not among its frame's detections.
+     */
+    suspend fun liveAccepted(draft: ScanDraft, reading: LiveReading): ScanDraft? {
+        val index = reading.frame.detections.indexOf(reading.detection)
+        if (index < 0) return null
+        val photo = codec.encode(reading.frame.image) ?: return null
+        val pendingId = store.putPending(photo)
+        draft.accepted?.let { store.discardPending(it.pendingId) }
+        val result = ScanResult(reading.frame.image.width, reading.frame.image.height, reading.frame.detections, index)
+        return draft.copy(accepted = PendingCapture(pendingId, result), scannerOpen = false, error = null)
+    }
+
+    fun scannerOpened(draft: ScanDraft): ScanDraft = draft.copy(scannerOpen = true, error = null)
+
+    /** Leaving the live scanner without a reading: nothing it showed is kept. */
+    suspend fun scannerClosed(draft: ScanDraft): ScanDraft = cancelled(draft).copy(scannerOpen = false)
 
     /** Back out of the review, or "Leave" on "no reading found": the scanned photo is deleted and the form is as it was. */
     suspend fun cancelled(draft: ScanDraft): ScanDraft {

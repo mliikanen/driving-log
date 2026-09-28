@@ -204,4 +204,29 @@ class PpOcrTest {
         assertEquals(TextBox(0, 10, 30, 30), line.elements[0].box)
         assertEquals(TextBox(40, 10, 80, 30), line.elements[1].box)
     }
+
+    // Frames (add-live-scanner)
+
+    @Test
+    fun aFrameIsTurnedUprightClockwise() {
+        // 3 x 2: pixel values are their index. Turned a quarter clockwise it is 2 x 3, its first row the old first column, bottom up.
+        val frame = RgbImage(3, 2, IntArray(6) { it })
+        val upright = frame.turnedClockwise(1)
+        assertEquals(2 to 3, upright.width to upright.height)
+        assertEquals(listOf(3, 0, 4, 1, 5, 2), upright.pixels.toList())
+        assertEquals(frame.pixels.toList(), frame.turnedClockwise(4).pixels.toList())
+        assertEquals(frame.turnedClockwise(3).pixels.toList(), frame.turnedCounterclockwise().pixels.toList())
+    }
+
+    @Test
+    fun aTextBoxInARotatedFrameComesBackUpright() {
+        // A frame to be turned 90 degrees clockwise to be upright (a phone held upright, the camera's rotationDegrees 90): a white bar
+        // across the top of the upright scene lies along the frame's left edge. Turned upright, it is at the top again.
+        val w = 20; val h = 10
+        val frame = RgbImage(w, h, IntArray(w * h) { i -> if (i % w < 2) 0xFFFFFFFF.toInt() else 0xFF000000.toInt() })
+        val upright = frame.turnedClockwise(1)
+        assertEquals(10 to 20, upright.width to upright.height)
+        assertTrue((0 until upright.width).all { x -> upright.pixels[x] == 0xFFFFFFFF.toInt() && upright.pixels[upright.width + x] == 0xFFFFFFFF.toInt() })
+        assertTrue((0 until upright.width).all { x -> upright.pixels[2 * upright.width + x] == 0xFF000000.toInt() })
+    }
 }

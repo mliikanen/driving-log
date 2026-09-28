@@ -6,6 +6,7 @@ import android.graphics.Matrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
@@ -49,6 +50,13 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             scaledTo(bitmap, width, height).compress(Bitmap.CompressFormat.WEBP_LOSSY, WEBP_QUALITY, out)
             EncodedImage(out.toByteArray(), "webp", width, height)
         }
+    }
+
+    override suspend fun encode(image: RgbImage): EncodedImage = withContext(dispatcher) {
+        val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+        val out = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, WEBP_QUALITY, out)
+        EncodedImage(out.toByteArray(), "webp", image.width, image.height)
     }
 
     override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {

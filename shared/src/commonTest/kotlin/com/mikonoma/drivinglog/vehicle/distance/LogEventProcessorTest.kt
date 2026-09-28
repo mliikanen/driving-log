@@ -1634,4 +1634,121 @@ class LogEventProcessorTest {
 
         assertFalse(without.state.canScan)
     }
+    // ---- The live scanner (add-live-scanner)
+
+    private fun liveReading(value: String, kind: com.mikonoma.drivinglog.vehicle.ocr.ReadingKind): com.mikonoma.drivinglog.vehicle.ocr.LiveReading {
+        val detections = listOf(
+            com.mikonoma.drivinglog.vehicle.ocr.Detection("RPMx", "1000", com.mikonoma.drivinglog.vehicle.ocr.TextBox(0, 0, 10, 10), null, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.NO_UNIT),
+            com.mikonoma.drivinglog.vehicle.ocr.Detection(value, value, com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430), kind, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO"),
+        )
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), detections)
+        return com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detections[1], frame, now)
+    }
+
+    @Test
+    fun openingAndClosingTheScannerLeavesTheFormAsItWasAndKeepsNothing() {
+        seedVehicle()
+        val processor = processor()
+        processor.type(3, 0)
+
+        processor.dispatch(LogEventIntent.ScannerOpened)
+        assertTrue(processor.state.scan.scannerOpen)
+        processor.dispatch(LogEventIntent.ScannerClosed)
+
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals(LogWay.TRIP_DISTANCE, processor.state.way)
+        assertEquals(30L, processor.state.tripDistance.steps)
+        assertNull(processor.state.scan.accepted)
+        assertTrue(captures.pending.isEmpty())
+    }
+
+    @Test
+    fun tappingALiveOdometerReadingAppliesItKeepsItsFrameAndClosesTheScanner() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened)
+        val reading = liveReading("45260", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER)
+
+        processor.dispatch(LogEventIntent.LiveReadingTapped(reading))
+
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals(LogWay.NEW_ODOMETER, processor.state.way)
+        assertEquals(45_260L, processor.state.newOdometer.steps)
+        val accepted = assertNotNull(processor.state.scan.accepted)
+        assertEquals("45260", accepted.result.accepted.value)
+        assertEquals(2, accepted.result.detections.size) // the frame's every detection, not only the tapped one
+        assertEquals(1280 to 720, accepted.result.width to accepted.result.height)
+        assertEquals(listOf(reading.frame.image), codec.encodedFrames)
+        assertEquals(1, captures.pending.size)
+    }
+
+    @Test
+    fun tappingALiveTripReadingOnNewOdometerSwitchesTheWay() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.ScannerOpened)
+
+        processor.dispatch(LogEventIntent.LiveReadingTapped(liveReading("168.1", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP)))
+
+        assertEquals(LogWay.TRIP_DISTANCE, processor.state.way)
+        assertEquals(1_681L, processor.state.tripDistance.steps)
+    }
+
+    @Test
+    fun aLiveReadingReplacesAnEarlierAcceptedScan() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+        processor.accept("45260")
+        val first = processor.state.scan.accepted!!.pendingId
+        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.LiveReadingTapped(liveReading("45270", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER)))
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertTrue(first in captures.discarded)
+        assertEquals("45270", repository.anchorCalls.singleOrNull()?.capture?.result?.accepted?.value ?: repository.distanceCalls.single().capture?.result?.accepted?.value)
+    }
+
+    @Test
+    fun leavingThePhotoReviewReturnsToTheScanner() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.scan()
+        assertNotNull(processor.state.scan.review)
+
+        processor.dispatch(LogEventIntent.ScanCancelled)
+
+        assertNull(processor.state.scan.review)
+        assertTrue(processor.state.scan.scannerOpen)
+    }
+
+    @Test
+    fun confirmingOnThePhotoReviewClosesTheScannerToo() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.scan()
+
+        processor.accept("45260")
+
+        assertNull(processor.state.scan.review)
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals(LogWay.NEW_ODOMETER, processor.state.way)
+    }
+
+    @Test
+    fun anOpenScannerSurvivesSavedState() {
+        val json = kotlinx.serialization.json.Json
+        val draft = com.mikonoma.drivinglog.vehicle.ocr.ScanDraft(scannerOpen = true)
+
+        val restored = json.decodeFromString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), json.encodeToString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), draft))
+
+        assertTrue(restored.scannerOpen)
+    }
 }

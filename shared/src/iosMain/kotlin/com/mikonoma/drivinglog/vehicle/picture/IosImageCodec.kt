@@ -65,6 +65,9 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
             EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
         }
 
+    /** iOS has no live scanner (`add-live-scanner`), so no frame is ever encoded here. */
+    override suspend fun encode(image: com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage): EncodedImage? = null
+
     override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? = withContext(dispatcher) {
         val image = upright(bytes) ?: return@withContext null
         val (width, height) = image.size.useContents { width to height }

@@ -87,6 +87,7 @@ class SqlDelightVehicleRepository(
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture?,
+        capture: PendingCapture?,
     ): String = withContext(dispatcher) {
         val instant = clock.now()
         val now = instant.toEpochMilliseconds()
@@ -97,16 +98,24 @@ class SqlDelightVehicleRepository(
         val vehicleId = newId()
         val eventId = newId()
         val pictureId = picture?.let { promoted(it) }
+        val promotedCapture = try {
+            capture?.let { promotedCapture(it) to it.result.toJson() }
+        } catch (throwable: Throwable) {
+            pictureId?.let { pictures.delete(it) }
+            throw throwable
+        }
         try {
-            // One transaction: the vehicle and its initial event are both saved, or neither.
+            // One transaction: the vehicle, its initial event and the scan it came from (scan-initial-odometer) are all saved, or none.
             database.transaction {
                 vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex)
                 // The initial odometer event never carries a note (add-event-notes): it is created by this flow, not the log event form.
                 events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong(), null)
+                promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
             }
         } catch (throwable: Throwable) {
             // Nothing was saved, so the files that were just moved into use belong to no vehicle.
             pictureId?.let { pictures.delete(it) }
+            promotedCapture?.let { captures?.delete(it.first) }
             throw throwable
         }
         vehicleId

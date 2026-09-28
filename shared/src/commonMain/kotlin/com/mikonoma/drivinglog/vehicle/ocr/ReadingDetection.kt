@@ -40,6 +40,8 @@ data class Detection(
     val basis: DetectionBasis,
     /** The label that decided [kind], as recognized, when [basis] is [DetectionBasis.LABEL]. */
     val label: String? = null,
+    /** A distance unit followed the number (`71140km`, `917 km`). False in a result stored before this was kept (`scan-initial-odometer`). */
+    val hasUnit: Boolean = false,
 ) {
     /** The whole units of [value] (`168` of `168.1`). */
     val whole: Long get() = value.substringBefore('.').toLong()
@@ -99,14 +101,36 @@ fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detecti
             val hasUnit = isDistanceUnit(attached) || isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty())
             val byMagnitude = kindByMagnitude(value.toDouble(), knownOdometer)
             when {
-                label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
-                hasUnit -> Detection(element.text, value, element.box, byMagnitude, if (byMagnitude == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE)
+                label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first, hasUnit)
+                hasUnit -> Detection(element.text, value, element.box, byMagnitude, if (byMagnitude == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE, hasUnit = true)
                 byMagnitude == ReadingKind.ODOMETER || (byMagnitude == ReadingKind.TRIP && fraction.isNotEmpty()) ->
                     Detection(element.text, value, element.box, byMagnitude, DetectionBasis.MAGNITUDE)
                 else -> Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
             }
         }
     }.onePerPlace()
+
+/**
+ * The readings of [photo] as a new vehicle's odometer (`scan-initial-odometer`): with no known odometer to compare with, a number labeled
+ * as the odometer, or unlabeled with a distance unit after it whatever its size, is offered as the odometer; one labeled as a trip is
+ * not offered, nor an unlabeled one without a unit of [ReadingThresholds.MAX_TRIP] or less (a dial's scale, a clock). Labels, units and
+ * [onePerPlace] work as in [detectReadings]; only the kinds differ.
+ */
+fun detectInitialOdometer(photo: RecognizedPhoto): List<Detection> =
+    detectReadings(photo, knownOdometer = null).map { d ->
+        val kind = when {
+            d.basis == DetectionBasis.LABEL -> d.kind.takeIf { it == ReadingKind.ODOMETER }
+            d.hasUnit -> ReadingKind.ODOMETER
+            d.value.toDouble() > ReadingThresholds.MAX_TRIP -> ReadingKind.ODOMETER
+            else -> null
+        }
+        val basis = when {
+            d.basis == DetectionBasis.LABEL -> DetectionBasis.LABEL
+            kind != null -> DetectionBasis.MAGNITUDE
+            else -> DetectionBasis.NO_UNIT
+        }
+        d.copy(kind = kind, basis = basis)
+    }
 
 /**
  * One detection per place in the photo: where two overlap (their intersection is at least [ReadingThresholds.SAME_PLACE] of the smaller
@@ -137,7 +161,7 @@ private fun betterThan(a: Detection, b: Detection): Boolean = when {
 }
 
 /** On the same row (vertically overlapping by half the lower box) and at most one and a half box heights apart sideways. */
-private fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
+internal fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
     val rows = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
     val height = minOf(a.height, b.height)
     if (height <= 0 || rows < height / 2) return false
@@ -145,7 +169,7 @@ private fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
     return gap <= maxOf(a.height, b.height) * 3 / 2
 }
 
-private fun samePlace(a: TextBox, b: TextBox): Boolean {
+internal fun samePlace(a: TextBox, b: TextBox): Boolean {
     val w = minOf(a.right, b.right) - maxOf(a.left, b.left)
     val h = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
     if (w <= 0 || h <= 0) return false

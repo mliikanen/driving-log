@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -95,6 +96,12 @@ interface ImageCodec {
      * cannot be decoded.
      */
     suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>?
+
+    /**
+     * An already decoded image (a camera frame of the live scanner, `add-live-scanner`) encoded as it is, in the platform's
+     * size-efficient format; null where the platform does not encode frames (iOS, which has no live scanner).
+     */
+    suspend fun encode(image: RgbImage): EncodedImage?
 
     /**
      * The image reduced to at most [maxSide] pixels on its longer side, as ARGB pixels (the photo's orientation applied), for taking a color from it;

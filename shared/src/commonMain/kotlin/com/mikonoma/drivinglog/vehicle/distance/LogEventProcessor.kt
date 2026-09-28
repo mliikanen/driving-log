@@ -10,7 +10,10 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
 import com.mikonoma.drivinglog.vehicle.ocr.Detection
+import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
+import com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto
+import com.mikonoma.drivinglog.vehicle.ocr.detectReadings
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.ocr.ScanEditor
 import com.mikonoma.drivinglog.vehicle.ocr.TextRecognizer
@@ -155,6 +158,12 @@ class LogEventProcessor @AssistedInject constructor(
         LogEventIntent.ScanConfirmed -> scanConfirmed()
         LogEventIntent.ScanCancelled -> scanStep { scanEditor.cancelled(it) }
         LogEventIntent.ScanErrorDismissed -> reduce { copy(scan = scanEditor.errorDismissed(scan)) }
+        LogEventIntent.ScannerOpened -> reduce { copy(scan = scanEditor.scannerOpened(scan)) }
+        LogEventIntent.ScannerClosed -> scanStep { scanEditor.scannerClosed(it) }
+        is LogEventIntent.LiveReadingTapped -> async("scan") {
+            val next = scanEditor.liveAccepted(state.scan, intent.reading) ?: return@async
+            reduce { withScannedReading(intent.reading.detection).copy(scan = next, scanPhotoUri = null) }
+        }
         LogEventIntent.Left -> async("leave") {
             photoEditor.discardAll(state.photos)
             scanEditor.discardAll(state.scan)
@@ -170,12 +179,21 @@ class LogEventProcessor @AssistedInject constructor(
             reduce { copy(photos = next, photoPreviewUris = previews) }
         }
 
+    /** A fresh live scanner for one opening of the scanner screen (`add-live-scanner`), reading frames with the same recognizers. */
+    fun liveScanner(): LiveScanner = LiveScanner(recognizer, clock, ::classify)
+
+    /** The log event form's classification: against the known odometer at the entry's time, read afresh for each photo or frame. */
+    private fun classify(photo: RecognizedPhoto): List<Detection> = detectReadings(photo, knownOdometerInUnit)
+
+    /** The known odometer at the entry's time in the vehicle's unit, as a scan classifies against it; null when none is known then. */
+    val knownOdometerInUnit: Double?
+        get() = state.knownOdometer?.let { it.meters / (if (state.unit.isMiles) METERS_PER_MILE else METERS_PER_KILOMETER) }
+
     /** A photo to scan: it is recognized against the known odometer at the entry's time, in the vehicle's unit, and the review opens. */
     private fun scanPicked(result: PhotoResult): Action<LogEventState, LogEventEffect> = async("scan") {
         reduce { copy(isScanning = true) }
-        val known = state.knownOdometer?.let { it.meters / (if (state.unit.isMiles) METERS_PER_MILE else METERS_PER_KILOMETER) }
         try {
-            val next = scanEditor.photoPicked(state.scan, result, known)
+            val next = scanEditor.photoPicked(state.scan, result, ::classify)
             val uri = scanEditor.reviewPhotoUri(next)
             reduce { copy(scan = next, scanPhotoUri = uri, isScanning = false) }
         } catch (throwable: Throwable) {

@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.vehicle.ocr
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.OnnxPpOcrModels
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.PpOcr
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -33,6 +34,8 @@ class PpOcrTextRecognizer(
         val bitmap = decodeForRecognition(bytes) ?: return@withContext null
         PpOcr.recognize(bitmap.toRgbImage(), models)
     }
+
+    override suspend fun recognize(frame: RgbImage): RecognizedPhoto? = withContext(dispatcher) { PpOcr.recognize(frame, models) }
 
     companion object {
         const val DETECTION_MODEL = "PP-OCRv6_det_tiny.onnx"

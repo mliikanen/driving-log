@@ -7,6 +7,7 @@ import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import com.mikonoma.drivinglog.vehicle.picture.MAX_DECODE_SIDE
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -28,6 +29,12 @@ class MlKitTextRecognizer(private val dispatcher: CoroutineDispatcher = ioDispat
 
     override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? {
         val bitmap = withContext(dispatcher) { decodeForRecognition(bytes) } ?: return null
+        return recognize(bitmap)
+    }
+
+    override suspend fun recognize(frame: RgbImage): RecognizedPhoto? = recognize(frame.toBitmap())
+
+    private suspend fun recognize(bitmap: Bitmap): RecognizedPhoto {
         // A small photo is recognized at up to twice its size (design.md): small dashboard digits that are dropped or misread at their
         // own size read right when larger. The boxes are scaled back to the decoded photo's pixels.
         val scale = recognitionScale(bitmap.width, bitmap.height)

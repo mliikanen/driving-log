@@ -7,6 +7,13 @@ class FakeTextRecognizer(
 ) : TextRecognizer {
     val recognized = mutableListOf<ByteArray>()
 
+    val frames = mutableListOf<com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage>()
+
+    override suspend fun recognize(frame: com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage): RecognizedPhoto? {
+        frames += frame
+        return photo
+    }
+
     override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? {
         if (bytes.isEmpty()) return null
         recognized += bytes

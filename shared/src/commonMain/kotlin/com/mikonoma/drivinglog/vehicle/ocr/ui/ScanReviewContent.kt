@@ -1,4 +1,4 @@
-package com.mikonoma.drivinglog.vehicle.distance
+package com.mikonoma.drivinglog.vehicle.ocr.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -53,7 +53,7 @@ import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 
 /** Shown in place of the form while a chosen photo is being recognized. */
 @Composable
-internal fun ScanProgressContent() {
+fun ScanProgressContent() {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).testTag("scan_progress"), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CircularProgressIndicator()
@@ -70,10 +70,10 @@ internal fun ScanProgressContent() {
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-internal fun ScanReviewContent(review: ScanReview, photoUri: String?, onIntent: (LogEventIntent) -> Unit) {
-    val cancel = { onIntent(LogEventIntent.ScanCancelled) }
+fun ScanReviewContent(review: ScanReview, photoUri: String?, callbacks: ScanCallbacks) {
+    val cancel = callbacks.onCancel
     BackHandler(onBack = cancel)
-    val picker = rememberPhotoPicker { onIntent(LogEventIntent.ScanPhotoPicked(it)) }
+    val picker = rememberPhotoPicker(callbacks.onPhotoPicked)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
@@ -86,7 +86,7 @@ internal fun ScanReviewContent(review: ScanReview, photoUri: String?, onIntent: 
                         if (review.hasCandidates) {
                             TextButton(
                                 colors = headerTextButtonColors(),
-                                onClick = { onIntent(LogEventIntent.ScanConfirmed) },
+                                onClick = callbacks.onConfirm,
                                 enabled = review.selectedIndex != null,
                                 modifier = Modifier.testTag("scan_use"),
                             ) { Text("Use") }
@@ -112,7 +112,7 @@ internal fun ScanReviewContent(review: ScanReview, photoUri: String?, onIntent: 
                     TextButton(onClick = cancel, modifier = Modifier.testTag("scan_leave")) { Text("Leave") }
                 }
             }
-            ScannedPhoto(review, photoUri) { onIntent(LogEventIntent.ScanCandidateSelected(it)) }
+            ScannedPhoto(review, photoUri, callbacks.onCandidateSelected)
         }
     }
 }
@@ -161,23 +161,12 @@ private fun ScannedPhoto(review: ScanReview, photoUri: String?, onSelect: (Int) 
 /** How far a candidate's box is drawn outside the number. */
 private val BoxMargin = 4.dp
 
-/** "Scan a reading" (`odometer-ocr-capture`), under the odometer field: opens the system's chooser of image sources ([onLaunch] clears an
- * earlier error first), and says when the chosen photo could not be opened. */
+/**
+ * "Scan a reading" (`odometer-ocr-capture`), under the odometer field: asks for the camera permission when it is not granted, then
+ * opens the live scanner whatever the answer (`add-live-scanner`: refused, the scanner says why and offers the photo flow).
+ */
 @Composable
-internal fun ScanReadingAction(error: com.mikonoma.drivinglog.vehicle.picture.PictureError?, onPicked: (PhotoResult) -> Unit, onLaunch: () -> Unit) {
-    val picker = rememberPhotoPicker(onPicked)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        OutlinedButton(onClick = { onLaunch(); picker.launch() }, modifier = Modifier.testTag("scan_reading")) { Text("Scan a reading") }
-        error?.let {
-            Text(
-                when (it) {
-                    com.mikonoma.drivinglog.vehicle.picture.PictureError.COULD_NOT_OPEN -> "The photo could not be opened"
-                    com.mikonoma.drivinglog.vehicle.picture.PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
-                },
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.testTag("scan_error"),
-            )
-        }
-    }
+fun ScanReadingAction(onOpen: () -> Unit) {
+    val permission = com.mikonoma.drivinglog.vehicle.ocr.rememberCameraPermission()
+    OutlinedButton(onClick = { permission.request { onOpen() } }, modifier = Modifier.testTag("scan_reading")) { Text("Scan a reading") }
 }

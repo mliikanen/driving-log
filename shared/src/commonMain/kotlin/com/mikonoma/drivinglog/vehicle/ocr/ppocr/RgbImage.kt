@@ -55,6 +55,17 @@ class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
         return RgbImage(height, width, out)
     }
 
+    /**
+     * This image turned [quarterTurns] quarter turns clockwise (a multiple of 4 gives it back): how a camera frame whose content is
+     * rotated by `rotationDegrees` is made upright, turned `rotationDegrees / 90` times.
+     */
+    fun turnedClockwise(quarterTurns: Int): RgbImage {
+        var image = this
+        // Three counterclockwise quarters are one clockwise quarter.
+        repeat((4 - quarterTurns.mod(4)) % 4) { image = image.turnedCounterclockwise() }
+        return image
+    }
+
     companion object {
         fun rgb(r: Double, g: Double, b: Double): Int =
             (0xFF shl 24) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(b)

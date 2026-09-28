@@ -46,6 +46,9 @@ class AddVehicleProcessorTest {
     private val pictures = FakePictureStore()
     private val codec = FakeImageCodec()
     private val colors = FakeColorExtractor()
+    private val recognizer = com.mikonoma.drivinglog.vehicle.ocr.FakeTextRecognizer()
+    private val captures = com.mikonoma.drivinglog.vehicle.ocr.FakeCaptureStore()
+    private val clock = com.mikonoma.drivinglog.vehicle.data.FakeClock()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -53,7 +56,7 @@ class AddVehicleProcessorTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region), pictures, codec, colors)
+    private fun processor(region: String? = "FI") = AddVehicleProcessor(repository, FakeLocale(region), pictures, codec, colors, recognizer, captures, clock)
 
     private fun AddVehicleProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(AddVehicleIntent.OdometerEdited(state.entry.digits + d))
@@ -1047,5 +1050,176 @@ class AddVehicleProcessorTest {
         processor.dispatch(AddVehicleIntent.Save)
 
         assertEquals(blue, processor.state.color)
+    }
+    // ---- Scanning the current odometer (scan-initial-odometer)
+
+    private fun element(text: String, l: Int, t: Int, r: Int, b: Int) =
+        com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement(text, com.mikonoma.drivinglog.vehicle.ocr.TextBox(l, t, r, b))
+
+    private fun line(vararg elements: com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement) = com.mikonoma.drivinglog.vehicle.ocr.RecognizedLine(
+        elements.joinToString(" ") { it.text },
+        com.mikonoma.drivinglog.vehicle.ocr.TextBox(elements.minOf { it.box.left }, elements.minOf { it.box.top }, elements.maxOf { it.box.right }, elements.maxOf { it.box.bottom }),
+        elements.toList(),
+    )
+
+    /** A dashboard with the odometer "ODO 71140km", a trip meter "TRIP 168.1" and a speedometer dial's "120". */
+    private val dashboard = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+        1280, 720,
+        listOf(
+            line(element("ODO", 524, 403, 554, 415)),
+            line(element("71140km", 529, 412, 619, 433)),
+            line(element("TRIP", 100, 600, 150, 620), element("168.1", 160, 600, 230, 625)),
+            line(element("120", 830, 467, 850, 485)),
+        ),
+    )
+
+    /** A form with everything but the odometer filled in. */
+    private fun filledIn(): AddVehicleProcessor {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Family car"))
+        processor.dispatch(AddVehicleIntent.LicensePlateChanged("ABC-123"))
+        processor.dispatch(AddVehicleIntent.TypeSelected(VehicleType.VAN))
+        processor.dispatch(AddVehicleIntent.ColorSelected(Rgb(0x1E88E5)))
+        return processor
+    }
+
+    private fun AddVehicleProcessor.scanPhoto() {
+        recognizer.photo = dashboard
+        dispatch(AddVehicleIntent.ScannerOpened)
+        dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+    }
+
+    private fun liveReading(value: String): com.mikonoma.drivinglog.vehicle.ocr.LiveReading {
+        val detection = com.mikonoma.drivinglog.vehicle.ocr.Detection(
+            value, value, com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
+            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO",
+        )
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), listOf(detection))
+        return com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detection, frame, clock.current)
+    }
+
+    private fun AddVehicleProcessor.assertOtherFieldsUnchanged() {
+        assertEquals("Family car", state.name)
+        assertEquals("ABC-123", state.licensePlate)
+        assertEquals(VehicleType.VAN, state.type)
+        assertEquals(Rgb(0x1E88E5), state.color)
+        assertEquals(PictureDraft.None, state.picture.draft)
+    }
+
+    @Test
+    fun aScannedPhotoOffersOnlyTheOdometer() {
+        val processor = filledIn()
+
+        processor.scanPhoto()
+
+        val offered = processor.state.scan.review!!.detections.filter { it.kind != null }.map { it.value }
+        assertEquals(listOf("71140"), offered) // not the trip meter, not the dial
+    }
+
+    @Test
+    fun aConfirmedPhotoCandidateBecomesTheOdometerAndLeavesTheRestAsItWas() {
+        val processor = filledIn()
+        processor.scanPhoto()
+        val index = processor.state.scan.review!!.detections.indexOfFirst { it.value == "71140" }
+
+        processor.dispatch(AddVehicleIntent.ScanCandidateSelected(index))
+        processor.dispatch(AddVehicleIntent.ScanConfirmed)
+
+        assertEquals(71_140L, processor.state.entry.steps)
+        assertEquals(OdometerUnit.KILOMETERS, processor.state.entry.unit)
+        assertFalse(processor.state.scan.scannerOpen)
+        assertNull(processor.state.scan.review)
+        processor.assertOtherFieldsUnchanged()
+    }
+
+    @Test
+    fun aTappedLiveReadingBecomesTheOdometerAndLeavesTheRestAsItWas() {
+        val processor = filledIn()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+
+        processor.dispatch(AddVehicleIntent.LiveReadingTapped(liveReading("45200")))
+
+        assertEquals(45_200L, processor.state.entry.steps)
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals("45200", processor.state.scan.accepted?.result?.accepted?.value)
+        processor.assertOtherFieldsUnchanged()
+    }
+
+    @Test
+    fun aReadingWithATenthSwitchesKilometersToTenths() {
+        val processor = filledIn()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+
+        processor.dispatch(AddVehicleIntent.LiveReadingTapped(liveReading("45200.3")))
+
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, processor.state.entry.unit)
+        assertEquals(452_003L, processor.state.entry.steps)
+    }
+
+    @Test
+    fun aReadingWithATenthSwitchesMilesToTenthsAndNeverToKilometers() {
+        val processor = processor("US")
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+
+        processor.dispatch(AddVehicleIntent.LiveReadingTapped(liveReading("12345.6")))
+
+        assertEquals(OdometerUnit.MILES_TENTHS, processor.state.entry.unit)
+        assertEquals(123_456L, processor.state.entry.steps)
+    }
+
+    @Test
+    fun closingTheScannerChangesNothing() {
+        val processor = filledIn()
+        processor.type(1, 2, 3)
+
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+        processor.dispatch(AddVehicleIntent.ScannerClosed)
+
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals(123L, processor.state.entry.steps)
+        assertNull(processor.state.scan.accepted)
+        processor.assertOtherFieldsUnchanged()
+    }
+
+    @Test
+    fun leavingTheFormDiscardsThePendingScan() {
+        val processor = filledIn()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+        processor.dispatch(AddVehicleIntent.LiveReadingTapped(liveReading("45200")))
+        val pendingId = processor.state.scan.accepted!!.pendingId
+
+        processor.dispatch(AddVehicleIntent.Left)
+
+        assertTrue(pendingId in captures.discarded)
+        assertTrue(captures.pending.isEmpty())
+    }
+
+    @Test
+    fun savingPassesTheScanWithTheVehicle() = runTest {
+        val processor = filledIn()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+        processor.dispatch(AddVehicleIntent.LiveReadingTapped(liveReading("45200")))
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        val call = repository.addCalls.single()
+        assertEquals(Distance(45_200_000), call.initialOdometer)
+        assertEquals("45200", call.capture?.result?.accepted?.value)
+    }
+
+    @Test
+    fun aTypedOdometerSavesNoScan() = runTest {
+        val processor = filledIn()
+        processor.type(1, 2, 3)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertNull(repository.addCalls.single().capture)
     }
 }

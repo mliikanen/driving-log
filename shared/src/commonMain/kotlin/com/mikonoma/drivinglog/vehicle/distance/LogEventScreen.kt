@@ -98,6 +98,12 @@ import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
+import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
+import com.mikonoma.drivinglog.vehicle.ocr.ui.LiveScannerContent
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanCallbacks
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanProgressContent
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReadingAction
+import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReviewContent
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 
@@ -126,6 +132,7 @@ fun LogEventScreen(
         deviceLocale = deviceLocale,
         deviceTimeZoneId = deviceTimeZone.current().id,
         onIntent = processor::dispatch,
+        newLiveScanner = processor::liveScanner,
         // Leaving without saving deletes any attached photo's pending files (add-event-pictures); a rotation is not
         // leaving and keeps them.
         onBack = {
@@ -143,7 +150,19 @@ fun LogEventContent(
     deviceTimeZoneId: String,
     onIntent: (LogEventIntent) -> Unit,
     onBack: () -> Unit,
+    newLiveScanner: () -> LiveScanner = { error("No live scanner") },
 ) {
+    val scanCallbacks = remember(onIntent) {
+        ScanCallbacks(
+            onClose = { onIntent(LogEventIntent.ScannerClosed) },
+            onReadingTapped = { onIntent(LogEventIntent.LiveReadingTapped(it)) },
+            onPhotoPicked = { onIntent(LogEventIntent.ScanPhotoPicked(it)) },
+            onCandidateSelected = { onIntent(LogEventIntent.ScanCandidateSelected(it)) },
+            onConfirm = { onIntent(LogEventIntent.ScanConfirmed) },
+            onCancel = { onIntent(LogEventIntent.ScanCancelled) },
+            onErrorDismissed = { onIntent(LogEventIntent.ScanErrorDismissed) },
+        )
+    }
     // The note editor (add-event-notes) replaces the whole screen's content in the same window while open, rather than a
     // separate Dialog: a Dialog is a second Android window, and once its one text field has taken and released IME focus,
     // this app's accessibility tree stops exposing that window's content at all (confirmed independently of Maestro, with
@@ -154,8 +173,13 @@ fun LogEventContent(
         ScanProgressContent()
         return
     }
+    // The photo review opens on top of the live scanner and returns to it when left (add-live-scanner).
     state.scan.review?.let { review ->
-        ScanReviewContent(review, state.scanPhotoUri, onIntent)
+        ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
+        return
+    }
+    if (state.scan.scannerOpen) {
+        LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
         return
     }
     if (state.noteDraft != null) {
@@ -229,11 +253,7 @@ fun LogEventContent(
                         errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
                     )
                     if (state.canScan) {
-                        ScanReadingAction(
-                            error = state.scan.error,
-                            onPicked = { onIntent(LogEventIntent.ScanPhotoPicked(it)) },
-                            onLaunch = { onIntent(LogEventIntent.ScanErrorDismissed) },
-                        )
+                        ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
                     }
                     NoteField(
                         pendingNote = state.pendingNote,

@@ -59,6 +59,7 @@ data class AddCall(
     val initialOdometer: Distance,
     val picture: PendingPicture? = null,
     val color: Rgb = VehicleColors.default,
+    val capture: PendingCapture? = null,
 )
 data class UpdateCall(
     val id: String,
@@ -157,9 +158,10 @@ class FakeVehicleRepository : VehicleRepository {
         unit: OdometerUnit,
         initialOdometer: Distance,
         picture: PendingPicture?,
+        capture: PendingCapture?,
     ): String {
         addFailure?.let { throw it }
-        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color)
+        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color, capture)
         val id = "v${++counter}"
         seedVehicle(id, name, licensePlate, unit, type = type, color = color)
         seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))

@@ -40,6 +40,13 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
         return EncodedPicture(version(crop, sides.small, 0), version(crop, sides.large, 1))
     }
 
+    val encodedFrames = mutableListOf<com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage>()
+
+    override suspend fun encode(image: com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage): EncodedImage {
+        encodedFrames += image
+        return EncodedImage(byteArrayOf(7), "webp", image.width, image.height)
+    }
+
     override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? {
         encodeFailure?.let { throw it }
         if (bytes.isEmpty()) return null

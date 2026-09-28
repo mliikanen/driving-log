@@ -5,6 +5,8 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.ocr.LiveReading
+import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.DecodedImage
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
@@ -38,6 +40,14 @@ data class AddVehicleState(
     @Transient val previewUri: String? = null,
     /** The photo being cropped, decoded for the crop screen. Rebuilt from [picture] after a restore. */
     @Transient val cropImage: DecodedImage? = null,
+    /** The odometer's scan (`scan-initial-odometer`): the live scanner, the photo review and the accepted scan, as on the log event form. */
+    val scan: ScanDraft = ScanDraft(),
+    /** True while a chosen photo is being recognized. */
+    @Transient val isScanning: Boolean = false,
+    /** Where the photo review loads the scanned photo from: rebuilt from the capture store, not persisted. */
+    @Transient val scanPhotoUri: String? = null,
+    /** False on a platform with no text recognizer (iOS): the "Scan a reading" action is not shown. Persisted: set once when the form opens. */
+    val canScan: Boolean = false,
 ) : ViewState
 
 sealed interface AddVehicleIntent : ViewIntent {
@@ -62,7 +72,30 @@ sealed interface AddVehicleIntent : ViewIntent {
     data object PictureRemoved : AddVehicleIntent
     data object PictureErrorDismissed : AddVehicleIntent
 
-    /** The user left the screen without saving: the pending picture files are deleted. */
+    /** "Scan a reading" under the odometer, after the camera permission was asked for when needed (`scan-initial-odometer`). */
+    data object ScannerOpened : AddVehicleIntent
+
+    /** The live scanner's close action or back: the form as it was, nothing kept. */
+    data object ScannerClosed : AddVehicleIntent
+
+    /** A reading was tapped in the live scanner: it becomes the odometer, and its frame is kept. */
+    class LiveReadingTapped(val reading: LiveReading) : AddVehicleIntent
+
+    /** The system chooser gave back a photo, or nothing, to scan for the odometer. */
+    class ScanPhotoPicked(val result: PhotoResult) : AddVehicleIntent
+
+    /** A candidate was tapped on the photo review. */
+    data class ScanCandidateSelected(val index: Int) : AddVehicleIntent
+
+    /** The photo review's "Use": the selected candidate becomes the odometer. */
+    data object ScanConfirmed : AddVehicleIntent
+
+    /** Back out of the photo review, or its "Leave": back to the live scanner. */
+    data object ScanCancelled : AddVehicleIntent
+
+    data object ScanErrorDismissed : AddVehicleIntent
+
+    /** The user left the screen without saving: the pending picture files are deleted, and any scan's. */
     data object Left : AddVehicleIntent
 }
 

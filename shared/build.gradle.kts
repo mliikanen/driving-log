@@ -57,6 +57,11 @@ kotlin {
             implementation(libs.mlkit.text.recognition)
             // add-seven-segment-ocr: PP-OCR models (seven-segment LCD digits) run on ONNX Runtime.
             implementation(libs.onnxruntime.android)
+            // add-live-scanner: the in-app camera preview and frame analysis.
+            implementation(libs.camerax.core)
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)

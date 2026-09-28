@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
+import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -17,12 +18,16 @@ class CombinedTextRecognizer(private val recognizers: List<TextRecognizer>) : Te
 
     override val isAvailable: Boolean get() = recognizers.any { it.isAvailable }
 
-    override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? {
+    override suspend fun recognize(bytes: ByteArray): RecognizedPhoto? = combined { it.recognize(bytes) }
+
+    override suspend fun recognize(frame: RgbImage): RecognizedPhoto? = combined { it.recognize(frame) }
+
+    private suspend fun combined(read: suspend (TextRecognizer) -> RecognizedPhoto?): RecognizedPhoto? {
         val photos = coroutineScope {
             recognizers.filter { it.isAvailable }.map { recognizer ->
                 async {
                     try {
-                        recognizer.recognize(bytes)
+                        read(recognizer)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {

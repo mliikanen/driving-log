@@ -24,6 +24,9 @@ internal fun decodeForRecognition(bytes: ByteArray): Bitmap? = try {
     null
 }
 
+/** [RgbImage]'s pixels as a bitmap, for ML Kit. */
+internal fun RgbImage.toBitmap(): Bitmap = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
+
 /** [bitmap]'s pixels, for the PP-OCR pipeline. */
 internal fun Bitmap.toRgbImage(): RgbImage {
     val pixels = IntArray(width * height)

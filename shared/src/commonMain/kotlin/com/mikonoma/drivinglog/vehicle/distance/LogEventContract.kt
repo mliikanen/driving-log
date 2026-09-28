@@ -9,6 +9,7 @@ import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.ocr.LiveReading
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
@@ -210,6 +211,15 @@ sealed interface LogEventIntent : ViewIntent {
     data object ScanCancelled : LogEventIntent
 
     data object ScanErrorDismissed : LogEventIntent
+
+    /** "Scan a reading", after the camera permission was asked for when needed: the live scanner opens (`add-live-scanner`). */
+    data object ScannerOpened : LogEventIntent
+
+    /** The live scanner's close action or back: the form as it was, nothing kept. */
+    data object ScannerClosed : LogEventIntent
+
+    /** A reading was tapped in the live scanner: it is applied like a confirmed candidate, and its frame kept. */
+    class LiveReadingTapped(val reading: LiveReading) : LogEventIntent
 
     /** The user left the form without saving (add-event-pictures): every attached photo's pending files are deleted, and any scan's. */
     data object Left : LogEventIntent

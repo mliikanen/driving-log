@@ -497,6 +497,46 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
     }
 
+    // ---- The scan a new vehicle's initial odometer came from (scan-initial-odometer)
+
+    @Test
+    fun aScannedInitialOdometerIsSavedWithTheInitialEvent() = runTest {
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+
+        val id = repositoryWithCaptures.addVehicle(
+            "Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(71_140_000), capture = capture,
+        )
+
+        val initial = repositoryWithCaptures.observeLog(id).first().single() as VehicleEvent.InitialOdometer
+        val stored = assertNotNull(repositoryWithCaptures.captureOf(initial.id))
+        assertEquals("71140", stored.result.accepted.value)
+        assertTrue(stored.photoId in captureStore.photos)
+        assertTrue(captureStore.pending.isEmpty())
+    }
+
+    @Test
+    fun aTypedInitialOdometerKeepsNoScan() = runTest {
+        val id = repositoryWithCaptures.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(71_140_000))
+
+        val initial = repositoryWithCaptures.observeLog(id).first().single()
+        assertNull(repositoryWithCaptures.captureOf(initial.id))
+    }
+
+    @Test
+    fun aFailedVehicleSaveLeavesNoScanPhotoBehind() = runTest {
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+        // The same vehicle id twice: the second insert fails inside the transaction.
+        idCounter = 0
+        repositoryWithCaptures.addVehicle("First", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1_000_000))
+        idCounter = 0
+
+        assertFails {
+            repositoryWithCaptures.addVehicle("Second", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(71_140_000), capture = capture)
+        }
+
+        assertTrue(captureStore.photos.isEmpty())
+    }
+
     /** A capture outlives its event: removing the event neither removes the capture nor its photo (the sweep keeps it). */
     @Test
     fun aScanIsKeptWhenItsEventIsRemoved() = runTest {

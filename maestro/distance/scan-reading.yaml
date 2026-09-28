@@ -1,12 +1,18 @@
-# Happy path of scanning a reading (add-odometer-ocr-capture): scan a car cluster photo, accept its odometer reading,
-# and save. The form switches to "New odometer" with the value read. Then the same for a motorcycle's seven-segment LCD
-# (add-seven-segment-ocr), which a second recognizer reads. Cases (classification, other ways, what is kept
+# Happy path of scanning a reading. "Scan a reading" opens the live scanner (add-live-scanner) after the camera
+# permission is granted; closing it leaves the form as it was. From the scanner's photo button, scan a car cluster photo,
+# accept its odometer reading and save (add-odometer-ocr-capture): the form switches to "New odometer" with the value
+# read. Then the same for a motorcycle's seven-segment LCD (add-seven-segment-ocr), and a new vehicle whose current
+# odometer is scanned on the add-vehicle form (scan-initial-odometer). The emulator's camera cannot show a
+# dashboard, so live readings are checked on the JVM (LiveFramesJvmTest) and on a phone, not here. Cases (classification, other ways, what is kept
 # on save or leave) are unit tests: see docs/test-strategy.md. The stored photo and detections are never shown, so
 # nothing here asserts them.
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    # Maestro grants every permission by default; unset, the camera is asked for when "Scan a reading" is tapped.
+    permissions:
+      camera: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:
@@ -22,6 +28,25 @@ appId: com.mikonoma.drivinglog
     checked: true
 - tapOn:
     id: scan_reading
+- extendedWaitUntil:
+    visible: "While using the app"
+    timeout: 10000
+- tapOn: "While using the app"
+- assertVisible:
+    id: scanner
+# Leaving the scanner without a reading: the form as it was.
+- tapOn:
+    id: back
+- assertVisible:
+    id: log_way_distance
+    checked: true
+- assertVisible:
+    id: scan_reading
+# The photo flow, from the scanner's photo button.
+- tapOn:
+    id: scan_reading
+- tapOn:
+    id: scanner_photo
 - extendedWaitUntil:
     visible: Media
     timeout: 20000
@@ -72,6 +97,8 @@ appId: com.mikonoma.drivinglog
     id: log_event
 - tapOn:
     id: scan_reading
+- tapOn:
+    id: scanner_photo
 - extendedWaitUntil:
     visible: Media
     timeout: 20000
@@ -101,3 +128,60 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 5,034 km
+# A new vehicle's current odometer, scanned on the add-vehicle form from the car cluster photo (the picker's first).
+- tapOn:
+    id: back
+- tapOn:
+    id: add_vehicle
+- tapOn:
+    id: vehicle_name
+- inputText: Scanned car
+- hideKeyboard
+# The preselected unit follows the region (miles in the United States); this vehicle counts kilometers.
+- scrollUntilVisible:
+    element:
+      id: unit_KILOMETERS
+- tapOn:
+    id: unit_KILOMETERS
+- scrollUntilVisible:
+    element:
+      id: scan_reading
+- tapOn:
+    id: scan_reading
+- assertVisible:
+    id: scanner
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: scan_review
+    timeout: 20000
+- tapOn: "ODO 71140"
+- tapOn:
+    id: scan_use
+# Back on the add form, with the odometer filled in and the name as typed.
+- assertVisible:
+    id: odo_field
+    text: "71,140"
+- assertVisible: Scanned car
+- tapOn:
+    id: save_vehicle
+# The list, once the add screen has gone: until then "Scanned car" is also the add form's name field.
+- extendedWaitUntil:
+    visible:
+      id: add_vehicle
+    timeout: 10000
+- tapOn: Scanned car
+- assertVisible:
+    id: current_odometer
+    text: 71,140 km

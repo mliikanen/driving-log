@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
+    <!-- The live scanner's in-app camera preview (add-live-scanner): no system chooser or intent can show one. Asked for when "Scan a
+         reading" is tapped, never before; a device without a camera still installs the app and uses the photo flow. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:name=".DrivingLogApplication"
         android:label="Driving Log"
