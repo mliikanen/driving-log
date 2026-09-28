@@ -45,12 +45,16 @@ kotlin {
             api(libs.kide)
             implementation(libs.kide.navigation)
             implementation(libs.kotlinx.serialization.core)
+            // add-odometer-ocr-capture: a scan's detection result is stored as JSON in event_capture.detections.
+            implementation(libs.kotlinx.serialization.json)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
         }
         androidMain.dependencies {
             implementation(libs.sqldelight.android.driver)
             implementation(libs.androidx.activity.compose)
+            // add-odometer-ocr-capture: the bundled (not Play Services) model, so OCR works offline from the first scan.
+            implementation(libs.mlkit.text.recognition)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)

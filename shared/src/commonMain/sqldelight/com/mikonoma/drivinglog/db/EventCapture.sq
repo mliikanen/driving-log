@@ -1,0 +1,22 @@
+-- The scan a "Distance" or "Odometer reading" event's number came from (add-odometer-ocr-capture): the scanned photo and every
+-- detection, kept only to review a misdetection later and never shown to the user. At most one per event; none for an event
+-- typed by hand. Deliberately not a foreign key of vehicle_event: a capture outlives its event, so removing an event never
+-- removes (or is blocked by) its capture, and the capture store's sweep keeps a photo for as long as its row here exists.
+CREATE TABLE event_capture (
+    event_id    TEXT    NOT NULL PRIMARY KEY,
+    -- The id of the photo's file in the capture store.
+    photo_id    TEXT    NOT NULL,
+    -- The detection result as JSON: the photo's size, every number found (its box, text, value and classification) and which one was accepted.
+    detections  TEXT    NOT NULL
+);
+
+insertEventCapture:
+INSERT INTO event_capture (event_id, photo_id, detections)
+VALUES (?, ?, ?);
+
+selectEventCapture:
+SELECT photo_id, detections FROM event_capture WHERE event_id = ?;
+
+-- Every capture photo in use, for the sweep of stray files.
+selectCapturePhotoIds:
+SELECT photo_id FROM event_capture;

@@ -14,6 +14,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -59,9 +61,11 @@ class LogEventProcessorTest {
     private val pictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
     private val eventPictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
     private val codec = com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec()
+    private val recognizer = com.mikonoma.drivinglog.vehicle.ocr.FakeTextRecognizer()
+    private val captures = com.mikonoma.drivinglog.vehicle.ocr.FakeCaptureStore()
 
     private fun processor(vehicleId: String = "v1") =
-        LogEventProcessor(vehicleId, repository, pictures, eventPictures, codec, clock, deviceZone)
+        LogEventProcessor(vehicleId, repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
 
     private fun LogEventProcessor.type(vararg digits: Int) {
         for (d in digits) dispatch(LogEventIntent.OdometerEdited(state.activeEntry.digits + d))
@@ -77,7 +81,7 @@ class LogEventProcessorTest {
             repository.seedVehicle(unit.name, unit.name, unit = unit)
             repository.seedEvents(unit.name, listOf(initialEvent("i-${unit.name}", initialAt, 1_000)))
 
-            val state = LogEventProcessor(unit.name, repository, pictures, eventPictures, codec, clock, deviceZone).state
+            val state = LogEventProcessor(unit.name, repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state
 
             assertEquals(unit, state.unit, unit.name)
             assertEquals(unit, state.tripDistance.unit, unit.name)
@@ -645,7 +649,7 @@ class LogEventProcessorTest {
 
     @Test
     fun aMissingVehicleIsReportedAndCannotBeSaved() {
-        val processor = LogEventProcessor("missing", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val processor = LogEventProcessor("missing", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
 
         assertTrue(processor.state.notFound)
         processor.type(5)
@@ -661,7 +665,7 @@ class LogEventProcessorTest {
         // Like the app: the restore happens right after construction, and the repository data arrives later.
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         seedVehicle()
-        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone).let { first ->
+        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).let { first ->
             advanceUntilIdle()
             first.dispatch(LogEventIntent.UnitFamilySelected(miles = true))
             first.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
@@ -672,7 +676,7 @@ class LogEventProcessorTest {
             checkNotNull(first.stateToSave())
         }
 
-        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
         restored.restoreState(saved)
         advanceUntilIdle()
 
@@ -1043,14 +1047,14 @@ class LogEventProcessorTest {
     fun photosSurviveRestoreState() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         seedVehicle()
-        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone).let { first ->
+        val saved = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).let { first ->
             advanceUntilIdle()
             first.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
             advanceUntilIdle()
             checkNotNull(first.stateToSave())
         }
 
-        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val restored = LogEventProcessor("v1", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
         restored.restoreState(saved)
         advanceUntilIdle()
 
@@ -1065,7 +1069,7 @@ class LogEventProcessorTest {
 
     // ---- Choosing a vehicle (opened from the Home screen: an empty vehicle id)
 
-    private fun chooser() = LogEventProcessor("", repository, pictures, eventPictures, codec, clock, deviceZone)
+    private fun chooser() = LogEventProcessor("", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
 
     @Test
     fun withNothingRememberedTheChooserStartsOnTheFirstVehicleByName() {
@@ -1230,8 +1234,8 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
         seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
     }
 
     @Test
@@ -1239,8 +1243,8 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
 
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
     }
 
     @Test
@@ -1249,8 +1253,8 @@ class LogEventProcessorTest {
         seedRemembered("m", OdometerUnit.MILES, remembered = true)
         seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
 
-        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
     }
 
     @Test
@@ -1303,12 +1307,12 @@ class LogEventProcessorTest {
     @Test
     fun aChoiceThatIsNotSavedIsNotRemembered() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = false)
-        val left = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val left = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
         left.dispatch(LogEventIntent.TenthsChanged(included = true))
         left.type(1, 2)
         // The form is left without saving.
 
-        val next = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val next = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
 
         assertEquals(OdometerUnit.KILOMETERS, next.state.unit)
         assertEquals(emptyList(), repository.distanceCalls)
@@ -1317,20 +1321,20 @@ class LogEventProcessorTest {
     @Test
     fun aRefusedSaveDoesNotRememberTheChoice() {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
-        val processor = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val processor = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
         processor.dispatch(LogEventIntent.TenthsChanged(included = true))
 
         processor.dispatch(LogEventIntent.Save) // nothing typed
 
         assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
     }
 
     @Test
     fun theChoiceOfOneVehicleDoesNotAffectAnotherVehiclesForm() = runTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS, remembered = null)
-        val a = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone)
+        val a = LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures)
         a.dispatch(LogEventIntent.TenthsChanged(included = true))
         a.type(4)
         a.test {
@@ -1338,7 +1342,296 @@ class LogEventProcessorTest {
             expectSideEffect(LogEventEffect.Saved)
         }
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+    }
+
+    // ---- Scanning a reading (odometer-ocr-capture)
+
+    private fun element(text: String, l: Int, t: Int, r: Int, b: Int) =
+        com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement(text, com.mikonoma.drivinglog.vehicle.ocr.TextBox(l, t, r, b))
+
+    private fun line(vararg elements: com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement) = com.mikonoma.drivinglog.vehicle.ocr.RecognizedLine(
+        elements.joinToString(" ") { it.text },
+        com.mikonoma.drivinglog.vehicle.ocr.TextBox(elements.minOf { it.box.left }, elements.minOf { it.box.top }, elements.maxOf { it.box.right }, elements.maxOf { it.box.bottom }),
+        elements.toList(),
+    )
+
+    /** A dashboard with an odometer reading (45 260, just above the known 45 230) and a trip reading of 123.4. */
+    private val dashboard = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+        1280, 720,
+        listOf(
+            line(element("ODO", 524, 403, 554, 415)),
+            line(element("45260km", 529, 412, 619, 433)),
+            line(element("TRIP", 100, 600, 150, 620), element("123.4", 160, 600, 230, 625), element("km", 235, 605, 260, 625)),
+            line(element("RPMx", 340, 652, 361, 665), element("1000", 363, 654, 381, 667)),
+        ),
+    )
+
+    private fun LogEventProcessor.scan() {
+        recognizer.photo = dashboard
+        dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+    }
+
+    private fun LogEventProcessor.indexOf(value: String) = state.scan.review!!.detections.indexOfFirst { it.value == value }
+
+    private fun LogEventProcessor.accept(value: String) {
+        dispatch(LogEventIntent.ScanCandidateSelected(indexOf(value)))
+        dispatch(LogEventIntent.ScanConfirmed)
+    }
+
+    @Test
+    fun scanningOpensTheReviewWithTheCandidatesClassifiedAgainstTheKnownOdometer() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.scan()
+
+        val review = assertNotNull(processor.state.scan.review)
+        val kinds = review.detections.associate { it.value to it.kind }
+        assertEquals(com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER, kinds["45260"])
+        assertEquals(com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP, kinds["123.4"])
+        assertNull(kinds["1000"])
+        assertNull(review.selectedIndex)
+        assertEquals(1, captures.pending.size)
+        assertNotNull(processor.state.scanPhotoUri)
+        assertFalse(processor.state.isScanning)
+    }
+
+    @Test
+    fun thePhotoIsKeptOnceFullSizeAndUncropped() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.scan()
+
+        assertEquals(listOf(com.mikonoma.drivinglog.vehicle.picture.MAX_DECODE_SIDE), codec.scaledEncodes.single().caps)
+    }
+
+    @Test
+    fun acceptingAnOdometerReadingOnTripDistanceSwitchesTheWayAndSetsTheField() {
+        seedVehicle()
+        val processor = processor()
+        processor.type(3, 0)
+
+        processor.scan()
+        processor.accept("45260")
+
+        assertEquals(LogWay.NEW_ODOMETER, processor.state.way)
+        assertEquals(45_260L, processor.state.newOdometer.steps)
+        assertEquals(30L, processor.state.tripDistance.steps) // the other way keeps what was typed
+        assertNull(processor.state.scan.review)
+        assertEquals("45260", processor.state.scan.accepted?.result?.accepted?.value)
+    }
+
+    @Test
+    fun acceptingATripReadingOnNewOdometerSwitchesTheWayAndTurnsTenthsOn() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+
+        processor.scan()
+        processor.accept("123.4")
+
+        assertEquals(LogWay.TRIP_DISTANCE, processor.state.way)
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, processor.state.unit)
+        assertEquals(1_234L, processor.state.tripDistance.steps)
+    }
+
+    @Test
+    fun aWholeReadingInAUnitWithTenthsGetsAZeroTenth() {
+        seedVehicle(unit = OdometerUnit.KILOMETERS_TENTHS)
+        val processor = processor()
+
+        processor.scan()
+        processor.accept("45260")
+
+        assertEquals(OdometerUnit.KILOMETERS_TENTHS, processor.state.unit)
+        assertEquals(452_600L, processor.state.newOdometer.steps)
+    }
+
+    @Test
+    fun selectingAnotherCandidateReplacesTheSelectionAndANonCandidateIsIgnored() {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+
+        processor.dispatch(LogEventIntent.ScanCandidateSelected(processor.indexOf("45260")))
+        processor.dispatch(LogEventIntent.ScanCandidateSelected(processor.indexOf("123.4")))
+        processor.dispatch(LogEventIntent.ScanCandidateSelected(processor.indexOf("1000")))
+
+        assertEquals("123.4", processor.state.scan.review?.selected?.value)
+    }
+
+    @Test
+    fun confirmingWithNothingSelectedChangesNothing() {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+
+        processor.dispatch(LogEventIntent.ScanConfirmed)
+
+        assertNotNull(processor.state.scan.review)
+        assertNull(processor.state.scan.accepted)
+    }
+
+    @Test
+    fun backingOutOfTheReviewLeavesTheFormAsItWasAndDropsThePhoto() {
+        seedVehicle()
+        val processor = processor()
+        processor.type(3, 0)
+        processor.scan()
+        processor.dispatch(LogEventIntent.ScanCandidateSelected(processor.indexOf("45260")))
+
+        processor.dispatch(LogEventIntent.ScanCancelled)
+
+        assertEquals(LogWay.TRIP_DISTANCE, processor.state.way)
+        assertEquals(30L, processor.state.tripDistance.steps)
+        assertNull(processor.state.scan.review)
+        assertNull(processor.state.scan.accepted)
+        assertTrue(captures.pending.isEmpty())
+    }
+
+    @Test
+    fun cancellingTheChooserChangesNothing() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Cancelled))
+
+        assertEquals(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft(), processor.state.scan)
+        assertTrue(recognizer.recognized.isEmpty())
+    }
+
+    @Test
+    fun anUnreadablePhotoSaysSoAndOpensNoReview() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf())))
+
+        assertEquals(com.mikonoma.drivinglog.vehicle.picture.PictureError.COULD_NOT_OPEN, processor.state.scan.error)
+        assertNull(processor.state.scan.review)
+        processor.dispatch(LogEventIntent.ScanErrorDismissed)
+        assertNull(processor.state.scan.error)
+    }
+
+    @Test
+    fun aPhotoWithNoReadingOpensTheReviewWithNoCandidates() {
+        seedVehicle()
+        val processor = processor()
+        recognizer.photo = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(983, 1310, listOf(line(element("RPMx", 340, 652, 361, 665), element("1000", 363, 654, 381, 667))))
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1))))
+
+        assertFalse(assertNotNull(processor.state.scan.review).hasCandidates)
+    }
+
+    @Test
+    fun choosingAnotherPhotoFromTheReviewReplacesIt() {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+        val first = processor.state.scan.review!!.pendingId
+
+        processor.scan()
+
+        assertNotEquals(first, processor.state.scan.review!!.pendingId)
+        assertEquals(listOf(first), captures.discarded)
+    }
+
+    @Test
+    fun savingAfterAcceptingSavesTheScanWithTheEntry() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+        processor.accept("123.4")
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val capture = assertNotNull(repository.distanceCalls.single().capture)
+        assertEquals("123.4", capture.result.accepted.value)
+        assertEquals(3, capture.result.detections.size) // every number found, not only the accepted one
+    }
+
+    @Test
+    fun savingAnOdometerAnchorAfterAcceptingSavesTheScanWithIt() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", emptyList())
+        val processor = processor()
+        processor.scan()
+        processor.accept("45260")
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertNotNull(repository.anchorCalls.single().capture)
+    }
+
+    @Test
+    fun aSecondAcceptedScanReplacesTheFirst() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+        processor.accept("45260")
+        val first = processor.state.scan.accepted!!.pendingId
+        processor.scan()
+        processor.accept("123.4")
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertTrue(first in captures.discarded)
+        assertEquals("123.4", repository.distanceCalls.single().capture?.result?.accepted?.value)
+    }
+
+    @Test
+    fun aTypedEntrySavesNoScan() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 2)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertNull(repository.distanceCalls.single().capture)
+    }
+
+    @Test
+    fun leavingAfterAcceptingDiscardsTheScan() {
+        seedVehicle()
+        val processor = processor()
+        processor.scan()
+        processor.accept("45260")
+        val pendingId = processor.state.scan.accepted!!.pendingId
+
+        processor.dispatch(LogEventIntent.Left)
+
+        assertTrue(pendingId in captures.discarded)
+        assertTrue(captures.pending.isEmpty())
+        assertTrue(captures.photos.isEmpty())
+        assertEquals(emptyList(), repository.distanceCalls)
+    }
+
+    @Test
+    fun theScanActionIsOfferedOnlyWhereThereIsARecognizer() {
+        seedVehicle()
+        assertTrue(processor().state.canScan)
+
+        val without = LogEventProcessor(
+            "v1", repository, pictures, eventPictures, codec, clock, deviceZone,
+            com.mikonoma.drivinglog.vehicle.ocr.UnavailableTextRecognizer, captures,
+        )
+
+        assertFalse(without.state.canScan)
     }
 }

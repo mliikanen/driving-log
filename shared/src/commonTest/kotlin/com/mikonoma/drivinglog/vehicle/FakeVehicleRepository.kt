@@ -6,7 +6,9 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
@@ -33,6 +35,7 @@ data class DistanceCall(
     val tenthsIncluded: Boolean,
     val note: String? = null,
     val photos: List<PendingPicture> = emptyList(),
+    val capture: PendingCapture? = null,
 )
 
 data class AnchorCall(
@@ -42,6 +45,7 @@ data class AnchorCall(
     val tenthsIncluded: Boolean,
     val note: String? = null,
     val photos: List<PendingPicture> = emptyList(),
+    val capture: PendingCapture? = null,
 )
 
 data class AddEventPhotoCall(val vehicleId: String, val eventId: String, val photo: PendingPicture)
@@ -170,9 +174,10 @@ class FakeVehicleRepository : VehicleRepository {
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String {
         distanceFailure?.let { throw it }
-        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded, note, photos)
+        distanceCalls += DistanceCall(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded, note, photos, capture)
         // The choice is remembered with the entry, like the real repository does.
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
@@ -191,9 +196,10 @@ class FakeVehicleRepository : VehicleRepository {
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String {
         distanceFailure?.let { throw it }
-        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded, note, photos)
+        anchorCalls += AnchorCall(vehicleId, occurredAt, reading, tenthsIncluded, note, photos, capture)
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "a${++counter}"
@@ -203,6 +209,10 @@ class FakeVehicleRepository : VehicleRepository {
     }
 
     private fun fakePhotoId(photo: PendingPicture) = "photo-${photo.pendingId}"
+
+    override suspend fun captureOf(eventId: String): StoredCapture? = null
+
+    override suspend fun capturePhotoIds(): Set<String> = emptySet()
 
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
         updateFailure?.let { throw it }

@@ -21,6 +21,9 @@ import com.mikonoma.drivinglog.vehicle.color.HistogramColorExtractor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import com.mikonoma.drivinglog.vehicle.log.VehicleLogProcessor
+import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.FileCaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.TextRecognizer
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Named
@@ -43,6 +46,9 @@ interface AppGraph {
     @get:Named("event")
     val eventPictureStore: PictureStore
 
+    /** The photos of accepted scans (`odometer-ocr-capture`), under their own root like [eventPictureStore]. */
+    val captureStore: CaptureStore
+
     val landingProcessor: LandingProcessor
     val vehicleListProcessor: VehicleListProcessor
     val addVehicleProcessor: AddVehicleProcessor
@@ -54,7 +60,7 @@ interface AppGraph {
 
     @DependencyGraph.Factory
     fun interface Factory {
-        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path, @Provides imageCodec: ImageCodec): AppGraph
+        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path, @Provides imageCodec: ImageCodec, @Provides textRecognizer: TextRecognizer): AppGraph
     }
 
     @Provides
@@ -88,12 +94,19 @@ interface AppGraph {
     @OptIn(ExperimentalUuidApi::class)
     @Provides
     @SingleIn(AppScope::class)
+    fun provideCaptureStore(picturesRoot: Path, clock: Clock): CaptureStore =
+        FileCaptureStore(Path(picturesRoot, "captures"), ioDispatcher, clock) { Uuid.random().toString() }
+
+    @OptIn(ExperimentalUuidApi::class)
+    @Provides
+    @SingleIn(AppScope::class)
     fun provideVehicleRepository(
         database: DrivingLogDatabase,
         clock: Clock,
         deviceTimeZone: DeviceTimeZone,
         pictures: PictureStore,
         @Named("event") eventPictures: PictureStore,
+        captures: CaptureStore,
     ): VehicleRepository =
         SqlDelightVehicleRepository(
             database = database,
@@ -103,9 +116,15 @@ interface AppGraph {
             deviceTimeZone = deviceTimeZone,
             pictures = pictures,
             eventPictures = eventPictures,
+            captures = captures,
         )
 }
 
 // Metro only rewrites createGraphFactory() in modules with its plugin applied, so the platform shells call this.
-fun createAppGraph(driver: SqlDriver, deviceLocale: DeviceLocale, picturesRoot: Path, imageCodec: ImageCodec): AppGraph =
-    createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot, imageCodec)
+fun createAppGraph(
+    driver: SqlDriver,
+    deviceLocale: DeviceLocale,
+    picturesRoot: Path,
+    imageCodec: ImageCodec,
+    textRecognizer: TextRecognizer,
+): AppGraph = createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot, imageCodec, textRecognizer)

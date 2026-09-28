@@ -14,6 +14,7 @@ metro = "1.4.4"
 sqldelight = "2.4.0"
 serialization = "1.11.0"
 firebaseAppDistribution = "5.3.0"
+mlkit-text-recognition = "16.0.1"
 
 android-compileSdk = "37"
 android-minSdk = "33"
@@ -38,11 +39,13 @@ kide = { module = "org.fuusio.kide:kide", version.ref = "kide" }
 kide-test = { module = "org.fuusio.kide:kide-test", version.ref = "kide" }
 kide-navigation = { module = "org.fuusio.kide:kide-navigation", version.ref = "kide" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text-recognition" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

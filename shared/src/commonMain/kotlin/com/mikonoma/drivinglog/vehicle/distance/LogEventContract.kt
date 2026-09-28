@@ -9,6 +9,7 @@ import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import kotlinx.datetime.LocalDate
@@ -92,6 +93,15 @@ data class LogEventState(
     val photos: EventPhotoDraft = EventPhotoDraft(),
     /** [photos]' thumbnail URIs, paired with each photo's pending id: rebuilt from the store, not persisted. */
     @Transient val photoPreviewUris: List<Pair<String, String>> = emptyList(),
+    /** The scan's review screen while it is open, and the scan accepted last (`odometer-ocr-capture`). Persisted like [photos]. */
+    val scan: ScanDraft = ScanDraft(),
+    /** True while a chosen photo is being recognized. */
+    @Transient val isScanning: Boolean = false,
+    /** Where the review screen loads the scanned photo from: rebuilt from the capture store, not persisted. */
+    @Transient val scanPhotoUri: String? = null,
+    /** False on a platform with no text recognizer (iOS): the "Scan a reading" action is not shown. Persisted, not [Transient]: it
+     * is set once when the form opens, and a restored form must not lose it. */
+    val canScan: Boolean = false,
 ) : ViewState {
 
     /** The unit both fields are entered in. */
@@ -187,7 +197,21 @@ sealed interface LogEventIntent : ViewIntent {
     /** Cancels or dismisses the removal dialog: the photo stays attached. */
     data object PhotoRemoveCancelled : LogEventIntent
 
-    /** The user left the form without saving (add-event-pictures): every attached photo's pending files are deleted. */
+    /** The system chooser gave back a photo, or nothing, to scan for a reading (`odometer-ocr-capture`). */
+    data class ScanPhotoPicked(val result: PhotoResult) : LogEventIntent
+
+    /** A candidate's box or label was tapped on the review screen; [index] is its index in the review's detections. */
+    data class ScanCandidateSelected(val index: Int) : LogEventIntent
+
+    /** The review screen's confirm action: the selected candidate fills the field and sets the way. */
+    data object ScanConfirmed : LogEventIntent
+
+    /** Back navigation out of the review screen, or its "Leave": nothing changes on the form and the photo is dropped. */
+    data object ScanCancelled : LogEventIntent
+
+    data object ScanErrorDismissed : LogEventIntent
+
+    /** The user left the form without saving (add-event-pictures): every attached photo's pending files are deleted, and any scan's. */
     data object Left : LogEventIntent
 }
 

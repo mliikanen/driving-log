@@ -1,6 +1,8 @@
-# Once for the distance manifest: the photos its flows attach to a logged event (add-event-pictures).
+# Once for the distance manifest: the photos its flows attach to a logged event (add-event-pictures), and the car
+# cluster photo scan-reading reads an odometer from (add-odometer-ocr-capture).
 appId: com.mikonoma.drivinglog
 ---
 - addMedia:
     - ../assets/photo-car-red.jpg
     - ../assets/photo-car-blue.jpg
+    - ../assets/ocr/odo/20250831_073738.jpg

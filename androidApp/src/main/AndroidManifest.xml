@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ML Kit's text recognizer (add-odometer-ocr-capture) runs on the device with its model bundled; these two come only with the
+         usage telemetry library it pulls in (com.google.android.datatransport), which the app does not need. Removed so the app asks
+         for no system permission (maestro/check-permissions.sh), and recognition cannot reach the network. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
     <application
         android:name=".DrivingLogApplication"
         android:label="Driving Log"

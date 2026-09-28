@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
@@ -314,8 +315,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionNine() {
-        assertEquals(9L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionTen() {
+        assertEquals(10L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -438,6 +439,116 @@ class SqlDelightVehicleRepositoryTest {
         // Not derived from the owning event's or vehicle's own id — a fresh, independent id (design.md).
         assertFalse(photoId.contains(eventId))
         assertFalse(photoId.contains(id))
+    }
+
+    // ---- The scan an entry's number came from (add-odometer-ocr-capture)
+
+    private val captureStore = com.mikonoma.drivinglog.vehicle.ocr.FakeCaptureStore()
+    private val repositoryWithCaptures = SqlDelightVehicleRepository(
+        database = database,
+        clock = clock,
+        newId = { "id-${++idCounter}" },
+        dispatcher = UnconfinedTestDispatcher(),
+        deviceTimeZone = deviceTimeZone,
+        pictures = pictureStore,
+        captures = captureStore,
+    )
+
+    private fun scan(accepted: Int = 0) = com.mikonoma.drivinglog.vehicle.ocr.ScanResult(
+        1280, 720,
+        listOf(
+            com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                "71140km", "71140", com.mikonoma.drivinglog.vehicle.ocr.TextBox(529, 412, 619, 433),
+                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO",
+            ),
+            com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                "917", "917", com.mikonoma.drivinglog.vehicle.ocr.TextBox(445, 246, 481, 264),
+                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.MAGNITUDE,
+            ),
+        ),
+        accepted,
+    )
+
+    @Test
+    fun aScannedEntryIsSavedWithItsPhotoAndEveryDetection() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+
+        val eventId = repositoryWithCaptures.addDistanceEntry(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture,
+        )
+
+        val stored = assertNotNull(repositoryWithCaptures.captureOf(eventId))
+        assertEquals(scan(), stored.result)
+        assertTrue(stored.photoId in captureStore.photos)
+        assertTrue(captureStore.pending.isEmpty())
+        assertEquals(setOf(stored.photoId), repositoryWithCaptures.capturePhotoIds())
+    }
+
+    @Test
+    fun aScannedOdometerAnchorIsSavedWithItsScan() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+
+        val eventId = repositoryWithCaptures.addOdometerAnchor(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(71_140_000), tenthsIncluded = false, capture = capture,
+        )
+
+        assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
+    }
+
+    /** A capture outlives its event: removing the event neither removes the capture nor its photo (the sweep keeps it). */
+    @Test
+    fun aScanIsKeptWhenItsEventIsRemoved() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+        val eventId = repositoryWithCaptures.addDistanceEntry(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture,
+        )
+        driver.execute(null, "PRAGMA foreign_keys = ON", 0)
+
+        // No event can be removed from the app yet; a later change that adds it must not reach the capture.
+        driver.execute(null, "DELETE FROM vehicle_event WHERE id = '$eventId'", 0)
+        com.mikonoma.drivinglog.vehicle.ocr.sweepCaptures(repositoryWithCaptures, captureStore)
+
+        val stored = assertNotNull(repositoryWithCaptures.captureOf(eventId))
+        assertTrue(stored.photoId in captureStore.photos)
+    }
+
+    @Test
+    fun aTypedEntryHasNoScan() = runTest {
+        val id = addFamilyCar()
+
+        val eventId = repositoryWithCaptures.addDistanceEntry(id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false)
+
+        assertNull(repositoryWithCaptures.captureOf(eventId))
+        assertEquals(emptySet(), repositoryWithCaptures.capturePhotoIds())
+    }
+
+    @Test
+    fun aScanWhosePhotoIsGoneSavesNothing() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture("capture-pending-gone", scan())
+
+        assertFails {
+            repositoryWithCaptures.addDistanceEntry(id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture)
+        }
+
+        assertEquals(1, repositoryWithCaptures.observeLog(id).first().size)
+    }
+
+    @Test
+    fun aFailedSaveLeavesNoScanPhotoBehind() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+        // An entry of zero is refused before anything is written; an unknown vehicle fails inside the transaction instead.
+        driver.execute(null, "PRAGMA foreign_keys = ON", 0)
+
+        assertFails {
+            repositoryWithCaptures.addDistanceEntry("no-such-vehicle", ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture)
+        }
+
+        assertTrue(captureStore.photos.isEmpty())
     }
 
     @Test

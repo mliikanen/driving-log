@@ -1,0 +1,6 @@
+-- Version 9 to 10: the scan a distance entry or odometer reading came from (add-odometer-ocr-capture).
+CREATE TABLE event_capture (
+    event_id    TEXT    NOT NULL PRIMARY KEY,
+    photo_id    TEXT    NOT NULL,
+    detections  TEXT    NOT NULL
+);

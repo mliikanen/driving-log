@@ -149,6 +149,15 @@ fun LogEventContent(
     // this app's accessibility tree stops exposing that window's content at all (confirmed independently of Maestro, with
     // plain `adb shell uiautomator dump`) — a real platform/tooling limitation, not a bug in the screen. Every other text
     // field in the app lives in the ordinary single-window screens and has never shown this.
+    // The scan's review (odometer-ocr-capture) replaces the form's content the same way, for the same reason.
+    if (state.isScanning) {
+        ScanProgressContent()
+        return
+    }
+    state.scan.review?.let { review ->
+        ScanReviewContent(review, state.scanPhotoUri, onIntent)
+        return
+    }
     if (state.noteDraft != null) {
         NoteEditorContent(
             text = state.noteDraft,
@@ -219,6 +228,13 @@ fun LogEventContent(
                         isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
                         errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
                     )
+                    if (state.canScan) {
+                        ScanReadingAction(
+                            error = state.scan.error,
+                            onPicked = { onIntent(LogEventIntent.ScanPhotoPicked(it)) },
+                            onLaunch = { onIntent(LogEventIntent.ScanErrorDismissed) },
+                        )
+                    }
                     NoteField(
                         pendingNote = state.pendingNote,
                         onOpen = { onIntent(LogEventIntent.NoteEditorOpened) },

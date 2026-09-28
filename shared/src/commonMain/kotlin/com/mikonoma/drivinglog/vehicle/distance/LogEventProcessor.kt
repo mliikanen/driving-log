@@ -8,10 +8,17 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.Detection
+import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
+import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
+import com.mikonoma.drivinglog.vehicle.ocr.ScanEditor
+import com.mikonoma.drivinglog.vehicle.ocr.TextRecognizer
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -37,7 +44,9 @@ class LogEventProcessor @AssistedInject constructor(
     private val codec: ImageCodec,
     private val clock: Clock,
     deviceTimeZone: DeviceTimeZone,
-) : PresentationProcessor<LogEventIntent, LogEventState, LogEventEffect>(openedState(clock, deviceTimeZone, vehicleId)) {
+    private val recognizer: TextRecognizer,
+    captures: CaptureStore,
+) : PresentationProcessor<LogEventIntent, LogEventState, LogEventEffect>(openedState(clock, deviceTimeZone, vehicleId, recognizer.isAvailable)) {
 
     @AssistedFactory
     fun interface Factory {
@@ -48,6 +57,8 @@ class LogEventProcessor @AssistedInject constructor(
     private val chooseVehicle = vehicleId.isEmpty()
 
     private val photoEditor = EventPhotoDraftEditor(eventPictures, codec)
+
+    private val scanEditor = ScanEditor(codec, recognizer, captures)
 
     init {
         if (chooseVehicle) {
@@ -130,12 +141,24 @@ class LogEventProcessor @AssistedInject constructor(
         LogEventIntent.NoteRemoveCancelled -> reduce { copy(noteRemovalPending = false) }
         LogEventIntent.LowerOdometerConfirmed -> saveConfirmedLowerOdometer()
         LogEventIntent.LowerOdometerCancelled -> reduce { copy(lowerOdometerConfirmationPending = false) }
-        LogEventIntent.PhotoPreviewRefresh -> photoStep { it }
+        LogEventIntent.PhotoPreviewRefresh -> async("refresh") {
+            val previews = photoEditor.previewUris(state.photos)
+            val scanUri = scanEditor.reviewPhotoUri(state.scan)
+            reduce { copy(photoPreviewUris = previews, scanPhotoUri = scanUri) }
+        }
         is LogEventIntent.PhotoPicked -> photoStep { photoEditor.photoPicked(it, intent.result) }
         is LogEventIntent.PhotoRemoveRequested -> reduce { copy(photos = photoEditor.removeRequested(photos, intent.pendingId)) }
         LogEventIntent.PhotoRemoveConfirmed -> photoStep { photoEditor.removeConfirmed(it) }
         LogEventIntent.PhotoRemoveCancelled -> reduce { copy(photos = photoEditor.removeCancelled(photos)) }
-        LogEventIntent.Left -> async("leave") { photoEditor.discardAll(state.photos) }
+        is LogEventIntent.ScanPhotoPicked -> scanPicked(intent.result)
+        is LogEventIntent.ScanCandidateSelected -> reduce { copy(scan = scanEditor.selected(scan, intent.index)) }
+        LogEventIntent.ScanConfirmed -> scanConfirmed()
+        LogEventIntent.ScanCancelled -> scanStep { scanEditor.cancelled(it) }
+        LogEventIntent.ScanErrorDismissed -> reduce { copy(scan = scanEditor.errorDismissed(scan)) }
+        LogEventIntent.Left -> async("leave") {
+            photoEditor.discardAll(state.photos)
+            scanEditor.discardAll(state.scan)
+        }
         LogEventIntent.Save -> save()
     }
 
@@ -146,6 +169,33 @@ class LogEventProcessor @AssistedInject constructor(
             val previews = photoEditor.previewUris(next)
             reduce { copy(photos = next, photoPreviewUris = previews) }
         }
+
+    /** A photo to scan: it is recognized against the known odometer at the entry's time, in the vehicle's unit, and the review opens. */
+    private fun scanPicked(result: PhotoResult): Action<LogEventState, LogEventEffect> = async("scan") {
+        reduce { copy(isScanning = true) }
+        val known = state.knownOdometer?.let { it.meters / (if (state.unit.isMiles) METERS_PER_MILE else METERS_PER_KILOMETER) }
+        try {
+            val next = scanEditor.photoPicked(state.scan, result, known)
+            val uri = scanEditor.reviewPhotoUri(next)
+            reduce { copy(scan = next, scanPhotoUri = uri, isScanning = false) }
+        } catch (throwable: Throwable) {
+            reduce { copy(isScanning = false) }
+            throw throwable
+        }
+    }
+
+    /** Applies a scan change that may close the review, then rebuilds the review photo's URI. */
+    private fun scanStep(change: suspend (ScanDraft) -> ScanDraft): Action<LogEventState, LogEventEffect> = async("scan") {
+        val next = change(state.scan)
+        val uri = scanEditor.reviewPhotoUri(next)
+        reduce { copy(scan = next, scanPhotoUri = uri) }
+    }
+
+    /** The selected candidate fills the field of the way its kind means, switching the way to it, as if typed there by hand. */
+    private fun scanConfirmed(): Action<LogEventState, LogEventEffect> = async("scan") {
+        val (next, reading) = scanEditor.confirmed(state.scan) ?: return@async
+        reduce { withScannedReading(reading).copy(scan = next, scanPhotoUri = null) }
+    }
 
     private fun save(): Action<LogEventState, LogEventEffect>? {
         val form = state
@@ -160,13 +210,13 @@ class LogEventProcessor @AssistedInject constructor(
             is LogDistanceResult.Valid -> saving {
                 repository.addDistanceEntry(
                     vehicleId, moment, result.distance, result.loggedOdometer,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
                 )
             }
             is LogDistanceResult.Anchor -> saving {
                 repository.addOdometerAnchor(
                     vehicleId, moment, result.reading,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
                 )
             }
         }
@@ -187,7 +237,7 @@ class LogEventProcessor @AssistedInject constructor(
             is LogDistanceResult.Anchor -> saving {
                 repository.addOdometerAnchor(
                     vehicleId, moment, result.reading,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
                 )
             }
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
@@ -212,7 +262,7 @@ class LogEventProcessor @AssistedInject constructor(
     private companion object {
         /** The form as it is when opened: the time is now, in the device's zone, the unit a placeholder until the vehicle loads, and the
          * vehicle [vehicleId] when the details screen opened it, or none yet (the selector picks one) when the Home screen did. */
-        fun openedState(clock: Clock, deviceTimeZone: DeviceTimeZone, vehicleId: String): LogEventState {
+        fun openedState(clock: Clock, deviceTimeZone: DeviceTimeZone, vehicleId: String, canScan: Boolean): LogEventState {
             val zone = deviceTimeZone.current()
             return LogEventState(
                 tripDistance = OdometerEntry(OdometerUnit.KILOMETERS),
@@ -220,7 +270,29 @@ class LogEventProcessor @AssistedInject constructor(
                 localDateTime = openedAt(clock.now(), zone),
                 zoneId = zone.id,
                 selectedVehicleId = vehicleId,
+                canScan = canScan,
             )
+        }
+
+        const val METERS_PER_KILOMETER = 1000.0
+        const val METERS_PER_MILE = 1609.344
+
+        /**
+         * The form with [reading] accepted: the way its kind means ("New odometer" for an odometer reading, "Trip distance" for a trip),
+         * and that way's field holding its value. A reading with a tenth switches both fields to the unit with tenths (of the same
+         * family, as the tenths toggle would); one without keeps the unit, a whole number in a unit with tenths getting a zero tenth.
+         */
+        fun LogEventState.withScannedReading(reading: Detection): LogEventState {
+            val kind = reading.kind ?: return this
+            val tenth = reading.tenth
+            val form = if (tenth != null && !unit.hasTenths) withUnit(unitOf(unit.isMiles, tenths = true)) else this
+            val steps = if (form.unit.hasTenths) reading.whole * 10 + (tenth ?: 0) else reading.whole
+            if (steps > form.unit.maxSteps) return this
+            val entry = OdometerEntry(form.unit, steps)
+            return when (kind) {
+                ReadingKind.ODOMETER -> form.copy(way = LogWay.NEW_ODOMETER, newOdometer = entry, error = null)
+                ReadingKind.TRIP -> form.copy(way = LogWay.TRIP_DISTANCE, tripDistance = entry, error = null)
+            }
         }
 
         /** The four units are the combinations of kilometers or miles, with or without tenths. */

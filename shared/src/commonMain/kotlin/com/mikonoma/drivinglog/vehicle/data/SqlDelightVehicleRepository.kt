@@ -13,7 +13,11 @@ import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
+import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.ScanResult
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
@@ -42,12 +46,15 @@ class SqlDelightVehicleRepository(
     /** A separate store instance from [pictures] (`add-event-pictures`), pointed at its own root: an event photo
      * never shares a directory with a vehicle's picture, though both draw ids from the same collision-free space. */
     private val eventPictures: PictureStore = pictures,
+    /** Where the photos of accepted scans are kept (`odometer-ocr-capture`); only needed by a caller that saves one. */
+    private val captures: CaptureStore? = null,
 ) : VehicleRepository {
 
     private val vehicles get() = database.vehicleQueries
     private val events get() = database.vehicleEventQueries
     private val appState get() = database.appStateQueries
     private val eventPhotos get() = database.eventPictureQueries
+    private val eventCaptures get() = database.eventCaptureQueries
 
     override fun observeVehicles(): Flow<List<Vehicle>> =
         vehicles.selectVehicles().asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
@@ -113,12 +120,14 @@ class SqlDelightVehicleRepository(
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String {
         require(distance.meters > 0) { "A distance entry must be above zero" }
         return withContext(dispatcher) {
             val eventId = newId()
             val zone = occurredAt.zone
             val photoIds = photos.map { promotedEventPhoto(it) }
+            val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
             try {
                 // One transaction: the entry, the remembered tenths choice and the attached photos are all saved, or none.
                 database.transaction {
@@ -134,11 +143,13 @@ class SqlDelightVehicleRepository(
                         note = note,
                     )
                     insertEventPhotos(eventId, photoIds)
+                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
                     vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
                 }
             } catch (throwable: Throwable) {
                 for (photoId in photoIds) eventPictures.delete(photoId)
+                promotedCapture?.let { captures?.delete(it.first) }
                 throw throwable
             }
             eventId
@@ -152,10 +163,12 @@ class SqlDelightVehicleRepository(
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String = withContext(dispatcher) {
         val eventId = newId()
         val zone = occurredAt.zone
         val photoIds = photos.map { promotedEventPhoto(it) }
+        val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
         try {
             // One transaction: the anchor, the remembered tenths choice and the attached photos are all saved, or none.
             database.transaction {
@@ -164,11 +177,13 @@ class SqlDelightVehicleRepository(
                     clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(), note,
                 )
                 insertEventPhotos(eventId, photoIds)
+                promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
                 vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                 appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
             }
         } catch (throwable: Throwable) {
             for (photoId in photoIds) eventPictures.delete(photoId)
+            promotedCapture?.let { captures?.delete(it.first) }
             throw throwable
         }
         eventId
@@ -243,6 +258,19 @@ class SqlDelightVehicleRepository(
     /** Moves a pending event photo into use, from the separate [eventPictures] store (`add-event-pictures`). */
     private suspend fun promotedEventPhoto(photo: PendingPicture): String =
         eventPictures.promote(photo.pendingId) ?: error("The photo ${photo.pendingId} is no longer available")
+
+    /** Moves an accepted scan's photo into use (`odometer-ocr-capture`). */
+    private suspend fun promotedCapture(capture: PendingCapture): String {
+        val store = captures ?: error("No capture store to save the scan ${capture.pendingId} with")
+        return store.promote(capture.pendingId) ?: error("The scan ${capture.pendingId} is no longer available")
+    }
+
+    override suspend fun captureOf(eventId: String): StoredCapture? = withContext(dispatcher) {
+        eventCaptures.selectEventCapture(eventId).executeAsOneOrNull()?.let { StoredCapture(it.photo_id, ScanResult.fromJson(it.detections)) }
+    }
+
+    override suspend fun capturePhotoIds(): Set<String> =
+        withContext(dispatcher) { eventCaptures.selectCapturePhotoIds().executeAsList().toSet() }
 
     /** Inserts one `event_picture` row per already-promoted [photoIds], appended after whatever the event already has. */
     private fun insertEventPhotos(eventId: String, photoIds: List<String>) {

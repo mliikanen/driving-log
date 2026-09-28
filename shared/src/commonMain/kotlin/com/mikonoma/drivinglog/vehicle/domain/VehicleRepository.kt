@@ -52,7 +52,8 @@ interface VehicleRepository {
      * [note] is the pending note typed on the log event form (`add-event-notes`), or null when none was added.
      * [photos] are the pending photos attached on the log event form (`add-event-pictures`, 0 to 5), promoted and saved
      * with the entry in the same transaction, in the order given, or none of them: a failed save leaves no photo files
-     * behind. Returns the new event id.
+     * behind. [capture] is the accepted scan the number came from (`odometer-ocr-capture`), or null when it was typed: saved
+     * with the entry in the same transaction, like [photos]. Returns the new event id.
      */
     suspend fun addDistanceEntry(
         vehicleId: String,
@@ -62,6 +63,7 @@ interface VehicleRepository {
         tenthsIncluded: Boolean,
         note: String? = null,
         photos: List<PendingPicture> = emptyList(),
+        capture: PendingCapture? = null,
     ): String
 
     /**
@@ -69,8 +71,8 @@ interface VehicleRepository {
      * known, or one lower than the known odometer, confirmed by the user (`confirm-lower-odometer`). [tenthsIncluded] is
      * remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
      * pending note typed on the log event form (`add-event-notes`), or null when none was added. [photos] are the pending
-     * photos attached on the log event form (`add-event-pictures`), saved the same way as for [addDistanceEntry].
-     * Returns the new event id.
+     * photos attached on the log event form (`add-event-pictures`), and [capture] the accepted scan (`odometer-ocr-capture`),
+     * both saved the same way as for [addDistanceEntry]. Returns the new event id.
      */
     suspend fun addOdometerAnchor(
         vehicleId: String,
@@ -79,6 +81,7 @@ interface VehicleRepository {
         tenthsIncluded: Boolean,
         note: String? = null,
         photos: List<PendingPicture> = emptyList(),
+        capture: PendingCapture? = null,
     ): String
 
     /**
@@ -115,4 +118,10 @@ interface VehicleRepository {
      * action, after the removal is confirmed). Deletes the photo's files. Not finding it is not an error.
      */
     suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String)
+
+    /** The scan an event's number came from (`odometer-ocr-capture`), or null when it was typed. Only for reviewing a misdetection. */
+    suspend fun captureOf(eventId: String): StoredCapture?
+
+    /** Every scan photo in use, so the capture store's sweep keeps them. */
+    suspend fun capturePhotoIds(): Set<String>
 }

@@ -93,6 +93,19 @@ private val VERSION_8_SCHEMA = VERSION_7_SCHEMA + listOf(
     "ALTER TABLE vehicle_event ADD COLUMN note TEXT",
 )
 
+/** The schema as it was in version 9: version 8 plus the photos of an event (add-event-pictures). */
+private val VERSION_9_SCHEMA = VERSION_8_SCHEMA + listOf(
+    """
+    CREATE TABLE event_picture (
+        id          TEXT    NOT NULL PRIMARY KEY,
+        event_id    TEXT    NOT NULL REFERENCES vehicle_event(id),
+        position    INTEGER NOT NULL,
+        created_at  INTEGER NOT NULL
+    )
+    """,
+    "CREATE INDEX event_picture_by_event ON event_picture (event_id, position)",
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleMigrationJvmTest {
 
@@ -212,10 +225,10 @@ class VehicleMigrationJvmTest {
     }
 
     @Test
-    fun aFreshDatabaseIsVersionNineWithTheNewColumns() {
+    fun aFreshDatabaseIsVersionTenWithTheNewColumns() {
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        assertEquals(9L, DrivingLogDatabase.Schema.version)
+        assertEquals(10L, DrivingLogDatabase.Schema.version)
         assertEquals(
             listOf(
                 "id", "vehicle_id", "type", "occurred_at", "odometer_meters", "created_at",
@@ -228,6 +241,7 @@ class VehicleMigrationJvmTest {
             columns(fresh, "vehicle"),
         )
         assertEquals(listOf("id", "event_id", "position", "created_at"), columns(fresh, "event_picture"))
+        assertEquals(listOf("event_id", "photo_id", "detections"), columns(fresh, "event_capture"))
     }
 
     // ---- Version 2 to 3: the remembered tenths choice
@@ -626,6 +640,44 @@ class VehicleMigrationJvmTest {
 
         val entry = repository.observeLog("v1").first().first() as VehicleEvent.DistanceEntry
         assertEquals(1, entry.photoIds.size)
+    }
+
+    // ---- Version 9 to 10: the scan an event's number came from (add-odometer-ocr-capture)
+
+    /** A database as the previous build left it: the version-9 schema with a vehicle, its initial event and an event photo. */
+    private fun versionNineDatabase(): SqlDriver {
+        val driver = memoryDriver()
+        VERSION_9_SCHEMA.forEach { driver.execute(null, it.trimIndent(), 0) }
+        driver.execute(null, "INSERT INTO vehicle VALUES ('v1', 'Family car', 'ABC-123', 'KILOMETERS', 1000, 1000, 1, NULL, 'CAR', 'E53935')", 0)
+        driver.execute(
+            null,
+            "INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds, note) " +
+                "VALUES ('e1', 'v1', 'INITIAL_ODOMETER', 1785067200000, 45200000, 1785067200000, 'Europe/Helsinki', 10800, NULL)",
+            0,
+        )
+        driver.execute(null, "INSERT INTO event_picture VALUES ('p1', 'e1', 0, 1785067200000)", 0)
+        return driver
+    }
+
+    @Test
+    fun migratingFromVersionNineKeepsTheEventAndItsPhotoRowAndAddsTheCaptureTable() = runTest {
+        val driver = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, 10) }
+
+        val repository = repository(driver)
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        assertEquals(Distance(45_200_000), event.reading)
+        assertEquals(listOf("p1"), DrivingLogDatabase(driver).eventPictureQueries.selectPhotoIdsForEvent("e1").executeAsList())
+        assertNull(repository.captureOf("e1"))
+    }
+
+    @Test
+    fun aVersionNineDatabaseMigratedToTenHasTheSameTablesAsAFreshOne() {
+        val migrated = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, 10) }
+        val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
+
+        for (table in listOf("vehicle", "vehicle_event", "app_state", "event_picture", "event_capture")) {
+            assertEquals(columns(fresh, table), columns(migrated, table), table)
+        }
     }
 
     private fun migratedFromEveryOlderVersion(): List<SqlDriver> = listOf(

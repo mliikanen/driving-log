@@ -1,0 +1,167 @@
+package com.mikonoma.drivinglog.vehicle.ocr
+
+import kotlin.math.abs
+import kotlin.math.max
+import kotlinx.serialization.Serializable
+
+/** What a detected reading is taken to be: the odometer's count, or a trip meter's distance. */
+@Serializable
+enum class ReadingKind { ODOMETER, TRIP }
+
+/** Why a number was classified the way it was, kept with the detections to review a misdetection later. */
+@Serializable
+enum class DetectionBasis {
+    /** A label next to it decided the kind. */
+    LABEL,
+
+    /** No label; its magnitude against the known odometer decided the kind. */
+    MAGNITUDE,
+
+    /** No label and no distance unit after it (a dial number, a gear, a temperature): not presented. */
+    NO_UNIT,
+
+    /** No label, and neither close to the known odometer nor plausible as a trip: not presented. */
+    IMPLAUSIBLE,
+}
+
+/**
+ * One number found in a scanned photo (`odometer-ocr-capture`). Every number that could be a reading is kept, the ones not
+ * presented to the user too ([kind] null), since the detections exist to review a misdetection after the fact.
+ */
+@Serializable
+data class Detection(
+    /** The word as it was recognized, unit or noise included (`71140km`). */
+    val text: String,
+    /** The number it reads as, digits with at most one `.` (`71140`, `168.1`). */
+    val value: String,
+    val box: TextBox,
+    /** Odometer- or trip-like, or null when it is not presented as a candidate. */
+    val kind: ReadingKind?,
+    val basis: DetectionBasis,
+    /** The label that decided [kind], as recognized, when [basis] is [DetectionBasis.LABEL]. */
+    val label: String? = null,
+) {
+    /** The whole units of [value] (`168` of `168.1`). */
+    val whole: Long get() = value.substringBefore('.').toLong()
+
+    /** The first digit after the decimal point, or null when [value] has none. */
+    val tenth: Int? get() = value.substringAfter('.', "").firstOrNull()?.digitToInt()
+}
+
+/**
+ * The thresholds of the classification (design.md, "Classification"), in the vehicle's odometer unit, in one place so that tuning them
+ * against real photos is one edit.
+ */
+object ReadingThresholds {
+    /** An unlabeled value at most this is a plausible trip distance. */
+    const val MAX_TRIP = 2000.0
+
+    /** An unlabeled value up to this much above the known odometer is a plausible odometer count... */
+    const val MIN_ODOMETER_MARGIN = 5000.0
+
+    /** ...or up to this fraction of the known odometer above it, whichever is more. */
+    const val ODOMETER_MARGIN_FRACTION = 0.5
+
+    /** A label line counts when its vertical gap to the number is at most this many of the number's heights. */
+    const val LABEL_GAP_HEIGHTS = 1.5
+
+    /** A number is a candidate from this many digits before any decimal point, leading zeros not counted... */
+    const val MIN_DIGITS = 3
+
+    /** ...up to this many: the most an odometer field holds. */
+    const val MAX_DIGITS = 7
+}
+
+private val ODOMETER_LABELS = setOf("ODO", "ODOMETER", "TOTAL DISTANCE")
+private val TRIP_LABELS = setOf("TRIP", "TRIP A", "TRIP B", "T")
+
+/** Digits, at most one decimal separator with one or two digits after it, and letters run directly onto it (a unit, or noise). */
+private val NUMBER = Regex("""^(\d+)(?:[.,](\d{1,2}))?([A-Za-z]*)$""")
+
+/**
+ * Every number in [photo] that could be a reading, each classified (design.md): a label next to it decides first; otherwise, when a
+ * distance unit follows it, its magnitude against [knownOdometer] (the known odometer at the entry's time, in the vehicle's odometer
+ * unit, or null when none is known then). The rest are kept with a null kind.
+ */
+fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detection> =
+    photo.lines.flatMap { line ->
+        line.elements.mapIndexedNotNull { index, element ->
+            val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
+            val (wholeDigits, fraction, attached) = match.destructured
+            if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_DIGITS..ReadingThresholds.MAX_DIGITS) return@mapIndexedNotNull null
+            val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
+            val label = labelOf(photo, line, index, element.box)
+            when {
+                label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
+                !isDistanceUnit(attached) && !isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty()) ->
+                    Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
+                else -> {
+                    val kind = kindByMagnitude(value.toDouble(), knownOdometer)
+                    Detection(element.text, value, element.box, kind, if (kind == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE)
+                }
+            }
+        }
+    }
+
+/** The detections presented to the user: those with a kind. */
+fun List<Detection>.candidates(): List<Detection> = filter { it.kind != null }
+
+/** A unit of distance after a number: `km` and its misreads (`knm`, `ki`), or miles; never a speed (`km/h`, misread `Knh`). */
+internal fun isDistanceUnit(word: String): Boolean {
+    val w = word.lowercase()
+    if (w.isEmpty() || '/' in w) return false
+    if (w in setOf("mi", "mile", "miles")) return true
+    return w.startsWith('k') && w.all { it.isLetter() } && !w.endsWith('h')
+}
+
+internal fun kindByMagnitude(value: Double, knownOdometer: Double?): ReadingKind? {
+    if (knownOdometer == null) return if (value > ReadingThresholds.MAX_TRIP) ReadingKind.ODOMETER else ReadingKind.TRIP
+    val margin = max(ReadingThresholds.MIN_ODOMETER_MARGIN, knownOdometer * ReadingThresholds.ODOMETER_MARGIN_FRACTION)
+    return when {
+        value >= knownOdometer && value <= knownOdometer + margin -> ReadingKind.ODOMETER
+        value <= ReadingThresholds.MAX_TRIP && value < knownOdometer -> ReadingKind.TRIP
+        else -> null
+    }
+}
+
+/** The kind a label names, comparing case-insensitively, zero read as O and spaces collapsed; null when [text] is not a label. */
+internal fun labelKind(text: String): ReadingKind? {
+    val normalized = text.uppercase().replace('0', 'O').split(' ').filter { it.isNotEmpty() }.joinToString(" ")
+    return when (normalized) {
+        in ODOMETER_LABELS -> ReadingKind.ODOMETER
+        in TRIP_LABELS -> ReadingKind.TRIP
+        else -> null
+    }
+}
+
+/**
+ * The label of the number at [index] of [line], and the kind it names: the one or two words directly before it on its line, or a whole
+ * line directly above or below it (design.md). The nearest wins when several qualify. A lone "T" counts only on the number's own line:
+ * above or below it, it is as likely a mode icon beside another figure (on `odo/20220911_162029` it sits under the clock).
+ */
+private fun labelOf(photo: RecognizedPhoto, line: RecognizedLine, index: Int, box: TextBox): Pair<String, ReadingKind>? {
+    for (count in 2 downTo 1) {
+        if (index - count < 0) continue
+        val words = line.elements.subList(index - count, index).joinToString(" ") { it.text }
+        labelKind(words)?.let { return words to it }
+    }
+    val maxGap = box.height * ReadingThresholds.LABEL_GAP_HEIGHTS
+    return photo.lines.asSequence()
+        .filter { it !== line }
+        .filter { !isLoneT(it.text) }
+        .mapNotNull { other -> labelKind(other.text)?.let { Triple(other, it, verticalGap(other.box, box)) } }
+        .filter { (other, _, gap) -> gap <= maxGap && horizontallyNear(other.box, box) }
+        .minByOrNull { (_, _, gap) -> gap }
+        ?.let { (other, kind, _) -> other.text to kind }
+}
+
+private fun isLoneT(text: String): Boolean = text.trim().equals("T", ignoreCase = true)
+
+/** The vertical space between two boxes, zero when they overlap vertically. */
+private fun verticalGap(a: TextBox, b: TextBox): Int = max(0, max(a.top - b.bottom, b.top - a.bottom))
+
+/** The boxes overlap horizontally, or are apart by at most [number]'s width. */
+private fun horizontallyNear(label: TextBox, number: TextBox): Boolean {
+    val gap = max(label.left - number.right, number.left - label.right)
+    return gap <= 0 || abs(gap) <= number.width
+}

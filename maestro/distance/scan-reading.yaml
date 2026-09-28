@@ -1,0 +1,57 @@
+# Happy path of scanning a reading (add-odometer-ocr-capture): scan a car cluster photo, accept its odometer reading,
+# and save. The form switches to "New odometer" with the value read. Cases (classification, other ways, what is kept
+# on save or leave) are unit tests: see docs/test-strategy.md. The stored photo and detections are never shown, so
+# nothing here asserts them.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Scan car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "71000"
+- tapOn: Scan car
+- tapOn:
+    id: log_event
+- assertVisible:
+    id: log_way_distance
+    checked: true
+- tapOn:
+    id: scan_reading
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+# The cluster photo is uploaded last by setup.yaml, so it is the newest: the picker lists it first.
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: scan_review
+    timeout: 20000
+- assertVisible: "Tap the reading to use."
+- tapOn: "ODO 71140"
+- tapOn:
+    id: scan_use
+# The odometer reading switched the form to "New odometer" and filled it in.
+- assertVisible:
+    id: log_way_odometer
+    checked: true
+- assertVisible:
+    id: odo_field
+    text: "71,140"
+- assertVisible:
+    id: log_live_distance
+    text: "Distance: 140 km"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 71,140 km
