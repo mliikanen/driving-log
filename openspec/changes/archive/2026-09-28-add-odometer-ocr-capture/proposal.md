@@ -7,7 +7,7 @@ reflections and stylized digital-segment fonts all make it easy to mistype a dig
 while standing next to the vehicle. A photo the user already has (or takes on the spot) can be read automatically
 instead, with the app confirming what it read before anything is filled in.
 
-Confirmed against real dashboard photos supplied as test data (`~/Downloads/odo/`, `~/Downloads/trip/`): a single
+Confirmed against real dashboard photos supplied as test data (now in `maestro/assets/ocr/`): a single
 photo commonly shows several numbers at once — a clock, a fuel range, a speed-limit sign, a consumption figure — not
 just the reading wanted. One photo's clock ("16:21") is a plausible-looking 4-digit number easily confused with a
 reading if only magnitude were checked. This is why detection needs both a label check (an adjacent recognized
@@ -61,7 +61,10 @@ alone, and why the user picks from labeled candidates rather than the app silent
   `app-shell` — would have Vehicles move to the bottom row, into the Placeholder slot, freeing a more prominent spot
   for the new scan action). The developer wants this prominent given how central photo capture is meant to become,
   but asked for it as its own future proposal rather than folded into this one.
-- iOS: ML Kit's on-device text recognizer is Android-only. This change ships Android-only, matching the project's
+- Seven-segment LCD displays (a motorcycle's, measured in design.md): ML Kit does not read them; a second recognizer
+  and a user-marked region are `add-seven-segment-ocr`.
+- iOS: ML Kit's on-device text recognizer is Android-only. This change ships Android-only (the scan action is hidden
+  on iOS), matching the project's
   existing platform-gap pattern (e.g. picture encoding is WebP on Android, PNG-only on iOS today); an iOS OCR
   backend (e.g. Apple's Vision framework) is future work if iOS becomes a real target for this capability.
 

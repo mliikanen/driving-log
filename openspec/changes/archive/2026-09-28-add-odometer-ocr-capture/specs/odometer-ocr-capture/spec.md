@@ -12,11 +12,16 @@ one (if any) to accept. The photo and every detection are kept privately for deb
 The system SHALL offer a "Scan a reading" action on the log event form. Tapping it SHALL open the same system photo
 chooser already used for a vehicle's picture (including the device's camera app, through the system's own intent or
 source sheet — no permission of this application's own is requested for it). Choosing a photo SHALL proceed to
-detection; cancelling the chooser SHALL leave the log event form exactly as it was.
+detection; cancelling the chooser SHALL leave the log event form exactly as it was. On iOS, which has no on-device
+recognizer yet, the action SHALL NOT be shown.
 
 #### Scenario: Open the chooser
 - **WHEN** the user taps "Scan a reading" on the log event form
 - **THEN** the system's photo chooser (including the camera) opens
+
+#### Scenario: No scan on iOS
+- **WHEN** the user opens the log event form on iOS
+- **THEN** no "Scan a reading" action is shown
 
 #### Scenario: Cancel the chooser
 - **WHEN** the user opens the chooser and cancels it without choosing a photo
@@ -37,8 +42,8 @@ candidate. A photo with no plausible candidate SHALL say so and let the user cho
 
 ### Requirement: A detected reading is classified as an odometer or a trip-meter reading
 The system SHALL classify each candidate as odometer-like or trip-meter-like using, in order: a recognized text label
-next to it in the photo ("ODO", "ODOMETER", "TRIP", "TRIP A", "TRIP B" or "T" read as odometer- or trip-like
-respectively), and, when no such label is recognized next to it, the candidate's magnitude against the vehicle's
+next to it in the photo ("ODO", "ODOMETER" or "TOTAL DISTANCE" read as odometer-like, "TRIP", "TRIP A", "TRIP B"
+or "T" as trip-like), and, when no such label is recognized next to it, the candidate's magnitude against the vehicle's
 current known odometer at the entry's date and time (already defined by `distance-logging`, "The previous known
 odometer"): a value at or plausibly above the known odometer reads as odometer-like, and a value clearly smaller,
 plausible as a trip distance, reads as trip-meter-like. A candidate with neither a recognized label nor a plausible
@@ -47,6 +52,10 @@ magnitude either way SHALL NOT be presented to the user.
 #### Scenario: Classified by label
 - **WHEN** a candidate has the recognized text "ODO" next to it in the photo
 - **THEN** it is classified as an odometer reading, regardless of its magnitude
+
+#### Scenario: Classified by a label below it
+- **WHEN** a candidate has the recognized text "Total distance" directly below it in the photo
+- **THEN** it is classified as an odometer reading
 
 #### Scenario: Classified by magnitude when there is no label
 - **WHEN** a candidate has no recognized odometer/trip label next to it, and its value is close to the vehicle's current known odometer
@@ -103,7 +112,8 @@ photo, its recognized text and its classification, not only the accepted one) on
 SHALL store them under the resulting event only once the log event form is saved. Leaving the form without saving,
 after accepting a scan, SHALL discard the kept photo and detections along with the rest of the unsaved entry.
 Scanning again before saving SHALL keep only the latest accepted scan. Neither the photo nor the detections SHALL
-appear in any user-facing screen; they exist only to review a misdetection after the fact.
+appear in any user-facing screen; they exist only to review a misdetection after the fact. Once stored, the photo and
+detections SHALL be kept until they themselves are removed: removing the event they belong to SHALL NOT remove them.
 
 #### Scenario: Saved together with the event
 - **WHEN** the user accepts a candidate and saves the entry
@@ -116,6 +126,10 @@ appear in any user-facing screen; they exist only to review a misdetection after
 #### Scenario: A second scan replaces the first
 - **WHEN** the user accepts a candidate from one scan, then scans again and accepts a candidate from a second photo, then saves
 - **THEN** only the second photo and its detections are stored
+
+#### Scenario: Kept when the event is removed
+- **WHEN** an event saved from an accepted scan is removed
+- **THEN** its photo and detections are still stored
 
 #### Scenario: Not shown to the user
 - **WHEN** an event saved from an accepted scan is viewed anywhere in the application (its row, its details screen, the full log)
