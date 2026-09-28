@@ -224,4 +224,80 @@ class ReadingDetectionTest {
         assertEquals(1.0, recognitionScale(3072, 2304))
         assertEquals(2.0, recognitionScale(400, 300))
     }
+    // Readings from a second recognizer (add-seven-segment-ocr)
+
+    @Test
+    fun anUnlabeledUnitlessValueNearTheOdometerIsAnOdometerReading() {
+        // PP-OCR on trip/20220706_112423: the LCD odometer with neither label nor unit read.
+        val reading = detectReadings(photo(line("3056@499,716,575,744")), knownOdometer = 3000.0).single("3056")
+
+        assertEquals(ReadingKind.ODOMETER, reading.kind)
+        assertEquals(DetectionBasis.MAGNITUDE, reading.basis)
+    }
+
+    @Test
+    fun anUnlabeledUnitlessValueWithTenthsIsATrip() {
+        // PP-OCR on trip/20230624_212428: the LCD trip meter, read without its label or unit.
+        assertEquals(ReadingKind.TRIP, detectReadings(photo(line("209.1@466,697,583,736")), knownOdometer = 5000.0).single("209.1").kind)
+    }
+
+    @Test
+    fun anUnlabeledUnitlessWholeNumberIsNotATrip() {
+        val detections = detectReadings(photo(line("917@445,246,481,264"), line("120@830,467,850,485")), knownOdometer = 71000.0)
+
+        assertTrue(detections.all { it.kind == null && it.basis == DetectionBasis.NO_UNIT })
+    }
+
+    @Test
+    fun theFullerReadingWinsAtTheSamePlace() {
+        // odo/20250831_073743: ML Kit's "71140km" and PP-OCR's "140 km" (a partial read), both under "ODO".
+        val photo = photo(
+            line("ODO@478,340,510,352"),
+            line("71140km@488,344,564,373"),
+            line("140@509,346,540,372", "km@541,346,564,372"),
+        )
+
+        val candidates = detectReadings(photo, knownOdometer = 71000.0).candidates()
+
+        assertEquals(listOf("71140"), candidates.map { it.value })
+    }
+
+    @Test
+    fun theSameReadingFromBothRecognizersIsOneCandidate() {
+        val photo = photo(line("917@445,246,481,264", "km@480,246,501,264"), line("917km@436,239,500,262"))
+
+        assertEquals(1, detectReadings(photo, knownOdometer = 71000.0).candidates().size)
+    }
+
+    @Test
+    fun theLabeledOneWinsAmongEqualReadings() {
+        // The same 5034 twice at one place, once with its "ODO" before it on its line.
+        val photo = photo(line("5034@490,690,590,730"), line("ODO@435,696,480,720", "5034@490,690,590,730"))
+
+        val reading = detectReadings(photo, knownOdometer = 9000.0).single()
+
+        assertEquals(DetectionBasis.LABEL, reading.basis)
+    }
+
+    @Test
+    fun theSameValueOnAnotherRowStays() {
+        val photo = photo(line("890@636,601,663,620", "km@666,601,690,620"), line("890@636,660,663,679", "km@666,660,690,679"))
+
+        assertEquals(2, detectReadings(photo, knownOdometer = 32400.0).candidates().size)
+    }
+
+    @Test
+    fun readingsFarApartBothStay() {
+        val photo = photo(line("917km@436,239,500,262"), line("890@636,601,670,620", "km@672,601,690,620"))
+
+        assertEquals(listOf("917", "890"), detectReadings(photo, knownOdometer = 71000.0).candidates().map { it.value })
+    }
+
+    @Test
+    fun theSameValueAtBarelyOverlappingBoxesIsOneCandidate() {
+        // odo/20251109_193736: ML Kit's "890" (after "D") and PP-OCR's "890" (a word box estimated as half of its line "890 km"), side by side.
+        val photo = photo(line("D@664,606,676,623", "890@678,606,707,623", "km@710,608,722,624"), line("890@636,601,663,620", "km@666,601,690,620"))
+
+        assertEquals(listOf("890"), detectReadings(photo, knownOdometer = 32400.0).candidates().map { it.value })
+    }
 }

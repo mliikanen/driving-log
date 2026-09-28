@@ -1,0 +1,11 @@
+{
+  "comment": "The reading's region on each seven-segment LCD photo (add-seven-segment-ocr), in the photo's own pixels (left, top, right, bottom; the photos have no EXIF rotation), with the reading it shows. Hand-marked around the digits, as a user dragging over the reading would.",
+  "regions": [
+    { "photo": "odo/20220911_162029.jpg",  "box": [505, 700, 590, 730], "reading": "5034",  "kind": "ODOMETER" },
+    { "photo": "odo/20230530_170748.jpg",  "box": [655, 378, 722, 402], "reading": "5368",  "kind": "ODOMETER" },
+    { "photo": "trip/20220706_112423.jpg", "box": [500, 718, 575, 744], "reading": "3056",  "kind": "ODOMETER" },
+    { "photo": "trip/20220706_132307.jpg", "box": [316, 846, 460, 890], "reading": "142.0", "kind": "TRIP" },
+    { "photo": "trip/20220911_162031.jpg", "box": [543, 700, 630, 736], "reading": "168.1", "kind": "TRIP" },
+    { "photo": "trip/20230624_212428.jpg", "box": [468, 710, 562, 742], "reading": "209.1", "kind": "TRIP" }
+  ]
+}

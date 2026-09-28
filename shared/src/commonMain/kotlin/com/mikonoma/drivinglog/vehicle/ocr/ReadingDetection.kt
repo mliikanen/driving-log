@@ -17,7 +17,7 @@ enum class DetectionBasis {
     /** No label; its magnitude against the known odometer decided the kind. */
     MAGNITUDE,
 
-    /** No label and no distance unit after it (a dial number, a gear, a temperature): not presented. */
+    /** No label and no distance unit after it, and not plausible as the odometer nor a trip with tenths (a dial number, a clock): not presented. */
     NO_UNIT,
 
     /** No label, and neither close to the known odometer nor plausible as a trip: not presented. */
@@ -70,6 +70,9 @@ object ReadingThresholds {
 
     /** ...up to this many: the most an odometer field holds. */
     const val MAX_DIGITS = 7
+
+    /** Two detections are at the same place when they share at least this much of the smaller one's box. */
+    const val SAME_PLACE = 0.3
 }
 
 private val ODOMETER_LABELS = setOf("ODO", "ODOMETER", "TOTAL DISTANCE")
@@ -79,9 +82,11 @@ private val TRIP_LABELS = setOf("TRIP", "TRIP A", "TRIP B", "T")
 private val NUMBER = Regex("""^(\d+)(?:[.,](\d{1,2}))?([A-Za-z]*)$""")
 
 /**
- * Every number in [photo] that could be a reading, each classified (design.md): a label next to it decides first; otherwise, when a
- * distance unit follows it, its magnitude against [knownOdometer] (the known odometer at the entry's time, in the vehicle's odometer
- * unit, or null when none is known then). The rest are kept with a null kind.
+ * Every number in [photo] that could be a reading, each classified (design.md): a label next to it decides first; otherwise its magnitude
+ * against [knownOdometer] (the known odometer at the entry's time, in the vehicle's odometer unit, or null when none is known then),
+ * fully when a distance unit follows it, and without one only as an odometer reading, or as a trip when it has a decimal
+ * (`add-seven-segment-ocr`: LCD readings often come back without unit or label; dial numbers are whole numbers). The rest are kept with a
+ * null kind. Where two recognizers read the same place, one detection is kept ([onePerPlace]).
  */
 fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detection> =
     photo.lines.flatMap { line ->
@@ -91,17 +96,62 @@ fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detecti
             if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_DIGITS..ReadingThresholds.MAX_DIGITS) return@mapIndexedNotNull null
             val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
             val label = labelOf(photo, line, index, element.box)
+            val hasUnit = isDistanceUnit(attached) || isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty())
+            val byMagnitude = kindByMagnitude(value.toDouble(), knownOdometer)
             when {
                 label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
-                !isDistanceUnit(attached) && !isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty()) ->
-                    Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
-                else -> {
-                    val kind = kindByMagnitude(value.toDouble(), knownOdometer)
-                    Detection(element.text, value, element.box, kind, if (kind == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE)
-                }
+                hasUnit -> Detection(element.text, value, element.box, byMagnitude, if (byMagnitude == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE)
+                byMagnitude == ReadingKind.ODOMETER || (byMagnitude == ReadingKind.TRIP && fraction.isNotEmpty()) ->
+                    Detection(element.text, value, element.box, byMagnitude, DetectionBasis.MAGNITUDE)
+                else -> Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
             }
         }
+    }.onePerPlace()
+
+/**
+ * One detection per place in the photo: where two overlap (their intersection is at least [ReadingThresholds.SAME_PLACE] of the smaller
+ * box, or they read the same value on the same row close by: PP-OCR's word boxes are estimated from its line's box, so its box for a
+ * number can sit beside the other recognizer's rather than on it), the one with more
+ * digits is kept (ML Kit's `71140` over PP-OCR's `140`), then one presented over one that is not, then a
+ * labeled one, then the first.
+ */
+internal fun List<Detection>.onePerPlace(): List<Detection> {
+    val kept = mutableListOf<Detection>()
+    for (d in this) {
+        val clash = kept.indexOfFirst { samePlace(it.box, d.box) || (it.value == d.value && sameRowNearby(it.box, d.box)) }
+        if (clash < 0) {
+            kept += d
+        } else if (betterThan(d, kept[clash])) {
+            kept[clash] = d
+        }
     }
+    return kept
+}
+
+private fun Detection.digits(): Int = value.count { it.isDigit() }
+
+private fun betterThan(a: Detection, b: Detection): Boolean = when {
+    a.digits() != b.digits() -> a.digits() > b.digits()
+    (a.kind != null) != (b.kind != null) -> a.kind != null
+    else -> a.basis == DetectionBasis.LABEL && b.basis != DetectionBasis.LABEL
+}
+
+/** On the same row (vertically overlapping by half the lower box) and at most one and a half box heights apart sideways. */
+private fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
+    val rows = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
+    val height = minOf(a.height, b.height)
+    if (height <= 0 || rows < height / 2) return false
+    val gap = maxOf(a.left, b.left) - minOf(a.right, b.right)
+    return gap <= maxOf(a.height, b.height) * 3 / 2
+}
+
+private fun samePlace(a: TextBox, b: TextBox): Boolean {
+    val w = minOf(a.right, b.right) - maxOf(a.left, b.left)
+    val h = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
+    if (w <= 0 || h <= 0) return false
+    val smaller = minOf(a.width.toLong() * a.height, b.width.toLong() * b.height).coerceAtLeast(1)
+    return w.toLong() * h >= smaller * ReadingThresholds.SAME_PLACE
+}
 
 /** The detections presented to the user: those with a kind. */
 fun List<Detection>.candidates(): List<Detection> = filter { it.kind != null }

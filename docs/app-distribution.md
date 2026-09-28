@@ -93,3 +93,12 @@ expecting every matched path to be `<change-name>/<file>` left `.gitkeep`'s bare
 an archived change's files as renames (old path → new path), but `git log`'s diff — without rename detection, which
 is off by default — sees them as a plain delete-and-add, which is what lets `--diff-filter=A` find them at all;
 `scripts/distribute.sh` passes `--no-renames` explicitly so a different git config can't silently break this.
+
+## ABIs
+
+A release APK carries native code for arm64-v8a only, and a debug build for arm64-v8a and x86_64 (the emulator), with
+native libraries stored compressed (`androidApp/build.gradle.kts`). The on-device OCR libraries (ML Kit, and ONNX
+Runtime from `add-seven-segment-ocr`) are 20-40 MB per ABI, so a universal APK would carry four copies of each; every
+device at this minSdk is 64-bit. A tester with an x86 or 32-bit ARM device could not install a release. Sizes are in
+`add-seven-segment-ocr`'s design.md.
+

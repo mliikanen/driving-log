@@ -1,5 +1,6 @@
 # Happy path of scanning a reading (add-odometer-ocr-capture): scan a car cluster photo, accept its odometer reading,
-# and save. The form switches to "New odometer" with the value read. Cases (classification, other ways, what is kept
+# and save. The form switches to "New odometer" with the value read. Then the same for a motorcycle's seven-segment LCD
+# (add-seven-segment-ocr), which a second recognizer reads. Cases (classification, other ways, what is kept
 # on save or leave) are unit tests: see docs/test-strategy.md. The stored photo and detections are never shown, so
 # nothing here asserts them.
 appId: com.mikonoma.drivinglog
@@ -55,3 +56,48 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 71,140 km
+# A motorcycle's LCD odometer, "ODO 5034 Km", in seven-segment digits.
+- tapOn:
+    id: back
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Scan motorcycle
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "5000"
+      TYPE: MOTORCYCLE
+- tapOn: Scan motorcycle
+- tapOn:
+    id: log_event
+- tapOn:
+    id: scan_reading
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+# The LCD photo is uploaded just before the car cluster by setup.yaml: the picker's second photo.
+- tapOn:
+    text: "Photo taken on.*"
+    index: 1
+- extendedWaitUntil:
+    visible:
+      id: scan_review
+    timeout: 20000
+- tapOn: "ODO 5034"
+- tapOn:
+    id: scan_use
+- assertVisible:
+    id: log_way_odometer
+    checked: true
+- assertVisible:
+    id: odo_field
+    text: "5,034"
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 5,034 km

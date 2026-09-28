@@ -23,6 +23,17 @@ android {
         versionCode = gitCommitCount
         versionName = "$gitCommitCount-$gitShortSha"
     }
+
+    // The on-device OCR libraries (ML Kit's, and ONNX Runtime's for add-seven-segment-ocr) are 20-40 MB of native code
+    // per ABI. A release is for testers' phones, which are all arm64 at this minSdk; a debug build also runs on the
+    // x86_64 emulator. Native libraries are stored compressed, which roughly halves them in the APK.
+    buildTypes {
+        getByName("debug") { ndk { abiFilters += listOf("arm64-v8a", "x86_64") } }
+        getByName("release") { ndk { abiFilters += listOf("arm64-v8a") } }
+    }
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+    }
 }
 
 // Scoped to a local block, not top-level script `val`s: a `doFirst` closure over a script-level `val` captures a

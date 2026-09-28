@@ -10,3 +10,22 @@ glyphs `note-pencil`, `path` and `question` (its vehicles tile uses the generic 
 The original files are kept in `docs/icons/phosphor/` and the license text in `docs/icons/phosphor/LICENSE`.
 
 Copyright (c) 2023 Phosphor Icons
+
+## ONNX Runtime
+
+The seven-segment reading recognizer (`add-seven-segment-ocr`) runs its models with [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+(`com.microsoft.onnxruntime:onnxruntime-android`), used under the MIT license.
+
+Copyright (c) Microsoft Corporation
+
+## PaddleOCR models
+
+`androidApp/src/main/assets/ocr/PP-OCRv6_det_tiny.onnx` (text detection) and `en_PP-OCRv5_rec_mobile.onnx` (English text
+recognition) are [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)'s PP-OCRv6 and PP-OCRv5 models, in the ONNX
+conversions published by [RapidOCR](https://github.com/RapidAI/RapidOCR) (release v3.9.2), both used under the Apache
+License 2.0. The detection model is unmodified; the recognition model's `HardSwish` nodes are rewritten as an equivalent
+`x * HardSigmoid(x)`, and its character list is extracted to `en_PP-OCRv5_rec_mobile.characters.txt` (see
+`androidApp/src/main/assets/ocr/README.md`).
+
+Copyright (c) 2020 PaddlePaddle Authors; ONNX conversions Copyright (c) RapidAI
+

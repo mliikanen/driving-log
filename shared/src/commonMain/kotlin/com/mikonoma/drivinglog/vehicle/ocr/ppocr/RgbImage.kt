@@ -1,0 +1,64 @@
+package com.mikonoma.drivinglog.vehicle.ocr.ppocr
+
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+
+/** A photo as the PP-OCR pipeline works on it: [width] x [height] pixels, each `0xAARRGGBB`, row by row. */
+class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
+    init {
+        require(width > 0 && height > 0 && pixels.size == width * height) { "An image has a size and its pixels" }
+    }
+
+    /** The red, green or blue channel ([channel] 0, 1, 2) of the pixel at ([x], [y]), 0 to 255, the coordinates clamped into the image. */
+    fun channel(x: Int, y: Int, channel: Int): Int {
+        val p = pixels[y.coerceIn(0, height - 1) * width + x.coerceIn(0, width - 1)]
+        return (p shr (16 - 8 * channel)) and 0xFF
+    }
+
+    /** The value of [channel] at the fractional point ([x], [y]), interpolated between the four nearest pixels, edges replicated. */
+    fun sample(x: Double, y: Double, channel: Int): Double {
+        val x0 = floor(x).toInt()
+        val y0 = floor(y).toInt()
+        val fx = x - x0
+        val fy = y - y0
+        val top = channel(x0, y0, channel) * (1 - fx) + channel(x0 + 1, y0, channel) * fx
+        val bottom = channel(x0, y0 + 1, channel) * (1 - fx) + channel(x0 + 1, y0 + 1, channel) * fx
+        return top * (1 - fy) + bottom * fy
+    }
+
+    /**
+     * This image resized to [newWidth] x [newHeight] by bilinear interpolation with pixel centers aligned, as OpenCV's `resize` does
+     * by default, which is what the models were evaluated with.
+     */
+    fun resized(newWidth: Int, newHeight: Int): RgbImage {
+        require(newWidth > 0 && newHeight > 0) { "A resized image has a size" }
+        if (newWidth == width && newHeight == height) return this
+        val sx = width.toDouble() / newWidth
+        val sy = height.toDouble() / newHeight
+        val out = IntArray(newWidth * newHeight)
+        for (y in 0 until newHeight) {
+            val srcY = max(0.0, (y + 0.5) * sy - 0.5)
+            for (x in 0 until newWidth) {
+                val srcX = max(0.0, (x + 0.5) * sx - 0.5)
+                out[y * newWidth + x] = rgb(sample(srcX, srcY, 0), sample(srcX, srcY, 1), sample(srcX, srcY, 2))
+            }
+        }
+        return RgbImage(newWidth, newHeight, out)
+    }
+
+    /** This image turned a quarter turn counterclockwise (NumPy's `rot90`). */
+    fun turnedCounterclockwise(): RgbImage {
+        val out = IntArray(width * height)
+        // The new image is height wide and width tall; its row r is the old column width - 1 - r.
+        for (r in 0 until width) for (c in 0 until height) out[r * height + c] = pixels[c * width + (width - 1 - r)]
+        return RgbImage(height, width, out)
+    }
+
+    companion object {
+        fun rgb(r: Double, g: Double, b: Double): Int =
+            (0xFF shl 24) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(b)
+
+        private fun clamp(v: Double): Int = min(255, max(0, (v + 0.5).toInt()))
+    }
+}

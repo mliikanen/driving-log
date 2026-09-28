@@ -55,6 +55,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             // add-odometer-ocr-capture: the bundled (not Play Services) model, so OCR works offline from the first scan.
             implementation(libs.mlkit.text.recognition)
+            // add-seven-segment-ocr: PP-OCR models (seven-segment LCD digits) run on ONNX Runtime.
+            implementation(libs.onnxruntime.android)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)
@@ -66,6 +68,8 @@ kotlin {
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.sqldelight.sqlite.driver)
+            // The same ai.onnxruntime API on the JVM, so the PP-OCR recognizer runs over the real photos without an emulator.
+            implementation(libs.onnxruntime.jvm)
         }
     }
 }
@@ -87,11 +91,20 @@ sqldelight {
 // every checked-in maestro/assets/fixtures/*.db and asserts its PRAGMA user_version still matches
 // DrivingLogDatabase.Schema.version, so a migration that outpaces the checked-in fixtures fails fast, here, in a
 // unit test - not later, mysteriously, in a slow Maestro flow on a device.
+// The Android ONNX Runtime's classes and the JVM one's are the same API; the host tests run on the JVM one (its native
+// library loads there, the Android one's cannot), so the Android artifact is kept off their runtime classpath.
+configurations.matching { it.name.startsWith("androidHostTest") && it.name.endsWith("RuntimeClasspath") }.configureEach {
+    exclude(group = "com.microsoft.onnxruntime", module = "onnxruntime-android")
+}
+
 tasks.withType<Test>().configureEach {
     if (name == "testAndroidHostTest") {
         filter { excludeTestsMatching("com.mikonoma.drivinglog.vehicle.fixtures.GenerateFixturesTest") }
     }
     systemProperty("maestroFixturesDir", rootDir.resolve("maestro/assets/fixtures").absolutePath)
+    // add-seven-segment-ocr: the PP-OCR models the app ships, and the photos they are tested over.
+    systemProperty("ocrModelsDir", rootDir.resolve("androidApp/src/main/assets/ocr").absolutePath)
+    systemProperty("ocrPhotosDir", rootDir.resolve("maestro/assets/ocr").absolutePath)
 }
 
 // speed-up-tests-with-db-fixtures: regenerates maestro/assets/fixtures/*.db by running the real repository code
