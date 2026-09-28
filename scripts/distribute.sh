@@ -49,7 +49,9 @@ fi
 
 version_name="$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
 
-./gradlew :androidApp:appDistributionUploadRelease "-PdistributionReleaseNotesFile=$notes_file"
+# The upload task uploads whatever release APK is already on disk and does not build one, so the APK is built in the same run:
+# without assembleRelease, an APK left from an earlier build (another commit, another versionCode) is what testers get.
+./gradlew :androidApp:assembleRelease :androidApp:appDistributionUploadRelease "-PdistributionReleaseNotesFile=$notes_file"
 
 git tag "dist-v$version_name"
 echo "Tagged dist-v$version_name (local only — not pushed)."

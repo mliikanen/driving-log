@@ -63,7 +63,8 @@ It will:
 2. Draft release notes from the OpenSpec changes archived since the last distribution, and open them in `$EDITOR`
    (`nano` if unset) for you to review or edit. If nothing was archived since last time, the draft is empty and you
    type notes by hand instead — the script requires *some* non-empty note either way.
-3. Build a signed release APK (`versionCode`/`versionName` are computed from git — nothing to type) and upload it to
+3. Build a signed release APK (`versionCode`/`versionName` are computed from git — nothing to type; built in the same
+   Gradle run as the upload, because the upload task uploads whatever APK is on disk and builds none) and upload it to
    Firebase App Distribution's configured tester group.
 4. On success, tag the built commit `dist-v<versionName>` locally (not pushed), so the next run can find it.
 
