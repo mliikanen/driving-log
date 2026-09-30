@@ -3,8 +3,11 @@ package com.mikonoma.drivinglog.vehicle.format
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -173,5 +176,54 @@ class EventRowContentTest {
     @Test
     fun anInitialOdometerNeverHasPhotos() {
         assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasPhotos)
+    }
+
+    // ---- Refueling (add-refueling-logging)
+
+    private fun refueling(
+        milliliters: Long,
+        unit: FuelUnit = FuelUnit.LITERS,
+        note: String? = null,
+        photoIds: List<String> = emptyList(),
+    ) = VehicleEvent.Refueling("r", at, Volume(milliliters), unit, FuelType.DIESEL, filledUp = true, note = note, photoIds = photoIds)
+
+    @Test
+    fun aRefuelingIsLabelledRefueling() {
+        assertEquals("Refueling", row(refueling(42_300)).label)
+    }
+
+    @Test
+    fun aRefuelingShowsItsAmountInTheUnitItWasEnteredInWithNoPlusSign() {
+        assertEquals("42.30 L", row(refueling(42_300, FuelUnit.LITERS)).trailing)
+        assertEquals(null, row(refueling(42_300)).loggedOdometer)
+    }
+
+    @Test
+    fun aRefuelingInGallonsShowsGallonsNotTheVehiclesOdometerUnit() {
+        // The fuel unit is per-refueling, never converted to the vehicle's own odometer unit.
+        val row = row(refueling(FuelUnit.GALLONS.stepsToMilliliters(1200), FuelUnit.GALLONS), unit = OdometerUnit.KILOMETERS)
+        assertEquals("12.00 gal", row.trailing)
+    }
+
+    @Test
+    fun aRefuelingIsNeverDrawnAsADistance() {
+        assertEquals(false, row(refueling(42_300)).isDistance)
+    }
+
+    @Test
+    fun aRefuelingWithANoteHasNoteTrue() {
+        assertEquals(true, row(refueling(42_300, note = "cheap gas today")).hasNote)
+    }
+
+    @Test
+    fun aRefuelingWithPhotosHasPhotosTrue() {
+        assertEquals(true, row(refueling(42_300, photoIds = listOf("p1"))).hasPhotos)
+    }
+
+    @Test
+    fun aRefuelingWithNeitherHasNeitherFlag() {
+        val row = row(refueling(42_300))
+        assertEquals(false, row.hasNote)
+        assertEquals(false, row.hasPhotos)
     }
 }

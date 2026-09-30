@@ -11,8 +11,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 
-/** Groups the digits of [value] in threes with [separator]. */
-private fun group(value: Long, separator: String): String {
+/** Groups the digits of [value] in threes with [separator]. Internal, not private: `FuelFormat.kt` reuses it. */
+internal fun group(value: Long, separator: String): String {
     val digits = value.toString()
     val first = digits.length % 3
     val parts = buildList {

@@ -1,22 +1,31 @@
 CREATE TABLE vehicle_event (
     id              TEXT    NOT NULL PRIMARY KEY,
     vehicle_id      TEXT    NOT NULL REFERENCES vehicle(id),
-    -- INITIAL_ODOMETER sets the odometer; DISTANCE adds a distance to it.
+    -- INITIAL_ODOMETER sets the odometer; DISTANCE adds a distance to it; REFUELING optionally does either.
     type            TEXT    NOT NULL,
     -- The instant, in epoch milliseconds. All ordering and derivation use it.
     occurred_at     INTEGER NOT NULL,
-    -- The reading this event sets. Null unless the event sets the odometer (INITIAL_ODOMETER).
+    -- The reading this event sets. Null unless the event sets the odometer (INITIAL_ODOMETER, ODOMETER_ANCHOR, or a
+    -- REFUELING logged by "New odometer"; add-refueling-logging).
     odometer_meters INTEGER,
     created_at      INTEGER NOT NULL,
-    -- DISTANCE: the distance, in whole meters, added to the odometer.
+    -- DISTANCE, or a REFUELING logged by "Trip distance" (add-refueling-logging): the distance, in whole meters, added to the odometer.
     distance_meters INTEGER,
-    -- DISTANCE logged by odometer: the count the user typed. Provenance for the log row only, never used to derive an odometer.
+    -- Logged by odometer (DISTANCE or REFUELING): the count the user typed. Provenance for the log row only, never used to derive an odometer.
     logged_odometer_meters INTEGER,
     -- The IANA time zone the moment was entered in and its UTC offset then. Null for events from before zones were stored.
     occurred_zone   TEXT,
     occurred_offset_seconds INTEGER,
-    -- A note the user typed while logging the event (DISTANCE or ODOMETER_ANCHOR only; add-event-notes). Null when none was added.
-    note            TEXT
+    -- A note the user typed while logging the event (DISTANCE, ODOMETER_ANCHOR or REFUELING only; add-event-notes). Null when none was added.
+    note            TEXT,
+    -- REFUELING only (add-refueling-logging): the fuel amount, in whole milliliters.
+    fuel_amount_milliliters INTEGER,
+    -- REFUELING only: the unit (FuelUnit code) the amount was entered in; shown in that unit always, never converted.
+    fuel_unit       TEXT,
+    -- REFUELING only: the fuel type's locale-agnostic code (FuelType).
+    fuel_type       TEXT,
+    -- REFUELING only: whether the tank was filled up (1) or it was a partial fill (0).
+    filled_up       INTEGER
 );
 
 CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
@@ -31,16 +40,26 @@ insertDistanceEntry:
 INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, created_at, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
 VALUES (?, ?, 'DISTANCE', ?, ?, ?, ?, ?, ?, ?);
 
+-- A refueling (add-refueling-logging): odometer_meters/distance_meters/logged_odometer_meters are the same
+-- optional-mileage columns a "Distance" entry or an odometer anchor already use — null in every column means no
+-- mileage was given.
+insertRefueling:
+INSERT INTO vehicle_event (
+    id, vehicle_id, type, occurred_at, created_at, odometer_meters, distance_meters, logged_odometer_meters,
+    occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
+)
+VALUES (?, ?, 'REFUELING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
 -- Newest first by instant; events with the same instant: the one added last comes first.
 selectRecentEvents:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
 FROM vehicle_event
 WHERE vehicle_id = ?
 ORDER BY occurred_at DESC, rowid DESC
 LIMIT ?;
 
 selectLog:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
 FROM vehicle_event
 WHERE vehicle_id = ?
 ORDER BY occurred_at DESC, rowid DESC;
@@ -48,7 +67,7 @@ ORDER BY occurred_at DESC, rowid DESC;
 -- One event by id, for the details screen (add-event-details-view). Re-run whenever it might have changed, since
 -- nothing here caches it: the details screen is meant to stay live.
 selectEventById:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note
+SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
 FROM vehicle_event
 WHERE vehicle_id = ? AND id = ?;
 

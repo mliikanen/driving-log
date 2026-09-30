@@ -12,9 +12,12 @@ import com.mikonoma.drivinglog.db.SelectVehicles
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
 import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
 import com.mikonoma.drivinglog.vehicle.ocr.ScanResult
@@ -26,6 +29,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
+import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
@@ -78,6 +82,12 @@ class SqlDelightVehicleRepository(
 
     override fun observeLastLoggedVehicleId(): Flow<String?> =
         appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
+
+    override fun observeLastFuelUnit(): Flow<FuelUnit?> =
+        appState.selectAppState(LAST_FUEL_UNIT_KEY).asFlow().mapToOneOrNull(dispatcher).map { it?.let(FuelUnit::fromCode) }
+
+    override fun observeLastFuelType(): Flow<FuelType?> =
+        appState.selectAppState(LAST_FUEL_TYPE_KEY).asFlow().mapToOneOrNull(dispatcher).map { it?.let(FuelType::fromCode) }
 
     override suspend fun addVehicle(
         name: String,
@@ -198,6 +208,57 @@ class SqlDelightVehicleRepository(
         eventId
     }
 
+    override suspend fun addRefueling(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        amount: Volume,
+        unit: FuelUnit,
+        fuelType: FuelType,
+        filledUp: Boolean,
+        mileage: RefuelingMileage?,
+        tenthsIncluded: Boolean,
+        note: String?,
+        photos: List<PendingPicture>,
+    ): String {
+        require(amount.milliliters > 0) { "A refueling's fuel amount must be above zero" }
+        return withContext(dispatcher) {
+            val eventId = newId()
+            val zone = occurredAt.zone
+            val photoIds = photos.map { promotedEventPhoto(it) }
+            try {
+                // One transaction: the refueling, its optional mileage's remembered tenths choice, the remembered fuel
+                // unit/type and the attached photos are all saved, or none.
+                database.transaction {
+                    events.insertRefueling(
+                        id = eventId,
+                        vehicle_id = vehicleId,
+                        occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
+                        created_at = clock.now().toEpochMilliseconds(),
+                        odometer_meters = (mileage as? RefuelingMileage.Anchor)?.reading?.meters,
+                        distance_meters = (mileage as? RefuelingMileage.Added)?.distance?.meters,
+                        logged_odometer_meters = (mileage as? RefuelingMileage.Added)?.loggedOdometer?.meters,
+                        occurred_zone = zone?.id,
+                        occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+                        note = note,
+                        fuel_amount_milliliters = amount.milliliters,
+                        fuel_unit = unit.code,
+                        fuel_type = fuelType.code,
+                        filled_up = if (filledUp) 1L else 0L,
+                    )
+                    insertEventPhotos(eventId, photoIds)
+                    if (mileage != null) vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
+                    appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
+                    appState.upsertAppState(LAST_FUEL_UNIT_KEY, unit.code)
+                    appState.upsertAppState(LAST_FUEL_TYPE_KEY, fuelType.code)
+                }
+            } catch (throwable: Throwable) {
+                for (photoId in photoIds) eventPictures.delete(photoId)
+                throw throwable
+            }
+            eventId
+        }
+    }
+
     override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
         withContext(dispatcher) {
             val now = clock.now().toEpochMilliseconds()
@@ -295,9 +356,15 @@ class SqlDelightVehicleRepository(
         const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
         const val DISTANCE = "DISTANCE"
         const val ODOMETER_ANCHOR = "ODOMETER_ANCHOR"
+        const val REFUELING = "REFUELING"
 
         /** The key `app_state` remembers the vehicle last logged for under. */
         const val LAST_LOGGED_VEHICLE_ID_KEY = "last_logged_vehicle_id"
+
+        /** The keys `app_state` remembers a refueling's fuel unit/type under (`add-refueling-logging`): global,
+         * independent of any vehicle, the same mechanism as [LAST_LOGGED_VEHICLE_ID_KEY]. */
+        const val LAST_FUEL_UNIT_KEY = "last_fuel_unit"
+        const val LAST_FUEL_TYPE_KEY = "last_fuel_type"
     }
 
     private fun SelectVehicles.toDomain() = Vehicle(
@@ -327,14 +394,20 @@ class SqlDelightVehicleRepository(
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )
 
-    private suspend fun SelectRecentEvents.toDomain(): VehicleEvent? =
-        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
+    private suspend fun SelectRecentEvents.toDomain(): VehicleEvent? = eventOf(
+        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+        occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
+    )
 
-    private suspend fun SelectLog.toDomain(): VehicleEvent? =
-        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
+    private suspend fun SelectLog.toDomain(): VehicleEvent? = eventOf(
+        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+        occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
+    )
 
-    private suspend fun SelectEventById.toDomain(): VehicleEvent? =
-        eventOf(id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
+    private suspend fun SelectEventById.toDomain(): VehicleEvent? = eventOf(
+        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+        occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
+    )
 
     /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. */
     private suspend fun eventOf(
@@ -347,6 +420,10 @@ class SqlDelightVehicleRepository(
         zoneId: String?,
         offsetSeconds: Long?,
         note: String?,
+        fuelAmountMilliliters: Long? = null,
+        fuelUnitCode: String? = null,
+        fuelTypeCode: String? = null,
+        filledUp: Long? = null,
     ): VehicleEvent? {
         // Events from before time zones were stored have neither column and are shown in the device's zone.
         val zone = if (zoneId != null && offsetSeconds != null) EventZone(zoneId, offsetSeconds.toInt()) else null
@@ -371,6 +448,24 @@ class SqlDelightVehicleRepository(
                 occurredAt = moment,
                 distance = Distance(requireNotNull(distanceMeters) { "Distance event without a distance" }),
                 loggedOdometer = loggedOdometerMeters?.let { Distance(it) },
+                note = note,
+                photoIds = photoIdsOf(id),
+            )
+            // A refueling's mileage (add-refueling-logging) reuses the same odometer/distance columns an odometer
+            // anchor/distance entry already do: odometer_meters set means it was logged by "New odometer",
+            // distance_meters set means "Trip distance", and neither set means no mileage was given.
+            REFUELING -> VehicleEvent.Refueling(
+                id = id,
+                occurredAt = moment,
+                amount = Volume(requireNotNull(fuelAmountMilliliters) { "Refueling event without a fuel amount" }),
+                unit = FuelUnit.fromCode(requireNotNull(fuelUnitCode) { "Refueling event without a fuel unit" }),
+                fuelType = FuelType.fromCode(fuelTypeCode) ?: FuelType.OTHER,
+                filledUp = requireNotNull(filledUp) { "Refueling event without a filled-up flag" } != 0L,
+                mileage = when {
+                    odometerMeters != null -> RefuelingMileage.Anchor(Distance(odometerMeters))
+                    distanceMeters != null -> RefuelingMileage.Added(Distance(distanceMeters), loggedOdometerMeters?.let { Distance(it) })
+                    else -> null
+                },
                 note = note,
                 photoIds = photoIdsOf(id),
             )

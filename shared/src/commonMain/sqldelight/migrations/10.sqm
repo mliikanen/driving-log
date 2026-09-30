@@ -1,0 +1,8 @@
+-- Version 10 to 11: refueling events (add-refueling-logging). All four columns are nullable and null for every
+-- existing row; a REFUELING event is the only one that ever reads them. fuel_unit is the unit the amount was
+-- entered in (liters or gallons): shown in that unit always, never converted, since it is not a vehicle's fixed
+-- odometer unit but a per-fill-up recording choice that can legitimately vary from one refueling to the next.
+ALTER TABLE vehicle_event ADD COLUMN fuel_amount_milliliters INTEGER;
+ALTER TABLE vehicle_event ADD COLUMN fuel_unit TEXT;
+ALTER TABLE vehicle_event ADD COLUMN fuel_type TEXT;
+ALTER TABLE vehicle_event ADD COLUMN filled_up INTEGER;

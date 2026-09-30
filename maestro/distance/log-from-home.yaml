@@ -37,7 +37,6 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: log_kind_selector
     text: Distance
-    enabled: false
 - assertVisible:
     id: log_vehicle_selector
 - tapOn:
@@ -71,7 +70,6 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: log_kind_selector
     text: Distance
-    enabled: false
 - assertNotVisible:
     id: log_vehicle_selector
 - tapOn:

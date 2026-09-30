@@ -16,4 +16,5 @@ val VehicleEvent.label: String
         is VehicleEvent.InitialOdometer -> "Initial odometer"
         is VehicleEvent.OdometerAnchor -> "Odometer reading"
         is VehicleEvent.DistanceEntry -> "Distance"
+        is VehicleEvent.Refueling -> "Refueling"
     }

@@ -22,12 +22,21 @@ interface VehicleRepository {
     fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?>
 
     /**
-     * The id of the vehicle last logged for: whichever of [addDistanceEntry] or [addOdometerAnchor] was called last, for any vehicle, on any route
-     * (the details screen or the Home screen). Null when nothing has been logged since this memory existed (a new install, or a database from before
-     * it). This is a memory of its own, stored apart from the events: it is not derived from their dates, so a backdated entry still counts as the
-     * last one logged.
+     * The id of the vehicle last logged for: whichever of [addDistanceEntry], [addOdometerAnchor] or [addRefueling]
+     * was called last, for any vehicle, on any route (the details screen or the Home screen). Null when nothing has
+     * been logged since this memory existed (a new install, or a database from before it). This is a memory of its
+     * own, stored apart from the events: it is not derived from their dates, so a backdated entry still counts as
+     * the last one logged.
      */
     fun observeLastLoggedVehicleId(): Flow<String?>
+
+    /** The fuel unit last chosen while logging a refueling, for any vehicle (`add-refueling-logging`): a single,
+     * global preference, never derived from the log. Null when none has been chosen yet. */
+    fun observeLastFuelUnit(): Flow<FuelUnit?>
+
+    /** The fuel type last chosen while logging a refueling, for any vehicle (`add-refueling-logging`): the same kind
+     * of global preference as [observeLastFuelUnit]. Null when none has been chosen yet. */
+    fun observeLastFuelType(): Flow<FuelType?>
 
     /**
      * Saves the vehicle, its initial odometer event and its [picture] (when it has one) together, or none of them: a failed save
@@ -84,6 +93,28 @@ interface VehicleRepository {
         note: String? = null,
         photos: List<PendingPicture> = emptyList(),
         capture: PendingCapture? = null,
+    ): String
+
+    /**
+     * Adds a refueling to the log at [occurredAt] (`add-refueling-logging`). [amount] and [unit] are stored
+     * together, [unit] never converted. [mileage] is the optional "Trip distance"/"New odometer" reading — null
+     * when the refueling carries none, in which case the vehicle's odometer is untouched by it. When given, it is
+     * validated and saved exactly like [addDistanceEntry]/[addOdometerAnchor]'s own reading, including
+     * [tenthsIncluded] being remembered for the vehicle in the same transaction (ignored when [mileage] is null,
+     * since there is then no unit choice to remember). [note] and [photos] are attached the same way as for
+     * [addDistanceEntry]. Returns the new event id.
+     */
+    suspend fun addRefueling(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        amount: Volume,
+        unit: FuelUnit,
+        fuelType: FuelType,
+        filledUp: Boolean,
+        mileage: RefuelingMileage? = null,
+        tenthsIncluded: Boolean = false,
+        note: String? = null,
+        photos: List<PendingPicture> = emptyList(),
     ): String
 
     /**

@@ -6,7 +6,10 @@ import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.data.FakeClock
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
@@ -689,7 +692,7 @@ class LogEventProcessorTest {
         assertEquals(2, restored.state.log.size)
     }
 
-    // ---- The kind of event (a disabled selector: only Distance exists today)
+    // ---- The kind of event (Distance and Refueling; add-refueling-logging)
 
     @Test
     fun theFormStartsWithTheDistanceKind() {
@@ -699,10 +702,7 @@ class LogEventProcessorTest {
     }
 
     @Test
-    fun choosingTheOnlyKindLeavesTheFormAsItIs() {
-        // With one LogKind entry this cannot observably tell a real reduce from a no-op (both leave the state identical); it
-        // guards that dispatching the intent does not crash or disturb the rest of the form. The reduce itself is exercised
-        // for real once a second kind exists.
+    fun choosingTheSameKindLeavesTheFormAsItIs() {
         seedVehicle()
         val processor = processor()
         processor.type(3, 0)
@@ -711,6 +711,43 @@ class LogEventProcessorTest {
 
         assertEquals(LogKind.DISTANCE, processor.state.kind)
         assertEquals("30", processor.state.tripDistance.digits)
+    }
+
+    @Test
+    fun choosingRefuelingSwitchesTheFormToItsFields() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+
+        assertEquals(LogKind.REFUELING, processor.state.kind)
+        assertTrue(processor.state.fuelAmount.isEmpty)
+    }
+
+    @Test
+    fun choosingAKindClearsAnExistingError() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.Save)
+        assertNotNull(processor.error())
+
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+
+        assertNull(processor.error())
+    }
+
+    @Test
+    fun switchingKindsKeepsWhatWasTypedInEach() {
+        seedVehicle()
+        val processor = processor()
+        processor.type(3, 0)
+
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.dispatch(LogEventIntent.FuelAmountEdited("4230"))
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.DISTANCE))
+
+        assertEquals("30", processor.state.tripDistance.digits)
+        assertEquals(LogKind.DISTANCE, processor.state.kind)
     }
 
     @Test
@@ -1750,5 +1787,260 @@ class LogEventProcessorTest {
         val restored = json.decodeFromString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), json.encodeToString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), draft))
 
         assertTrue(restored.scannerOpen)
+    }
+
+    // ---- Refueling (add-refueling-logging)
+
+    private fun LogEventProcessor.typeFuelAmount(vararg digits: Int) {
+        for (d in digits) dispatch(LogEventIntent.FuelAmountEdited(state.fuelAmount.digits + d))
+    }
+
+    @Test
+    fun theRefuelingFormStartsWithFilledUpCheckedAndAnEmptyFuelAmount() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+
+        assertTrue(processor.state.filledUp)
+        assertTrue(processor.state.fuelAmount.isEmpty)
+        assertFalse(processor.state.hasRequiredField)
+    }
+
+    @Test
+    fun saveStaysDisabledWithAnEmptyFuelAmountRegardlessOfTheMileageSection() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+
+        assertFalse(processor.state.hasRequiredField)
+
+        processor.type(3, 0)
+        assertFalse(processor.state.hasRequiredField)
+    }
+
+    @Test
+    fun saveEnablesOnceAFuelAmountIsTypedWithNoMileage() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+
+        processor.typeFuelAmount(4, 2, 3)
+
+        assertTrue(processor.state.hasRequiredField)
+    }
+
+    @Test
+    fun savingWithAZeroFuelAmountShowsAnErrorAndSavesNothing() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(0)
+
+        processor.dispatch(LogEventIntent.Save)
+
+        assertEquals(LogDistanceError.FuelAmountNotPositive, processor.error())
+        assertTrue(repository.refuelingCalls.isEmpty())
+    }
+
+    @Test
+    fun aFutureMomentIsRefusedForARefuelingToo() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 21)))
+
+        processor.dispatch(LogEventIntent.Save)
+
+        assertEquals(LogDistanceError.TimeInFuture, processor.error())
+        assertTrue(repository.refuelingCalls.isEmpty())
+    }
+
+    @Test
+    fun savingWithNoMileageReachesTheRepositoryWithNoMileage() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val call = repository.refuelingCalls.single()
+        assertNull(call.mileage)
+        assertEquals(4_230L, call.amount.milliliters)
+    }
+
+    @Test
+    fun savingWithTripDistanceMileageIncludesIt() = runTest {
+        seedVehicle() // known/current odometer 45,230 km (45,200 initial + a seeded 30 km entry)
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.type(3, 0)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(RefuelingMileage.Added(Distance(30_000)), repository.refuelingCalls.single().mileage)
+    }
+
+    @Test
+    fun savingWithNewOdometerMileageIncludesTheLoggedCount() = runTest {
+        seedVehicle() // known/current odometer 45,230 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 5, 2, 5, 0)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val mileage = repository.refuelingCalls.single().mileage as? RefuelingMileage.Added
+        assertNotNull(mileage)
+        assertEquals(Distance(20_000), mileage.distance)
+        assertEquals(Distance(45_250_000), mileage.loggedOdometer)
+    }
+
+    @Test
+    fun aLowerNewOdometerMileageNeedsConfirmationAndSavesAsAnAnchor() = runTest {
+        seedVehicle() // known/current odometer 45,230 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 4, 0, 0, 0)
+        processor.dispatch(LogEventIntent.Save)
+
+        assertTrue(processor.state.lowerOdometerConfirmationPending)
+        assertTrue(repository.refuelingCalls.isEmpty())
+
+        processor.test {
+            dispatch(LogEventIntent.LowerOdometerConfirmed)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(RefuelingMileage.Anchor(Distance(44_000_000)), repository.refuelingCalls.single().mileage)
+    }
+
+    @Test
+    fun savingHandsTheFilledUpStateAndFuelTypeToTheRepository() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.FuelTypeSelected(FuelType.DIESEL))
+        processor.dispatch(LogEventIntent.FilledUpChanged(false))
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val call = repository.refuelingCalls.single()
+        assertEquals(FuelType.DIESEL, call.fuelType)
+        assertFalse(call.filledUp)
+    }
+
+    @Test
+    fun savingARefuelingWithANoteAndAPhotoReachesTheRepository() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.NoteEditorOpened)
+        processor.dispatch(LogEventIntent.NoteDraftEdited("cheap gas today"))
+        processor.dispatch(LogEventIntent.NoteAttached)
+        processor.pick()
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val call = repository.refuelingCalls.single()
+        assertEquals("cheap gas today", call.note)
+        assertEquals(1, call.photos.size)
+    }
+
+    @Test
+    fun theFuelUnitAndTypeDefaultToTheRememberedPreference() {
+        repository.seedLastFuelUnit(FuelUnit.GALLONS)
+        repository.seedLastFuelType(FuelType.DIESEL)
+        seedVehicle()
+
+        val state = processor().state
+
+        assertEquals(FuelUnit.GALLONS, state.fuelUnit)
+        assertEquals(FuelType.DIESEL, state.fuelType)
+    }
+
+    @Test
+    fun noRememberedPreferenceKeepsTheBuiltInDefaults() {
+        seedVehicle()
+
+        val state = processor().state
+
+        assertEquals(FuelUnit.LITERS, state.fuelUnit)
+        assertEquals(FuelType.REGULAR_PETROL, state.fuelType)
+    }
+
+    @Test
+    fun aChosenFuelUnitIsNeverOverriddenOnceLoaded() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.FuelUnitSelected(FuelUnit.GALLONS))
+        // The global preference changing again afterward (as if another session saved a refueling meanwhile)
+        // must not clobber this session's own choice.
+        repository.seedLastFuelUnit(FuelUnit.LITERS)
+
+        assertEquals(FuelUnit.GALLONS, processor.state.fuelUnit)
+    }
+
+    @Test
+    fun changingTheFuelUnitKeepsTheDigitsTyped() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+
+        processor.dispatch(LogEventIntent.FuelUnitSelected(FuelUnit.GALLONS))
+
+        assertEquals("423", processor.state.fuelAmount.digits)
+        assertEquals(FuelUnit.GALLONS, processor.state.fuelUnit)
+    }
+
+    @Test
+    fun theRefuelingFieldsSurviveRestoreState() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        seedVehicle()
+        val saved = processor().let { first ->
+            first.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+            first.dispatch(LogEventIntent.FuelAmountEdited("423"))
+            first.dispatch(LogEventIntent.FuelUnitSelected(FuelUnit.GALLONS))
+            first.dispatch(LogEventIntent.FuelTypeSelected(FuelType.DIESEL))
+            first.dispatch(LogEventIntent.FilledUpChanged(false))
+            advanceUntilIdle()
+            checkNotNull(first.stateToSave())
+        }
+
+        val restored = processor()
+        restored.restoreState(saved)
+        advanceUntilIdle()
+
+        assertEquals(LogKind.REFUELING, restored.state.kind)
+        assertEquals("423", restored.state.fuelAmount.digits)
+        assertEquals(FuelUnit.GALLONS, restored.state.fuelUnit)
+        assertEquals(FuelType.DIESEL, restored.state.fuelType)
+        assertFalse(restored.state.filledUp)
     }
 }

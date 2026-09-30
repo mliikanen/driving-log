@@ -72,4 +72,41 @@ sealed interface VehicleEvent {
     ) : VehicleEvent {
         override val odometer: Distance? get() = null
     }
+
+    /**
+     * A refueling (`add-refueling-logging`): a fuel amount, a fuel type, whether the tank was filled up, and,
+     * optionally, a mileage reading — the same "Trip distance"/"New odometer" choice [DistanceEntry]/[OdometerAnchor]
+     * make, but never required. [mileage] is null when the refueling was saved with no mileage, in which case it
+     * neither sets nor adds to the odometer. Every field but [mileage] is fixed once saved: the details screen's
+     * "Edit" action changes only [note] and [photoIds], the same as it does for [DistanceEntry]/[OdometerAnchor].
+     */
+    data class Refueling(
+        override val id: String,
+        override val occurredAt: ZonedMoment,
+        val amount: Volume,
+        /** The unit [amount] was entered in: shown in that unit always, never converted — unlike a vehicle's own
+         * odometer unit, this is a per-fill-up recording choice, not a fixed vehicle characteristic. */
+        val unit: FuelUnit,
+        val fuelType: FuelType,
+        val filledUp: Boolean,
+        val mileage: RefuelingMileage? = null,
+        override val note: String? = null,
+        override val photoIds: List<String> = emptyList(),
+    ) : VehicleEvent {
+        override val odometer: Distance? get() = (mileage as? RefuelingMileage.Anchor)?.reading
+    }
+}
+
+/**
+ * A refueling's optional mileage (`add-refueling-logging`): structurally the same two shapes
+ * [VehicleEvent.DistanceEntry] and [VehicleEvent.OdometerAnchor] already are, since a refueling's mileage, when
+ * given, is validated and saved exactly like theirs (`distance-logging`'s existing requirements, reused unchanged).
+ */
+sealed interface RefuelingMileage {
+    /** Added to the odometer, like a [VehicleEvent.DistanceEntry]. [loggedOdometer] is the count typed, if logged by
+     * odometer — for the row only, never used to derive an odometer. */
+    data class Added(val distance: Distance, val loggedOdometer: Distance? = null) : RefuelingMileage
+
+    /** Sets the odometer, like an [VehicleEvent.OdometerAnchor]. */
+    data class Anchor(val reading: Distance) : RefuelingMileage
 }

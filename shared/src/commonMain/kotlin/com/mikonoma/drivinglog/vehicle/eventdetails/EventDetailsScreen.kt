@@ -50,8 +50,10 @@ import com.mikonoma.drivinglog.vehicle.distance.NoteField
 import com.mikonoma.drivinglog.vehicle.distance.PhotoStripField
 import com.mikonoma.drivinglog.vehicle.distance.RemovePhotoDialog
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
+import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 
 @Composable
 fun EventDetailsScreen(
@@ -87,9 +89,9 @@ fun EventDetailsContent(
     val timeFormat = deviceLocale.timeFormat()
     // Reuses the row's own formatting (EventRowContent) so the details screen never drifts from what the row shows.
     val content = state.event?.let { eventRowContent(it, state.unit, symbols, deviceZone, timeFormat) }
-    // Only Distance and Odometer reading events can carry a note or photos (add-event-notes, add-event-pictures);
-    // Initial odometer never can.
-    val canEdit = state.event is VehicleEvent.DistanceEntry || state.event is VehicleEvent.OdometerAnchor
+    // Only Distance, Odometer reading and Refueling events can carry a note or photos (add-event-notes,
+    // add-event-pictures, add-refueling-logging); Initial odometer never can.
+    val canEdit = state.event is VehicleEvent.DistanceEntry || state.event is VehicleEvent.OdometerAnchor || state.event is VehicleEvent.Refueling
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -140,6 +142,29 @@ fun EventDetailsContent(
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.testTag("event_details_logged_odometer"),
                                 )
+                            }
+                            // A refueling's own fields (add-refueling-logging): fuel type, fill-up state and, when
+                            // it has one, its mileage — none of this is part of EventRowContent's generic figure.
+                            (state.event as? VehicleEvent.Refueling)?.let { refueling ->
+                                Text("Fuel type", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
+                                Text(
+                                    refueling.fuelType.label,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.testTag("event_details_fuel_type"),
+                                )
+                                Text(
+                                    if (refueling.filledUp) "Filled up" else "Partial fill",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.testTag("event_details_filled_up"),
+                                )
+                                refueling.mileage?.let { mileage ->
+                                    val mileageText = when (mileage) {
+                                        is RefuelingMileage.Added -> "+" + formatOdometer(mileage.distance, state.unit, symbols)
+                                        is RefuelingMileage.Anchor -> formatOdometer(mileage.reading, state.unit, symbols)
+                                    }
+                                    Text("Mileage", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
+                                    Text(mileageText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("event_details_mileage"))
+                                }
                             }
                             // Only Distance and Odometer reading events can carry a note (add-event-notes); an
                             // Initial odometer event's note is always null, so this section simply does not render

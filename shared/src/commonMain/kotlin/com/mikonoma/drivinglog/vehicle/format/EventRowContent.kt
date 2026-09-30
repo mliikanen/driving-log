@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.format
 
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.locale.TimeFormat
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.ui.label
@@ -52,6 +53,16 @@ fun eventRowContent(
             trailing = "+" + formatOdometer(event.distance, unit, symbols),
             loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
             isDistance = true,
+            hasNote = event.note != null,
+            hasPhotos = event.photoIds.isNotEmpty(),
+        )
+        is VehicleEvent.Refueling -> EventRowContent(
+            label = event.label,
+            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+            // Shown in the unit it was entered in, never a plus sign: a refueling is not itself a distance
+            // (`vehicle-log`'s "Recent events on the details screen").
+            trailing = formatFuelAmount(event.amount, event.unit, symbols),
+            loggedOdometer = null,
             hasNote = event.note != null,
             hasPhotos = event.photoIds.isNotEmpty(),
         )

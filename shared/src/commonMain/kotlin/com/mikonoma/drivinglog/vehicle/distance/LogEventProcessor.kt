@@ -2,11 +2,13 @@ package com.mikonoma.drivinglog.vehicle.distance
 
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.input.FuelAmountEntry
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
 import com.mikonoma.drivinglog.vehicle.ocr.Detection
@@ -64,6 +66,17 @@ class LogEventProcessor @AssistedInject constructor(
     private val scanEditor = ScanEditor(codec, recognizer, captures)
 
     init {
+        // The fuel unit/type default to the last one chosen anywhere (add-refueling-logging), loaded once: the
+        // reduce below checks fuelPreferencesLoaded itself, so a later emission (or a restored mid-edit choice)
+        // is never applied a second time.
+        val fuelPreferences = combine(repository.observeLastFuelUnit(), repository.observeLastFuelType()) { unit, type -> unit to type }
+        observe("fuel-preferences", fuelPreferences) { (unit, type) ->
+            reduce {
+                if (fuelPreferencesLoaded) this
+                else copy(fuelUnit = unit ?: fuelUnit, fuelType = type ?: fuelType, fuelPreferencesLoaded = true)
+            }
+        }
+
         if (chooseVehicle) {
             // Every vehicle, for the selector, and the one last logged for, to preselect it. The pick below only replaces the chosen id while
             // nothing has been chosen yet, or the chosen vehicle is gone, so it never overrides a restored choice or one the user just made.
@@ -128,13 +141,18 @@ class LogEventProcessor @AssistedInject constructor(
         is LogEventIntent.TenthsChanged -> reduce { withUnit(unitOf(unit.isMiles, intent.included)) }
         is LogEventIntent.OdometerEdited -> reduce { withActiveEntry(activeEntry.applyEdit(intent.text)) }
         LogEventIntent.OdometerCleared -> reduce { withActiveEntry(activeEntry.clear(), keepError = true) }
+        is LogEventIntent.FuelAmountEdited -> reduce { withFuelAmount(fuelAmount.applyEdit(intent.text)) }
+        LogEventIntent.FuelAmountCleared -> reduce { withFuelAmount(fuelAmount.clear(), keepError = true) }
+        is LogEventIntent.FuelUnitSelected -> reduce { copy(fuelUnit = intent.unit) }
+        is LogEventIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.type) }
+        is LogEventIntent.FilledUpChanged -> reduce { copy(filledUp = intent.checked) }
         is LogEventIntent.DateChanged -> reduce { copy(localDateTime = withDate(localDateTime, intent.date), error = null) }
         is LogEventIntent.TimeChanged -> reduce { copy(localDateTime = withTime(localDateTime, intent.hour, intent.minute), error = null) }
         is LogEventIntent.ZoneChanged -> reduce { copy(zoneId = intent.zoneId, error = null) }
         is LogEventIntent.VehicleSelected -> reduce {
             if (chooseVehicle && vehicles.any { it.id == intent.vehicleId }) copy(selectedVehicleId = intent.vehicleId, error = null) else this
         }
-        is LogEventIntent.KindSelected -> reduce { copy(kind = intent.kind) }
+        is LogEventIntent.KindSelected -> reduce { copy(kind = intent.kind, error = null) }
         LogEventIntent.NoteEditorOpened -> reduce { copy(noteDraft = pendingNote ?: "") }
         is LogEventIntent.NoteDraftEdited -> reduce { copy(noteDraft = intent.text) }
         LogEventIntent.NoteAttached -> reduce { copy(pendingNote = noteDraft?.trim()?.ifBlank { null }, noteDraft = null) }
@@ -219,6 +237,13 @@ class LogEventProcessor @AssistedInject constructor(
         val form = state
         val vehicleId = form.selectedVehicleId
         if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
+        return when (form.kind) {
+            LogKind.DISTANCE -> saveDistance(form, vehicleId)
+            LogKind.REFUELING -> saveRefueling(form, vehicleId)
+        }
+    }
+
+    private fun saveDistance(form: LogEventState, vehicleId: String): Action<LogEventState, LogEventEffect>? {
         val moment = form.moment
         return when (
             val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer)
@@ -240,12 +265,59 @@ class LogEventProcessor @AssistedInject constructor(
         }
     }
 
+    /**
+     * A refueling's mileage is optional (`refueling-logging`'s "Mileage is optional for a refueling"): Save is
+     * gated only by the fuel amount, so an empty mileage section here means "save with no mileage," not an error —
+     * unlike [saveDistance], where an empty active field is itself the [LogDistanceError.FieldEmpty] case.
+     */
+    private fun saveRefueling(form: LogEventState, vehicleId: String): Action<LogEventState, LogEventEffect>? {
+        val moment = form.moment
+        val amount = form.fuelAmount.toVolume(form.fuelUnit) ?: return reduce { copy(error = LogDistanceError.FuelAmountEmpty) }
+        if (moment.instant > clock.now()) return reduce { copy(error = LogDistanceError.TimeInFuture) }
+        if (amount.milliliters <= 0) return reduce { copy(error = LogDistanceError.FuelAmountNotPositive) }
+        if (form.activeEntry.isEmpty) {
+            return saving {
+                repository.addRefueling(
+                    vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
+                    note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
+            }
+        }
+        return when (
+            val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer)
+        ) {
+            is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
+            LogDistanceResult.NeedsLowerOdometerConfirmation -> reduce { copy(lowerOdometerConfirmationPending = true) }
+            is LogDistanceResult.Valid -> saving {
+                repository.addRefueling(
+                    vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
+                    mileage = RefuelingMileage.Added(result.distance, result.loggedOdometer),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
+            }
+            is LogDistanceResult.Anchor -> saving {
+                repository.addRefueling(
+                    vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
+                    mileage = RefuelingMileage.Anchor(result.reading),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                )
+            }
+        }
+    }
+
     /** Re-validates with confirmation, in case the moment or field changed underneath an open dialog; on anything but
      * an anchor, clears the pending flag and surfaces whatever validation now says instead of saving unexpectedly. */
     private fun saveConfirmedLowerOdometer(): Action<LogEventState, LogEventEffect>? {
         val form = state
         val vehicleId = form.selectedVehicleId
         if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
+        return when (form.kind) {
+            LogKind.DISTANCE -> saveConfirmedLowerOdometerDistance(form, vehicleId)
+            LogKind.REFUELING -> saveConfirmedLowerOdometerRefueling(form, vehicleId)
+        }
+    }
+
+    private fun saveConfirmedLowerOdometerDistance(form: LogEventState, vehicleId: String): Action<LogEventState, LogEventEffect>? {
         val moment = form.moment
         return when (
             val result = validateLogDistance(
@@ -256,6 +328,27 @@ class LogEventProcessor @AssistedInject constructor(
                 repository.addOdometerAnchor(
                     vehicleId, moment, result.reading,
                     tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
+                )
+            }
+            is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
+            LogDistanceResult.NeedsLowerOdometerConfirmation, is LogDistanceResult.Valid -> reduce { copy(lowerOdometerConfirmationPending = false) }
+        }
+    }
+
+    private fun saveConfirmedLowerOdometerRefueling(form: LogEventState, vehicleId: String): Action<LogEventState, LogEventEffect>? {
+        val moment = form.moment
+        val amount = form.fuelAmount.toVolume(form.fuelUnit)
+            ?: return reduce { copy(lowerOdometerConfirmationPending = false, error = LogDistanceError.FuelAmountEmpty) }
+        return when (
+            val result = validateLogDistance(
+                form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer, lowerOdometerConfirmed = true,
+            )
+        ) {
+            is LogDistanceResult.Anchor -> saving {
+                repository.addRefueling(
+                    vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
+                    mileage = RefuelingMileage.Anchor(result.reading),
+                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
                 )
             }
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
@@ -329,6 +422,12 @@ class LogEventProcessor @AssistedInject constructor(
         fun LogEventState.withActiveEntry(entry: OdometerEntry, keepError: Boolean = false): LogEventState {
             val error = if (keepError || entry.isEmpty) error else null
             return if (way == LogWay.TRIP_DISTANCE) copy(tripDistance = entry, error = error) else copy(newOdometer = entry, error = error)
+        }
+
+        /** Replaces the refueling fuel amount entry; a typed digit clears the error, unless [keepError]. */
+        fun LogEventState.withFuelAmount(entry: FuelAmountEntry, keepError: Boolean = false): LogEventState {
+            val error = if (keepError || entry.isEmpty) error else null
+            return copy(fuelAmount = entry, error = error)
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,8 +30,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -41,6 +44,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -80,11 +84,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import com.mikonoma.drivinglog.locale.DeviceLocale
+import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.PhotoIcons
@@ -92,6 +104,9 @@ import com.mikonoma.drivinglog.ui.RequiredFieldNote
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
+import com.mikonoma.drivinglog.vehicle.format.formatFuelSteps
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.format.formatTimeOfDay
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
@@ -210,7 +225,7 @@ fun LogEventContent(
                         TextButton(
                             colors = headerTextButtonColors(),
                             onClick = { onIntent(LogEventIntent.Save) },
-                            enabled = !state.isLoading && !state.notFound && !state.isSaving && !state.activeEntry.isEmpty,
+                            enabled = !state.isLoading && !state.notFound && !state.isSaving && state.hasRequiredField,
                             modifier = Modifier.testTag("save_entry"),
                         ) { Text("Save") }
                     },
@@ -238,22 +253,67 @@ fun LogEventContent(
                     } else {
                         KindSelector(state.kind, Modifier.fillMaxWidth()) { onIntent(LogEventIntent.KindSelected(it)) }
                     }
-                    WayChoice(state.way) { onIntent(LogEventIntent.WayChanged(it)) }
-                    MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
-                    if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
-                    UnitChoice(state, onIntent)
-                    if (state.way == LogWay.NEW_ODOMETER) KnownOdometerInfo(state, symbols)
-                    OdometerField(
-                        entry = state.activeEntry,
-                        symbols = symbols,
-                        onEdit = { onIntent(LogEventIntent.OdometerEdited(it)) },
-                        onClear = { onIntent(LogEventIntent.OdometerCleared) },
-                        label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance *" else "New odometer *",
-                        isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
-                        errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
-                    )
-                    if (state.canScan) {
-                        ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
+                    when (state.kind) {
+                        LogKind.DISTANCE -> {
+                            WayChoice(state.way) { onIntent(LogEventIntent.WayChanged(it)) }
+                            MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
+                            if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
+                            UnitChoice(state, onIntent)
+                            if (state.way == LogWay.NEW_ODOMETER) KnownOdometerInfo(state, symbols)
+                            OdometerField(
+                                entry = state.activeEntry,
+                                symbols = symbols,
+                                onEdit = { onIntent(LogEventIntent.OdometerEdited(it)) },
+                                onClear = { onIntent(LogEventIntent.OdometerCleared) },
+                                label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance *" else "New odometer *",
+                                isError = state.error != null && state.error !is LogDistanceError.TimeInFuture,
+                                errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
+                            )
+                            if (state.canScan) {
+                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
+                            }
+                        }
+                        LogKind.REFUELING -> {
+                            MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
+                            if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
+                            FuelAmountField(
+                                entry = state.fuelAmount,
+                                unit = state.fuelUnit,
+                                symbols = symbols,
+                                onEdit = { onIntent(LogEventIntent.FuelAmountEdited(it)) },
+                                onClear = { onIntent(LogEventIntent.FuelAmountCleared) },
+                                isError = state.error is LogDistanceError.FuelAmountEmpty || state.error is LogDistanceError.FuelAmountNotPositive,
+                                errorText = state.error?.takeIf {
+                                    it is LogDistanceError.FuelAmountEmpty || it is LogDistanceError.FuelAmountNotPositive
+                                }?.let { errorMessage(state, symbols) },
+                            )
+                            FuelUnitChoice(state.fuelUnit) { onIntent(LogEventIntent.FuelUnitSelected(it)) }
+                            FuelTypeSelector(state.fuelType) { onIntent(LogEventIntent.FuelTypeSelected(it)) }
+                            FilledUpChoice(state.filledUp) { onIntent(LogEventIntent.FilledUpChanged(it)) }
+                            // Mileage is optional for a refueling (refueling-logging): the same Way/unit/field
+                            // machinery a "Distance" entry uses, but its own field carries no "*" and never gates Save.
+                            Text("Mileage (optional)", style = MaterialTheme.typography.titleSmall)
+                            WayChoice(state.way) { onIntent(LogEventIntent.WayChanged(it)) }
+                            UnitChoice(state, onIntent)
+                            if (state.way == LogWay.NEW_ODOMETER) KnownOdometerInfo(state, symbols)
+                            OdometerField(
+                                entry = state.activeEntry,
+                                symbols = symbols,
+                                onEdit = { onIntent(LogEventIntent.OdometerEdited(it)) },
+                                onClear = { onIntent(LogEventIntent.OdometerCleared) },
+                                label = if (state.way == LogWay.TRIP_DISTANCE) "Trip distance" else "New odometer",
+                                // Only an error from the mileage section's own validation (never FieldEmpty: an
+                                // empty mileage means "no mileage," not an error) — never the fuel amount's.
+                                isError = state.error != null && state.error !is LogDistanceError.TimeInFuture &&
+                                    state.error !is LogDistanceError.FuelAmountEmpty && state.error !is LogDistanceError.FuelAmountNotPositive,
+                                errorText = state.error?.takeIf {
+                                    it !is LogDistanceError.TimeInFuture && it !is LogDistanceError.FuelAmountEmpty && it !is LogDistanceError.FuelAmountNotPositive
+                                }?.let { errorMessage(state, symbols) },
+                            )
+                            if (state.canScan) {
+                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
+                            }
+                        }
                     }
                     NoteField(
                         pendingNote = state.pendingNote,
@@ -488,6 +548,117 @@ private fun UnitChoice(state: LogEventState, onIntent: (LogEventIntent) -> Unit)
                 modifier = Modifier.testTag("log_tenths"),
             )
         }
+    }
+}
+
+/**
+ * A refueling's fuel amount field (`add-refueling-logging`): the same microwave-style digit entry
+ * [com.mikonoma.drivinglog.ui.OdometerField] uses, but always two decimal places, whatever [unit] is (its own entry
+ * widget, per design.md's decision not to reuse [com.mikonoma.drivinglog.vehicle.input.OdometerEntry]'s
+ * unit-driven precision).
+ */
+@Composable
+private fun FuelAmountField(
+    entry: com.mikonoma.drivinglog.vehicle.input.FuelAmountEntry,
+    unit: FuelUnit,
+    symbols: NumberSymbols,
+    onEdit: (String) -> Unit,
+    onClear: () -> Unit,
+    isError: Boolean,
+    errorText: String?,
+) {
+    val digits = entry.digits
+    OutlinedTextField(
+        value = TextFieldValue(text = digits, selection = TextRange(digits.length)),
+        onValueChange = { onEdit(it.text) },
+        modifier = Modifier.fillMaxWidth().testTag("fuel_amount_field"),
+        label = { Text("Fuel amount *") },
+        singleLine = true,
+        isError = isError,
+        supportingText = if (isError && errorText != null) ({ Text(errorText) }) else null,
+        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        visualTransformation = FuelAmountTransformation(symbols),
+        suffix = { Text(unit.abbreviation) },
+        trailingIcon = {
+            IconButton(onClick = onClear, modifier = Modifier.testTag("fuel_amount_clear")) {
+                Icon(Icons.Filled.Clear, contentDescription = "Clear fuel amount")
+            }
+        },
+    )
+}
+
+/** Draws the entry's digits as a locale-formatted, always-two-decimal number. Offsets all map to the end, where the cursor is. */
+private class FuelAmountTransformation(private val symbols: NumberSymbols) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val shown = text.text.toLongOrNull()?.let { formatFuelSteps(it, symbols) } ?: ""
+        val original = text.text.length
+        return TransformedText(
+            AnnotatedString(shown),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int = shown.length
+                override fun transformedToOriginal(offset: Int): Int = original
+            },
+        )
+    }
+}
+
+/** Liters or gallons (`add-refueling-logging`): the same segmented-button pattern [UnitChoice] uses, without a
+ * tenths switch — a fuel amount is always two decimal places, whatever unit is chosen. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FuelUnitChoice(selected: FuelUnit, onSelect: (FuelUnit) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Unit", style = MaterialTheme.typography.titleSmall)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = selected == FuelUnit.LITERS,
+                onClick = { onSelect(FuelUnit.LITERS) },
+                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                modifier = Modifier.testTag("fuel_unit_liters"),
+            ) { Text("Liters") }
+            SegmentedButton(
+                selected = selected == FuelUnit.GALLONS,
+                onClick = { onSelect(FuelUnit.GALLONS) },
+                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                modifier = Modifier.testTag("fuel_unit_gallons"),
+            ) { Text("Gallons") }
+        }
+    }
+}
+
+/** The fixed fuel-type list (`add-refueling-logging`): Material 3's own dropdown pattern, like [KindSelector]/[VehicleSelector]. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FuelTypeSelector(selected: FuelType, onSelect: (FuelType) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selected.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Fuel type") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("fuel_type_selector"),
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            for (option in FuelType.entries) {
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = { onSelect(option); expanded = false },
+                    modifier = Modifier.testTag("fuel_type_option_${option.name.lowercase()}"),
+                )
+            }
+        }
+    }
+}
+
+/** The "filled up" checkbox (`add-refueling-logging`), checked by default. */
+@Composable
+private fun FilledUpChoice(checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+        Text("Filled up")
+        Checkbox(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag("filled_up"))
     }
 }
 
@@ -784,6 +955,8 @@ private fun errorMessage(state: LogEventState, symbols: com.mikonoma.drivinglog.
         LogDistanceError.TimeInFuture -> "The time cannot be in the future"
         LogDistanceError.DistanceNotPositive -> "The distance must be more than zero"
         is LogDistanceError.OdometerNotHigher -> "Enter a reading higher than " + formatOdometer(error.known, state.vehicleUnit, symbols)
+        LogDistanceError.FuelAmountEmpty -> "Enter the fuel amount"
+        LogDistanceError.FuelAmountNotPositive -> "The fuel amount must be more than zero"
     }
 
 @OptIn(ExperimentalMaterial3Api::class)

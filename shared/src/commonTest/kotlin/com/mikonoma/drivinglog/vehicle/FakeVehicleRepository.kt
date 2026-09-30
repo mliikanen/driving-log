@@ -5,15 +5,19 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import kotlin.time.Instant
@@ -48,6 +52,19 @@ data class AnchorCall(
     val capture: PendingCapture? = null,
 )
 
+data class RefuelingCall(
+    val vehicleId: String,
+    val occurredAt: ZonedMoment,
+    val amount: Volume,
+    val unit: FuelUnit,
+    val fuelType: FuelType,
+    val filledUp: Boolean,
+    val mileage: RefuelingMileage? = null,
+    val tenthsIncluded: Boolean = false,
+    val note: String? = null,
+    val photos: List<PendingPicture> = emptyList(),
+)
+
 data class AddEventPhotoCall(val vehicleId: String, val eventId: String, val photo: PendingPicture)
 data class RemoveEventPhotoCall(val vehicleId: String, val eventId: String, val pictureId: String)
 
@@ -77,6 +94,8 @@ class FakeVehicleRepository : VehicleRepository {
     private val vehicles = MutableStateFlow<List<Vehicle>>(emptyList())
     private val events = MutableStateFlow<Map<String, List<VehicleEvent>>>(emptyMap())
     private val lastLoggedVehicleId = MutableStateFlow<String?>(null)
+    private val lastFuelUnit = MutableStateFlow<FuelUnit?>(null)
+    private val lastFuelType = MutableStateFlow<FuelType?>(null)
     private var counter = 0
 
     val addCalls = mutableListOf<AddCall>()
@@ -84,6 +103,7 @@ class FakeVehicleRepository : VehicleRepository {
     val updateNoteCalls = mutableListOf<UpdateNoteCall>()
     val distanceCalls = mutableListOf<DistanceCall>()
     val anchorCalls = mutableListOf<AnchorCall>()
+    val refuelingCalls = mutableListOf<RefuelingCall>()
     val addEventPhotoCalls = mutableListOf<AddEventPhotoCall>()
     val removeEventPhotoCalls = mutableListOf<RemoveEventPhotoCall>()
     var distanceFailure: Throwable? = null
@@ -128,6 +148,10 @@ class FakeVehicleRepository : VehicleRepository {
     /** Sets the remembered vehicle directly, as a database seeded from an earlier run would have it (no entry saved in this test). */
     fun seedLastLoggedVehicleId(id: String?) { lastLoggedVehicleId.value = id }
 
+    /** Sets the remembered fuel unit/type directly, as a database seeded from an earlier refueling would have them. */
+    fun seedLastFuelUnit(unit: FuelUnit?) { lastFuelUnit.value = unit }
+    fun seedLastFuelType(type: FuelType?) { lastFuelType.value = type }
+
     fun eventsOf(vehicleId: String): List<VehicleEvent> = events.value[vehicleId].orEmpty()
 
     override fun observeVehicles(): Flow<List<Vehicle>> = vehicles
@@ -149,6 +173,10 @@ class FakeVehicleRepository : VehicleRepository {
         events.map { it[vehicleId].orEmpty().firstOrNull { event -> event.id == eventId } }
 
     override fun observeLastLoggedVehicleId(): Flow<String?> = lastLoggedVehicleId
+
+    override fun observeLastFuelUnit(): Flow<FuelUnit?> = lastFuelUnit
+
+    override fun observeLastFuelType(): Flow<FuelType?> = lastFuelType
 
     override suspend fun addVehicle(
         name: String,
@@ -210,6 +238,30 @@ class FakeVehicleRepository : VehicleRepository {
         return id
     }
 
+    override suspend fun addRefueling(
+        vehicleId: String,
+        occurredAt: ZonedMoment,
+        amount: Volume,
+        unit: FuelUnit,
+        fuelType: FuelType,
+        filledUp: Boolean,
+        mileage: RefuelingMileage?,
+        tenthsIncluded: Boolean,
+        note: String?,
+        photos: List<PendingPicture>,
+    ): String {
+        distanceFailure?.let { throw it }
+        refuelingCalls += RefuelingCall(vehicleId, occurredAt, amount, unit, fuelType, filledUp, mileage, tenthsIncluded, note, photos)
+        if (mileage != null) vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
+        lastLoggedVehicleId.value = vehicleId
+        lastFuelUnit.value = unit
+        lastFuelType.value = fuelType
+        val id = "r${++counter}"
+        val refueling = VehicleEvent.Refueling(id, occurredAt, amount, unit, fuelType, filledUp, mileage, note, photos.map(::fakePhotoId))
+        seedEvents(vehicleId, (listOf(refueling) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
+        return id
+    }
+
     private fun fakePhotoId(photo: PendingPicture) = "photo-${photo.pendingId}"
 
     override suspend fun captureOf(eventId: String): StoredCapture? = null
@@ -229,6 +281,7 @@ class FakeVehicleRepository : VehicleRepository {
             else when (event) {
                 is VehicleEvent.DistanceEntry -> event.copy(note = note)
                 is VehicleEvent.OdometerAnchor -> event.copy(note = note)
+                is VehicleEvent.Refueling -> event.copy(note = note)
                 is VehicleEvent.InitialOdometer -> event // never carries a note; nothing to change
             }
         }
@@ -243,6 +296,7 @@ class FakeVehicleRepository : VehicleRepository {
             else when (event) {
                 is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds + photoId)
                 is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds + photoId)
+                is VehicleEvent.Refueling -> event.copy(photoIds = event.photoIds + photoId)
                 is VehicleEvent.InitialOdometer -> event // never carries a photo; nothing to change
             }
         }
@@ -257,6 +311,7 @@ class FakeVehicleRepository : VehicleRepository {
             else when (event) {
                 is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds - pictureId)
                 is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds - pictureId)
+                is VehicleEvent.Refueling -> event.copy(photoIds = event.photoIds - pictureId)
                 is VehicleEvent.InitialOdometer -> event
             }
         }
@@ -272,3 +327,13 @@ fun distanceEvent(id: String, atMillis: Long, meters: Long, loggedOdometer: Long
 
 fun anchorEvent(id: String, atMillis: Long, meters: Long) =
     VehicleEvent.OdometerAnchor(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters))
+
+fun refuelingEvent(
+    id: String,
+    atMillis: Long,
+    milliliters: Long,
+    unit: FuelUnit = FuelUnit.LITERS,
+    fuelType: FuelType = FuelType.REGULAR_PETROL,
+    filledUp: Boolean = true,
+    mileage: RefuelingMileage? = null,
+) = VehicleEvent.Refueling(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Volume(milliliters), unit, fuelType, filledUp, mileage)

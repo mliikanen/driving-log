@@ -20,6 +20,13 @@ sealed interface LogDistanceError {
 
     /** New odometer: the count is not higher than the [known] odometer at the chosen moment. */
     data class OdometerNotHigher(val known: Distance) : LogDistanceError
+
+    /** A refueling's fuel amount field is empty (`add-refueling-logging`); distinct from [FieldEmpty] so the two
+     * fields on a refueling form (the fuel amount and its optional mileage) never share one ambiguous error. */
+    data object FuelAmountEmpty : LogDistanceError
+
+    /** A refueling's fuel amount of zero; distinct from [DistanceNotPositive] for the same reason. */
+    data object FuelAmountNotPositive : LogDistanceError
 }
 
 sealed interface LogDistanceResult {

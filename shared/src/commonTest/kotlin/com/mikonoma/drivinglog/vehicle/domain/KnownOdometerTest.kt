@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.vehicle.domain
 import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.initialEvent
+import com.mikonoma.drivinglog.vehicle.refuelingEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -135,5 +136,33 @@ class KnownOdometerTest {
 
         assertNull(knownOdometerAt(log, at(999)))
         assertEquals(Distance(0), knownOdometerAt(log, at(1_000)))
+    }
+
+    // Refueling (add-refueling-logging): its optional mileage participates exactly like a Distance entry's or an
+    // odometer anchor's own, and a refueling with no mileage does not participate at all.
+
+    @Test
+    fun aRefuelingWithTripDistanceMileageAddsUpLikeADistanceEntry() {
+        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Added(Distance(30_000))))
+        assertEquals(Distance(45_230_000), currentOdometer(log))
+    }
+
+    @Test
+    fun aRefuelingWithNewOdometerMileageSetsTheOdometerLikeAnAnchor() {
+        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Anchor(Distance(50_000_000))))
+        assertEquals(Distance(50_000_000), currentOdometer(log))
+    }
+
+    @Test
+    fun aRefuelingWithNoMileageDoesNotChangeTheOdometer() {
+        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300))
+        assertEquals(Distance(45_200_000), currentOdometer(log))
+    }
+
+    @Test
+    fun aRefuelingsMileageFollowsTheChosenTimeLikeADistanceEntrys() {
+        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Added(Distance(30_000))))
+        assertEquals(Distance(45_200_000), knownOdometerAt(log, at(1_500)))
+        assertEquals(Distance(45_230_000), knownOdometerAt(log, at(2_000)))
     }
 }

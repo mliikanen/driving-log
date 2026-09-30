@@ -24,7 +24,6 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: log_kind_selector
     text: Distance
-    enabled: false
 - assertVisible:
     id: log_way_distance
     checked: true
@@ -377,3 +376,153 @@ appId: com.mikonoma.drivinglog
     id: event_details_title
 - assertVisible:
     id: "event_photo_thumbnail_.*"
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: current_odometer
+    timeout: 10000
+# Refueling (add-refueling-logging): the Kind selector's second choice. First one with no mileage (a note and a
+# photo, a chosen fuel type, "filled up" unchecked): the odometer stays exactly as it was. Then Edit, to confirm it
+# only ever touches the note/photos, never the fuel fields.
+- assertVisible:
+    id: current_odometer
+    text: 44,080.0 km
+- tapOn:
+    id: log_event
+- tapOn:
+    id: log_kind_selector
+- tapOn: Refueling
+- assertVisible:
+    id: fuel_amount_field
+- tapOn:
+    id: fuel_amount_field
+- inputText: "4230"
+- hideKeyboard
+- assertVisible:
+    id: fuel_amount_field
+    text: "42.30"
+- tapOn:
+    id: fuel_type_selector
+- tapOn: Diesel
+- assertVisible: Diesel
+- tapOn:
+    id: filled_up
+# The refueling form is longer than a Distance entry's (fuel fields plus the whole mileage section above the note),
+# so an explicit scroll finds the note element reliably rather than relying on tapOn's own auto-scroll.
+- scrollUntilVisible:
+    element:
+      id: log_note
+- tapOn:
+    id: log_note
+- inputText: cheap gas today
+- tapOn:
+    id: back
+- scrollUntilVisible:
+    element:
+      id: add_photo
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- scrollUntilVisible:
+    element:
+      id: save_entry
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 44,080.0 km
+- assertVisible: Refueling
+- assertVisible: "42.30 L"
+- scrollUntilVisible:
+    element:
+      id: event_photo_icon
+- assertVisible:
+    id: event_note_icon
+- assertVisible:
+    id: event_photo_icon
+- tapOn:
+    id: event_photo_icon
+- assertVisible:
+    id: event_details_title
+    text: Refueling
+- assertVisible:
+    id: event_details_fuel_type
+    text: Diesel
+- assertVisible:
+    id: event_details_filled_up
+    text: Partial fill
+- assertNotVisible:
+    id: event_details_mileage
+- assertVisible:
+    id: event_details_note
+    text: cheap gas today
+- assertVisible:
+    id: "event_photo_thumbnail_.*"
+- tapOn:
+    id: edit_event
+- assertVisible: Edit event
+- tapOn:
+    id: log_note
+- eraseText: 20
+- inputText: new note text
+- tapOn:
+    id: back
+- tapOn:
+    id: edit_event_save
+- assertVisible:
+    id: event_details_note
+    text: new note text
+- assertVisible:
+    id: event_details_fuel_type
+    text: Diesel
+- assertVisible:
+    id: event_details_filled_up
+    text: Partial fill
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: current_odometer
+    timeout: 10000
+# A second refueling, this time with a trip-distance mileage: the odometer advances too, and the remembered fuel
+# type (Diesel) and unit default again, while "filled up" starts checked again (never remembered).
+- tapOn:
+    id: log_event
+- tapOn:
+    id: log_kind_selector
+- tapOn: Refueling
+- assertVisible: Diesel
+- tapOn:
+    id: fuel_amount_field
+- inputText: "3000"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: log_way_distance
+- tapOn:
+    id: log_way_distance
+- scrollUntilVisible:
+    element:
+      id: odo_field
+- tapOn:
+    id: odo_field
+- inputText: "200"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: save_entry
+- tapOn:
+    id: save_entry
+- assertVisible:
+    id: current_odometer
+    text: 44,100.0 km

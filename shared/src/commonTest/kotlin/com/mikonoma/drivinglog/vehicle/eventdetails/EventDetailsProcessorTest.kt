@@ -340,4 +340,118 @@ class EventDetailsProcessorTest {
         assertFalse(pendingId in eventPictures.pending)
         assertEquals(emptyList(), repository.addEventPhotoCalls)
     }
+
+    // ---- Refueling (add-refueling-logging)
+
+    @Test
+    fun aRefuelingEventCarriesItsNote() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(
+                com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
+                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, note = "cheap gas today",
+                ),
+            ),
+        )
+
+        val state = processor(eventId = "e2").state
+
+        assertEquals("cheap gas today", state.event?.note)
+    }
+
+    private fun refuelingEventProcessor(note: String? = null, photoIds: List<String> = emptyList()): EventDetailsProcessor {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(
+                com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
+                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, note = note, photoIds = photoIds,
+                ),
+            ),
+        )
+        for (id in photoIds) eventPictures.pictures[id] = FakePictureStore.Versions(FakePictureStore.image(1), FakePictureStore.image(2))
+        return processor(eventId = "e2")
+    }
+
+    @Test
+    fun editClickedOnARefuelingSeedsTheEditScreenWithItsNoteAndPhotos() {
+        val processor = refuelingEventProcessor(note = "cheap gas today", photoIds = listOf("p1"))
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertEquals("cheap gas today", processor.state.edit?.noteDraft)
+        assertEquals(listOf("p1"), processor.state.edit?.keptPhotos?.map { it.first })
+    }
+
+    @Test
+    fun savingARefuelingsNoteNeverChangesItsFuelFieldsOrMileage() {
+        val processor = refuelingEventProcessor(note = "old note")
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("new note"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        val refueling = processor.state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling
+        assertEquals("new note", refueling.note)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, refueling.fuelType)
+        assertTrue(refueling.filledUp)
+    }
+
+    private fun refuelingWithMileage(mileage: com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage?): EventDetailsProcessor {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents(
+            "v1",
+            listOf(
+                com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
+                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, mileage = mileage,
+                ),
+            ),
+        )
+        return processor(eventId = "e2")
+    }
+
+    @Test
+    fun theDetailsScreenShowsARefuelingsTripDistanceMileage() {
+        val mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000))
+        val state = refuelingWithMileage(mileage).state
+
+        assertEquals(mileage, (state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+    }
+
+    @Test
+    fun theDetailsScreenShowsARefuelingsNewOdometerMileage() {
+        val mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(50_000_000))
+        val state = refuelingWithMileage(mileage).state
+
+        assertEquals(mileage, (state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+    }
+
+    @Test
+    fun theDetailsScreenShowsNoMileageWhenTheRefuelingHasNone() {
+        val state = refuelingWithMileage(null).state
+
+        assertNull((state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+    }
+
+    @Test
+    fun addingAPhotoToARefuelingThroughEditWorksTheSameAsForADistanceEntry() {
+        val processor = refuelingEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        val refueling = processor.state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling
+        assertEquals(1, refueling.photoIds.size)
+    }
 }

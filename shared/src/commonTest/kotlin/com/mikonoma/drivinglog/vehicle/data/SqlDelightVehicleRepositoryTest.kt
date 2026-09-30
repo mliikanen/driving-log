@@ -242,7 +242,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun anUnknownEventTypeIsSkipped() = runTest {
         val id = addFamilyCar()
-        insertEvent("future", id, "REFUELING", clock.current.toEpochMilliseconds() + 1, 46_000_000)
+        insertEvent("future", id, "SOME_FUTURE_KIND", clock.current.toEpochMilliseconds() + 1, 46_000_000)
 
         assertEquals(listOf("id-2"), repository.observeLog(id).first().map { it.id })
     }
@@ -315,8 +315,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionTen() {
-        assertEquals(10L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionEleven() {
+        assertEquals(11L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -1632,5 +1632,162 @@ class SqlDelightVehicleRepositoryTest {
         repository.updateEventNote(otherId, entryId, "hijacked")
 
         assertEquals("mine", repository.observeLog(id).first().single { it.id == entryId }.note)
+    }
+
+    // ---- Refueling (add-refueling-logging)
+
+    @Test
+    fun addRefuelingWithNoMileageStoresTheFuelFieldsAndDoesNotTouchTheOdometer() = runTest {
+        val id = addFamilyCar()
+
+        val eventId = repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+        )
+
+        val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, refueling.unit)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, refueling.fuelType)
+        assertTrue(refueling.filledUp)
+        assertNull(refueling.mileage)
+        assertCurrentOdometer(id, 45_200_000)
+    }
+
+    @Test
+    fun addRefuelingWithTripDistanceMileageAdvancesTheOdometer() = runTest {
+        val id = addFamilyCar()
+
+        repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)),
+        )
+
+        assertCurrentOdometer(id, 45_230_000)
+    }
+
+    @Test
+    fun addRefuelingWithNewOdometerMileageSetsTheOdometer() = runTest {
+        val id = addFamilyCar()
+
+        repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(50_000_000)),
+        )
+
+        assertCurrentOdometer(id, 50_000_000)
+    }
+
+    @Test
+    fun addRefuelingCanCarryANoteAndPhotos() = runTest {
+        val id = addFamilyCar()
+        val pending = PendingPicture(pictureStore.addPending())
+
+        val eventId = repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = false,
+            note = "cheap gas today", photos = listOf(pending),
+        )
+
+        val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
+        assertEquals("cheap gas today", refueling.note)
+        assertEquals(1, refueling.photoIds.size)
+        assertFalse(refueling.filledUp)
+    }
+
+    @Test
+    fun addRefuelingRejectsAZeroAmount() = runTest {
+        val id = addFamilyCar()
+
+        assertFails {
+            repository.addRefueling(
+                id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(0),
+                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            )
+        }
+    }
+
+    @Test
+    fun addRefuelingUpdatesTheLastLoggedVehicle() = runTest {
+        val id = addFamilyCar()
+
+        repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+        )
+
+        assertEquals(id, repository.observeLastLoggedVehicleId().first())
+    }
+
+    @Test
+    fun theFuelUnitAndTypePreferencesStartNull() = runTest {
+        assertNull(repository.observeLastFuelUnit().first())
+        assertNull(repository.observeLastFuelType().first())
+    }
+
+    @Test
+    fun savingARefuelingRemembersItsFuelUnitAndType() = runTest {
+        val id = addFamilyCar()
+
+        repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, com.mikonoma.drivinglog.vehicle.domain.FuelType.PREMIUM_PETROL, filledUp = true,
+        )
+
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, repository.observeLastFuelUnit().first())
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.PREMIUM_PETROL, repository.observeLastFuelType().first())
+    }
+
+    @Test
+    fun theRememberedFuelPreferencesAreIndependentOfTheVehicleOrTheLog() = runTest {
+        val id = addFamilyCar()
+        val other = repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1))
+        repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, com.mikonoma.drivinglog.vehicle.domain.FuelType.E85, filledUp = true,
+        )
+
+        // A vehicle that has never had a refueling still sees the same global preference.
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, repository.observeLastFuelUnit().first())
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.E85, repository.observeLastFuelType().first())
+        assertNotEquals(id, other) // sanity: the two vehicles are distinct
+    }
+
+    @Test
+    fun aLowerNewOdometerMileageOnARefuelingNeedsConfirmationLikeADistanceEntrys() = runTest {
+        val id = addFamilyCar()
+        repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
+        // Current odometer is now 45,230,000; a refueling's "new odometer" mileage lower than that, for "now",
+        // would need the same confirm-lower-odometer dialog a Distance entry needs — this repository call itself
+        // does not gate on confirmation (that's the processor's job, `validateLogDistance`), but it must still
+        // save the anchor unconditionally once the caller (having confirmed) calls it, exactly like addOdometerAnchor.
+        val eventId = repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(44_000_000)),
+        )
+
+        assertCurrentOdometer(id, 44_000_000)
+        val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(44_000_000)), refueling.mileage)
+    }
+
+    @Test
+    fun editingARefuelingsNoteNeverTouchesItsFuelFields() = runTest {
+        val id = addFamilyCar()
+        val eventId = repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)),
+        )
+
+        repository.updateEventNote(id, eventId, "changed my note")
+
+        val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
+        assertEquals("changed my note", refueling.note)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)), refueling.mileage)
     }
 }

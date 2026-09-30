@@ -1,6 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
@@ -8,6 +10,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
+import com.mikonoma.drivinglog.vehicle.input.FuelAmountEntry
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.ocr.LiveReading
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
@@ -22,12 +25,13 @@ import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
 
 /**
- * A kind of event the form can log. Only [DISTANCE] exists today; the Kind selector is disabled until a second one is added by a
- * later change, so [entries] having one member is what keeps it that way ([LogEventScreen]'s `KindSelector` reads it, not a
- * hand-written flag).
+ * A kind of event the form can log. The Kind selector is disabled only while [entries] has one member — kept that
+ * way by [LogEventScreen]'s `KindSelector` reading it, not a hand-written flag — which no longer happens now that
+ * [REFUELING] exists (`add-refueling-logging`).
  */
 enum class LogKind(val label: String) {
     DISTANCE("Distance"),
+    REFUELING("Refueling"),
 }
 
 /** One vehicle as the selector draws it: its picture or icon, its name and, when it has one, its plate. In the order of [com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder]. */
@@ -103,12 +107,32 @@ data class LogEventState(
     /** False on a platform with no text recognizer (iOS): the "Scan a reading" action is not shown. Persisted, not [Transient]: it
      * is set once when the form opens, and a restored form must not lose it. */
     val canScan: Boolean = false,
+    /** A "Refueling" entry's fuel amount (`add-refueling-logging`). Persisted, like [tripDistance]. */
+    val fuelAmount: FuelAmountEntry = FuelAmountEntry(),
+    /** The unit [fuelAmount] is entered in: starts as the last one chosen anywhere, once loaded (see [fuelPreferencesLoaded]). */
+    val fuelUnit: FuelUnit = FuelUnit.LITERS,
+    /** A "Refueling" entry's fuel type: starts as the last one chosen anywhere, once loaded. */
+    val fuelType: FuelType = FuelType.REGULAR_PETROL,
+    /** A "Refueling" entry's "filled up" checkbox: always starts checked, per-event, never remembered across events. */
+    val filledUp: Boolean = true,
+    /** True once [fuelUnit]/[fuelType] have been seeded from the remembered global preference (`add-refueling-logging`'s
+     * "remembers the last choice" requirements), so a restored mid-edit choice is never overwritten by it loading again. */
+    val fuelPreferencesLoaded: Boolean = false,
 ) : ViewState {
 
     /** The unit both fields are entered in. */
     val unit: OdometerUnit get() = tripDistance.unit
 
     val activeEntry: OdometerEntry get() = if (way == LogWay.TRIP_DISTANCE) tripDistance else newOdometer
+
+    /** Whether Save can be tapped, besides the loading/saving/vehicle checks every kind shares: a "Distance" entry needs
+     * its active field filled in; a refueling needs only the fuel amount — its optional mileage section never gates
+     * Save (`refueling-logging`'s "The fuel amount must be entered and above zero"). */
+    val hasRequiredField: Boolean
+        get() = when (kind) {
+            LogKind.DISTANCE -> !activeEntry.isEmpty
+            LogKind.REFUELING -> !fuelAmount.isEmpty
+        }
 
     /** The selector shows this vehicle as chosen, or null before [vehicles] has loaded. */
     val selectedVehicle: VehicleChoice? get() = vehicles.firstOrNull { it.id == selectedVehicleId }
@@ -141,6 +165,16 @@ sealed interface LogEventIntent : ViewIntent {
     /** The active field's new text from the system keyboard. */
     data class OdometerEdited(val text: String) : LogEventIntent
     data object OdometerCleared : LogEventIntent
+
+    /** A "Refueling" entry's fuel amount field, mirroring [OdometerEdited]/[OdometerCleared] (`add-refueling-logging`). */
+    data class FuelAmountEdited(val text: String) : LogEventIntent
+    data object FuelAmountCleared : LogEventIntent
+
+    /** Changes the unit the fuel amount is entered in; keeps the digits typed, like [UnitFamilySelected] does. */
+    data class FuelUnitSelected(val unit: FuelUnit) : LogEventIntent
+    data class FuelTypeSelected(val type: FuelType) : LogEventIntent
+    data class FilledUpChanged(val checked: Boolean) : LogEventIntent
+
     data class DateChanged(val date: LocalDate) : LogEventIntent
     data class TimeChanged(val hour: Int, val minute: Int) : LogEventIntent
 

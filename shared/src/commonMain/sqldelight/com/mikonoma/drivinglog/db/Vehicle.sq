@@ -54,7 +54,10 @@ FROM vehicle
 ORDER BY created_at, rowid;
 
 -- The current odometer is derived from the log: the latest event that sets the odometer (ordered by instant, then insertion),
--- plus the distance of every DISTANCE event after it. Distance entries dated before that event do not count.
+-- plus the distance of every DISTANCE event after it, or a REFUELING event's own distance when it was logged with a
+-- trip-distance mileage (add-refueling-logging; a REFUELING with no mileage has a null distance_meters and adds
+-- nothing, same as one with an odometer_meters-setting mileage is already covered by the baseline subquery below).
+-- Distance entries dated before that event do not count.
 selectVehicleDetails:
 SELECT
     v.id,
@@ -71,7 +74,7 @@ SELECT
             SELECT SUM(d.distance_meters)
             FROM vehicle_event d
             WHERE d.vehicle_id = v.id
-              AND d.type = 'DISTANCE'
+              AND (d.type = 'DISTANCE' OR (d.type = 'REFUELING' AND d.distance_meters IS NOT NULL))
               AND (d.occurred_at > b.occurred_at OR (d.occurred_at = b.occurred_at AND d.rowid > b.rowid))
         ), 0) AS INTEGER)
         FROM vehicle_event b
