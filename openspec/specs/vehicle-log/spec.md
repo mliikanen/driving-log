@@ -43,9 +43,12 @@ specified by the capabilities that create them.
 
 ### Requirement: Current odometer is derived from the log
 The system SHALL show a vehicle's current odometer, in the vehicle's unit, as the reading of its latest
-odometer-setting event plus the distances of all distance entries logged after that event, and SHALL NOT keep a separately
-edited total. Events are ordered by their date and time, and events at the same time by when they were added. A distance
-entry dated before the latest odometer-setting event SHALL NOT count.
+odometer-setting event plus the distances of all distance entries and refueling events carrying a trip-distance
+mileage (`refueling-logging`, "Mileage is optional for a refueling") logged after that event, and SHALL NOT keep a
+separately edited total. Events are ordered by their date and time, and events at the same time by when they were
+added. A distance entry or a refueling's trip-distance mileage dated before the latest odometer-setting event SHALL
+NOT count. A refueling saved with no mileage does not participate in this calculation at all — it neither sets nor
+adds to the odometer.
 
 #### Scenario: Only the initial event
 - **WHEN** a vehicle's log contains only an initial odometer event of 45200 km
@@ -67,6 +70,14 @@ entry dated before the latest odometer-setting event SHALL NOT count.
 - **WHEN** a distance entry is added at exactly the time of the initial event
 - **THEN** it counts after that event and the current odometer includes it
 
+#### Scenario: A refueling's mileage counts like a distance entry
+- **WHEN** a vehicle's log contains an initial event of 45200 km and a later "Refueling" event logged with a trip-distance mileage of 30 km
+- **THEN** the vehicle's current odometer is 45230 km
+
+#### Scenario: A refueling with no mileage does not count
+- **WHEN** a vehicle's log contains an initial event of 45200 km and a later "Refueling" event saved with no mileage
+- **THEN** the vehicle's current odometer is still 45200 km
+
 ### Requirement: Recent events on the details screen
 The system SHALL show at most the 5 most recent log events of the vehicle on its details screen, newest first by their date
 and time, each with its type and its date and time, shown in the time zone the event was entered in and followed by that zone's
@@ -74,8 +85,10 @@ name when it is not the device's current time zone. The date is written year-mon
 12-hour or 24-hour setting (the examples below use a 24-hour setting). An "Initial odometer" event SHALL show its reading in the vehicle's
 unit. An "Odometer reading" event (an odometer anchor) SHALL show its reading in the vehicle's unit, without a plus sign. A
 "Distance" event SHALL show its distance in the vehicle's unit with a plus sign and, when it was logged as a new
-odometer count, the count that was typed. When events share the same time, the one added last SHALL come first. The
-system SHALL provide an action to open the full log.
+odometer count, the count that was typed. A "Refueling" event SHALL show its fuel amount, in the unit it was
+entered in (e.g. "42.3 L"), as its figure; it carries no plus sign, since a refueling is not itself a distance.
+When events share the same time, the one added last SHALL come first. The system SHALL provide an action to open
+the full log.
 
 #### Scenario: One event
 - **WHEN** the user opens the details of a newly added vehicle
@@ -108,6 +121,10 @@ system SHALL provide an action to open the full log.
 #### Scenario: A backdated entry sits in its chronological place
 - **WHEN** the user logs a distance entry dated yesterday after having logged one dated today
 - **THEN** the recent events list the entry dated today above the one dated yesterday, whichever was added first
+
+#### Scenario: A refueling's row
+- **WHEN** the user logs a refueling of 42.3 L for a vehicle
+- **THEN** the recent events show a "Refueling" event with "42.3 L" and its date and time
 
 ### Requirement: Full log
 The system SHALL show the vehicle's complete log on a separate screen opened from the details screen, listing every event
@@ -245,6 +262,26 @@ delta of `event-details`). The "Initial odometer" event created when a vehicle i
 #### Scenario: Photos are optional
 - **WHEN** the user logs a distance entry without attaching any photo
 - **THEN** the log's new event holds no photo
+
+### Requirement: A refueling event can carry a note and photos
+The system SHALL let a "Refueling" event carry an optional note and from 0 to 5 photos, the same as a "Distance"
+event or an odometer anchor (`vehicle-log`, "Distance and odometer-anchor events can carry a note," "Distance and
+odometer-anchor events can carry photos"), entered on the log event form when the refueling is logged
+(`refueling-logging`, "Attached fuel data is saved with the event, or discarded with the rest of the form"). Once
+saved, a refueling's note and photos can only be changed through the details screen's "Edit" action
+(`event-details`, "A 'Distance' or 'Odometer reading' event's note can be edited"); no other action changes them.
+
+#### Scenario: A refueling with a note
+- **WHEN** the user logs a refueling with the note "cheap gas today"
+- **THEN** the log's new "Refueling" event holds that note
+
+#### Scenario: A refueling with photos
+- **WHEN** the user logs a refueling with 2 photos attached
+- **THEN** the log's new "Refueling" event holds those 2 photos
+
+#### Scenario: Both are optional
+- **WHEN** the user logs a refueling without ever adding a note or a photo
+- **THEN** the log's new event holds neither
 
 ### Requirement: A note's presence is shown as an icon on the event row
 The system SHALL show a small icon cluster, anchored at the bottom-end (bottom-trailing) corner of the row, in the
