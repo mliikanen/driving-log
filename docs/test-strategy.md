@@ -57,7 +57,12 @@ The manifests are Maestro configuration files over the one `maestro/` workspace 
 
 A flow whose subject is how already-stored data renders (not the UI path that builds it) may instead start from a
 fixture database seeded directly onto the device, rather than building that state through the UI — see
-[`docs/test-fixtures.md`](test-fixtures.md), including how a fixture is kept in sync with the schema.
+[`docs/test-fixtures.md`](test-fixtures.md), including how a fixture is kept in sync with the schema. A flow may
+likewise declare its starting *auth* state — signed out, or signed in as a specific test account — as a `launchApp`
+argument (`testingStartUser: "none" | "A" | "B"`, read only by the `fake` flavor's `AuthRepository`), instead of
+building it through the sign-in UI, for the same reason and in the same place: every other flow declares nothing
+and gets today's default (already signed in), the same way a flow with no fixture argument gets an empty database
+and builds whatever it needs through the UI (`add-firebase-auth`).
 
 ## What is run when
 

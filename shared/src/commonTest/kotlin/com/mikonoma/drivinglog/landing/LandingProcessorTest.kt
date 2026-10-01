@@ -1,5 +1,7 @@
 package com.mikonoma.drivinglog.landing
 
+import com.mikonoma.drivinglog.auth.AuthState
+import com.mikonoma.drivinglog.auth.TestAuthRepository
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -24,6 +26,9 @@ import org.fuusio.kide.test.test
 class LandingProcessorTest {
 
     private val repository = FakeVehicleRepository()
+    private val authRepository = TestAuthRepository(
+        initialState = AuthState.SignedIn(uid = "uid", displayName = "Name", email = "name@example.com", photoUrl = null),
+    )
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -102,7 +107,7 @@ class LandingProcessorTest {
 
     @Test
     fun anEmptyRepositoryGivesTheAddVehicleTile() {
-        val processor = LandingProcessor(repository)
+        val processor = LandingProcessor(repository, authRepository)
 
         assertFalse(processor.state.isLoading)
         assertFalse(processor.state.hasVehicles)
@@ -113,7 +118,7 @@ class LandingProcessorTest {
     fun aVehicleGivesTheVehiclesTile() {
         repository.seedVehicle("v1", "Family car")
 
-        val processor = LandingProcessor(repository)
+        val processor = LandingProcessor(repository, authRepository)
 
         assertTrue(processor.state.hasVehicles)
         assertEquals("Vehicles", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
@@ -121,7 +126,7 @@ class LandingProcessorTest {
 
     @Test
     fun theTileFollowsAVehicleBeingAdded() = runTest {
-        val processor = LandingProcessor(repository)
+        val processor = LandingProcessor(repository, authRepository)
         assertEquals("Add vehicle", tile(processor.state.tiles, LandingTileId.VEHICLES).name)
 
         repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance.ZERO)
@@ -131,7 +136,7 @@ class LandingProcessorTest {
 
     @Test
     fun theVehiclesIntentShowsTheVehicles() = runTest {
-        LandingProcessor(repository).test {
+        LandingProcessor(repository, authRepository).test {
             dispatch(LandingIntent.OpenVehicles)
             expectSideEffect(LandingEffect.ShowVehicles)
         }
@@ -139,7 +144,7 @@ class LandingProcessorTest {
 
     @Test
     fun theAddVehicleIntentShowsTheAddScreen() = runTest {
-        LandingProcessor(repository).test {
+        LandingProcessor(repository, authRepository).test {
             dispatch(LandingIntent.AddVehicle)
             expectSideEffect(LandingEffect.ShowAddVehicle)
         }
@@ -149,7 +154,7 @@ class LandingProcessorTest {
     fun openingLogEventWithAVehicleShowsTheForm() = runTest {
         repository.seedVehicle("v1", "Family car")
 
-        LandingProcessor(repository).test {
+        LandingProcessor(repository, authRepository).test {
             dispatch(LandingIntent.OpenLogEvent)
             expectSideEffect(LandingEffect.ShowLogEvent)
         }
@@ -157,8 +162,50 @@ class LandingProcessorTest {
 
     @Test
     fun openingLogEventWithNoVehicleDoesNothing() = runTest {
-        LandingProcessor(repository).test {
+        LandingProcessor(repository, authRepository).test {
             dispatch(LandingIntent.OpenLogEvent)
         }
+    }
+
+    // ---- The account action (`firebase-auth`'s "The signed-in account and sign-out are reachable from the Home screen")
+
+    @Test
+    fun theSignedInAccountsEmailIsShown() {
+        val processor = LandingProcessor(repository, authRepository)
+
+        assertEquals("name@example.com", processor.state.accountEmail)
+    }
+
+    @Test
+    fun togglingTheAccountMenuOpensAndClosesIt() = runTest {
+        val processor = LandingProcessor(repository, authRepository)
+
+        processor.test { dispatch(LandingIntent.ToggleAccountMenu) }
+        assertTrue(processor.state.isAccountMenuOpen)
+
+        processor.test { dispatch(LandingIntent.ToggleAccountMenu) }
+        assertFalse(processor.state.isAccountMenuOpen)
+    }
+
+    @Test
+    fun dismissingTheAccountMenuClosesIt() = runTest {
+        val processor = LandingProcessor(repository, authRepository)
+
+        processor.test {
+            dispatch(LandingIntent.ToggleAccountMenu)
+            dispatch(LandingIntent.DismissAccountMenu)
+        }
+
+        assertFalse(processor.state.isAccountMenuOpen)
+    }
+
+    @Test
+    fun signOutEndsTheSessionImmediatelyWithNoConfirmation() = runTest {
+        val processor = LandingProcessor(repository, authRepository)
+
+        processor.test { dispatch(LandingIntent.SignOut) }
+
+        assertFalse(processor.state.isAccountMenuOpen)
+        assertTrue(authRepository.observeAuthState().value is AuthState.SignedOut)
     }
 }

@@ -74,6 +74,8 @@ again (CLI sessions expire).
 
 ## Retrying or checking a build without distributing
 
-`./gradlew :androidApp:assembleRelease` builds the signed APK alone (`androidApp/build/outputs/apk/release/`),
-without touching Firebase or git tags — useful for confirming signing works after setup, or after rotating the
-keystore's backup.
+`./gradlew :androidApp:assembleProductionRelease` builds the signed APK alone
+(`androidApp/build/outputs/apk/production/release/`), without touching Firebase or git tags — useful for confirming
+signing works after setup, or after rotating the keystore's backup. (`add-firebase-auth` added a second, `fake`,
+product flavor used only by the Maestro suite — it has no distribution configuration at all, so always use the
+`production`-qualified task name here, not a bare `assembleRelease`.)

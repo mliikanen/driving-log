@@ -1,0 +1,14 @@
+# A sign-in failure shows an error, not a crash (firebase-auth: "A sign-in failure shows an error, not a crash").
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    arguments:
+      testingStartUser: "none"
+- tapOn:
+    id: sign_in_google
+- tapOn:
+    id: simulate_failure
+- assertVisible:
+    id: sign_in_error
+- assertVisible: "Sign in with Google"

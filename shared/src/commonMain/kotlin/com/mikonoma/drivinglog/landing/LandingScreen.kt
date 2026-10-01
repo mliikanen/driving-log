@@ -18,11 +18,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -75,17 +80,46 @@ fun LandingScreen(
         // The first tile is "Vehicles" or, with none, "Add vehicle": one tile, whose action follows what it says.
         onFirstTile = { processor.dispatch(if (state.hasVehicles) LandingIntent.OpenVehicles else LandingIntent.AddVehicle) },
         onLogEvent = { processor.dispatch(LandingIntent.OpenLogEvent) },
+        onToggleAccountMenu = { processor.dispatch(LandingIntent.ToggleAccountMenu) },
+        onDismissAccountMenu = { processor.dispatch(LandingIntent.DismissAccountMenu) },
+        onSignOut = { processor.dispatch(LandingIntent.SignOut) },
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LandingContent(state: LandingState, onFirstTile: () -> Unit, onLogEvent: () -> Unit = {}) {
+fun LandingContent(
+    state: LandingState,
+    onFirstTile: () -> Unit,
+    onLogEvent: () -> Unit = {},
+    onToggleAccountMenu: () -> Unit = {},
+    onDismissAccountMenu: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             Column {
-                CenterAlignedTopAppBar(title = { Text("Driving Log") }, colors = drivingLogTopAppBarColors())
+                CenterAlignedTopAppBar(
+                    title = { Text("Driving Log") },
+                    colors = drivingLogTopAppBarColors(),
+                    actions = {
+                        // `firebase-auth`'s "The signed-in account and sign-out are reachable from the Home screen".
+                        IconButton(onClick = onToggleAccountMenu, modifier = Modifier.testTag("landing_account")) {
+                            Icon(Icons.Filled.AccountCircle, contentDescription = "Account")
+                        }
+                        DropdownMenu(expanded = state.isAccountMenuOpen, onDismissRequest = onDismissAccountMenu) {
+                            state.accountEmail?.let { email ->
+                                Text(email, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).testTag("landing_account_email"))
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Sign out") },
+                                onClick = onSignOut,
+                                modifier = Modifier.testTag("landing_sign_out"),
+                            )
+                        }
+                    },
+                )
                 HeaderDivider()
             }
         },

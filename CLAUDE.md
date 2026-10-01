@@ -32,10 +32,11 @@ Project context and artifact rules live in `openspec/config.yaml`.
 ## Commands
 
 - `./gradlew :shared:allTests`: run shared tests
-- `./gradlew :androidApp:assembleDebug`: build the Android app (needs Android SDK)
-- `maestro/run.sh <area>...`: run Maestro manifests on a running Android emulator or device with the debug app installed
-  (`adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk`). A manifest (`maestro/manifests/<area>.yaml`) is the flows of `maestro/<area>/` in order; areas:
-  `vehicles`, `distance`, `resilience`, `appearance`. `maestro/run.sh vehicles edit` runs the manifest's setup and then one flow; `maestro/run.sh --all` runs all four.
+- `./gradlew :androidApp:assembleDebug`: build the Android app (needs Android SDK; builds both the `production` and `fake` flavors' debug variants)
+- `maestro/run.sh <area>...`: run Maestro manifests on a running Android emulator or device with the `fake` flavor's debug app installed
+  (`./gradlew :androidApp:assembleFakeDebug`, then `adb install -r androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk`) — never the `production`
+  flavor, which needs real Firebase/Google Sign-In setup Maestro can't drive (`add-firebase-auth`). A manifest (`maestro/manifests/<area>.yaml`) is the flows of `maestro/<area>/` in order; areas:
+  `vehicles`, `distance`, `resilience`, `appearance`, `auth`. `maestro/run.sh vehicles edit` runs the manifest's setup and then one flow; `maestro/run.sh --all` runs all five.
   The device-state groups `picture` (checks the files the app stores over `adb`), `theme` (samples screenshot pixels) and `clock` (12-hour/24-hour) change or inspect device state and are run by name
   (`maestro/run.sh picture theme clock`). Each flow clears the app's data and expects the device locale English (United States). `maestro/subflows/` holds shared steps and is not run on its own;
   `maestro/check-permissions.sh` fails when the installed app requests a system permission.

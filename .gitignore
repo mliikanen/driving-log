@@ -10,3 +10,8 @@ xcuserdata/
 DerivedData/
 Pods/
 node_modules/
+
+# add-firebase-auth: a per-developer download (firebase apps:sdkconfig ANDROID <appId>), not committed — the same
+# "kept outside version control" precedent as the release keystore (docs/distribution.md), just inside the repo
+# tree since AGP requires it at this exact flavor-specific path.
+androidApp/src/production/google-services.json

@@ -1,0 +1,16 @@
+# Signing in reaches the Home screen (firebase-auth: "Successful sign-in reaches the Home screen"). Starts signed
+# out via test setup (testingStartUser, docs/test-strategy.md), not by tapping through "Sign out" first.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    arguments:
+      testingStartUser: "none"
+- assertVisible: "Sign in with Google"
+- tapOn:
+    id: sign_in_google
+- tapOn:
+    id: test_account_a
+- assertVisible: "Driving Log"
+- assertVisible:
+    id: landing_account

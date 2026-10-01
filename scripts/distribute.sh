@@ -50,8 +50,10 @@ fi
 version_name="$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
 
 # The upload task uploads whatever release APK is already on disk and does not build one, so the APK is built in the same run:
-# without assembleRelease, an APK left from an earlier build (another commit, another versionCode) is what testers get.
-./gradlew :androidApp:assembleRelease :androidApp:appDistributionUploadRelease "-PdistributionReleaseNotesFile=$notes_file"
+# without assembleProductionRelease, an APK left from an earlier build (another commit, another versionCode) is what testers get.
+# Flavor-qualified (not the unqualified assembleRelease/appDistributionUploadRelease) since add-firebase-auth added a
+# second `fake` flavor whose release variant has no distribution config at all (see docs/distribution.md).
+./gradlew :androidApp:assembleProductionRelease :androidApp:appDistributionUploadProductionRelease "-PdistributionReleaseNotesFile=$notes_file"
 
 git tag "dist-v$version_name"
 echo "Tagged dist-v$version_name (local only — not pushed)."

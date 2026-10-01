@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The base manifest removes INTERNET for ML Kit's sake (on-device only, maestro/check-permissions.sh). Real
+         Google Sign-In and Firebase Auth need network access to reach Google's identity servers — there's no
+         lighter alternative, since signing in is inherently a network round-trip (add-firebase-auth). The `fake`
+         flavor makes no network calls at all, so it does not re-add this. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

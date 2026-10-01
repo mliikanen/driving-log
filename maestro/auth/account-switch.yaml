@@ -1,0 +1,46 @@
+# On-device data is isolated per signed-in account (firebase-auth: "A second account starts with none of the
+# first account's data", "Switching back to a previous account restores its data"). Starts already signed in as
+# Test Account A — the same default every other flow relies on implicitly, declared here explicitly (design.md
+# decision 7) since this flow's own subject is the switch itself, not just its starting point.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    arguments:
+      testingStartUser: "A"
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Account A car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "1"
+- assertVisible: "Account A car"
+- tapOn:
+    id: back
+# Home shows "Vehicles" (not "Account A car" — it never shows a vehicle's name, only this tile's generic label).
+- assertVisible: "Vehicles"
+# Switch to Test Account B: none of A's data. The account menu is a Material DropdownMenu, which doesn't expose
+# resource-ids reliably while open (the same limitation this project already hit with other popups) — its items
+# are tapped by visible text.
+- tapOn:
+    id: landing_account
+- tapOn: "Sign out"
+- assertVisible: "Sign in with Google"
+- tapOn:
+    id: sign_in_google
+- tapOn:
+    id: test_account_b
+- assertVisible: "Add vehicle"
+# Switch back to Test Account A: its data is exactly as it was left.
+- tapOn:
+    id: landing_account
+- tapOn: "Sign out"
+- tapOn:
+    id: sign_in_google
+- tapOn:
+    id: test_account_a
+- assertVisible: "Vehicles"
+- tapOn:
+    id: landing_vehicles
+- assertVisible: "Account A car"

@@ -5,5 +5,5 @@ import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 
 actual class DatabaseDriverFactory {
-    actual fun createDriver(): SqlDriver = NativeSqliteDriver(DrivingLogDatabase.Schema, DATABASE_NAME)
+    actual fun createDriver(databaseName: String): SqlDriver = NativeSqliteDriver(DrivingLogDatabase.Schema, databaseName)
 }

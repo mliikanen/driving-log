@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Runs Maestro manifests (see ../docs/test-strategy.md). A manifest is manifests/<area>.yaml: the flows of maestro/<area>/ and their order, the setup flow
-# (which uploads the area's test photos, once) first. Needs a running emulator or device with the debug app installed.
+# (which uploads the area's test photos, once) first. Needs a running emulator or device with the `fake` flavor's debug app installed
+# (./gradlew :androidApp:assembleFakeDebug, then adb install -r androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk) — not `production`,
+# which needs real Google Sign-In setup this suite can't drive (add-firebase-auth).
 #
 #   run.sh vehicles              one manifest            run.sh vehicles distance     several
 #   run.sh vehicles edit         the manifest's setup, then the flow maestro/vehicles/edit.yaml
@@ -11,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PLAIN="vehicles distance resilience appearance"
+PLAIN="vehicles distance resilience appearance auth"
 DEVICE_STATE="picture theme clock"
 
 usage() {

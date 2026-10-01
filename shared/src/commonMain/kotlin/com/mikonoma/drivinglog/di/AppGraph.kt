@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.di
 
 import app.cash.sqldelight.db.SqlDriver
+import com.mikonoma.drivinglog.auth.AuthRepository
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.vehicle.data.SqlDelightVehicleRepository
@@ -39,6 +40,7 @@ import kotlinx.io.files.Path
 interface AppGraph {
     val deviceLocale: DeviceLocale
     val deviceTimeZone: DeviceTimeZone
+    val authRepository: AuthRepository
     val vehicleRepository: VehicleRepository
     val vehiclePictureStore: PictureStore
 
@@ -60,7 +62,14 @@ interface AppGraph {
 
     @DependencyGraph.Factory
     fun interface Factory {
-        fun create(@Provides driver: SqlDriver, @Provides deviceLocale: DeviceLocale, @Provides picturesRoot: Path, @Provides imageCodec: ImageCodec, @Provides textRecognizer: TextRecognizer): AppGraph
+        fun create(
+            @Provides driver: SqlDriver,
+            @Provides deviceLocale: DeviceLocale,
+            @Provides picturesRoot: Path,
+            @Provides imageCodec: ImageCodec,
+            @Provides textRecognizer: TextRecognizer,
+            @Provides authRepository: AuthRepository,
+        ): AppGraph
     }
 
     @Provides
@@ -127,4 +136,5 @@ fun createAppGraph(
     picturesRoot: Path,
     imageCodec: ImageCodec,
     textRecognizer: TextRecognizer,
-): AppGraph = createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot, imageCodec, textRecognizer)
+    authRepository: AuthRepository,
+): AppGraph = createGraphFactory<AppGraph.Factory>().create(driver, deviceLocale, picturesRoot, imageCodec, textRecognizer, authRepository)

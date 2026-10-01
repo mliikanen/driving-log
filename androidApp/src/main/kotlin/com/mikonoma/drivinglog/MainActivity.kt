@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog
 
+import android.content.Intent
 import android.os.Bundle
 import android.graphics.Color
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import com.mikonoma.drivinglog.auth.ActivityResultBridge
 
 class MainActivity : ComponentActivity() {
 
@@ -20,10 +22,13 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        val app = application as DrivingLogApplication
+        app.applyLaunchArguments(intent)
         setContent {
             // Lets UI tests (Maestro) find elements by their test tags, as resource ids.
             App(
-                graph = (application as DrivingLogApplication).graph,
+                authRepository = app.authRepository,
+                graphFor = { uid -> app.graphFor(uid) },
                 modifier = Modifier.semantics { testTagsAsResourceId = true },
             )
         }
@@ -32,5 +37,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         (application as DrivingLogApplication).resumeCount.intValue++
+    }
+
+    @Deprecated("Deprecated in Java, but this is the only API a classic startActivityForResult call can respond to.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        ActivityResultBridge.onActivityResult(resultCode, data)
     }
 }

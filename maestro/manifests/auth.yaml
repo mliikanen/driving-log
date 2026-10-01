@@ -1,0 +1,11 @@
+# Signing in, cancelling, a simulated failure, and the account-switch isolation guarantee, all against the `fake`
+# flavor's test account picker (add-firebase-auth). Run with: maestro/run.sh auth
+flows:
+  - "auth/*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - sign-in
+    - cancel
+    - failure
+    - account-switch

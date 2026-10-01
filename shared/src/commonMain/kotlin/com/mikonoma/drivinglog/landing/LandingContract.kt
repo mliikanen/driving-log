@@ -36,6 +36,9 @@ data class LandingState(
     /** True until the first load. */
     val isLoading: Boolean = true,
     val hasVehicles: Boolean = false,
+    /** Null only for the brief window before the first `AuthState` arrives — Home is never shown signed out. */
+    val accountEmail: String? = null,
+    val isAccountMenuOpen: Boolean = false,
 ) : ViewState {
     val tiles: List<LandingTile> get() = landingTiles(hasVehicles, isLoading)
 }
@@ -44,6 +47,9 @@ sealed interface LandingIntent : ViewIntent {
     data object OpenVehicles : LandingIntent
     data object AddVehicle : LandingIntent
     data object OpenLogEvent : LandingIntent
+    data object ToggleAccountMenu : LandingIntent
+    data object DismissAccountMenu : LandingIntent
+    data object SignOut : LandingIntent
 }
 
 sealed interface LandingEffect : SideEffect {

@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog
 
 import androidx.compose.ui.window.ComposeUIViewController
+import com.mikonoma.drivinglog.auth.UnavailableAuthRepository
 import com.mikonoma.drivinglog.di.AppGraph
 import com.mikonoma.drivinglog.di.createAppGraph
 import com.mikonoma.drivinglog.locale.SystemDeviceLocale
@@ -21,8 +22,17 @@ private fun picturesRoot(): Path {
     return Path(support, "pictures")
 }
 
+// iOS has no real sign-in yet (UnavailableAuthRepository never reaches SignedIn), so there's only ever one graph —
+// no per-account database switching to do here, unlike Android (add-firebase-auth/design.md decision 5).
 private val appGraph: AppGraph by lazy {
-    createAppGraph(DatabaseDriverFactory().createDriver(), SystemDeviceLocale(), picturesRoot(), IosImageCodec(), UnavailableTextRecognizer)
+    createAppGraph(
+        DatabaseDriverFactory().createDriver(),
+        SystemDeviceLocale(),
+        picturesRoot(),
+        IosImageCodec(),
+        UnavailableTextRecognizer,
+        UnavailableAuthRepository,
+    )
 }
 
-fun MainViewController(): UIViewController = ComposeUIViewController { App(appGraph) }
+fun MainViewController(): UIViewController = ComposeUIViewController { App(UnavailableAuthRepository, graphFor = { appGraph }) }

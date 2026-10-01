@@ -1,0 +1,15 @@
+# Cancelling the account picker leaves the user on the sign-in screen, with no error (firebase-auth: "Cancelling
+# the account picker leaves the user on the sign-in screen").
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    arguments:
+      testingStartUser: "none"
+- tapOn:
+    id: sign_in_google
+- tapOn:
+    id: sign_in_cancel
+- assertVisible: "Sign in with Google"
+- assertNotVisible:
+    id: sign_in_error
