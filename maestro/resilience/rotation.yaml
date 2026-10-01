@@ -213,7 +213,8 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: vehicle_color_E53935
-    direction: UP
+    direction: DOWN
+    centerElement: true
 - assertVisible:
     id: vehicle_color_E53935
     checked: true
@@ -221,6 +222,7 @@ appId: com.mikonoma.drivinglog
     element:
       id: vehicle_type_VAN
     direction: UP
+    centerElement: true
 - assertVisible:
     id: vehicle_type_VAN
     checked: true
