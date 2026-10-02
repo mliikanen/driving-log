@@ -1,10 +1,12 @@
 # Once for the distance manifest: the photos its flows attach to a logged event (add-event-pictures), and the photos
-# scan-reading reads an odometer from: a motorcycle's LCD (add-seven-segment-ocr) and a car cluster
-# (add-odometer-ocr-capture). The picker lists the newest first, so the car cluster, uploaded last, is its first photo
-# and the LCD its second.
+# scan-reading reads a reading from: a motorcycle's LCD (add-seven-segment-ocr), a car cluster (add-odometer-ocr-capture)
+# and a fuel pump display (add-fuel-amount-ocr). The picker lists the newest first, so the car cluster, uploaded
+# last, is its first photo, the LCD its second, and the fuel pump photo (uploaded first, oldest of the five) its
+# last — the two decorative car photos fall in between, newer than the fuel photo but older than the LCD.
 appId: com.mikonoma.drivinglog
 ---
 - addMedia:
+    - ../assets/ocr/fuel/DSC_0896.jpg
     - ../assets/photo-car-red.jpg
     - ../assets/photo-car-blue.jpg
     - ../assets/ocr/odo/20220911_162029.jpg

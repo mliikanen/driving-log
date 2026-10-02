@@ -151,7 +151,12 @@ private fun LiveView(newLiveScanner: () -> LiveScanner, onTap: (LiveReading) -> 
 private fun LiveReadingMark(reading: LiveReading, left: Float, top: Float, right: Float, bottom: Float, onTap: (LiveReading) -> Unit) {
     val density = LocalDensity.current
     val color = MaterialTheme.colorScheme.outline
-    val label = if (reading.detection.kind == ReadingKind.ODOMETER) "ODO" else "TRIP"
+    val label = when (reading.detection.kind) {
+        ReadingKind.ODOMETER -> "ODO"
+        ReadingKind.TRIP -> "TRIP"
+        ReadingKind.FUEL_AMOUNT -> "FUEL"
+        null -> "TRIP" // never actually null: a live reading always wraps an already-classified detection
+    }
     val tap = Modifier.clickable(onClickLabel = "Use $label ${reading.detection.value}", role = Role.Button) { onTap(reading) }
     with(density) {
         Box(

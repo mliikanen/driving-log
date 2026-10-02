@@ -4,9 +4,9 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlinx.serialization.Serializable
 
-/** What a detected reading is taken to be: the odometer's count, or a trip meter's distance. */
+/** What a detected reading is taken to be: the odometer's count, a trip meter's distance, or a refueling's fuel amount. */
 @Serializable
-enum class ReadingKind { ODOMETER, TRIP }
+enum class ReadingKind { ODOMETER, TRIP, FUEL_AMOUNT }
 
 /** Why a number was classified the way it was, kept with the detections to review a misdetection later. */
 @Serializable
@@ -17,7 +17,9 @@ enum class DetectionBasis {
     /** No label; its magnitude against the known odometer decided the kind. */
     MAGNITUDE,
 
-    /** No label and no distance unit after it, and not plausible as the odometer nor a trip with tenths (a dial number, a clock): not presented. */
+    /** No label, and no fallback rule classifies it either: for an odometer/trip reading, no distance unit after
+     * it and not plausible as the odometer nor a trip with tenths (a dial number, a clock); for a fuel amount
+     * (which has no fallback rule at all), simply no recognized volume label next to it. Not presented either way. */
     NO_UNIT,
 
     /** No label, and neither close to the known odometer nor plausible as a trip: not presented. */
@@ -75,10 +77,29 @@ object ReadingThresholds {
 
     /** Two detections are at the same place when they share at least this much of the smaller one's box. */
     const val SAME_PLACE = 0.3
+
+    /** A fuel-amount candidate's whole-digit count (`add-fuel-amount-ocr`): distinct from the odometer bounds
+     * above — a single refueling is realistically a few liters/gallons up to a large tank, nothing like an
+     * odometer's multi-year count, so a 5+ digit number (and most 3-digit ones) is never a fuel amount. */
+    const val MIN_FUEL_AMOUNT_DIGITS = 1
+    const val MAX_FUEL_AMOUNT_DIGITS = 4
 }
 
 private val ODOMETER_LABELS = setOf("ODO", "ODOMETER", "TOTAL DISTANCE")
 private val TRIP_LABELS = setOf("TRIP", "TRIP A", "TRIP B", "T")
+private val DISTANCE_LABEL_KINDS: Map<String, ReadingKind> =
+    ODOMETER_LABELS.associateWith { ReadingKind.ODOMETER } + TRIP_LABELS.associateWith { ReadingKind.TRIP }
+
+/**
+ * Recognized volume words next to a number mean a fuel amount (`add-fuel-amount-ocr`, design.md's evaluation):
+ * `LITRAA`/`LITARA`/`LITROV` (Finnish, Croatian, Slovenian), `dm` and `dm^3` (Polish; 1 dm³ is exactly 1 liter,
+ * not deciliters), and `L`/`LITERS`/`LITRES`/`GAL`/`GALLON`/`GALLONS` as an untested English/US hypothesis — no
+ * real English-labeled photo was available to check those against. There is no separate list of price labels to
+ * exclude by: a price or a price-per-unit number is simply never next to one of these words either (the
+ * evaluation found no photo where it was), so absence of a match already excludes it.
+ */
+private val VOLUME_LABELS = setOf("LITRAA", "LITARA", "LITROV", "DM^3", "DM", "L", "LITERS", "LITRES", "GAL", "GALLON", "GALLONS")
+private val VOLUME_LABEL_KINDS: Map<String, ReadingKind> = VOLUME_LABELS.associateWith { ReadingKind.FUEL_AMOUNT }
 
 /** Digits, at most one decimal separator with one or two digits after it, and letters run directly onto it (a unit, or noise). */
 private val NUMBER = Regex("""^(\d+)(?:[.,](\d{1,2}))?([A-Za-z]*)$""")
@@ -97,7 +118,7 @@ fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detecti
             val (wholeDigits, fraction, attached) = match.destructured
             if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_DIGITS..ReadingThresholds.MAX_DIGITS) return@mapIndexedNotNull null
             val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
-            val label = labelOf(photo, line, index, element.box)
+            val label = labelOf(photo, line, index, element.box, DISTANCE_LABEL_KINDS)
             val hasUnit = isDistanceUnit(attached) || isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty())
             val byMagnitude = kindByMagnitude(value.toDouble(), knownOdometer)
             when {
@@ -131,6 +152,28 @@ fun detectInitialOdometer(photo: RecognizedPhoto): List<Detection> =
         }
         d.copy(kind = kind, basis = basis)
     }
+
+/**
+ * Every number in [photo] that could be a refueling's fuel amount (`add-fuel-amount-ocr`, design.md), classified
+ * by a recognized volume label next to it only: unlike [detectReadings], there is no magnitude fallback at all —
+ * no known fuel amount exists to compare against the way a known odometer does, so an unlabeled number is never a
+ * candidate, however plausible its size. Shares [labelOf]'s label-adjacency rule and [onePerPlace]'s same-place
+ * merging with [detectReadings], and uses its own, smaller digit-count bounds
+ * ([ReadingThresholds.MIN_FUEL_AMOUNT_DIGITS]/[ReadingThresholds.MAX_FUEL_AMOUNT_DIGITS]): a realistic fuel amount
+ * is one or two digits, not the three-to-seven an odometer reading needs to even be considered.
+ */
+fun detectFuelAmount(photo: RecognizedPhoto): List<Detection> =
+    photo.lines.flatMap { line ->
+        line.elements.mapIndexedNotNull { index, element ->
+            val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
+            val (wholeDigits, fraction, _) = match.destructured
+            if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_FUEL_AMOUNT_DIGITS..ReadingThresholds.MAX_FUEL_AMOUNT_DIGITS) return@mapIndexedNotNull null
+            val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
+            val label = labelOf(photo, line, index, element.box, VOLUME_LABEL_KINDS)
+            if (label != null) Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
+            else Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
+        }
+    }.onePerPlace()
 
 /**
  * One detection per place in the photo: where two overlap (their intersection is at least [ReadingThresholds.SAME_PLACE] of the smaller
@@ -198,32 +241,29 @@ internal fun kindByMagnitude(value: Double, knownOdometer: Double?): ReadingKind
     }
 }
 
-/** The kind a label names, comparing case-insensitively, zero read as O and spaces collapsed; null when [text] is not a label. */
-internal fun labelKind(text: String): ReadingKind? {
+/** The kind [labels] names for a label, comparing case-insensitively, zero read as O and spaces collapsed; null when [text] names none of them. */
+internal fun labelKind(text: String, labels: Map<String, ReadingKind>): ReadingKind? {
     val normalized = text.uppercase().replace('0', 'O').split(' ').filter { it.isNotEmpty() }.joinToString(" ")
-    return when (normalized) {
-        in ODOMETER_LABELS -> ReadingKind.ODOMETER
-        in TRIP_LABELS -> ReadingKind.TRIP
-        else -> null
-    }
+    return labels[normalized]
 }
 
 /**
- * The label of the number at [index] of [line], and the kind it names: the one or two words directly before it on its line, or a whole
- * line directly above or below it (design.md). The nearest wins when several qualify. A lone "T" counts only on the number's own line:
- * above or below it, it is as likely a mode icon beside another figure (on `odo/20220911_162029` it sits under the clock).
+ * The label of the number at [index] of [line], and the kind it names from [labels]: the one or two words directly before it on its
+ * line, or a whole line directly above or below it (design.md). The nearest wins when several qualify. A lone "T" counts only on the
+ * number's own line: above or below it, it is as likely a mode icon beside another figure (on `odo/20220911_162029` it sits under the
+ * clock) — harmless to exclude when [labels] has no entry shaped like a lone letter anyway (`add-fuel-amount-ocr`'s [VOLUME_LABEL_KINDS]).
  */
-private fun labelOf(photo: RecognizedPhoto, line: RecognizedLine, index: Int, box: TextBox): Pair<String, ReadingKind>? {
+private fun labelOf(photo: RecognizedPhoto, line: RecognizedLine, index: Int, box: TextBox, labels: Map<String, ReadingKind>): Pair<String, ReadingKind>? {
     for (count in 2 downTo 1) {
         if (index - count < 0) continue
         val words = line.elements.subList(index - count, index).joinToString(" ") { it.text }
-        labelKind(words)?.let { return words to it }
+        labelKind(words, labels)?.let { return words to it }
     }
     val maxGap = box.height * ReadingThresholds.LABEL_GAP_HEIGHTS
     return photo.lines.asSequence()
         .filter { it !== line }
         .filter { !isLoneT(it.text) }
-        .mapNotNull { other -> labelKind(other.text)?.let { Triple(other, it, verticalGap(other.box, box)) } }
+        .mapNotNull { other -> labelKind(other.text, labels)?.let { Triple(other, it, verticalGap(other.box, box)) } }
         .filter { (other, _, gap) -> gap <= maxGap && horizontallyNear(other.box, box) }
         .minByOrNull { (_, _, gap) -> gap }
         ?.let { (other, kind, _) -> other.text to kind }

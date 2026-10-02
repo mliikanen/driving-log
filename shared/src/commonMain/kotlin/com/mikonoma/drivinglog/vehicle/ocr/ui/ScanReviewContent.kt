@@ -128,7 +128,11 @@ private fun ScannedPhoto(review: ScanReview, photoUri: String?, onSelect: (Int) 
             val selected = index == review.selectedIndex
             val color = if (selected) DrivingLogTheme.domain.distance else MaterialTheme.colorScheme.outline
             val box = detection.box
-            val label = if (kind == ReadingKind.ODOMETER) "ODO" else "TRIP"
+            val label = when (kind) {
+                ReadingKind.ODOMETER -> "ODO"
+                ReadingKind.TRIP -> "TRIP"
+                ReadingKind.FUEL_AMOUNT -> "FUEL"
+            }
             val select = Modifier
                 .semantics { this.selected = selected }
                 .clickable(onClickLabel = "Use $label ${detection.value}", role = Role.Button) { onSelect(index) }

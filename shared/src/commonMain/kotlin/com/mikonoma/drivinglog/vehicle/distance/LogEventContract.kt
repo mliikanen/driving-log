@@ -36,6 +36,11 @@ enum class LogKind(val label: String) {
     REFUELING("Refueling"),
 }
 
+/** Which field a scan is for (`add-fuel-amount-ocr`): the mileage section's own "Scan a reading" action, or the
+ * refueling form's fuel amount field's. The two share one [LogEventState.scan], so this says which classify
+ * function the next photo or live frame runs through. */
+enum class ScanTarget { MILEAGE, FUEL_AMOUNT }
+
 /** One vehicle as the selector draws it: its picture or icon, its name and, when it has one, its plate. In the order of [com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder]. */
 data class VehicleChoice(
     val id: String,
@@ -107,6 +112,11 @@ data class LogEventState(
     @Transient val photoPreviewUris: List<Pair<String, String>> = emptyList(),
     /** The scan's review screen while it is open, and the scan accepted last (`odometer-ocr-capture`). Persisted like [photos]. */
     val scan: ScanDraft = ScanDraft(),
+    /** Which field the currently-open (or last-opened) scan is for (`add-fuel-amount-ocr`): the mileage section's
+     * own action and the refueling form's fuel amount field share this one [scan], so this says which classify
+     * function the next photo or live frame is run through. Persisted, not [Transient], for the same reason
+     * [scan] is: set when [LogEventIntent.ScannerOpened] is dispatched, read again if the process is lost mid-scan. */
+    val scanTarget: ScanTarget = ScanTarget.MILEAGE,
     /** True while a chosen photo is being recognized. */
     @Transient val isScanning: Boolean = false,
     /** Where the review screen loads the scanned photo from: rebuilt from the capture store, not persisted. */
@@ -256,8 +266,9 @@ sealed interface LogEventIntent : ViewIntent {
 
     data object ScanErrorDismissed : LogEventIntent
 
-    /** "Scan a reading", after the camera permission was asked for when needed: the live scanner opens (`add-live-scanner`). */
-    data object ScannerOpened : LogEventIntent
+    /** "Scan a reading", after the camera permission was asked for when needed: the live scanner opens
+     * (`add-live-scanner`), for [target] (`add-fuel-amount-ocr`). */
+    data class ScannerOpened(val target: ScanTarget) : LogEventIntent
 
     /** The live scanner's close action or back: the form as it was, nothing kept. */
     data object ScannerClosed : LogEventIntent

@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
@@ -16,6 +17,7 @@ import com.mikonoma.drivinglog.vehicle.ocr.Detection
 import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
 import com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto
+import com.mikonoma.drivinglog.vehicle.ocr.detectFuelAmount
 import com.mikonoma.drivinglog.vehicle.ocr.detectReadings
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.ocr.ScanEditor
@@ -205,7 +207,7 @@ class LogEventProcessor @AssistedInject constructor(
         LogEventIntent.ScanConfirmed -> scanConfirmed()
         LogEventIntent.ScanCancelled -> scanStep { scanEditor.cancelled(it) }
         LogEventIntent.ScanErrorDismissed -> reduce { copy(scan = scanEditor.errorDismissed(scan)) }
-        LogEventIntent.ScannerOpened -> reduce { copy(scan = scanEditor.scannerOpened(scan)) }
+        is LogEventIntent.ScannerOpened -> reduce { copy(scan = scanEditor.scannerOpened(scan), scanTarget = intent.target) }
         LogEventIntent.ScannerClosed -> scanStep { scanEditor.scannerClosed(it) }
         is LogEventIntent.LiveReadingTapped -> async("scan") {
             val next = scanEditor.liveAccepted(state.scan, intent.reading) ?: return@async
@@ -226,21 +228,29 @@ class LogEventProcessor @AssistedInject constructor(
             reduce { copy(photos = next, photoPreviewUris = previews) }
         }
 
-    /** A fresh live scanner for one opening of the scanner screen (`add-live-scanner`), reading frames with the same recognizers. */
-    fun liveScanner(): LiveScanner = LiveScanner(recognizer, clock, ::classify)
+    /** A fresh live scanner for one opening of the scanner screen (`add-live-scanner`), for whichever field
+     * [LogEventState.scanTarget] currently names (`add-fuel-amount-ocr`), reading frames with the same recognizers. */
+    fun liveScanner(): LiveScanner = LiveScanner(recognizer, clock, classifierFor(state.scanTarget))
 
-    /** The log event form's classification: against the known odometer at the entry's time, read afresh for each photo or frame. */
+    /** The classify function for [target]: the mileage section's own, against the known odometer at the entry's
+     * time, or the fuel amount field's, by label only (`add-fuel-amount-ocr`, design.md). */
+    private fun classifierFor(target: ScanTarget): (RecognizedPhoto) -> List<Detection> = when (target) {
+        ScanTarget.MILEAGE -> ::classify
+        ScanTarget.FUEL_AMOUNT -> ::detectFuelAmount
+    }
+
+    /** The log event form's mileage classification: against the known odometer at the entry's time, read afresh for each photo or frame. */
     private fun classify(photo: RecognizedPhoto): List<Detection> = detectReadings(photo, knownOdometerInUnit)
 
     /** The known odometer at the entry's time in the vehicle's unit, as a scan classifies against it; null when none is known then. */
     val knownOdometerInUnit: Double?
         get() = state.knownOdometer?.let { it.meters / (if (state.unit.isMiles) METERS_PER_MILE else METERS_PER_KILOMETER) }
 
-    /** A photo to scan: it is recognized against the known odometer at the entry's time, in the vehicle's unit, and the review opens. */
+    /** A photo to scan: classified by whichever field [LogEventState.scanTarget] is currently for, and the review opens. */
     private fun scanPicked(result: PhotoResult): Action<LogEventState, LogEventEffect> = async("scan") {
         reduce { copy(isScanning = true) }
         try {
-            val next = scanEditor.photoPicked(state.scan, result, ::classify)
+            val next = scanEditor.photoPicked(state.scan, result, classifierFor(state.scanTarget))
             val uri = scanEditor.reviewPhotoUri(next)
             reduce { copy(scan = next, scanPhotoUri = uri, isScanning = false) }
         } catch (throwable: Throwable) {
@@ -427,6 +437,16 @@ class LogEventProcessor @AssistedInject constructor(
          */
         fun LogEventState.withScannedReading(reading: Detection): LogEventState {
             val kind = reading.kind ?: return this
+            if (kind == ReadingKind.FUEL_AMOUNT) {
+                // Always hundredths (refueling-logging's FuelAmountEntry), whatever the reading's own decimal
+                // places: a single fraction digit is a tenth, padded with a trailing zero (design.md).
+                val hundredths = reading.value.substringAfter('.', "").padEnd(2, '0').take(2).toLong()
+                val steps = reading.whole * 100 + hundredths
+                if (steps > FuelAmountEntry.MAX_STEPS) return this
+                // The label that made this a candidate also says which unit it was in (design.md, "A recognized
+                // label also preselects the fuel unit"); kept as it was when the label doesn't say either way.
+                return copy(fuelAmount = FuelAmountEntry(steps = steps), fuelUnit = fuelUnitOf(reading.label) ?: fuelUnit, error = null)
+            }
             val tenth = reading.tenth
             val form = if (tenth != null && !unit.hasTenths) withUnit(unitOf(unit.isMiles, tenths = true)) else this
             val steps = if (form.unit.hasTenths) reading.whole * 10 + (tenth ?: 0) else reading.whole
@@ -435,7 +455,17 @@ class LogEventProcessor @AssistedInject constructor(
             return when (kind) {
                 ReadingKind.ODOMETER -> form.copy(way = LogWay.NEW_ODOMETER, newOdometer = entry, error = null)
                 ReadingKind.TRIP -> form.copy(way = LogWay.TRIP_DISTANCE, tripDistance = entry, error = null)
+                ReadingKind.FUEL_AMOUNT -> form // unreachable: handled above
             }
+        }
+
+        /** The fuel unit a recognized volume label implies (`add-fuel-amount-ocr`, design.md's evaluation): liters
+         * for every non-English word or symbol actually measured, gallons for the untested English/US hypothesis;
+         * null (the form's unit is left as it was) when the label says neither, or there was none. */
+        fun fuelUnitOf(label: String?): FuelUnit? = when (label?.uppercase()) {
+            "LITRAA", "LITARA", "LITROV", "DM^3", "DM", "L", "LITERS", "LITRES" -> FuelUnit.LITERS
+            "GAL", "GALLON", "GALLONS" -> FuelUnit.GALLONS
+            else -> null
         }
 
         /** The four units are the combinations of kilometers or miles, with or without tenths. */

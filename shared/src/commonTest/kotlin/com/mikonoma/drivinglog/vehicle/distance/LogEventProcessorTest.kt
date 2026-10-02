@@ -1419,6 +1419,98 @@ class LogEventProcessorTest {
         dispatch(LogEventIntent.ScanConfirmed)
     }
 
+    // ---- The fuel amount field's own scan action (add-fuel-amount-ocr)
+
+    /** The same dashboard as above, but also showing a fuel-amount-shaped reading next to a recognized volume label. */
+    private val dashboardWithFuelAmount = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+        1280, 720,
+        listOf(
+            line(element("ODO", 524, 403, 554, 415)),
+            line(element("45260km", 529, 412, 619, 433)),
+            line(element("LITRAA", 100, 600, 165, 620), element("12.34", 170, 600, 230, 622)),
+        ),
+    )
+
+    private fun LogEventProcessor.scanFuelAmount() {
+        dispatch(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT))
+        recognizer.photo = dashboardWithFuelAmount
+        dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+    }
+
+    @Test
+    fun openingTheScannerFromEachActionSetsItsOwnTarget() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT))
+        assertEquals(ScanTarget.FUEL_AMOUNT, processor.state.scanTarget)
+
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+        assertEquals(ScanTarget.MILEAGE, processor.state.scanTarget)
+    }
+
+    @Test
+    fun scanningFromTheFuelAmountActionYieldsOnlyFuelAmountCandidates() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.scanFuelAmount()
+
+        val candidates = processor.state.scan.review!!.detections.filter { it.kind != null }
+        assertEquals(listOf("12.34"), candidates.map { it.value })
+        assertEquals(com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT, candidates.single().kind)
+    }
+
+    @Test
+    fun scanningFromTheMileageActionStillYieldsOnlyOdometerAndTripCandidates() {
+        seedVehicle()
+        val processor = processor()
+        recognizer.photo = dashboardWithFuelAmount
+
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+
+        val candidates = processor.state.scan.review!!.detections.filter { it.kind != null }
+        assertEquals(listOf("45260"), candidates.map { it.value })
+    }
+
+    @Test
+    fun acceptingAFuelAmountCandidateFillsTheFieldAndSetsTheUnitFromItsLabel() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.dispatch(LogEventIntent.FuelUnitSelected(FuelUnit.GALLONS)) // so the preselection below is visible
+
+        processor.scanFuelAmount()
+        processor.accept("12.34")
+
+        assertEquals(1234L, processor.state.fuelAmount.steps)
+        assertEquals(FuelUnit.LITERS, processor.state.fuelUnit) // "LITRAA" preselects liters, overriding the prior choice
+        // The mileage section is untouched by a fuel-amount accept.
+        assertEquals(LogWay.TRIP_DISTANCE, processor.state.way)
+        assertTrue(processor.state.tripDistance.isEmpty)
+    }
+
+    @Test
+    fun tappingALiveFuelAmountReadingFillsTheFieldAndSetsTheUnit() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT))
+        val detection = com.mikonoma.drivinglog.vehicle.ocr.Detection(
+            "12.34", "12.34", com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
+            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "GAL",
+        )
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), listOf(detection))
+        val reading = com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detection, frame, now)
+
+        processor.dispatch(LogEventIntent.LiveReadingTapped(reading))
+
+        assertFalse(processor.state.scan.scannerOpen)
+        assertEquals(1234L, processor.state.fuelAmount.steps)
+        assertEquals(FuelUnit.GALLONS, processor.state.fuelUnit)
+    }
+
     @Test
     fun scanningOpensTheReviewWithTheCandidatesClassifiedAgainstTheKnownOdometer() {
         seedVehicle()
@@ -1725,7 +1817,7 @@ class LogEventProcessorTest {
         val processor = processor()
         processor.type(3, 0)
 
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
         assertTrue(processor.state.scan.scannerOpen)
         processor.dispatch(LogEventIntent.ScannerClosed)
 
@@ -1740,7 +1832,7 @@ class LogEventProcessorTest {
     fun tappingALiveOdometerReadingAppliesItKeepsItsFrameAndClosesTheScanner() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
         val reading = liveReading("45260", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER)
 
         processor.dispatch(LogEventIntent.LiveReadingTapped(reading))
@@ -1761,7 +1853,7 @@ class LogEventProcessorTest {
         seedVehicle()
         val processor = processor()
         processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
 
         processor.dispatch(LogEventIntent.LiveReadingTapped(liveReading("168.1", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP)))
 
@@ -1776,7 +1868,7 @@ class LogEventProcessorTest {
         processor.scan()
         processor.accept("45260")
         val first = processor.state.scan.accepted!!.pendingId
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
         processor.dispatch(LogEventIntent.LiveReadingTapped(liveReading("45270", com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER)))
 
         processor.test {
@@ -1792,7 +1884,7 @@ class LogEventProcessorTest {
     fun leavingThePhotoReviewReturnsToTheScanner() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
         processor.scan()
         assertNotNull(processor.state.scan.review)
 
@@ -1806,7 +1898,7 @@ class LogEventProcessorTest {
     fun confirmingOnThePhotoReviewClosesTheScannerToo() {
         seedVehicle()
         val processor = processor()
-        processor.dispatch(LogEventIntent.ScannerOpened)
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
         processor.scan()
 
         processor.accept("45260")

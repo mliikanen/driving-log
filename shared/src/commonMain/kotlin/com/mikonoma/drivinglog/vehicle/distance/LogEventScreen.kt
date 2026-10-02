@@ -270,7 +270,7 @@ fun LogEventContent(
                                 errorText = state.error?.takeIf { it !is LogDistanceError.TimeInFuture }?.let { errorMessage(state, symbols) },
                             )
                             if (state.canScan) {
-                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
+                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE)) })
                             }
                         }
                         LogKind.REFUELING -> {
@@ -287,6 +287,9 @@ fun LogEventContent(
                                     it is LogDistanceError.FuelAmountEmpty || it is LogDistanceError.FuelAmountNotPositive
                                 }?.let { errorMessage(state, symbols) },
                             )
+                            if (state.canScan) {
+                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT)) })
+                            }
                             FuelUnitChoice(state.fuelUnit) { onIntent(LogEventIntent.FuelUnitSelected(it)) }
                             FuelTypeSelector(state.fuelType, state.allowedFuelTypes) { onIntent(LogEventIntent.FuelTypeSelected(it)) }
                             FilledUpChoice(state.filledUp) { onIntent(LogEventIntent.FilledUpChanged(it)) }
@@ -311,7 +314,7 @@ fun LogEventContent(
                                 }?.let { errorMessage(state, symbols) },
                             )
                             if (state.canScan) {
-                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened) })
+                                ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE)) })
                             }
                         }
                     }

@@ -18,32 +18,38 @@ action: the same photo chooser, the same cancel/leave behavior, and not shown on
 
 ### Requirement: A detected reading is classified as a fuel amount, by label only
 The system SHALL classify a candidate as a fuel-amount reading when a recognized text label for a volume is next to
-it in the photo ("L", "LITERS", "LITRES", "GAL", "GALLON", "GALLONS" or "VOLUME"), using the same label-adjacency
-rule odometer/trip classification uses (`odometer-ocr-capture`, "A detected reading is classified as an odometer or
-a trip-meter reading"). Unlike an odometer or trip reading, a fuel amount SHALL NOT be classified by magnitude: a
-fuel pump or receipt display typically shows the amount dispensed and its total price as two numbers of similar
-size with nothing but their labels to tell them apart, so there is no magnitude fallback and no plausible-range
-check. A candidate with no recognized volume label next to it — including one next to a price-shaped label such as
-"$", "PRICE", "TOTAL" or "COST" — SHALL NOT be presented as a fuel-amount candidate.
+it in the photo ("LITRAA", "LITARA", "LITROV", "dm³", "L", "LITERS", "LITRES", "GAL", "GALLON" or "GALLONS"), using
+the same label-adjacency rule odometer/trip classification uses (`odometer-ocr-capture`, "A detected reading is
+classified as an odometer or a trip-meter reading"). Unlike an odometer or trip reading, a fuel amount SHALL NOT be
+classified by magnitude: a fuel pump or receipt display typically shows the amount dispensed and its total price as
+two numbers of similar size with nothing but their labels to tell them apart, so there is no magnitude fallback and
+no plausible-range check. A candidate with no recognized volume label next to it SHALL NOT be presented as a
+fuel-amount candidate. On a display where a price or an amount sits as close to the one recognized volume label as
+the real reading does, that number MAY also be classified as a fuel-amount candidate alongside it — the same
+adjacency rule that finds the real reading does not distinguish them by what else they mean, only by which
+recognized label is nearest; `odometer-ocr-capture`'s own "Several candidates" is how the user resolves this.
 
 #### Scenario: Classified by a volume label
-- **WHEN** a candidate has the recognized text "L" or "GAL" next to it in the photo
+- **WHEN** a candidate has the recognized text "LITRAA" or "GAL" next to it in the photo
 - **THEN** it is classified as a fuel-amount reading
 
 #### Scenario: An unlabeled number is not a candidate
 - **WHEN** a candidate has no recognized label next to it in the photo
 - **THEN** it is not presented as a fuel-amount candidate, however close its magnitude is to a plausible fuel amount
 
-#### Scenario: A price number is not a candidate
-- **WHEN** a candidate has the recognized text "$" or "TOTAL" next to it in the photo
-- **THEN** it is not presented as a fuel-amount candidate
+#### Scenario: A price can be classified too, when it shares the volume label's adjacency
+- **WHEN** a photo shows the fuel amount and the total price close enough together that both are nearest to the
+  same recognized volume label
+- **THEN** both are presented as fuel-amount candidates, and the user picks the correct one by its value
 
-### Requirement: Accepting a fuel-amount candidate sets the fuel amount field
+### Requirement: Accepting a fuel-amount candidate sets the fuel amount field and its unit
 The system SHALL, when the user confirms a selected fuel-amount candidate on the photo review, or taps one in the
 live scanner, set the log event form's fuel amount field to the candidate's value, replacing whatever it held
 before, and SHALL return to the log event form. Unlike accepting an odometer or trip candidate, this SHALL NOT
 change the mileage section's way or field: the fuel amount field and the mileage section are independent, each with
-its own scan action.
+its own scan action. When the label that classified the candidate names a unit (a liter word or symbol, or a
+gallon word), the system SHALL also set the fuel amount's unit to match, replacing whatever it held before; when
+the label names neither, the unit SHALL be left as it was.
 
 #### Scenario: Accept a fuel-amount reading from the review screen
 - **WHEN** the user confirms a candidate classified as a fuel-amount reading
@@ -52,6 +58,10 @@ its own scan action.
 #### Scenario: Tap a live fuel-amount reading
 - **WHEN** the user taps a reading classified as a fuel-amount reading in the live scanner
 - **THEN** the scanner closes and the fuel amount field shows the reading's value
+
+#### Scenario: The unit is preselected from the label
+- **WHEN** the user accepts a fuel-amount candidate whose recognized label is "LITRAA"
+- **THEN** the fuel amount's unit is set to liters
 
 ## MODIFIED Requirements
 

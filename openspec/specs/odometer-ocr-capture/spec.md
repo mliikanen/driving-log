@@ -37,6 +37,20 @@ action SHALL NOT be shown.
 - **WHEN** the user chose a photo and leaves its review without accepting a candidate
 - **THEN** the live scanner is shown again
 
+### Requirement: A photo is chosen to scan a refueling's fuel amount
+The system SHALL offer a "Scan a reading" action next to the log event form's fuel amount field (shown when
+"Refueling" is chosen in the Kind selector), alongside the mileage section's own, unchanged one ("A photo is chosen
+to scan for a reading"). Tapping it SHALL open the live scanner, under the same rules as the mileage section's
+action: the same photo chooser, the same cancel/leave behavior, and not shown on iOS.
+
+#### Scenario: Open the scanner for the fuel amount
+- **WHEN** the user taps "Scan a reading" next to the log event form's fuel amount field
+- **THEN** the live scanner opens
+
+#### Scenario: Leaving without accepting changes nothing
+- **WHEN** the user opens the live scanner from the fuel amount field's action and leaves without accepting a candidate
+- **THEN** the log event form is shown exactly as it was, and nothing is kept
+
 ### Requirement: Numeric readings are detected offline in the chosen photo
 The system SHALL recognize text in the chosen photo using on-device OCR that works without a network connection, and
 SHALL identify, among the recognized text, every numeric reading plausible as an odometer or trip-meter value as a
@@ -79,12 +93,38 @@ magnitude either way SHALL NOT be presented to the user.
 - **WHEN** a numeric value recognized elsewhere in the photo (for example a clock or a temperature) has no odometer/trip label and is neither close to the known odometer nor plausible as a trip distance
 - **THEN** it is not presented as a candidate
 
+### Requirement: A detected reading is classified as a fuel amount, by label only
+The system SHALL classify a candidate as a fuel-amount reading when a recognized text label for a volume is next to
+it in the photo ("LITRAA", "LITARA", "LITROV", "dm³", "L", "LITERS", "LITRES", "GAL", "GALLON" or "GALLONS"), using
+the same label-adjacency rule odometer/trip classification uses ("A detected reading is classified as an odometer or
+a trip-meter reading"). Unlike an odometer or trip reading, a fuel amount SHALL NOT be classified by magnitude: a
+fuel pump or receipt display typically shows the amount dispensed and its total price as two numbers of similar size
+with nothing but their labels to tell them apart, so there is no magnitude fallback and no plausible-range check. A
+candidate with no recognized volume label next to it SHALL NOT be presented as a fuel-amount candidate. On a display
+where a price or an amount sits as close to the one recognized volume label as the real reading does, that number
+MAY also be classified as a fuel-amount candidate alongside it — the same adjacency rule that finds the real reading
+does not distinguish them by what else they mean, only by which recognized label is nearest; this capability's own
+"Several candidates" is how the user resolves this.
+
+#### Scenario: Classified by a volume label
+- **WHEN** a candidate has the recognized text "LITRAA" or "GAL" next to it in the photo
+- **THEN** it is classified as a fuel-amount reading
+
+#### Scenario: An unlabeled number is not a candidate
+- **WHEN** a candidate has no recognized label next to it in the photo
+- **THEN** it is not presented as a fuel-amount candidate, however close its magnitude is to a plausible fuel amount
+
+#### Scenario: A price can be classified too, when it shares the volume label's adjacency
+- **WHEN** a photo shows the fuel amount and the total price close enough together that both are nearest to the
+  same recognized volume label
+- **THEN** both are presented as fuel-amount candidates, and the user picks the correct one by its value
+
 ### Requirement: The user picks a candidate to accept, or leaves without picking one
-The system SHALL show the chosen photo with a box drawn around every candidate and its classification ("ODO" or
-"TRIP") shown as text next to the box, every box and its text in a neutral color until the user taps it, and in a
-distinct, confirmable color once tapped. Tapping a candidate SHALL select it in place of whichever was selected
-before, if any. The system SHALL let the user confirm the selected candidate, or navigate back without confirming
-one, in which case the log event form is unchanged and nothing is kept.
+The system SHALL show the chosen photo with a box drawn around every candidate and its classification ("ODO",
+"TRIP" or "FUEL") shown as text next to the box, every box and its text in a neutral color until the user taps it,
+and in a distinct, confirmable color once tapped. Tapping a candidate SHALL select it in place of whichever was
+selected before, if any. The system SHALL let the user confirm the selected candidate, or navigate back without
+confirming one, in which case the log event form is unchanged and nothing is kept.
 
 #### Scenario: One candidate
 - **WHEN** the photo has exactly one candidate
@@ -101,6 +141,10 @@ one, in which case the log event form is unchanged and nothing is kept.
 #### Scenario: Leaving without accepting
 - **WHEN** the user navigates back without confirming a selected candidate
 - **THEN** the log event form is shown exactly as it was, and nothing is kept
+
+#### Scenario: A fuel-amount candidate among others
+- **WHEN** a photo has both an odometer-like and a fuel-amount-like candidate
+- **THEN** each is shown with its own box, the odometer one labeled "ODO" and the fuel-amount one labeled "FUEL"
 
 ### Requirement: Accepting a candidate sets the field and the way
 The system SHALL, when the user confirms a selected candidate on the photo review, or taps a reading in the live
@@ -120,6 +164,27 @@ return to the log event form.
 #### Scenario: Tap a live odometer reading
 - **WHEN** the user taps a reading classified as an odometer reading in the live scanner
 - **THEN** the scanner closes, the form switches to "New odometer" and the field shows the reading's value
+
+### Requirement: Accepting a fuel-amount candidate sets the fuel amount field and its unit
+The system SHALL, when the user confirms a selected fuel-amount candidate on the photo review, or taps one in the
+live scanner, set the log event form's fuel amount field to the candidate's value, replacing whatever it held
+before, and SHALL return to the log event form. Unlike accepting an odometer or trip candidate, this SHALL NOT
+change the mileage section's way or field: the fuel amount field and the mileage section are independent, each with
+its own scan action. When the label that classified the candidate names a unit (a liter word or symbol, or a
+gallon word), the system SHALL also set the fuel amount's unit to match, replacing whatever it held before; when
+the label names neither, the unit SHALL be left as it was.
+
+#### Scenario: Accept a fuel-amount reading from the review screen
+- **WHEN** the user confirms a candidate classified as a fuel-amount reading
+- **THEN** the fuel amount field shows the candidate's value, and the mileage section is unchanged
+
+#### Scenario: Tap a live fuel-amount reading
+- **WHEN** the user taps a reading classified as a fuel-amount reading in the live scanner
+- **THEN** the scanner closes and the fuel amount field shows the reading's value
+
+#### Scenario: The unit is preselected from the label
+- **WHEN** the user accepts a fuel-amount candidate whose recognized label is "LITRAA"
+- **THEN** the fuel amount's unit is set to liters
 
 ### Requirement: An accepted scan's photo and detections are kept only if the entry is saved
 The system SHALL keep the scanned photo and the full detection result (every candidate found: its position in the

@@ -2,7 +2,9 @@
 # permission is granted; closing it leaves the form as it was. From the scanner's photo button, scan a car cluster photo,
 # accept its odometer reading and save (add-odometer-ocr-capture): the form switches to "New odometer" with the value
 # read. Then the same for a motorcycle's seven-segment LCD (add-seven-segment-ocr), and a new vehicle whose current
-# odometer is scanned on the add-vehicle form (scan-initial-odometer). The emulator's camera cannot show a
+# odometer is scanned on the add-vehicle form (scan-initial-odometer). Last, a refueling's fuel amount, scanned via
+# that field's own action (add-fuel-amount-ocr) — save/leave and permission are unchanged from the odometer/trip
+# cases above, so that case only confirms the field and its unit. The emulator's camera cannot show a
 # dashboard, so live readings are checked on the JVM (LiveFramesJvmTest) and on a phone, not here. Cases (classification, other ways, what is kept
 # on save or leave) are unit tests: see docs/test-strategy.md. The stored photo and detections are never shown, so
 # nothing here asserts them.
@@ -185,3 +187,42 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 71,140 km
+# A refueling's fuel amount, scanned via that field's own action — a separate "Scan a reading" from the mileage
+# section's, both visible on a refueling entry at once (index 0 is the fuel-amount one, declared first in the
+# form). Save/leave and permission are unchanged from the odometer/trip cases above, so this only confirms the
+# field and its unit (add-fuel-amount-ocr).
+- tapOn:
+    id: log_event
+- tapOn:
+    id: log_kind_selector
+- tapOn: Refueling
+- tapOn:
+    id: scan_reading
+    index: 0
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+# The fuel pump photo is uploaded first by setup.yaml, so it is the oldest: the picker's last photo (index 4 of the
+# five it has added by now).
+- tapOn:
+    text: "Photo taken on.*"
+    index: 4
+- extendedWaitUntil:
+    visible:
+      id: scan_review
+    timeout: 20000
+- tapOn: "FUEL 7.82"
+- tapOn:
+    id: scan_use
+- assertVisible:
+    id: fuel_amount_field
+    text: "7.82"
+- assertVisible:
+    id: fuel_unit_liters
+    checked: true
