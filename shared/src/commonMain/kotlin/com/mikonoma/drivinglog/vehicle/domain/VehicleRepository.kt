@@ -105,8 +105,8 @@ interface VehicleRepository {
      * when the refueling carries none, in which case the vehicle's odometer is untouched by it. When given, it is
      * validated and saved exactly like [addDistanceEntry]/[addOdometerAnchor]'s own reading, including
      * [tenthsIncluded] being remembered for the vehicle in the same transaction (ignored when [mileage] is null,
-     * since there is then no unit choice to remember). [note] and [photos] are attached the same way as for
-     * [addDistanceEntry]. Returns the new event id.
+     * since there is then no unit choice to remember). [note], [photos] and [capture] are attached the same way as
+     * for [addDistanceEntry]. Returns the new event id.
      */
     suspend fun addRefueling(
         vehicleId: String,
@@ -119,6 +119,7 @@ interface VehicleRepository {
         tenthsIncluded: Boolean = false,
         note: String? = null,
         photos: List<PendingPicture> = emptyList(),
+        capture: PendingCapture? = null,
     ): String
 
     /**

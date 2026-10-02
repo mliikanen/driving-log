@@ -221,12 +221,14 @@ class SqlDelightVehicleRepository(
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String {
         require(amount.milliliters > 0) { "A refueling's fuel amount must be above zero" }
         return withContext(dispatcher) {
             val eventId = newId()
             val zone = occurredAt.zone
             val photoIds = photos.map { promotedEventPhoto(it) }
+            val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
             try {
                 // One transaction: the refueling, its optional mileage's remembered tenths choice, the remembered fuel
                 // unit/type and the attached photos are all saved, or none.
@@ -248,6 +250,7 @@ class SqlDelightVehicleRepository(
                         filled_up = if (filledUp) 1L else 0L,
                     )
                     insertEventPhotos(eventId, photoIds)
+                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
                     if (mileage != null) vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
                     appState.upsertAppState(LAST_FUEL_UNIT_KEY, unit.code)
@@ -255,6 +258,7 @@ class SqlDelightVehicleRepository(
                 }
             } catch (throwable: Throwable) {
                 for (photoId in photoIds) eventPictures.delete(photoId)
+                promotedCapture?.let { captures?.delete(it.first) }
                 throw throwable
             }
             eventId

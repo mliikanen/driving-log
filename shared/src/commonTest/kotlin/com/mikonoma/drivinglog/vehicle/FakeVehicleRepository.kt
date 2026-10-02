@@ -64,6 +64,7 @@ data class RefuelingCall(
     val tenthsIncluded: Boolean = false,
     val note: String? = null,
     val photos: List<PendingPicture> = emptyList(),
+    val capture: PendingCapture? = null,
 )
 
 data class AddEventPhotoCall(val vehicleId: String, val eventId: String, val photo: PendingPicture)
@@ -259,9 +260,10 @@ class FakeVehicleRepository : VehicleRepository {
         tenthsIncluded: Boolean,
         note: String?,
         photos: List<PendingPicture>,
+        capture: PendingCapture?,
     ): String {
         distanceFailure?.let { throw it }
-        refuelingCalls += RefuelingCall(vehicleId, occurredAt, amount, unit, fuelType, filledUp, mileage, tenthsIncluded, note, photos)
+        refuelingCalls += RefuelingCall(vehicleId, occurredAt, amount, unit, fuelType, filledUp, mileage, tenthsIncluded, note, photos, capture)
         if (mileage != null) vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         lastFuelUnit.value = unit

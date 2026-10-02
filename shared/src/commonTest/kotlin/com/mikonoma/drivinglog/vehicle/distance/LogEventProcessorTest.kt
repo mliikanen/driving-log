@@ -1613,6 +1613,41 @@ class LogEventProcessorTest {
     }
 
     @Test
+    fun savingARefuelingsMileageAfterAcceptingSavesTheScanWithIt() = runTest {
+        // fix-refueling-scan-capture: the mileage section's existing scan action must save its capture on a
+        // refueling too, the same way it already does for a Distance entry.
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.scan()
+        processor.accept("123.4")
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val capture = assertNotNull(repository.refuelingCalls.single().capture)
+        assertEquals("123.4", capture.result.accepted.value)
+    }
+
+    @Test
+    fun aRefuelingTypedByHandSavesNoScan() = runTest {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertNull(repository.refuelingCalls.single().capture)
+    }
+
+    @Test
     fun aSecondAcceptedScanReplacesTheFirst() = runTest {
         seedVehicle()
         val processor = processor()
@@ -1931,6 +1966,32 @@ class LogEventProcessorTest {
         }
 
         assertEquals(RefuelingMileage.Anchor(Distance(44_000_000)), repository.refuelingCalls.single().mileage)
+    }
+
+    @Test
+    fun aConfirmedLowerOdometerRefuelingFromAScanSavesTheScanWithIt() = runTest {
+        // fix-refueling-scan-capture: the lower-odometer-confirmed save path must also pass the accepted scan through.
+        seedVehicle() // known/current odometer 45,230 km
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        recognizer.photo = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+            1280, 720,
+            listOf(line(element("ODO", 524, 403, 554, 415)), line(element("44000km", 529, 412, 619, 433))),
+        )
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+        processor.accept("44000")
+        processor.dispatch(LogEventIntent.Save)
+        assertTrue(processor.state.lowerOdometerConfirmationPending)
+
+        processor.test {
+            dispatch(LogEventIntent.LowerOdometerConfirmed)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val capture = assertNotNull(repository.refuelingCalls.single().capture)
+        assertEquals("44000", capture.result.accepted.value)
     }
 
     @Test

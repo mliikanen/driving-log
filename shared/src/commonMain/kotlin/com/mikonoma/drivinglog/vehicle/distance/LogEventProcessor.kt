@@ -308,7 +308,7 @@ class LogEventProcessor @AssistedInject constructor(
             return saving {
                 repository.addRefueling(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
-                    note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
                 )
             }
         }
@@ -322,6 +322,7 @@ class LogEventProcessor @AssistedInject constructor(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
                     mileage = RefuelingMileage.Added(result.distance, result.loggedOdometer),
                     tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
             is LogDistanceResult.Anchor -> saving {
@@ -329,6 +330,7 @@ class LogEventProcessor @AssistedInject constructor(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
                     mileage = RefuelingMileage.Anchor(result.reading),
                     tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
         }
@@ -378,6 +380,7 @@ class LogEventProcessor @AssistedInject constructor(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
                     mileage = RefuelingMileage.Anchor(result.reading),
                     tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }

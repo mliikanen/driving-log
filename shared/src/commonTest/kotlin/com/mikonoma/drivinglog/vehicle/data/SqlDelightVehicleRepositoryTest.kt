@@ -11,6 +11,7 @@ import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
@@ -496,6 +497,56 @@ class SqlDelightVehicleRepositoryTest {
         )
 
         assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
+    }
+
+    @Test
+    fun aScannedRefuelingsMileageIsSavedWithItsScan() = runTest {
+        // fix-refueling-scan-capture: addRefueling must pass a scan through like addDistanceEntry/addOdometerAnchor do.
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+
+        val eventId = repositoryWithCaptures.addRefueling(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true, mileage = RefuelingMileage.Anchor(Distance(71_140_000)), capture = capture,
+        )
+
+        assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
+    }
+
+    @Test
+    fun aRefuelingSavedWithNoScanKeepsNone() = runTest {
+        val id = addFamilyCar()
+
+        val eventId = repositoryWithCaptures.addRefueling(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+        )
+
+        assertNull(repositoryWithCaptures.captureOf(eventId))
+    }
+
+    @Test
+    fun aFailedRefuelingSaveLeavesNoScanPhotoBehind() = runTest {
+        val id = addFamilyCar()
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
+        // The same event id twice: the second insert fails on the primary key.
+        idCounter = 0
+        repositoryWithCaptures.addRefueling(
+            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(1_000),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+        )
+        idCounter = 0
+
+        assertFails {
+            repositoryWithCaptures.addRefueling(
+                id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(2_000),
+                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                filledUp = true, capture = capture,
+            )
+        }
+
+        assertTrue(captureStore.photos.isEmpty())
     }
 
     // ---- The scan a new vehicle's initial odometer came from (scan-initial-odometer)
