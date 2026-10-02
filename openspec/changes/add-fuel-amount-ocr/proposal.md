@@ -1,9 +1,4 @@
-# Proposal (stub)
-
-> **Stub.** Filed as an explicit follow-up of `add-refueling-logging`, which deliberately excludes OCR from its own
-> scope (manual entry only). Not ready to build: it needs `add-refueling-logging`'s fuel amount field to exist
-> first, and has a real open question — whether the existing odometer scanner's classification approach actually
-> transfers — that should be settled by design work, not assumed here.
+# Proposal
 
 ## Why
 
@@ -15,36 +10,48 @@ would otherwise type by hand — and this was the OCR use case named when `add-r
 
 ## What Changes
 
-Not yet designed in detail. At minimum: a "Scan a reading" style action on the refueling form's amount field,
-reusing `odometer-ocr-capture`'s photo/live-scanner pipeline and `add-seven-segment-ocr`'s digit recognition (pump
-and receipt displays are printed or seven-segment, the same two kinds already handled), to detect a fuel-amount
-candidate and let the user accept it into the amount field.
+- The refueling form's fuel amount field gets its own "Scan a reading" action, next to the field itself (the
+  mileage section below it already has its own, unchanged) — the same live-scanner/photo-chooser/review pipeline
+  `odometer-ocr-capture` already built, reused rather than re-implemented.
+- Detection adds a third reading kind, "fuel amount," alongside the existing odometer and trip kinds
+  (`ReadingKind.FUEL_AMOUNT`). Unlike those two, a fuel-amount candidate is recognized **by label only** — a volume
+  label ("L", "LITERS", "LITRES", "GAL", "GALLON", "GALLONS", "VOLUME") next to the number. There is no magnitude
+  fallback: odometer/trip classification can fall back to a number's size because a known odometer gives it
+  something to compare against, but a fuel amount has no such anchor (a pump's volume and its total price are
+  often similar-looking numbers with nothing but their labels to tell them apart). An unlabeled number, or one next
+  to any other label (including a price label like "$", "PRICE" or "TOTAL"), is simply never presented as a
+  fuel-amount candidate — this also means a price number is never mistaken for one, without needing to recognize
+  "this is a price" as its own concept.
+- Accepting a fuel-amount candidate fills the fuel amount field (always two decimal places, `refueling-logging`'s
+  own `FuelAmountEntry`), the same way accepting an odometer/trip candidate fills its field today.
+- The live scanner and review screen, which today label a highlighted box "ODO" or "TRIP", gain a third label
+  ("FUEL") for a fuel-amount candidate.
 
 ## Capabilities
 
 ### Modified Capabilities
-- `refueling-logging`: adds an OCR-assisted way to fill the amount field, mirroring `distance-logging`'s existing
-  "Scan a reading" requirement.
-- *(possibly `odometer-ocr-capture` or a new capability, depending on how much of its classification logic actually
-  reuses cleanly — see the open question below.)*
+- `odometer-ocr-capture`: the same capability that already added this action to the add-vehicle form's initial
+  odometer (`scan-initial-odometer`) and reads LCD displays (`add-seven-segment-ocr`) now also offers it on the
+  refueling form's fuel amount field, with its own, label-only classification rule for that one field. (It keeps
+  its existing name — already a little broader than literally "odometer" after those two changes — rather than
+  renaming it mid-series.)
 
-## Open questions
-
-1. **Does the odometer scanner's two-tier classification (label text, else magnitude against a known value)
-   transfer at all?** Odometer readings have a magnitude anchor to fall back on (the vehicle's own known odometer).
-   A fuel pump display typically shows *volume* and *total price* as two numbers of similar magnitude and format
-   (e.g. `12.345 GAL` next to `$45.67`) with no comparable anchor to tell them apart by size. This likely means
-   fuel-amount detection has to lean almost entirely on label text (`L`, `GAL`, `VOLUME` vs `$`, `PRICE`, `TOTAL`),
-   a narrower and less forgiving signal than odometer's fallback-capable approach — worth designing for explicitly,
-   not assuming it inherits odometer's robustness.
-2. **One scan or two?** `add-fuel-type-ocr` would point the camera at the same pump photo. Are these built as one
-   combined scan (one photo, two kinds of candidate extracted) or genuinely separate scans, one per field? They are
-   filed as separate proposals per the developer's own request, but that doesn't settle whether the underlying scan
-   flow is shared.
-3. **Does the currently-out-of-scope cost/price field change this?** If `add-refueling-logging` never gains a cost
-   field, a pump photo's price number is simply never a candidate for anything — worth confirming price recognition
-   is truly not needed here (not even to help rule out the volume candidate by elimination).
+`refueling-logging` itself needs no change: the fuel amount field, its validation and its unit already exist there;
+this only adds another way to fill it, exactly as `odometer-ocr-capture`'s "Scan a reading" action needed no change
+to `distance-logging` when it was added there.
 
 ## Impact
 
-Not yet assessed — depends on `add-refueling-logging` existing and the open questions above being settled.
+- `ReadingKind` (`shared/.../vehicle/ocr/ReadingDetection.kt`) gains `FUEL_AMOUNT`; the two UI spots that today
+  assume only `ODOMETER`/`TRIP` exist (`LiveScannerContent.kt`, `ScanReviewContent.kt`, both a binary `if`/`else`)
+  become exhaustive on the three kinds — the compiler enforces this once the enum grows.
+- A new `detectFuelAmount(photo): List<Detection>` function, alongside the existing `detectReadings`/
+  `detectInitialOdometer`, sharing their label/box/`onePerPlace` machinery but with its own, label-only rule (no
+  `knownOdometer` parameter, since there is no magnitude fallback).
+- `LogEventState`/`LogEventProcessor`/`LogEventScreen`: a `scanTarget` (mileage or fuel amount) remembers which
+  field the currently-open scan is for, since the refueling form now has two independent "Scan a reading" actions
+  sharing the same live scanner/review machinery (today's single scan state assumes only one target per form).
+  Accepting a reading still dispatches on the detection's own kind, now with a third case.
+- No evaluation photos of a fuel pump or receipt display exist yet in `maestro/assets/ocr/` (only `odo/` and
+  `trip/`) — gathering some, and measuring the label words real displays actually use, is part of this change's own
+  tasks, the same evidence-driven approach `add-seven-segment-ocr` took for LCD odometers.
