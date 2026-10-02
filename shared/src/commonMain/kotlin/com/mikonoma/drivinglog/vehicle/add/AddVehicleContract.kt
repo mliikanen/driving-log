@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.add
 
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
@@ -29,6 +30,8 @@ data class AddVehicleState(
     val entry: OdometerEntry,
     /** The chosen type: Car is preselected, and there is no way to have none, so a saved vehicle always has a type. */
     val type: VehicleType = VehicleType.CAR,
+    /** The chosen fuel type (`vehicle-fuel-type`): Petrol is preselected, and there is no way to have none, so a saved vehicle always has one. */
+    val fuelType: VehicleFuelType = VehicleFuelType.PETROL,
     /** The chosen color: the default at first, and there is no way to have none, so a saved vehicle always has a color. */
     val color: Rgb = VehicleColors.default,
     /** The color taken from the confirmed crop of the picture, offered as a swatch of its own; null until a crop is confirmed (and after the picture is removed). */
@@ -55,6 +58,7 @@ sealed interface AddVehicleIntent : ViewIntent {
     data class LicensePlateChanged(val text: String) : AddVehicleIntent
     data class UnitSelected(val unit: OdometerUnit) : AddVehicleIntent
     data class TypeSelected(val type: VehicleType) : AddVehicleIntent
+    data class FuelTypeSelected(val fuelType: VehicleFuelType) : AddVehicleIntent
     data class ColorSelected(val color: Rgb) : AddVehicleIntent
 
     /** The odometer field's new text from the system keyboard. */

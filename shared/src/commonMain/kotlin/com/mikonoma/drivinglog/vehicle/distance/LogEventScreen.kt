@@ -288,7 +288,7 @@ fun LogEventContent(
                                 }?.let { errorMessage(state, symbols) },
                             )
                             FuelUnitChoice(state.fuelUnit) { onIntent(LogEventIntent.FuelUnitSelected(it)) }
-                            FuelTypeSelector(state.fuelType) { onIntent(LogEventIntent.FuelTypeSelected(it)) }
+                            FuelTypeSelector(state.fuelType, state.allowedFuelTypes) { onIntent(LogEventIntent.FuelTypeSelected(it)) }
                             FilledUpChoice(state.filledUp) { onIntent(LogEventIntent.FilledUpChanged(it)) }
                             // Mileage is optional for a refueling (refueling-logging): the same Way/unit/field
                             // machinery a "Distance" entry uses, but its own field carries no "*" and never gates Save.
@@ -627,10 +627,11 @@ private fun FuelUnitChoice(selected: FuelUnit, onSelect: (FuelUnit) -> Unit) {
     }
 }
 
-/** The fixed fuel-type list (`add-refueling-logging`): Material 3's own dropdown pattern, like [KindSelector]/[VehicleSelector]. */
+/** The fuel-type list, narrowed to the current vehicle's own fuel type (`vehicle-fuel-type`): Material 3's own
+ * dropdown pattern, like [KindSelector]/[VehicleSelector]. [allowed] is rendered in [FuelType.entries]' own order. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FuelTypeSelector(selected: FuelType, onSelect: (FuelType) -> Unit) {
+private fun FuelTypeSelector(selected: FuelType, allowed: Set<FuelType>, onSelect: (FuelType) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -643,6 +644,7 @@ private fun FuelTypeSelector(selected: FuelType, onSelect: (FuelType) -> Unit) {
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for (option in FuelType.entries) {
+                if (option !in allowed) continue
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     onClick = { onSelect(option); expanded = false },

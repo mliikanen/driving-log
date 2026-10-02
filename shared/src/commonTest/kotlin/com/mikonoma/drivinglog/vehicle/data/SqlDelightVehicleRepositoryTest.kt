@@ -13,6 +13,7 @@ import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import kotlin.test.AfterTest
@@ -151,7 +152,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aFailedAddCreatesNothing() = runTest {
         // Make the event insert fail: its id ("id-2") is already taken by another vehicle's event.
-        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
 
         assertFails { addFamilyCar() }
@@ -315,8 +316,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionEleven() {
-        assertEquals(11L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionTwelve() {
+        assertEquals(12L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -1014,7 +1015,7 @@ class SqlDelightVehicleRepositoryTest {
         addEntry(id, at(1.hours), Distance(1_000), null, tenthsIncluded = false)
         // Make the next insert fail: its event id is already taken.
         insertEvent("id-4", "other-owner", "INITIAL_ODOMETER", 1, 0)
-        database.vehicleQueries.insertVehicle("other-owner", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other-owner", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
 
         assertFails { addEntry(id, at(2.hours), Distance(2_000), null, tenthsIncluded = true) }
 
@@ -1090,7 +1091,7 @@ class SqlDelightVehicleRepositoryTest {
         val other = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance.ZERO)
         // Make the next insert fail: its event id is already taken (id-1 the vehicle, id-2 its initial event, id-3 the entry, id-4 and id-5 the Van and its initial event; id-6 is next).
         insertEvent("id-6", "other-owner-2", "INITIAL_ODOMETER", 1, 0)
-        database.vehicleQueries.insertVehicle("other-owner-2", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other-owner-2", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
 
         assertFails { addEntry(other, at(2.hours), Distance(2_000), null) }
 
@@ -1165,7 +1166,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aFailedAddWithAPictureDeletesTheFilesItMovedIntoUse() = runTest {
         // The event insert fails: its id ("id-2") is already taken by another vehicle's event.
-        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
         val pending = pictureStore.addPending()
 
@@ -1372,7 +1373,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aFailedAddSavesNoVehicleAtAll() = runTest {
         // The event insert fails: its id ("id-2") is already taken by another vehicle's event.
-        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
 
         assertFails { repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1)) }
@@ -1487,10 +1488,128 @@ class SqlDelightVehicleRepositoryTest {
 
     @Test
     fun aFailedAddSavesNoColorEither() = runTest {
-        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43")
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
 
         assertFails { repository.addVehicle("Van", null, VehicleType.VAN, Rgb(0xE53935), OdometerUnit.KILOMETERS, Distance(1)) }
+
+        assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
+    }
+
+    // ---- The vehicle's fuel type (vehicle-fuel-type)
+
+    private suspend fun fuelTypeOf(vehicleId: String): VehicleFuelType = repository.observeVehicle(vehicleId).first()!!.vehicle.fuelType
+
+    private fun storedFuelTypeOf(vehicleId: String): String =
+        driver.executeQuery(
+            identifier = null,
+            sql = "SELECT vehicle_fuel_type FROM vehicle WHERE id = '$vehicleId'",
+            mapper = { cursor ->
+                cursor.next()
+                QueryResult.Value(cursor.getString(0)!!)
+            },
+            parameters = 0,
+        ).value
+
+    @Test
+    fun addingWithNoFuelTypeDefaultsToPetrol() = runTest {
+        val id = addFamilyCar()
+
+        assertEquals(VehicleFuelType.PETROL, fuelTypeOf(id))
+        assertEquals("PETROL", storedFuelTypeOf(id))
+    }
+
+    @Test
+    fun aVehicleAddedWithEachFuelTypeReadsItBackAndStoresItsCode() = runTest {
+        for (fuelType in VehicleFuelType.entries) {
+            val id = repository.addVehicle(fuelType.name, null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = fuelType)
+
+            assertEquals(fuelType, fuelTypeOf(id), fuelType.name)
+            assertEquals(fuelType, repository.observeVehicles().first().single { it.id == id }.fuelType, fuelType.name)
+            assertEquals(fuelType.code, storedFuelTypeOf(id), fuelType.name)
+        }
+    }
+
+    @Test
+    fun anEditChangesTheFuelType() = runTest {
+        val id = addFamilyCar()
+        assertEquals(VehicleFuelType.PETROL, fuelTypeOf(id))
+
+        repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.DIESEL)
+
+        assertEquals(VehicleFuelType.DIESEL, fuelTypeOf(id))
+        assertEquals("DIESEL", storedFuelTypeOf(id))
+    }
+
+    @Test
+    fun anEditThatKeepsTheFuelTypeLeavesIt() = runTest {
+        val id = repository.addVehicle("Bike", null, VehicleType.MOTORCYCLE, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = VehicleFuelType.LPG)
+
+        repository.updateVehicle(id, "Big bike", null, VehicleType.MOTORCYCLE, VehicleColors.default, fuelType = VehicleFuelType.LPG)
+
+        assertEquals(VehicleFuelType.LPG, fuelTypeOf(id))
+        assertEquals("Big bike", repository.observeVehicles().first().single().name)
+    }
+
+    @Test
+    fun aStoredCodeThisAppDoesNotKnowReadsAsOtherFuelType() = runTest {
+        val id = addFamilyCar()
+        database.vehicleQueries.updateVehicleFuelType("ELECTRIC", 5, id)
+
+        assertEquals(VehicleFuelType.OTHER, fuelTypeOf(id))
+        assertEquals(VehicleFuelType.OTHER, repository.observeVehicles().first().single().fuelType)
+    }
+
+    @Test
+    fun aFuelTypeEditDoesNotChangeTheLogTheOdometerTheUnitTheTypeTheColorOrThePicture() = runTest {
+        val (id, pictureId) = addCarWithPicture()
+        addEntry(id, at(1.hours), Distance(30_000), null)
+        val logBefore = repository.observeLog(id).first()
+        val before = repository.observeVehicle(id).first()!!
+
+        repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.HYDROGEN)
+
+        assertEquals(logBefore, repository.observeLog(id).first())
+        val after = repository.observeVehicle(id).first()!!
+        assertEquals(before.currentOdometer, after.currentOdometer)
+        assertEquals(before.vehicle.odometerUnit, after.vehicle.odometerUnit)
+        assertEquals(before.vehicle.type, after.vehicle.type)
+        assertEquals(before.vehicle.color, after.vehicle.color)
+        assertEquals(pictureId, after.vehicle.pictureId)
+        assertEquals(VehicleFuelType.HYDROGEN, after.vehicle.fuelType)
+    }
+
+    @Test
+    fun pastRefuelingsKeepTheirOwnFuelTypeAfterTheVehicleEditChangesItsFuelType() = runTest {
+        val id = addFamilyCar()
+        val refuelingId = repository.addRefueling(
+            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.REGULAR_PETROL, filledUp = true,
+        )
+
+        repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.DIESEL)
+
+        val refueling = repository.observeEvent(id, refuelingId).first() as VehicleEvent.Refueling
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.REGULAR_PETROL, refueling.fuelType)
+    }
+
+    @Test
+    fun aFailedEditLeavesTheFuelTypeAsItWas() = runTest {
+        val id = addFamilyCar()
+        driver.execute(null, "CREATE TRIGGER fail_update BEFORE UPDATE ON vehicle BEGIN SELECT RAISE(ABORT, 'boom'); END", 0)
+
+        assertFails { repository.updateVehicle(id, "Changed", null, VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.CNG) }
+
+        assertEquals(VehicleFuelType.PETROL, fuelTypeOf(id))
+        assertEquals("Family car", repository.observeVehicles().first().single().name)
+    }
+
+    @Test
+    fun aFailedAddSavesNoFuelTypeEither() = runTest {
+        database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
+        insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
+
+        assertFails { repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = VehicleFuelType.DIESEL) }
 
         assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
     }

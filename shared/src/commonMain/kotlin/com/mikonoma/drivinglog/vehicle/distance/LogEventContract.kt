@@ -6,7 +6,9 @@ import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
+import com.mikonoma.drivinglog.vehicle.domain.allowedFuelTypes
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
@@ -69,6 +71,9 @@ data class LogEventState(
     val selectedVehicleId: String = "",
     /** The id of the vehicle the unit was last set from, so switching to another vehicle (or, once, opening the form) sets it again but a restored state keeps what the user chose. */
     val unitFor: String = "",
+    /** The id of the vehicle [fuelType] was last resolved against (`vehicle-fuel-type`'s filtering), the same
+     * mechanism as [unitFor]: switching to another vehicle re-resolves it, a restored state keeps what the user chose. */
+    val fuelTypeFor: String = "",
     /** The note attached to the event so far (`add-event-notes`), or null when none has been added. Persisted, not [Transient], so it
      * survives rotation and process death, and so it is kept when the vehicle is changed, like every other field on this form. */
     val pendingNote: String? = null,
@@ -81,6 +86,8 @@ data class LogEventState(
     @Transient val isLoading: Boolean = true,
     @Transient val notFound: Boolean = false,
     @Transient val vehicleUnit: OdometerUnit = OdometerUnit.KILOMETERS,
+    /** The currently-selected vehicle's own fuel type (`vehicle-fuel-type`), a placeholder until it loads. Narrows [allowedFuelTypes]. */
+    @Transient val vehicleFuelType: VehicleFuelType = VehicleFuelType.PETROL,
     /** Every vehicle the selector offers, in order. Empty when the form has a fixed vehicle (opened from its details screen). */
     @Transient val vehicles: List<VehicleChoice> = emptyList(),
     /** The vehicle's whole log, newest first. */
@@ -136,6 +143,9 @@ data class LogEventState(
 
     /** The selector shows this vehicle as chosen, or null before [vehicles] has loaded. */
     val selectedVehicle: VehicleChoice? get() = vehicles.firstOrNull { it.id == selectedVehicleId }
+
+    /** The refueling fuel types the currently-selected vehicle offers (`vehicle-fuel-type`'s filtering). */
+    val allowedFuelTypes: Set<FuelType> get() = vehicleFuelType.allowedFuelTypes()
 
     /** The instant and zone the wall-clock time and zone id mean. */
     val moment: ZonedMoment

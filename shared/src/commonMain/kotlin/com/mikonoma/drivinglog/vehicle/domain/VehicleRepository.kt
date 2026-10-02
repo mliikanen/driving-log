@@ -54,6 +54,10 @@ interface VehicleRepository {
         initialOdometer: Distance,
         picture: PendingPicture? = null,
         capture: PendingCapture? = null,
+        /** The vehicle's coarse fuel/engine category (`vehicle-fuel-type`). Defaults to Petrol: a caller that does
+         * not pass one (most existing callers besides the add form, which always passes its own choice) gets the
+         * same vehicle a pre-`vehicle-fuel-type` caller would have saved. */
+        fuelType: VehicleFuelType = VehicleFuelType.PETROL,
     ): String
 
     /**
@@ -131,6 +135,9 @@ interface VehicleRepository {
         /** The color to store. Every vehicle has one, so there is no way to save an edit without it. */
         color: Rgb,
         picture: PictureChange = PictureChange.Keep,
+        /** The fuel type to store. Defaults to Petrol for a caller that does not pass one; the edit form always
+         * passes the vehicle's current (possibly changed) fuel type explicitly, never relying on this default. */
+        fuelType: VehicleFuelType = VehicleFuelType.PETROL,
     )
 
     /**

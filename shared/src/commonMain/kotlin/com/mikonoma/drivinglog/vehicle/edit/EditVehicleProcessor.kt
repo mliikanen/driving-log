@@ -53,6 +53,7 @@ class EditVehicleProcessor @AssistedInject constructor(
                             name = details.vehicle.name,
                             licensePlate = details.vehicle.licensePlate.orEmpty(),
                             type = details.vehicle.type,
+                            fuelType = details.vehicle.fuelType,
                             color = details.vehicle.color,
                             savedColor = details.vehicle.color,
                         )
@@ -66,6 +67,7 @@ class EditVehicleProcessor @AssistedInject constructor(
         is EditVehicleIntent.NameChanged -> reduce { copy(name = intent.text) }
         is EditVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is EditVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
+        is EditVehicleIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.fuelType) }
         is EditVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
         EditVehicleIntent.Save -> save()
         is EditVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
@@ -108,8 +110,9 @@ class EditVehicleProcessor @AssistedInject constructor(
 
     private fun save(): Action<EditVehicleState, EditVehicleEffect>? {
         if (state.isSaving || !state.loaded || state.notFound) return null
-        // A loaded vehicle always has a type and a color; without them there is nothing to save.
+        // A loaded vehicle always has a type, a fuel type and a color; without them there is nothing to save.
         val type = state.type ?: return null
+        val fuelType = state.fuelType ?: return null
         val color = state.color ?: return null
         // disable-invalid-save: the screen disables Save while the name is blank, so NameRequired here is a
         // defense-in-depth no-op against a direct dispatch, not a path a tap can reach.
@@ -118,7 +121,7 @@ class EditVehicleProcessor @AssistedInject constructor(
             is VehicleFieldsResult.Valid -> async("save") {
                 reduce { copy(isSaving = true) }
                 try {
-                    repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, type, color, state.picture.draft.toChange())
+                    repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, type, color, state.picture.draft.toChange(), fuelType)
                 } catch (throwable: Throwable) {
                     reduce { copy(isSaving = false) }
                     throw throwable

@@ -1,5 +1,5 @@
 # Happy path: rotating the device recreates the activity, and every screen keeps what the user did: the list, the details, the full log, the crop screen, the add
-# form (a picture, a name, a type, a color, a unit and an odometer entry), the edit form and the log distance form.
+# form (a picture, a name, a type, a fuel type, a color, a unit and an odometer entry), the edit form and the log distance form.
 # (Which state a processor restores is a unit test: see docs/test-strategy.md. What a flow shows is that the screen is still there and still shows it.)
 appId: com.mikonoma.drivinglog
 ---
@@ -181,6 +181,12 @@ appId: com.mikonoma.drivinglog
     id: vehicle_type_VAN
 - scrollUntilVisible:
     element:
+      id: vehicle_fuel_type_DIESEL
+    centerElement: true
+- tapOn:
+    id: vehicle_fuel_type_DIESEL
+- scrollUntilVisible:
+    element:
       id: vehicle_color_E53935
     centerElement: true
 - tapOn:
@@ -188,6 +194,7 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: unit_KILOMETERS_TENTHS
+    direction: UP
     centerElement: true
 - tapOn:
     id: unit_KILOMETERS_TENTHS
@@ -207,6 +214,11 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: odo_field
     text: "12.3"
+- scrollUntilVisible:
+    element:
+      id: unit_KILOMETERS_TENTHS
+    direction: UP
+    centerElement: true
 - assertVisible:
     id: unit_KILOMETERS_TENTHS
     checked: true
@@ -217,6 +229,14 @@ appId: com.mikonoma.drivinglog
     centerElement: true
 - assertVisible:
     id: vehicle_color_E53935
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: vehicle_fuel_type_DIESEL
+    direction: UP
+    centerElement: true
+- assertVisible:
+    id: vehicle_fuel_type_DIESEL
     checked: true
 - scrollUntilVisible:
     element:

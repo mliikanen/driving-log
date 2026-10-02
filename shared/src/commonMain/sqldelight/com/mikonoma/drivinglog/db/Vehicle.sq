@@ -18,12 +18,16 @@ CREATE TABLE vehicle (
     vehicle_type  TEXT    NOT NULL DEFAULT 'CAR',
     -- The vehicle's color as RRGGBB (upper case). Never null: every vehicle has one, and the default is the application's main theme color (the same
     -- value as VehicleColors.default, which a test ties to this). A value that is not six hex digits reads as the default.
-    vehicle_color TEXT    NOT NULL DEFAULT '203A43'
+    vehicle_color TEXT    NOT NULL DEFAULT '203A43',
+    -- The vehicle's own coarse fuel/engine category: a VehicleFuelType code (PETROL, DIESEL, LPG, ...). Never null: every vehicle has one
+    -- (a vehicle from before fuel types existed is PETROL). An unknown code (from a newer app) reads as OTHER. Distinct from and coarser
+    -- than vehicle_event.fuel_type, the precise choice made each time a refueling is logged.
+    vehicle_fuel_type TEXT NOT NULL DEFAULT 'PETROL'
 );
 
 insertVehicle:
-INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id, vehicle_type, vehicle_color)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle (id, name, license_plate, odometer_unit, created_at, updated_at, picture_id, vehicle_type, vehicle_color, vehicle_fuel_type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Only name and plate can change. The unit and the log are never touched.
 updateVehicle:
@@ -32,6 +36,10 @@ UPDATE vehicle SET name = ?, license_plate = ?, updated_at = ? WHERE id = ?;
 -- Sets the vehicle's type. Editing the type is a vehicle edit, so updated_at moves.
 updateVehicleType:
 UPDATE vehicle SET vehicle_type = ?, updated_at = ? WHERE id = ?;
+
+-- Sets the vehicle's fuel type. Editing the fuel type is a vehicle edit, so updated_at moves.
+updateVehicleFuelType:
+UPDATE vehicle SET vehicle_fuel_type = ?, updated_at = ? WHERE id = ?;
 
 -- Sets the vehicle's color. Editing the color is a vehicle edit, so updated_at moves.
 updateVehicleColor:
@@ -49,7 +57,7 @@ selectPictureId:
 SELECT picture_id FROM vehicle WHERE id = ?;
 
 selectVehicles:
-SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id, vehicle_type, vehicle_color
+SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, picture_id, vehicle_type, vehicle_color, vehicle_fuel_type
 FROM vehicle
 ORDER BY created_at, rowid;
 
@@ -69,6 +77,7 @@ SELECT
     v.picture_id,
     v.vehicle_type,
     v.vehicle_color,
+    v.vehicle_fuel_type,
     (
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)

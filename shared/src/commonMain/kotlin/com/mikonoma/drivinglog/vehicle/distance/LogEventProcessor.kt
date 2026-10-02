@@ -8,6 +8,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.allowedFuelTypes
 import com.mikonoma.drivinglog.vehicle.input.FuelAmountEntry
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
@@ -73,7 +74,19 @@ class LogEventProcessor @AssistedInject constructor(
         observe("fuel-preferences", fuelPreferences) { (unit, type) ->
             reduce {
                 if (fuelPreferencesLoaded) this
-                else copy(fuelUnit = unit ?: fuelUnit, fuelType = type ?: fuelType, fuelPreferencesLoaded = true)
+                else if (fuelTypeFor.isNotEmpty()) {
+                    // The fuel type was already resolved — by the vehicle loading, or by a manual choice that
+                    // raced ahead of this one-time load — before the remembered preference arrived: never
+                    // reconsider it here, only fuelUnit (which has no equivalent per-vehicle filter to race against).
+                    copy(fuelUnit = unit ?: fuelUnit, fuelPreferencesLoaded = true)
+                } else {
+                    // Narrowed to the current vehicle's fuel type filter (vehicle-fuel-type): the remembered choice
+                    // when it offers it, else the filter's first entry — the same fallback the vehicle observer
+                    // below re-applies whenever the selected vehicle actually changes.
+                    val remembered = type ?: fuelType
+                    val allowed = vehicleFuelType.allowedFuelTypes()
+                    copy(fuelUnit = unit ?: fuelUnit, fuelType = if (remembered in allowed) remembered else allowed.first(), fuelPreferencesLoaded = true)
+                }
             }
         }
 
@@ -112,9 +125,19 @@ class LogEventProcessor @AssistedInject constructor(
                 val vehicleUnit = details.vehicle.odometerUnit
                 // The family starts as the vehicle's; the tenths choice as the one remembered for it, else the vehicle's own.
                 val startUnit = unitOf(vehicleUnit.isMiles, details.vehicle.logDistanceTenths ?: vehicleUnit.hasTenths)
+                val vehicleFuelType = details.vehicle.fuelType
                 reduce {
+                    // The fuel type is re-resolved against the filter of the vehicle now shown, the same way the unit is
+                    // re-initialised below (vehicle-fuel-type): kept when still offered, else the filter's first entry.
+                    val resolvedFuelType = if (fuelTypeFor == details.vehicle.id) fuelType else {
+                        val allowed = vehicleFuelType.allowedFuelTypes()
+                        if (fuelType in allowed) fuelType else allowed.first()
+                    }
                     if (unitFor == details.vehicle.id) {
-                        copy(isLoading = false, notFound = false, vehicleUnit = vehicleUnit, log = log)
+                        copy(
+                            isLoading = false, notFound = false, vehicleUnit = vehicleUnit, vehicleFuelType = vehicleFuelType, log = log,
+                            fuelType = resolvedFuelType, fuelTypeFor = details.vehicle.id,
+                        )
                     } else {
                         // The unit is (re)initialised from the vehicle now shown; the digits already typed are kept, converted to it,
                         // as when the unit is changed by hand.
@@ -122,10 +145,13 @@ class LogEventProcessor @AssistedInject constructor(
                             isLoading = false,
                             notFound = false,
                             vehicleUnit = vehicleUnit,
+                            vehicleFuelType = vehicleFuelType,
                             log = log,
                             tripDistance = tripDistance.withUnit(startUnit),
                             newOdometer = newOdometer.withUnit(startUnit),
                             unitFor = details.vehicle.id,
+                            fuelType = resolvedFuelType,
+                            fuelTypeFor = details.vehicle.id,
                         )
                     }
                 }
@@ -144,7 +170,10 @@ class LogEventProcessor @AssistedInject constructor(
         is LogEventIntent.FuelAmountEdited -> reduce { withFuelAmount(fuelAmount.applyEdit(intent.text)) }
         LogEventIntent.FuelAmountCleared -> reduce { withFuelAmount(fuelAmount.clear(), keepError = true) }
         is LogEventIntent.FuelUnitSelected -> reduce { copy(fuelUnit = intent.unit) }
-        is LogEventIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.type) }
+        // Pins fuelTypeFor to the vehicle chosen for, same as a resolved load would: a manual choice is never
+        // reconsidered by a same-vehicle resolution that only hasn't run yet (e.g. one still queued behind this
+        // dispatch), only by an actual later vehicle change.
+        is LogEventIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.type, fuelTypeFor = selectedVehicleId) }
         is LogEventIntent.FilledUpChanged -> reduce { copy(filledUp = intent.checked) }
         is LogEventIntent.DateChanged -> reduce { copy(localDateTime = withDate(localDateTime, intent.date), error = null) }
         is LogEventIntent.TimeChanged -> reduce { copy(localDateTime = withTime(localDateTime, intent.hour, intent.minute), error = null) }

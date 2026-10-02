@@ -404,8 +404,8 @@ appId: com.mikonoma.drivinglog
     text: "42.30"
 - tapOn:
     id: fuel_type_selector
-- tapOn: Diesel
-- assertVisible: Diesel
+- tapOn: Premium petrol/gasoline
+- assertVisible: Premium petrol/gasoline
 - tapOn:
     id: filled_up
 # The refueling form is longer than a Distance entry's (fuel fields plus the whole mileage section above the note),
@@ -457,7 +457,7 @@ appId: com.mikonoma.drivinglog
     text: Refueling
 - assertVisible:
     id: event_details_fuel_type
-    text: Diesel
+    text: Premium petrol/gasoline
 - assertVisible:
     id: event_details_filled_up
     text: Partial fill
@@ -484,7 +484,7 @@ appId: com.mikonoma.drivinglog
     text: new note text
 - assertVisible:
     id: event_details_fuel_type
-    text: Diesel
+    text: Premium petrol/gasoline
 - assertVisible:
     id: event_details_filled_up
     text: Partial fill
@@ -495,13 +495,13 @@ appId: com.mikonoma.drivinglog
       id: current_odometer
     timeout: 10000
 # A second refueling, this time with a trip-distance mileage: the odometer advances too, and the remembered fuel
-# type (Diesel) and unit default again, while "filled up" starts checked again (never remembered).
+# type (Premium petrol/gasoline) and unit default again, while "filled up" starts checked again (never remembered).
 - tapOn:
     id: log_event
 - tapOn:
     id: log_kind_selector
 - tapOn: Refueling
-- assertVisible: Diesel
+- assertVisible: Premium petrol/gasoline
 - tapOn:
     id: fuel_amount_field
 - inputText: "3000"

@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.add
 
 import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
 import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
+import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
 import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
@@ -195,6 +196,10 @@ fun AddVehicleContent(
                 selected = state.type,
                 onSelect = { onIntent(AddVehicleIntent.TypeSelected(it)) },
                 color = animatedColor,
+            )
+            VehicleFuelTypeChoice(
+                selected = state.fuelType,
+                onSelect = { onIntent(AddVehicleIntent.FuelTypeSelected(it)) },
             )
             VehicleColorChoice(
                 color = state.color,

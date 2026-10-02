@@ -16,6 +16,7 @@ import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
@@ -77,6 +78,7 @@ data class AddCall(
     val picture: PendingPicture? = null,
     val color: Rgb = VehicleColors.default,
     val capture: PendingCapture? = null,
+    val fuelType: VehicleFuelType = VehicleFuelType.PETROL,
 )
 data class UpdateCall(
     val id: String,
@@ -85,6 +87,7 @@ data class UpdateCall(
     val type: VehicleType = VehicleType.CAR,
     val picture: PictureChange = PictureChange.Keep,
     val color: Rgb = VehicleColors.default,
+    val fuelType: VehicleFuelType = VehicleFuelType.PETROL,
 )
 
 data class UpdateNoteCall(val vehicleId: String, val eventId: String, val note: String?)
@@ -120,8 +123,9 @@ class FakeVehicleRepository : VehicleRepository {
         pictureId: String? = null,
         type: VehicleType = VehicleType.CAR,
         color: Rgb = VehicleColors.default,
+        fuelType: VehicleFuelType = VehicleFuelType.PETROL,
     ) {
-        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type, color)
+        vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type, color, fuelType)
     }
 
     /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
@@ -136,6 +140,11 @@ class FakeVehicleRepository : VehicleRepository {
 
     fun setType(id: String, type: VehicleType) {
         vehicles.value = vehicles.value.map { if (it.id == id) it.copy(type = type) else it }
+    }
+
+    /** Changes a seeded vehicle's fuel type, as another screen saving it would. */
+    fun setFuelType(id: String, fuelType: VehicleFuelType) {
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(fuelType = fuelType) else it }
     }
 
     /** Changes a seeded vehicle's picture id, as another screen saving it would. */
@@ -187,11 +196,12 @@ class FakeVehicleRepository : VehicleRepository {
         initialOdometer: Distance,
         picture: PendingPicture?,
         capture: PendingCapture?,
+        fuelType: VehicleFuelType,
     ): String {
         addFailure?.let { throw it }
-        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color, capture)
+        addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color, capture, fuelType)
         val id = "v${++counter}"
-        seedVehicle(id, name, licensePlate, unit, type = type, color = color)
+        seedVehicle(id, name, licensePlate, unit, type = type, color = color, fuelType = fuelType)
         seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
         return id
     }
@@ -268,10 +278,10 @@ class FakeVehicleRepository : VehicleRepository {
 
     override suspend fun capturePhotoIds(): Set<String> = emptySet()
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange, fuelType: VehicleFuelType) {
         updateFailure?.let { throw it }
-        updateCalls += UpdateCall(id, name, licensePlate, type, picture, color)
-        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type, color = color) else it }
+        updateCalls += UpdateCall(id, name, licensePlate, type, picture, color, fuelType)
+        vehicles.value = vehicles.value.map { if (it.id == id) it.copy(name = name, licensePlate = licensePlate, type = type, color = color, fuelType = fuelType) else it }
     }
 
     override suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?) {

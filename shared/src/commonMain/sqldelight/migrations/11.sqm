@@ -1,0 +1,4 @@
+-- Version 11 to 12: a vehicle's own coarse fuel/engine category (vehicle-fuel-type), distinct from the precise
+-- fuel type chosen each time a refueling is logged (vehicle_event.fuel_type, already added by 10.sqm). Existing
+-- vehicles are given Petrol, the same shape vehicle_type's own migration (5.sqm) used for Car.
+ALTER TABLE vehicle ADD COLUMN vehicle_fuel_type TEXT NOT NULL DEFAULT 'PETROL';

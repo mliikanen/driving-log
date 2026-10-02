@@ -16,6 +16,9 @@ data class Vehicle(
     val type: VehicleType,
     /** The vehicle's color. Every vehicle has one (the default is the application's main theme color). */
     val color: Rgb,
+    /** The vehicle's own coarse fuel/engine category (`vehicle-fuel-type`). Every vehicle has one; a stored code
+     * this app does not know, or a vehicle from before fuel types existed, reads as [VehicleFuelType.PETROL]. */
+    val fuelType: VehicleFuelType = VehicleFuelType.PETROL,
 )
 
 /** A vehicle with its current odometer, which is derived from the log and never stored. */

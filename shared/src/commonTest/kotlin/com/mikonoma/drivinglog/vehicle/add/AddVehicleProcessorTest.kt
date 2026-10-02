@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.locale.NumberSymbols
@@ -832,6 +833,87 @@ class AddVehicleProcessorTest {
         assertEquals(VehicleType.VAN, processor.state.type)
     }
 
+    // ---- The vehicle's fuel type
+
+    @Test
+    fun petrolIsChosenAtFirst() {
+        assertEquals(VehicleFuelType.PETROL, processor().state.fuelType)
+    }
+
+    @Test
+    fun choosingAFuelTypeSelectsIt() {
+        val processor = processor()
+
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.DIESEL))
+
+        assertEquals(VehicleFuelType.DIESEL, processor.state.fuelType)
+    }
+
+    @Test
+    fun choosingAnotherFuelTypeReplacesTheChoice() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.DIESEL))
+
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.LPG))
+
+        assertEquals(VehicleFuelType.LPG, processor.state.fuelType)
+    }
+
+    @Test
+    fun savingWithTheFuelTypeChoiceUntouchedSavesPetrol() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Family car"))
+        processor.type(4, 5)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleFuelType.PETROL, repository.addCalls.single().fuelType)
+    }
+
+    @Test
+    fun theChosenFuelTypeReachesTheRepository() = runTest {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Diesel van"))
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.LPG))
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.DIESEL))
+        processor.type(4, 5)
+
+        processor.test {
+            dispatch(AddVehicleIntent.Save)
+            expectSideEffect(AddVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleFuelType.DIESEL, repository.addCalls.single().fuelType)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheChosenFuelType() {
+        val first = processor()
+        first.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.CNG))
+        val saved = checkNotNull(first.stateToSave())
+
+        val restored = processor()
+        restored.restoreState(saved)
+
+        assertEquals(VehicleFuelType.CNG, restored.state.fuelType)
+    }
+
+    @Test
+    fun aFailedSaveKeepsTheFuelTypeChoiceForAnotherTry() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.NameChanged("Van"))
+        processor.dispatch(AddVehicleIntent.FuelTypeSelected(VehicleFuelType.HYDROGEN))
+        processor.type(1)
+        repository.addFailure = IllegalStateException("disk full")
+
+        processor.dispatch(AddVehicleIntent.Save)
+
+        assertEquals(VehicleFuelType.HYDROGEN, processor.state.fuelType)
+    }
+
     // ---- The vehicle's color
 
     private val red = Rgb(0xE53935)
@@ -1102,6 +1184,7 @@ class AddVehicleProcessorTest {
         assertEquals("Family car", state.name)
         assertEquals("ABC-123", state.licensePlate)
         assertEquals(VehicleType.VAN, state.type)
+        assertEquals(VehicleFuelType.PETROL, state.fuelType)
         assertEquals(Rgb(0x1E88E5), state.color)
         assertEquals(PictureDraft.None, state.picture.draft)
     }

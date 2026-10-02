@@ -10,6 +10,7 @@ import com.mikonoma.drivinglog.vehicle.domain.FuelType
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
@@ -26,6 +27,7 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -55,8 +57,8 @@ class LogEventProcessorTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** A vehicle with an initial odometer of 45 200 km the day before, and a 30 km entry after it. */
-    private fun seedVehicle(unit: OdometerUnit = OdometerUnit.KILOMETERS, withEntry: Boolean = true) {
-        repository.seedVehicle("v1", "Family car", unit = unit)
+    private fun seedVehicle(unit: OdometerUnit = OdometerUnit.KILOMETERS, withEntry: Boolean = true, fuelType: VehicleFuelType = VehicleFuelType.PETROL) {
+        repository.seedVehicle("v1", "Family car", unit = unit, fuelType = fuelType)
         val entries = if (withEntry) listOf(distanceEvent("d1", initialAt + 1.hours.inWholeMilliseconds, 30_000)) else emptyList()
         repository.seedEvents("v1", entries + initialEvent("i1", initialAt, 45_200_000))
     }
@@ -1971,11 +1973,86 @@ class LogEventProcessorTest {
         assertEquals(1, call.photos.size)
     }
 
+    // ---- The fuel type filter (vehicle-fuel-type)
+
+    @Test
+    fun allowedFuelTypesMatchesTheVehiclesFuelType() {
+        seedVehicle(fuelType = VehicleFuelType.DIESEL)
+
+        assertEquals(
+            setOf(FuelType.DIESEL, FuelType.PREMIUM_DIESEL, FuelType.BIODIESEL, FuelType.OTHER),
+            processor().state.allowedFuelTypes,
+        )
+    }
+
+    @Test
+    fun noRememberedPreferenceDefaultsToTheVehiclesFirstOfferedType() {
+        seedVehicle(fuelType = VehicleFuelType.DIESEL)
+
+        assertEquals(FuelType.DIESEL, processor().state.fuelType)
+    }
+
+    @Test
+    fun theRememberedChoiceFallsBackWhenTheVehicleDoesNotOfferIt() = runTest {
+        repository.seedLastFuelType(FuelType.LPG)
+        seedVehicle(fuelType = VehicleFuelType.DIESEL)
+
+        val state = processor().state
+
+        assertEquals(FuelType.DIESEL, state.fuelType) // Diesel's first offered type, not the remembered LPG
+        assertEquals(FuelType.LPG, repository.observeLastFuelType().first()) // the remembered choice itself is untouched
+    }
+
+    @Test
+    fun switchingToAVehicleWithADifferentFuelTypeReEvaluatesTheFilter() {
+        repository.seedVehicle("petrol-car", "petrol-car", fuelType = VehicleFuelType.PETROL)
+        repository.seedEvents("petrol-car", listOf(initialEvent("i-petrol", initialAt, 45_200_000)))
+        repository.seedVehicle("diesel-car", "diesel-car", fuelType = VehicleFuelType.DIESEL)
+        repository.seedEvents("diesel-car", listOf(initialEvent("i-diesel", initialAt, 45_200_000)))
+        val processor = chooser()
+        assertEquals("diesel-car", processor.state.selectedVehicleId) // alphabetically first
+
+        processor.dispatch(LogEventIntent.VehicleSelected("petrol-car"))
+
+        assertEquals(FuelType.REGULAR_PETROL, processor.state.fuelType)
+        assertEquals(setOf(FuelType.REGULAR_PETROL, FuelType.PREMIUM_PETROL, FuelType.E85, FuelType.OTHER), processor.state.allowedFuelTypes)
+    }
+
+    @Test
+    fun aManuallyChosenFuelTypeThatIsStillOfferedSurvivesAVehicleSwitch() {
+        repository.seedVehicle("aaa-petrol", "aaa-petrol", fuelType = VehicleFuelType.PETROL)
+        repository.seedEvents("aaa-petrol", listOf(initialEvent("i-petrol", initialAt, 45_200_000)))
+        repository.seedVehicle("zzz-any", "zzz-any", fuelType = VehicleFuelType.OTHER)
+        repository.seedEvents("zzz-any", listOf(initialEvent("i-any", initialAt, 45_200_000)))
+        val processor = chooser()
+        assertEquals("aaa-petrol", processor.state.selectedVehicleId)
+        processor.dispatch(LogEventIntent.FuelTypeSelected(FuelType.E85)) // offered by Petrol
+
+        processor.dispatch(LogEventIntent.VehicleSelected("zzz-any")) // offers every fuel type, including E85
+
+        assertEquals(FuelType.E85, processor.state.fuelType)
+    }
+
+    @Test
+    fun aManuallyChosenFuelTypeThatIsNoLongerOfferedFallsBackOnAVehicleSwitch() {
+        repository.seedVehicle("aaa-any", "aaa-any", fuelType = VehicleFuelType.OTHER)
+        repository.seedEvents("aaa-any", listOf(initialEvent("i-any", initialAt, 45_200_000)))
+        repository.seedVehicle("zzz-lpg", "zzz-lpg", fuelType = VehicleFuelType.LPG)
+        repository.seedEvents("zzz-lpg", listOf(initialEvent("i-lpg", initialAt, 45_200_000)))
+        val processor = chooser()
+        assertEquals("aaa-any", processor.state.selectedVehicleId)
+        processor.dispatch(LogEventIntent.FuelTypeSelected(FuelType.DIESEL)) // offered by the "Other" vehicle
+
+        processor.dispatch(LogEventIntent.VehicleSelected("zzz-lpg")) // does not offer Diesel
+
+        assertEquals(FuelType.LPG, processor.state.fuelType) // LPG's only (non-Other) offered type
+    }
+
     @Test
     fun theFuelUnitAndTypeDefaultToTheRememberedPreference() {
         repository.seedLastFuelUnit(FuelUnit.GALLONS)
         repository.seedLastFuelType(FuelType.DIESEL)
-        seedVehicle()
+        seedVehicle(fuelType = VehicleFuelType.DIESEL) // offers Diesel, so the remembered choice is honored
 
         val state = processor().state
 

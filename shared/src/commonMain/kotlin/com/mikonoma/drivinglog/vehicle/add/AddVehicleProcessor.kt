@@ -54,6 +54,7 @@ class AddVehicleProcessor(
         is AddVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
         is AddVehicleIntent.UnitSelected -> reduce { copy(entry = entry.withUnit(intent.unit)) }
         is AddVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
+        is AddVehicleIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.fuelType) }
         is AddVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
         is AddVehicleIntent.OdometerEdited -> reduce { copy(entry = entry.applyEdit(intent.text)) }
         AddVehicleIntent.OdometerCleared -> reduce { copy(entry = entry.clear()) }
@@ -153,7 +154,7 @@ class AddVehicleProcessor(
             try {
                 repository.addVehicle(
                     fields.fields.name, fields.fields.licensePlate, state.type, state.color, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
-                    capture = state.scan.accepted,
+                    capture = state.scan.accepted, fuelType = state.fuelType,
                 )
             } catch (throwable: Throwable) {
                 // Let the user try again; Kide logs the rethrown error.

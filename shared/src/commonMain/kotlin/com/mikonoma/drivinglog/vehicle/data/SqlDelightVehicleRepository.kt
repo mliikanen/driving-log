@@ -25,6 +25,7 @@ import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
@@ -98,6 +99,7 @@ class SqlDelightVehicleRepository(
         initialOdometer: Distance,
         picture: PendingPicture?,
         capture: PendingCapture?,
+        fuelType: VehicleFuelType,
     ): String = withContext(dispatcher) {
         val instant = clock.now()
         val now = instant.toEpochMilliseconds()
@@ -117,7 +119,7 @@ class SqlDelightVehicleRepository(
         try {
             // One transaction: the vehicle, its initial event and the scan it came from (scan-initial-odometer) are all saved, or none.
             database.transaction {
-                vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex)
+                vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex, fuelType.code)
                 // The initial odometer event never carries a note (add-event-notes): it is created by this flow, not the log event form.
                 events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong(), null)
                 promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
@@ -259,17 +261,18 @@ class SqlDelightVehicleRepository(
         }
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange) {
+    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange, fuelType: VehicleFuelType) {
         withContext(dispatcher) {
             val now = clock.now().toEpochMilliseconds()
             val newPictureId = (picture as? PictureChange.Replace)?.let { promoted(it.picture) }
             var oldPictureId: String? = null
             try {
-                // One transaction: the name, the plate, the type, the color and the picture change together, or not at all.
+                // One transaction: the name, the plate, the type, the color, the fuel type and the picture change together, or not at all.
                 database.transaction {
                     vehicles.updateVehicle(name, licensePlate, now, id)
                     vehicles.updateVehicleType(type.code, now, id)
                     vehicles.updateVehicleColor(color.hex, now, id)
+                    vehicles.updateVehicleFuelType(fuelType.code, now, id)
                     if (picture !is PictureChange.Keep) {
                         oldPictureId = vehicles.selectPictureId(id).executeAsOneOrNull()?.picture_id
                         vehicles.updateVehiclePicture(newPictureId, now, id)
@@ -377,6 +380,7 @@ class SqlDelightVehicleRepository(
         pictureId = picture_id,
         type = VehicleType.fromCode(vehicle_type) ?: VehicleType.OTHER,
         color = Rgb.parse(vehicle_color) ?: VehicleColors.default,
+        fuelType = VehicleFuelType.fromCode(vehicle_fuel_type) ?: VehicleFuelType.OTHER,
     )
 
     private fun SelectVehicleDetails.toDomain() = VehicleDetails(
@@ -390,6 +394,7 @@ class SqlDelightVehicleRepository(
             pictureId = picture_id,
             type = VehicleType.fromCode(vehicle_type) ?: VehicleType.OTHER,
             color = Rgb.parse(vehicle_color) ?: VehicleColors.default,
+            fuelType = VehicleFuelType.fromCode(vehicle_fuel_type) ?: VehicleFuelType.OTHER,
         ),
         currentOdometer = current_odometer_meters?.let { Distance(it) },
     )

@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.edit
 
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.UpdateCall
@@ -451,6 +452,87 @@ class EditVehicleProcessorTest {
         assertEquals(VehicleType.SUV, restored.state.type)
     }
 
+    // ---- The vehicle's fuel type
+
+    private fun seedFueled(fuelType: VehicleFuelType): EditVehicleProcessor {
+        repository.seedVehicle("f1", "Rig", fuelType = fuelType)
+        return EditVehicleProcessor("f1", repository, pictures, codec, colors)
+    }
+
+    @Test
+    fun theSavedFuelTypeIsSelected() {
+        assertEquals(VehicleFuelType.DIESEL, seedFueled(VehicleFuelType.DIESEL).state.fuelType)
+    }
+
+    @Test
+    fun theFormAlwaysHasAFuelTypeOnceLoaded() {
+        val state = processor().state
+
+        assertTrue(state.loaded)
+        assertEquals(VehicleFuelType.PETROL, state.fuelType)
+    }
+
+    @Test
+    fun changingTheFuelTypeSavesIt() = runTest {
+        val processor = seedFueled(VehicleFuelType.PETROL)
+        processor.dispatch(EditVehicleIntent.FuelTypeSelected(VehicleFuelType.LPG))
+        assertEquals(VehicleFuelType.LPG, processor.state.fuelType)
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleFuelType.LPG, repository.updateCalls.single().fuelType)
+    }
+
+    @Test
+    fun anEditThatDoesNotTouchTheFuelTypeKeepsIt() = runTest {
+        val processor = seedFueled(VehicleFuelType.CNG)
+        processor.dispatch(EditVehicleIntent.NameChanged("Renamed"))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleFuelType.CNG, repository.updateCalls.single().fuelType)
+    }
+
+    @Test
+    fun leavingWithoutSavingKeepsTheSavedFuelType() {
+        val processor = seedFueled(VehicleFuelType.HYDROGEN)
+        processor.dispatch(EditVehicleIntent.FuelTypeSelected(VehicleFuelType.OTHER))
+
+        processor.dispatch(EditVehicleIntent.Left)
+
+        assertEquals(emptyList(), repository.updateCalls)
+        // The saved vehicle is untouched: a new processor over it starts with the saved fuel type.
+        assertEquals(VehicleFuelType.HYDROGEN, EditVehicleProcessor("f1", repository, pictures, codec, colors).state.fuelType)
+    }
+
+    @Test
+    fun aVehicleMigratedToPetrolCanBeChangedToAnotherFuelType() = runTest {
+        val processor = seedFueled(VehicleFuelType.PETROL) // what the migration gives a vehicle from before fuel types existed
+        processor.dispatch(EditVehicleIntent.FuelTypeSelected(VehicleFuelType.DIESEL))
+
+        processor.test {
+            dispatch(EditVehicleIntent.Save)
+            expectSideEffect(EditVehicleEffect.Saved)
+        }
+
+        assertEquals(VehicleFuelType.DIESEL, repository.updateCalls.single().fuelType)
+    }
+
+    @Test
+    fun aRestoredStateKeepsTheFuelTypeChoiceMadeBeforeTheProcessorWasRecreated() {
+        repository.seedVehicle("f2", "Rig", fuelType = VehicleFuelType.PETROL)
+        val restored = EditVehicleProcessor("f2", repository, pictures, codec, colors)
+        restored.restoreState(EditVehicleState(loaded = true, name = "Rig", fuelType = VehicleFuelType.CNG))
+
+        assertEquals(VehicleFuelType.CNG, restored.state.fuelType)
+    }
+
     // ---- The vehicle's color
 
     private val red = Rgb(0xE53935)
@@ -622,6 +704,7 @@ class EditVehicleProcessorTest {
 
         val call = repository.updateCalls.single()
         assertEquals(VehicleType.CAR, call.type)
+        assertEquals(VehicleFuelType.PETROL, call.fuelType)
         assertEquals(PictureChange.Keep, call.picture)
     }
 
