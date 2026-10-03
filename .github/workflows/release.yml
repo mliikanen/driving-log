@@ -1,0 +1,128 @@
+# Publishes the newest commit on main whose PR check passed to the Firebase App Distribution testers, whenever a PR
+# check on main finishes, and on demand (add-ci-workflows, design.md decisions 1 to 6). Runs in the firebase-deployment environment, limited to main, which holds the
+# release secrets; no pull request can reach them.
+name: Release
+
+on:
+  workflow_run:
+    workflows: [PR check]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    # Any PR check on main that finished, passed or not: the job publishes the newest commit that passed, so a run for
+    # a failed or an older check still releases what's ready, and one that is replaced in the queue loses nothing.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: firebase-deployment
+    # One distribution at a time; a later one waits. GitHub keeps only the last-arriving pending run, which is why the
+    # job doesn't publish its trigger's commit but reconciles to the newest checked one (scripts/ci/newest-checked-commit.sh).
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    permissions:
+      actions: read # which commits' PR checks passed
+      contents: write # the dist-v* tag
+      pull-requests: read # the merged PR's release notes
+      id-token: write # Workload Identity Federation
+    steps:
+      - name: Check the release configuration
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+        run: |
+          missing=()
+          for name in GOOGLE_SERVICES_JSON_BASE64 RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD WIF_PROVIDER WIF_SERVICE_ACCOUNT; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not configured in the firebase-deployment environment: ${missing[*]} (docs/distribution.md)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide what to release
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The newest commit on main, since the last distribution, whose PR check passed. A run started by hand gets the
+          # same answer, so it can't publish a commit whose checks are pending or failed.
+          target="$(scripts/ci/newest-checked-commit.sh origin/main)"
+          if [ -z "$target" ]; then
+            echo "Nothing to release: no commit on main since the last distribution has a passed PR check yet." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git checkout --quiet --detach "$target"
+          # This commit, or a later one it's part of, was already distributed: publishing it would only go backwards.
+          if [ -n "$(git tag --contains HEAD -l 'dist-v*')" ]; then
+            echo "Already distributed: $(git tag --contains HEAD -l 'dist-v*' | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Every pull request merged since the last distribution: its `## Release notes` section, or what it archived.
+          scripts/ci/choose-release-notes.sh HEAD > "$RUNNER_TEMP/release-notes.txt"
+          if [ ! -s "$RUNNER_TEMP/release-notes.txt" ]; then
+            echo "Nothing to release: no change archived since the last distribution, and no release notes in a merged pull request." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      # The files the Gradle build reads from outside the repository (docs/distribution.md), written from the secrets.
+      - name: Write the release files
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > androidApp/src/production/google-services.json
+          mkdir -p ~/.android-keystores
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > ~/.android-keystores/driving-log-release.jks
+          # Escaped for java.util.Properties, which build.gradle.kts reads it with: any password round-trips exactly.
+          scripts/ci/write-keystore-properties.py ~/.android-keystores/keystore.properties \
+            "$HOME/.android-keystores/driving-log-release.jks" driving-log
+
+      - if: steps.decide.outputs.publish == 'true'
+        uses: ./.github/actions/setup-build
+        with:
+          placeholder-google-services: "false"
+
+      # Sets GOOGLE_APPLICATION_CREDENTIALS, which the App Distribution Gradle plugin reads; no long-lived key.
+      - if: steps.decide.outputs.publish == 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Build and upload
+        if: steps.decide.outputs.publish == 'true'
+        run: >-
+          ./gradlew :androidApp:assembleProductionRelease :androidApp:appDistributionUploadProductionRelease
+          "-PdistributionReleaseNotesFile=$RUNNER_TEMP/release-notes.txt"
+
+      - name: Tag the distributed commit
+        if: steps.decide.outputs.publish == 'true'
+        run: |
+          tag="dist-v$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
+          git tag "$tag"
+          git push origin "$tag"
+          {
+            echo "Published $tag with these notes:"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/release-notes.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

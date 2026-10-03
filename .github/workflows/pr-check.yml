@@ -1,0 +1,62 @@
+# The final regression run (CLAUDE.md) on every pull request to main and on every push to main (each merge), as three
+# status checks that a ruleset on main requires before merging (add-ci-workflows, design.md decision 8). No secrets:
+# the production flavor builds with a placeholder google-services.json. The release-notes preview is its own
+# workflow (release-notes.yml), since it isn't a check and also runs when the PR description changes.
+name: PR check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A pull request's newer push replaces its older run. Every push to main gets its own group: GitHub keeps only one
+# pending run per group, so a shared one could drop a merge commit's checks, and with them its release.
+concurrency:
+  group: pr-check-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests-and-build:
+    name: tests-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: ./.github/actions/setup-build
+      - name: Shared tests
+        run: ./gradlew :shared:allTests
+      - name: Debug build
+        run: ./gradlew :androidApp:assembleDebug
+
+  # Needs only Node and the OpenSpec CLI, so it reports in well under a minute.
+  spec-validation:
+    name: spec-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      # The version the project's specs are validated with locally; bump it here deliberately.
+      - name: Install the OpenSpec CLI
+        run: npm install -g @fission-ai/openspec@1.13.2
+      - name: Spec validation
+        run: openspec validate --all --strict
+
+  code-quality:
+    name: code-quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-build
+      # ktlint, detekt and Android lint (both app flavors and shared); docs/code-quality.md.
+      - name: Static analysis
+        run: ./gradlew codeQuality

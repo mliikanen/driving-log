@@ -20,10 +20,10 @@ steps.
 Firestore) this project isn't using in code. `appId` isn't a secret (it's visible in Firebase console URLs and every
 distributed APK's manifest anyway), so it's a plain, tracked value in `gradle.properties`.
 
-**No service-account credential file.** The plugin's default authentication is the developer's own `firebase login`
-CLI session. A service-account key is only worth its cost (a standing credential to store and rotate) once CI
-automation exists — deliberately out of scope here (this project has no CI at all yet). CI is now planned; see
-Planned: publish from CI on merge to `main`, below.
+**No service-account credential file.** A local distribution (`scripts/distribute.sh`) authenticates with the
+developer's own `firebase login` CLI session, so no key file exists for it. CI distributes too (Publishing from CI,
+below), and even there no long-lived key exists: it signs in as a service account through Workload Identity
+Federation.
 
 ## The release keystore
 
@@ -104,20 +104,33 @@ device at this minSdk is 64-bit. A tester with an x86 or 32-bit ARM device could
 `add-seven-segment-ocr`'s design.md.
 
 
-## Planned: publish from CI on merge to `main`
+## Publishing from CI
 
-Not built yet. Once changes reach `main` through PRs (`docs/change-workflow.md`), a `.github/workflows/` job
-triggered on push to `main` builds the signed release APK and runs `appDistributionUploadProductionRelease`, the
-same Gradle tasks `scripts/distribute.sh` uses. This revisits several decisions above that were made for a world
-without CI:
-- **Service-account key** as a repo secret, replacing the developer's own `firebase login` session for this job.
-- **The release keystore** (base64) and its password as repo secrets. Today the keystore lives only at
-  `~/.android-keystores/` and is deliberately never in git or any automated store.
-  Both are new standing credentials: get explicit sign-off on adding each, not a convenience default.
-- **Full history**: `versionCode` is `git rev-list --count HEAD`, so the job checks out with `fetch-depth: 0`. The
-  default shallow checkout would make every build's `versionCode` 1.
-- **Tags**: the job fetches tags and pushes the `dist-v<versionName>` tag it creates, or the next run's "since last
-  distribution" range is wrong.
-- **Release notes**: in CI there's no one to edit the draft in `$EDITOR`. The herd's reviewer writes a
-  `## Release notes` section into each PR body (`release_notes: true` in `.herd/project.yaml`), and the job uses
-  that text instead of publishing an unreviewed auto-draft.
+Every merge to `main` publishes to the testers, with no developer machine involved (`add-ci-workflows`):
+- **Trigger.** `.github/workflows/release.yml` runs whenever the PR check (`pr-check.yml`) finishes on a push to
+  `main` (each merge), and by hand (*Run workflow*). Either way it publishes **the newest commit on `main` whose PR
+  check passed**, so checks finishing out of order, or one release replacing a waiting one, never leave a newer
+  commit unpublished. One release runs at a time, and no run publishes a commit older than one already distributed.
+- **Nothing to say, nothing published.** When no change was archived since the last `dist-v*` tag and the merged PR
+  has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag. A commit that
+  is already tagged isn't published again.
+- **Release notes.** Everything since the last distribution: each PR merged since then contributes its
+  `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
+  and every other archived change is listed by name (`scripts/release-notes.sh`, the same generation the local script
+  drafts from). So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
+  merging: that is the review the local script does in `$EDITOR`.
+- **Secrets** live in the `firebase-deployment` GitHub environment, which only `main` can enter (no pull request, even
+  one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,
+  base64-encoded where they're files. The job writes them to the same paths the build reads locally
+  (`androidApp/src/production/`, `~/.android-keystores/`), so the Gradle build is the same as on a laptop. The
+  keystore is the one standing credential this adds, added with explicit sign-off.
+- **Upload identity.** A dedicated service account whose only role is Firebase App Distribution Admin, impersonated
+  through Workload Identity Federation by this repository's `firebase-deployment` runs only. Its provider and email
+  are environment *variables* (`WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`), not secrets.
+- **Full history and tags.** `versionCode` is `git rev-list --count HEAD`, so the job checks out with full history.
+  It fetches the remote's tags first and pushes the `dist-v<versionName>` tag it creates, and so does
+  `scripts/distribute.sh`, so a local and a CI distribution agree on what was distributed last.
+- **The PR check needs none of this.** It builds the `production` flavor with a placeholder `google-services.json`
+  (`.github/ci/`), so pull requests run with no secrets at all.
+
+The one-time setup (environment, service account, secrets) is in `docs/distribution.md`.
