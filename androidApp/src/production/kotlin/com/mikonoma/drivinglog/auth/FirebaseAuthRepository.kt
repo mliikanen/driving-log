@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.auth
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.gms.tasks.Task
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -50,6 +51,10 @@ class FirebaseAuthRepository(private val currentActivity: CurrentActivityHolder)
             // Distinct from every other failure: `firebase-auth` requires cancelling to leave no error on screen
             // (SignInProcessor branches on the exception type, not a message).
             Result.failure(SignInCancelledException())
+        } catch (e: NoCredentialException) {
+            // No Google account on the device: reported like any other sign-in failure (the sign-in screen shows its
+            // message). Caught on its own so the case is visibly handled, not lost in the generic catch below.
+            Result.failure(e)
         } catch (e: Exception) {
             Result.failure(e)
         }

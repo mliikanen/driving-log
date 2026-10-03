@@ -52,9 +52,9 @@ fun App(authRepository: AuthRepository, graphFor: (uid: String) -> AppGraph, mod
                 }
 
                 is AuthState.SignedIn -> {
-                    val graph = remember(state.uid) { graphFor(state.uid) }
-                    // Before the back stack, which may be restored from saved state and needs the registry.
-                    remember(graph) { registerVehicleNavKeys(graph) }
+                    // The nav keys are registered as the graph is created, before the back stack, which may be restored from
+                    // saved state and needs the registry.
+                    val graph = remember(state.uid) { graphFor(state.uid).also { registerVehicleNavKeys(it) } }
                     // Once per start: files of pictures no vehicle uses (an interrupted save) are deleted. Failing to clean up is not a reason to stop.
                     LaunchedEffect(graph) {
                         runCatching { sweepPictures(graph.vehicleRepository, graph.vehiclePictureStore) }

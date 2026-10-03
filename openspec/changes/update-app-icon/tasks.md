@@ -11,7 +11,8 @@
 
 - [ ] 2.1 Build adaptive icon resources (foreground/background vector drawables, monochrome layer if in scope) from
       the SVG and wire `android:icon`/`android:roundIcon` in `AndroidManifest.xml` (planned in detail when 1.1 is
-      done).
+      done). Remove the `tools:ignore="MissingApplicationIcon"` suppression (and its comment) from `<application>`,
+      added by `clean-up-lint-baselines` until the icon exists; `./gradlew codeQuality` must still pass.
 - [ ] 2.2 Add `androidx.core:core-splashscreen`, a splash theme layered on the existing `Theme.DrivingLog`, and
       install it in `MainActivity.kt` (planned in detail when 1.1 is done).
 - [ ] 2.3 Verify on-device that the launcher shows the new icon and cold start shows the splash icon; final

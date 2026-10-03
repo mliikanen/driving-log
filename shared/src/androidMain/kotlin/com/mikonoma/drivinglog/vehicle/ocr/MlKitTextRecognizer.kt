@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.ocr
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import androidx.core.graphics.scale
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -42,7 +43,7 @@ class MlKitTextRecognizer(private val dispatcher: CoroutineDispatcher = ioDispat
             bitmap
         } else {
             withContext(dispatcher) {
-                Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt(), true)
+                bitmap.scale((bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt())
             }
         }
         val text = suspendCancellableCoroutine { continuation ->

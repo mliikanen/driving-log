@@ -49,6 +49,12 @@ android {
         // These compare against what's published online, so they'd fail the gate on a new upstream release with no code
         // change. Dependency updates are a deliberate change of their own, not a lint finding.
         disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
+        // Fires whenever a newer SDK exists, like the checks above; a targetSdk bump changes platform behavior and is a
+        // change of its own (clean-up-lint-baselines).
+        disable += "OldTargetApi"
+        // Release builds are arm64-only on purpose (testers' phones; see abiFilters above), and the app doesn't target
+        // ChromeOS.
+        disable += "ChromeOsAbiSupport"
         checkDependencies = false
     }
 

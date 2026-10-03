@@ -5,21 +5,21 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 1. Prerequisites
 
-- [ ] 1.1 Check that `add-lint-quality-gates` is archived (`openspec/specs/code-quality/spec.md` exists). Verify: it
+- [x] 1.1 Check that `add-lint-quality-gates` is archived (`openspec/specs/code-quality/spec.md` exists). Verify: it
       does; if not, stop and archive that change first.
 
 ## 2. Android lint (design.md decision 6)
 
-- [ ] 2.1 Fix the five UseKtx findings (`SharedPreferencesClaimedAccountStore`, `AndroidImageCodec` ×3,
+- [x] 2.1 Fix the five UseKtx findings (`SharedPreferencesClaimedAccountStore`, `AndroidImageCodec` ×3,
       `MlKitTextRecognizer`), keeping the same scaling filter flag. Verify: `./gradlew :shared:allTests` passes, and
       both lint baselines lose those entries.
-- [ ] 2.2 Fix `RememberReturnType` in `App.kt`, keeping navigation key registration synchronous during composition.
+- [x] 2.2 Fix `RememberReturnType` in `App.kt`, keeping navigation key registration synchronous during composition.
       Verify: `:shared:lintAndroidMain` no longer reports it; Maestro `maestro/run.sh vehicles` passes (back stack
       restore after process death is in that manifest's flows).
-- [ ] 2.3 Add the explicit `NoCredentialException` catch in `FirebaseAuthRepository.signIn`, mapped to the same
+- [x] 2.3 Add the explicit `NoCredentialException` catch in `FirebaseAuthRepository.signIn`, mapped to the same
       failure as today. Verify: `:androidApp:lintProductionDebug` no longer reports CredentialManagerMisuse, and the
       `SignInProcessor` tests pass unchanged.
-- [ ] 2.4 Disable `OldTargetApi` and `ChromeOsAbiSupport` in `androidApp`'s `lint {}` with comments, and suppress
+- [x] 2.4 Disable `OldTargetApi` and `ChromeOsAbiSupport` in `androidApp`'s `lint {}` with comments, and suppress
       `MissingApplicationIcon` on `<application>` with a comment naming `update-app-icon` (unless that change is
       already applied). Add a task to `update-app-icon`'s tasks.md to remove that suppression. Verify: both lint
       baselines are empty (`<issues>` with no `<issue>`), and `update-app-icon/tasks.md` has the new task.

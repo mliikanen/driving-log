@@ -5,6 +5,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.scale
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlinx.coroutines.CoroutineDispatcher
@@ -101,7 +102,7 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
     private fun scaledTo(square: Bitmap, side: Int): Bitmap {
         var current = square
         for (step in downscaleSteps(square.width, side)) {
-            current = Bitmap.createScaledBitmap(current, step, step, true)
+            current = current.scale(step, step)
         }
         return current
     }
@@ -114,12 +115,12 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             val stepScale = step.toDouble() / max(current.width, current.height)
             val stepWidth = maxOf(1, (current.width * stepScale).roundToInt())
             val stepHeight = maxOf(1, (current.height * stepScale).roundToInt())
-            current = Bitmap.createScaledBitmap(current, stepWidth, stepHeight, true)
+            current = current.scale(stepWidth, stepHeight)
         }
         return if (current.width == targetWidth && current.height == targetHeight) {
             current
         } else {
-            Bitmap.createScaledBitmap(current, targetWidth, targetHeight, true)
+            current.scale(targetWidth, targetHeight)
         }
     }
 

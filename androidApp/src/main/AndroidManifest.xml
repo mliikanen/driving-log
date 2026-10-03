@@ -13,8 +13,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- No icon yet: update-app-icon sets android:icon and removes this suppression (clean-up-lint-baselines). -->
     <application
         android:name=".DrivingLogApplication"
+        tools:ignore="MissingApplicationIcon"
         android:label="Driving Log"
         android:supportsRtl="true"
         android:theme="@style/Theme.DrivingLog">
