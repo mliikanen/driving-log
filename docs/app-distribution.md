@@ -22,7 +22,8 @@ distributed APK's manifest anyway), so it's a plain, tracked value in `gradle.pr
 
 **No service-account credential file.** The plugin's default authentication is the developer's own `firebase login`
 CLI session. A service-account key is only worth its cost (a standing credential to store and rotate) once CI
-automation exists — deliberately out of scope here (this project has no CI at all yet).
+automation exists — deliberately out of scope here (this project has no CI at all yet). CI is now planned; see
+Planned: publish from CI on merge to `main`, below.
 
 ## The release keystore
 
@@ -102,3 +103,21 @@ Runtime from `add-seven-segment-ocr`) are 20-40 MB per ABI, so a universal APK w
 device at this minSdk is 64-bit. A tester with an x86 or 32-bit ARM device could not install a release. Sizes are in
 `add-seven-segment-ocr`'s design.md.
 
+
+## Planned: publish from CI on merge to `main`
+
+Not built yet. Once changes reach `main` through PRs (`docs/change-workflow.md`), a `.github/workflows/` job
+triggered on push to `main` builds the signed release APK and runs `appDistributionUploadProductionRelease`, the
+same Gradle tasks `scripts/distribute.sh` uses. This revisits several decisions above that were made for a world
+without CI:
+- **Service-account key** as a repo secret, replacing the developer's own `firebase login` session for this job.
+- **The release keystore** (base64) and its password as repo secrets. Today the keystore lives only at
+  `~/.android-keystores/` and is deliberately never in git or any automated store.
+  Both are new standing credentials: get explicit sign-off on adding each, not a convenience default.
+- **Full history**: `versionCode` is `git rev-list --count HEAD`, so the job checks out with `fetch-depth: 0`. The
+  default shallow checkout would make every build's `versionCode` 1.
+- **Tags**: the job fetches tags and pushes the `dist-v<versionName>` tag it creates, or the next run's "since last
+  distribution" range is wrong.
+- **Release notes**: in CI there's no one to edit the draft in `$EDITOR`. The herd's reviewer writes a
+  `## Release notes` section into each PR body (`release_notes: true` in `.herd/project.yaml`), and the job uses
+  that text instead of publishing an unreviewed auto-draft.

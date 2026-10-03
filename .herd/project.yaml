@@ -1,0 +1,42 @@
+# Herd manifest for Driving Log. DRAFT: the herd isn't built yet; `herd init` validates this file during
+# onboarding. Format and semantics: ../herd/docs/design.md. People's workflow: docs/change-workflow.md.
+# The herd reads this file from `main` only, and its agents can't change it.
+workflow: openspec
+branch_prefix: change/
+
+toolchain:
+  # Debian-based, JDK + the Android SDK platform and build-tools the Gradle build asks for. Nothing else:
+  # git and the openspec CLI come with the herd's role layer.
+  dockerfile: .herd/toolchain.Dockerfile
+  # A shared Gradle cache per role instead of a fresh GRADLE_USER_HOME per clone, which would re-download
+  # every dependency per unit of work. Revisit if it ever causes a non-reproducible build.
+  caches: [/home/agent/.gradle]
+  egress: [repo.maven.apache.org, maven.google.com, dl.google.com, plugins.gradle.org, services.gradle.org]
+
+# CLAUDE.md's final regression run, without Maestro.
+gate:
+  - ./gradlew :shared:allTests :androidApp:assembleDebug codeQuality
+  - openspec validate --all --strict
+
+# Maestro can't run in the workers (Android emulators in containers are too fragile), so it's the human's final check.
+final_approval:
+  kind: human
+  instructions: |
+    Build and install the fake flavor (./gradlew :androidApp:assembleFakeDebug, then adb install -r
+    androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk) and run the Maestro manifests of the
+    areas this change touches: maestro/run.sh <area>... (CLAUDE.md lists the areas). Record pass, or the failing
+    flow and what happened, with /herd-resolve.
+
+# v1 is Android only.
+missing_capabilities:
+  - macOS / Xcode (iosApp, iOS targets)
+  - a physical Android device
+  - real Firebase / Google Sign-In (production flavor)
+
+caps: { review_rounds: 3, added_tasks: 3, gate_fixes: 3 }
+
+# No prompt additions: CLAUDE.md, docs/test-strategy.md and openspec/config.yaml carry the conventions. Add
+# .herd/implementer.md / reviewer.md only for something agents get wrong repeatedly that doesn't belong in CLAUDE.md.
+
+# The Firebase publish job lifts the PR body's "Release notes" section (docs/app-distribution.md).
+release_notes: true

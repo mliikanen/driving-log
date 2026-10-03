@@ -8,12 +8,20 @@ development using [OpenSpec](https://github.com/Fission-AI/OpenSpec).
 Specs in `openspec/specs/` are the source of truth for current behavior. Do not
 implement a feature or behavior change without a change in `openspec/changes/`.
 
-1. `/opsx:propose <name>` (or `openspec new change <name>`): proposal, spec deltas, design, tasks
+**Every change lives on its own branch, `change/<name>`, never on `main`** (`docs/change-workflow.md`). Create it
+from `main` in a worktree (`git worktree add ../driving-log-<name> -b change/<name> main`) and work there:
+
+1. `/opsx:propose <name>` (or `openspec new change <name>`): proposal, spec deltas, design, tasks; commit on the
+   branch, push, open a draft PR
 2. Review and refine the artifacts before writing code
 3. `/opsx:apply`: implement `tasks.md` item by item, ticking them off
-4. `/opsx:archive`: merge the deltas into `openspec/specs/` when done
+4. `/opsx:archive`: merge the deltas into `openspec/specs/` when done, then merge the branch into `main`
 
-Useful CLI: `openspec list`, `openspec show <change>`, `openspec validate --all`.
+`main`'s `openspec/changes/` holds only `archive/`. Changes in flight are the `change/*` branches
+(`git branch -a --list '*change/*'`): check them before proposing, and record a needed one in `.openspec.yaml`
+as `depends_on: [<change>]`.
+
+Useful CLI: `openspec list` (on a change's branch), `openspec show <change>`, `openspec validate --all`.
 Project context and artifact rules live in `openspec/config.yaml`.
 
 ## Layout
@@ -26,7 +34,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   `openspec/specs/`). Read the relevant file here before touching an area it covers, e.g. `docs/test-strategy.md`
   before changing tests, `docs/test-fixtures.md` before adding a Maestro fixture or a `.sqm` migration (a migration
   makes every checked-in fixture stale; that file says exactly what to run), `docs/color-palette.md` before a color
-  change, `docs/code-quality.md` before changing lint configuration or adding a suppression, `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
+  change, `docs/change-workflow.md` before proposing or merging a change, `docs/code-quality.md` before changing lint configuration or adding a suppression, `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
   (`docs/distribution.md` is the day-to-day "cut a release" runbook for the same area).
 
 ## Commands
