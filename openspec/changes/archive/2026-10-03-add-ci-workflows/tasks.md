@@ -56,23 +56,26 @@
       `environment: firebase-deployment`, permissions `contents: write`, `pull-requests: read`, `id-token: write`. Checkout of
       the checked `head_sha` with full history and tags (design.md decisions 1 and 6). Verify: `actionlint`
       reports no errors.
-- [ ] 3.2 In `release.yml`, the first step fails naming every missing secret or variable (`GOOGLE_SERVICES_JSON_BASE64`,
+- [x] 3.2 In `release.yml`, the first step fails naming every missing secret or variable (`GOOGLE_SERVICES_JSON_BASE64`,
       `RELEASE_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, and the Workload Identity provider and service account
       variables), before any build (spec: "A release secret is missing"). Then it writes the keystore,
       `keystore.properties` and `google-services.json` to the paths the build reads (design.md decision 3).
       Verify: after merging, the first run fails at this step and lists all of them, while nothing is built or
       tagged.
-      **Open at archive:** this needs the first release run, which can only start after the merge (GitHub runs a
-      workflow by hand only from `main`); it's verified then, and ticked in a follow-up commit.
-- [ ] 3.3 In `release.yml`: skip with "already distributed" when `HEAD` has a `dist-v*` tag. Choose the notes as in
+      **Verified after merge** (release run 37147241050 on `bfc3281` (the merge of PR #1)): "Check the release configuration" passed with all five set, then wrote the
+      files and the signed build succeeded. Its failure path wasn't exercised in CI: the secrets and variables were all
+      configured before the merge, so there was no run without them.
+- [x] 3.3 In `release.yml`: skip with "already distributed" when `HEAD` has a `dist-v*` tag. Choose the notes as in
       design.md decision 5 (merged PR's `## Release notes` via `gh api repos/{repo}/commits/{sha}/pulls`, else
       `release-notes.sh`), and skip with "nothing to release" when they're empty. Otherwise authenticate
       (`google-github-actions/auth`, Workload Identity Federation), run
       `:androidApp:assembleProductionRelease :androidApp:appDistributionUploadProductionRelease
       -PdistributionReleaseNotesFile=<file>`, then tag and push `dist-v<versionName>`. Verify: `actionlint`, and
       the end-to-end run in 4.5.
-      **Open at archive:** this needs the first release run, which can only start after the merge (GitHub runs a
-      workflow by hand only from `main`); it's verified then, and ticked in a follow-up commit.
+      **Verified after merge** (release run 37147241050 on `bfc3281` (the merge of PR #1)): "Decide what to release" picked `bfc3281` (the newest commit on `main` whose push
+      PR check passed), found no `dist-v*` tag containing it, chose the archive-generated notes (PR #1 had no
+      `## Release notes` section), and the upload and the push of `dist-v193-bfc3281` succeeded. Rerunning the notes
+      script on `bfc3281` afterwards prints nothing, since the new tag now contains it.
 - [x] 3.4 Address the review of PR #1 (design.md decisions 1, 5 and 6): a concurrency group per push run in
       `pr-check.yml`; the release job's concurrency on the job; a manual run requires a successful push-triggered PR
       check on its commit; "already distributed" also covers commits contained in a later `dist-v*` tag (release job
@@ -131,12 +134,15 @@
       `mliikanen/driving-log` and `firebase-deployment` only); the account's IAM policy holds only the
       `workloadIdentityUser` binding; `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` set. The developer had already set the
       three secrets, the password as `KEYSTORE_PASSWORD`, so the workflow and docs use that name.
-- [ ] 4.5 Run `release.yml` by hand (`workflow_dispatch`) on `main`. Verify: the build reaches the tester group in
+- [x] 4.5 Run `release.yml` by hand (`workflow_dispatch`) on `main`. Verify: the build reaches the tester group in
       Firebase App Distribution with the expected notes, and `git ls-remote --tags origin 'dist-v*'` shows the new
       tag. If the upload rejects the federated credential, switch to the key-file fallback
       (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`, design.md decision 4), record that in design.md, and rerun.
-      **Open at archive:** this needs the first release run, which can only start after the merge (GitHub runs a
-      workflow by hand only from `main`); it's verified then, and ticked in a follow-up commit.
+      **Verified after merge** (release run 37147241050 on `bfc3281` (the merge of PR #1), triggered by the merge's PR check rather than by hand, the same job): the build
+      reached the tester group (Firebase release `2cd2asmepoteo`), signed in through Workload Identity Federation, so the
+      key-file fallback isn't needed; the notes were the five changes archived since `dist-v176` (`add-fuel-amount-ocr`,
+      `fix-refueling-scan-capture`, `add-ci-workflows`, `add-lint-quality-gates`, `clean-up-lint-baselines`); and
+      `git ls-remote --tags origin 'dist-v*'` shows `dist-v193-bfc3281`.
 - [x] 4.6 Confirm a pull request can't reach the release secrets. Verify: in a throwaway PR, a workflow step that
       references `secrets.KEYSTORE_PASSWORD` gets an empty value, and a job declaring
       `environment: firebase-deployment` from the PR branch is refused. Close the PR without merging.
