@@ -95,6 +95,11 @@
       (backslash, leading and trailing spaces, `=:#!`, non-ASCII with an emoji, a tab) read back exactly with Java's
       `Properties.load`, where the old heredoc read `test\secret` as `testsecret`; with a stub `git` failing `git log`,
       the old `release-notes.sh` exited 0 with no output and the new one exits 128, as does `choose-release-notes.sh`.
+- [x] 3.8 Address the review's "previously missed" note on 5ded563: `newest-checked-commit.sh` captures the
+      `git rev-list` list before looping (a command substitution in a `for` list has its exit status ignored), and the
+      three scripts take the last tag with `sed -n 1p` instead of `head -1`, which could SIGPIPE `git tag` once there
+      are thousands of tags. Verify: with a stub `git` failing `rev-list`, the old script exited 0 with no output and
+      the new one exits 128; normal output is unchanged; no `for … in $(…)` is left in the scripts.
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 

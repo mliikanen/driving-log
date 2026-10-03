@@ -9,7 +9,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 commit="${1:-HEAD}"
-last_tag="$(git tag -l 'dist-v*' --merged "$commit" --sort=-v:refname | head -1)"
+# `sed -n 1p`, not `head -1`: head stops reading, which would SIGPIPE `git tag` (and, with pipefail, fail the script)
+# once the tag list outgrows the pipe buffer.
+last_tag="$(git tag -l 'dist-v*' --merged "$commit" --sort=-v:refname | sed -n 1p)"
 if [ -n "$last_tag" ]; then
   range="$last_tag..$commit"
 else

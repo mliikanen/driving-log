@@ -42,7 +42,7 @@ archived_by() {
   { grep -E '^openspec/changes/archive/[^/]+/' <<< "$files" || true; } | sed -E 's#^openspec/changes/archive/([^/]+)/.*#\1#' | sort -u
 }
 
-last_tag="$(git tag -l 'dist-v*' --merged "$commit" --sort=-v:refname | head -1)"
+last_tag="$(git tag -l 'dist-v*' --merged "$commit" --sort=-v:refname | sed -n 1p)"
 if [ -n "$last_tag" ]; then
   in_range="$(git rev-list "$last_tag..$commit")"
 else

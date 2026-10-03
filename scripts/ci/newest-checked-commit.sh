@@ -12,9 +12,12 @@ cd "$(dirname "$0")/../.."
 
 ref="${1:-origin/main}"
 repo="${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
-last_tag="$(git tag -l 'dist-v*' --merged "$ref" --sort=-v:refname | head -1)"
+last_tag="$(git tag -l 'dist-v*' --merged "$ref" --sort=-v:refname | sed -n 1p)"
 
-for sha in $(git rev-list --first-parent "$ref" ${last_tag:+"^$last_tag"}); do
+# Captured first: a command substitution in a `for` list has its exit status ignored, so a failing rev-list would look
+# like "nothing to release".
+candidates="$(git rev-list --first-parent "$ref" ${last_tag:+"^$last_tag"})"
+for sha in $candidates; do
   passed="$(gh api "repos/$repo/actions/workflows/pr-check.yml/runs?head_sha=$sha&event=push&status=success" --jq .total_count)"
   if [ "$passed" != "0" ]; then
     echo "$sha"
