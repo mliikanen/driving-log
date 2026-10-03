@@ -2,13 +2,19 @@
 
 ## 1. Fix the warnings (design.md decision 1)
 
-- [ ] 1.1 Replace the three deprecated `BackHandler` uses (`EventNoteAndPhotos.kt`, `LiveScannerContent.kt`,
+- [x] 1.1 Replace the three deprecated `BackHandler` uses (`EventNoteAndPhotos.kt`, `LiveScannerContent.kt`,
       `ScanReviewContent.kt`) with `NavigationEventHandler`, declaring `navigationevent-compose` in the version catalog
       if it's only a transitive dependency today. Where the new API can't express the handler as simply, suppress that
       use with the reason instead. Verify: those three warnings are gone; `maestro/run.sh distance` passes (back
       closes the scanner, the photo review and the note editor).
-- [ ] 1.2 Replace `MenuAnchorType` with `ExposedDropdownMenuAnchorType` (`LogEventChoices.kt` ×3). Verify: the warnings
+      Done: `NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = …)`, the
+      handler Compose's deprecated `BackHandler` registers on the same dispatcher; `navigationevent-compose` 1.1.0 (the
+      version Compose Multiplatform brings) declared directly. `maestro/run.sh distance` passed 4/4, but its flows press no
+      system back on these screens, so a throwaway flow (not committed) pressed back on each: the scanner closed to the
+      form, the photo review returned to the scanner, and the note editor attached the typed note and closed.
+- [x] 1.2 Replace `MenuAnchorType` with `ExposedDropdownMenuAnchorType` (`LogEventChoices.kt` ×3). Verify: the warnings
       are gone; the `distance` run in 1.1 covers the dropdowns (`log-from-home`).
+      Done: the three warnings are gone; `log-from-home` (vehicle and kind dropdowns) passed in the `distance` run.
 - [x] 1.3 Move `@Inject` from the constructor to the class in the five processors Metro names. Verify: the warnings
       are gone and `:shared:allTests :androidApp:assembleDebug` passes (the graph still builds).
 - [x] 1.4 Add the opt-ins: `ExperimentalCoroutinesApi` for `flatMapLatest` (`LogEventProcessor.kt`) and
@@ -54,6 +60,8 @@
 
 ## 4. Final regression run
 
-- [ ] 4.1 Run `maestro/run.sh resilience` (the rotation flow uses the note editor). Then the regression run:
+- [x] 4.1 Run `maestro/run.sh resilience` (the rotation flow uses the note editor). Then the regression run:
       `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`.
       Verify: all pass, and the PR's checks are green.
+      Done: `maestro/run.sh resilience` passed 3/3 (and `distance` 4/4, task 1.1); the regression run and
+      `openspec validate --all --strict` (17 items) pass, and PR #4's four checks passed on 39c9cc7.
