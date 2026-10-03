@@ -20,22 +20,6 @@
     <ID>NestedBlockDepth:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
     <ID>ReturnCount:LogDistanceRules.kt:fun validateLogDistance: LogDistanceResult</ID>
     <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor.Companion$fun LogEventState.withScannedReading: LogEventState</ID>
-    <ID>SwallowedException:AndroidImageCodec.kt:AndroidImageCodec$e: Exception</ID>
-    <ID>SwallowedException:CombinedTextRecognizer.kt:CombinedTextRecognizer$e: Exception</ID>
-    <ID>SwallowedException:FirebaseAuthRepository.kt:FirebaseAuthRepository$e: GetCredentialCancellationException</ID>
-    <ID>SwallowedException:PhotoDecoding.kt:e: Exception</ID>
-    <ID>SwallowedException:PhotoPicker.android.kt:e: ActivityNotFoundException</ID>
-    <ID>SwallowedException:PhotoPicker.android.kt:e: IOException</ID>
-    <ID>SwallowedException:PhotoPicker.android.kt:e: SecurityException</ID>
-    <ID>TooGenericExceptionCaught:AddVehicleProcessor.kt:AddVehicleProcessor$throwable: Throwable</ID>
-    <ID>TooGenericExceptionCaught:AndroidImageCodec.kt:AndroidImageCodec$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:CombinedTextRecognizer.kt:CombinedTextRecognizer$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:EditVehicleProcessor.kt:EditVehicleProcessor$throwable: Throwable</ID>
-    <ID>TooGenericExceptionCaught:EventDetailsProcessor.kt:EventDetailsProcessor$throwable: Throwable</ID>
-    <ID>TooGenericExceptionCaught:FirebaseAuthRepository.kt:FirebaseAuthRepository$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:LogEventProcessor.kt:LogEventProcessor$throwable: Throwable</ID>
-    <ID>TooGenericExceptionCaught:PhotoDecoding.kt:e: Exception</ID>
-    <ID>TooGenericExceptionCaught:SqlDelightVehicleRepository.kt:SqlDelightVehicleRepository$throwable: Throwable</ID>
     <ID>TooManyFunctions:CropState.kt:CropState</ID>
     <ID>TooManyFunctions:FilePictureStore.kt:FilePictureStore : PictureStore</ID>
     <ID>TooManyFunctions:LogEventProcessor.kt:LogEventProcessor : PresentationProcessor</ID>

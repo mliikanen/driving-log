@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
+import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.input.VehicleFieldsResult
@@ -123,11 +124,12 @@ class EditVehicleProcessor @AssistedInject constructor(
 
             is VehicleFieldsResult.Valid -> async("save") {
                 reduce { copy(isSaving = true) }
-                try {
+                undoOnFailure(
+                    undo = {
+                        reduce { copy(isSaving = false) }
+                    },
+                ) {
                     repository.updateVehicle(vehicleId, result.fields.name, result.fields.licensePlate, type, color, state.picture.draft.toChange(), fuelType)
-                } catch (throwable: Throwable) {
-                    reduce { copy(isSaving = false) }
-                    throw throwable
                 }
                 emit(EditVehicleEffect.Saved)
             }

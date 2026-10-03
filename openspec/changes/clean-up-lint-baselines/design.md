@@ -41,19 +41,33 @@ input, which is the project's MVI style. `config/detekt/detekt.yml` sets `Return
 (early returns at the top of a function don't count) and `max: 3`, with a comment. Entries still reported after
 that are fixed by restructuring the function.
 
-### 3. `catch (throwable: Throwable)` in processors: one helper that keeps cancellation
+### 3. `catch (throwable: Throwable)` in processors and the repository: one undo-and-rethrow helper
 
-Catching `Throwable` in a `suspend` function also catches `CancellationException`, which breaks structured
-concurrency: a cancelled save would be reported as a failed save. The processors' repository calls go through one
-small helper in commonMain (`catchingFailures { ... }`: catches `Exception`, rethrows `CancellationException`, and
-returns `Result`), with unit tests for both paths. That fixes TooGenericExceptionCaught in the processors and
-`SqlDelightVehicleRepository` without a suppression per site. Error states shown to the user don't change.
+**Corrected during apply.** The first version of this decision assumed these catches swallowed cancellation and
+proposed a `catchingFailures` helper returning `Result`. In fact every one of the 13 sites undoes something
+(resets `isSaving`/`isScanning`, deletes files promoted for a save that didn't happen) and then rethrows the same
+throwable, so cancellation already propagated. Undoing on cancellation is also wanted: a cancelled save must not
+leave the form stuck on "saving" or files orphaned. A `Result`-returning helper would have changed that behavior.
+
+Instead, commonMain has `undoOnFailure(undo) { block }` (`util/UndoOnFailure.kt`): it runs the block and, if it throws
+anything, runs `undo` and rethrows the same throwable unchanged. Its single `catch (Throwable)` carries the one
+`TooGenericExceptionCaught` suppression, with that reason. Unit tests cover success (no undo), an exception (undo,
+same instance rethrown) and a `CancellationException` (undo, still propagates). The processors (`AddVehicleProcessor`,
+`EditVehicleProcessor`, `EventDetailsProcessor`, `LogEventProcessor`) and `SqlDelightVehicleRepository` use it at all
+13 sites. Behavior is unchanged.
 
 Decoding fallbacks that deliberately turn any failure into "no picture" or "no reading"
 (`AndroidImageCodec`, `PhotoDecoding`, `CombinedTextRecognizer`) catch `Exception` and are suppressed at the
 catch, with a comment naming the fallback. `PhotoPicker.android`'s specific catches (`ActivityNotFoundException`,
 `IOException`, `SecurityException`) log or return the cause instead of swallowing it, or are suppressed where the
 platform gives nothing useful to keep.
+
+**During apply:** `PhotoPicker`'s causes are suppressed: `PhotoResult.Unreadable` has nowhere to carry one and the app
+keeps no log. `FirebaseAuthRepository` had two baselined findings not listed above:
+- `SignInCancelledException` now takes the original `GetCredentialCancellationException` as its cause.
+- `signIn`'s generic catch now rethrows `CancellationException` first. Before, a cancelled sign-in turned into an
+  ordinary failure result. The remaining catch, turning every other failure into the `Result` the sign-in screen
+  reports, is suppressed with that reason.
 
 ### 4. Size and complexity rules: tests excluded, `when` over intents simplified, ported algorithms suppressed
 

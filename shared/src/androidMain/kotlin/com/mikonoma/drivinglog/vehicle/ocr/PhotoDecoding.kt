@@ -11,6 +11,7 @@ import kotlin.math.max
  * The photo decoded like `AndroidImageCodec` does (orientation applied, bounded to [MAX_DECODE_SIDE] with a power-of-two sample size),
  * so every recognizer's boxes are in the same pixels a screen decoding it shows; or null when the bytes are not an image.
  */
+@Suppress("TooGenericExceptionCaught", "SwallowedException") // Any decoding failure means "not an image": null.
 internal fun decodeForRecognition(bytes: ByteArray): Bitmap? = try {
     ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
         decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE

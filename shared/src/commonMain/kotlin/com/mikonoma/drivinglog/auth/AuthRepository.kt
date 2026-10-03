@@ -30,4 +30,4 @@ interface AuthRepository {
  * other failure, since `firebase-auth` requires cancelling to leave no error on screen while a real failure shows
  * one ([com.mikonoma.drivinglog.auth.SignInProcessor] branches on this, not on a failure message).
  */
-class SignInCancelledException : Exception("Sign-in cancelled")
+class SignInCancelledException(cause: Throwable? = null) : Exception("Sign-in cancelled", cause)

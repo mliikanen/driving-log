@@ -32,6 +32,9 @@ import java.io.IOException
  * one. The app declares no permission: the camera app takes the picture through the intent and holds the camera permission itself.
  */
 @Composable
+// A failure here is "the photo can't be read" (PhotoResult.Unreadable, which the screen reports); its cause has nothing more for the
+// user, and the app keeps no log to put it in.
+@Suppress("SwallowedException")
 actual fun rememberPhotoPicker(onResult: (PhotoResult) -> Unit): PhotoPicker {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -75,6 +78,9 @@ private fun chooser(context: Context, cameraFile: File): Intent {
 }
 
 /** An image the user chose (a Uri) or took (the file the camera wrote), or [PhotoResult.Cancelled] when there is none. */
+// A failure here is "the photo can't be read" (PhotoResult.Unreadable, which the screen reports); its cause has nothing more for the
+// user, and the app keeps no log to put it in.
+@Suppress("SwallowedException")
 private fun photoOf(context: Context, result: ActivityResult, cameraFile: File?): PhotoResult {
     if (result.resultCode != Activity.RESULT_OK) {
         cameraFile?.delete()

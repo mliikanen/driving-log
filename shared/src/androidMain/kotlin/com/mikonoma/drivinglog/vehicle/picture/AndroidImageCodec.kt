@@ -66,6 +66,7 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
         EncodedImage(out.toByteArray(), "webp", image.width, image.height)
     }
 
+    @Suppress("TooGenericExceptionCaught", "SwallowedException") // Any decoding failure means "not an image": null.
     override suspend fun sample(bytes: ByteArray, maxSide: Int): PixelSamples? = withContext(dispatcher) {
         try {
             val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))
@@ -85,6 +86,7 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
     }
 
     /** A software bitmap (a hardware one cannot be cropped or compressed), or null when the bytes are not an image. */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException") // Any decoding failure means "not an image": null.
     private fun decodeBitmap(bytes: ByteArray): Bitmap? = try {
         val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))
         ImageDecoder.decodeBitmap(source) { decoder, info, _ ->

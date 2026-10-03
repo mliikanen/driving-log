@@ -9,6 +9,7 @@ import com.mikonoma.drivinglog.db.SelectLog
 import com.mikonoma.drivinglog.db.SelectRecentEvents
 import com.mikonoma.drivinglog.db.SelectVehicleDetails
 import com.mikonoma.drivinglog.db.SelectVehicles
+import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
@@ -106,13 +107,20 @@ class SqlDelightVehicleRepository(
         val vehicleId = newId()
         val eventId = newId()
         val pictureId = picture?.let { promoted(it) }
-        val promotedCapture = try {
+        val promotedCapture = undoOnFailure(
+            undo = {
+                pictureId?.let { pictures.delete(it) }
+            },
+        ) {
             capture?.let { promotedCapture(it) to it.result.toJson() }
-        } catch (throwable: Throwable) {
-            pictureId?.let { pictures.delete(it) }
-            throw throwable
         }
-        try {
+        undoOnFailure(
+            undo = {
+                // Nothing was saved, so the files that were just moved into use belong to no vehicle.
+                pictureId?.let { pictures.delete(it) }
+                promotedCapture?.let { captures?.delete(it.first) }
+            },
+        ) {
             // One transaction: the vehicle, its initial event and the scan it came from (scan-initial-odometer) are all saved, or none.
             database.transaction {
                 vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex, fuelType.code)
@@ -130,11 +138,6 @@ class SqlDelightVehicleRepository(
                 )
                 promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
             }
-        } catch (throwable: Throwable) {
-            // Nothing was saved, so the files that were just moved into use belong to no vehicle.
-            pictureId?.let { pictures.delete(it) }
-            promotedCapture?.let { captures?.delete(it.first) }
-            throw throwable
         }
         vehicleId
     }
@@ -155,7 +158,12 @@ class SqlDelightVehicleRepository(
             val zone = occurredAt.zone
             val photoIds = photos.map { promotedEventPhoto(it) }
             val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
-            try {
+            undoOnFailure(
+                undo = {
+                    for (photoId in photoIds) eventPictures.delete(photoId)
+                    promotedCapture?.let { captures?.delete(it.first) }
+                },
+            ) {
                 // One transaction: the entry, the remembered tenths choice and the attached photos are all saved, or none.
                 database.transaction {
                     events.insertDistanceEntry(
@@ -174,10 +182,6 @@ class SqlDelightVehicleRepository(
                     vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
                 }
-            } catch (throwable: Throwable) {
-                for (photoId in photoIds) eventPictures.delete(photoId)
-                promotedCapture?.let { captures?.delete(it.first) }
-                throw throwable
             }
             eventId
         }
@@ -196,7 +200,12 @@ class SqlDelightVehicleRepository(
         val zone = occurredAt.zone
         val photoIds = photos.map { promotedEventPhoto(it) }
         val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
-        try {
+        undoOnFailure(
+            undo = {
+                for (photoId in photoIds) eventPictures.delete(photoId)
+                promotedCapture?.let { captures?.delete(it.first) }
+            },
+        ) {
             // One transaction: the anchor, the remembered tenths choice and the attached photos are all saved, or none.
             database.transaction {
                 events.insertEvent(
@@ -208,10 +217,6 @@ class SqlDelightVehicleRepository(
                 vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                 appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
             }
-        } catch (throwable: Throwable) {
-            for (photoId in photoIds) eventPictures.delete(photoId)
-            promotedCapture?.let { captures?.delete(it.first) }
-            throw throwable
         }
         eventId
     }
@@ -235,7 +240,12 @@ class SqlDelightVehicleRepository(
             val zone = occurredAt.zone
             val photoIds = photos.map { promotedEventPhoto(it) }
             val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
-            try {
+            undoOnFailure(
+                undo = {
+                    for (photoId in photoIds) eventPictures.delete(photoId)
+                    promotedCapture?.let { captures?.delete(it.first) }
+                },
+            ) {
                 // One transaction: the refueling, its optional mileage's remembered tenths choice, the remembered fuel
                 // unit/type and the attached photos are all saved, or none.
                 database.transaction {
@@ -262,10 +272,6 @@ class SqlDelightVehicleRepository(
                     appState.upsertAppState(LAST_FUEL_UNIT_KEY, unit.code)
                     appState.upsertAppState(LAST_FUEL_TYPE_KEY, fuelType.code)
                 }
-            } catch (throwable: Throwable) {
-                for (photoId in photoIds) eventPictures.delete(photoId)
-                promotedCapture?.let { captures?.delete(it.first) }
-                throw throwable
             }
             eventId
         }
@@ -284,7 +290,11 @@ class SqlDelightVehicleRepository(
             val now = clock.now().toEpochMilliseconds()
             val newPictureId = (picture as? PictureChange.Replace)?.let { promoted(it.picture) }
             var oldPictureId: String? = null
-            try {
+            undoOnFailure(
+                undo = {
+                    newPictureId?.let { pictures.delete(it) }
+                },
+            ) {
                 // One transaction: the name, the plate, the type, the color, the fuel type and the picture change together, or not at all.
                 database.transaction {
                     vehicles.updateVehicle(name, licensePlate, now, id)
@@ -296,9 +306,6 @@ class SqlDelightVehicleRepository(
                         vehicles.updateVehiclePicture(newPictureId, now, id)
                     }
                 }
-            } catch (throwable: Throwable) {
-                newPictureId?.let { pictures.delete(it) }
-                throw throwable
             }
             // Saved: the earlier picture is no longer used. A failure here only leaves files for the sweep.
             oldPictureId?.takeIf { it != newPictureId }?.let { runCatching { pictures.delete(it) } }
@@ -313,16 +320,17 @@ class SqlDelightVehicleRepository(
 
     override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String = withContext(dispatcher) {
         val photoId = promotedEventPhoto(photo)
-        try {
+        undoOnFailure(
+            undo = {
+                eventPictures.delete(photoId)
+            },
+        ) {
             // touchEvent: see its own doc comment — event_picture alone does not make a live-observed event
             // (details screen, recent events, full log) notice this change.
             database.transaction {
                 insertEventPhotos(eventId, listOf(photoId))
                 events.touchEvent(eventId)
             }
-        } catch (throwable: Throwable) {
-            eventPictures.delete(photoId)
-            throw throwable
         }
         photoId
     }

@@ -47,13 +47,15 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 5. Exceptions (design.md decision 3)
 
-- [ ] 5.1 Add `catchingFailures` to commonMain (catches `Exception`, rethrows `CancellationException`, returns
-      `Result`) with unit tests: a failure becomes `Result.failure`, a cancellation propagates. Verify: the tests
-      pass.
-- [ ] 5.2 Use it in `AddVehicleProcessor`, `EditVehicleProcessor`, `EventDetailsProcessor`, `LogEventProcessor` and
-      `SqlDelightVehicleRepository` in place of `catch (throwable: Throwable)`. Verify: every processor test passes
-      unchanged, and those TooGenericExceptionCaught entries are gone.
-- [ ] 5.3 Suppress, with the fallback named, the deliberate catch-all fallbacks in `AndroidImageCodec`,
+- [x] 5.1 Add `undoOnFailure(undo) { block }` to commonMain (runs `undo`, then rethrows the same throwable unchanged,
+      cancellation included; design.md decision 3, corrected during apply) with unit tests: success doesn't undo; an
+      exception undoes and is rethrown as the same instance; a cancellation undoes and still propagates. Verify: the
+      tests pass.
+- [x] 5.2 Use it in `AddVehicleProcessor`, `EditVehicleProcessor`, `EventDetailsProcessor`, `LogEventProcessor` and
+      `SqlDelightVehicleRepository` in place of every `try { } catch (throwable: Throwable) { undo; throw throwable }`
+      (13 sites). Verify: every processor and repository test passes unchanged, and no `catch (throwable: Throwable)`
+      is left outside the helper.
+- [x] 5.3 Suppress, with the fallback named, the deliberate catch-all fallbacks in `AndroidImageCodec`,
       `PhotoDecoding` and `CombinedTextRecognizer`. In `PhotoPicker.android`, keep or report the caught cause, or
       suppress where the platform gives nothing to keep. Verify: no TooGenericExceptionCaught or SwallowedException
       entry remains, and `maestro/run.sh picture` passes.

@@ -22,6 +22,8 @@ class CombinedTextRecognizer(private val recognizers: List<TextRecognizer>) : Te
 
     override suspend fun recognize(frame: RgbImage): RecognizedPhoto? = combined { it.recognize(frame) }
 
+    // One recognizer failing must not lose the others' lines: its result is dropped (cancellation still propagates).
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
     private suspend fun combined(read: suspend (TextRecognizer) -> RecognizedPhoto?): RecognizedPhoto? {
         val photos = coroutineScope {
             recognizers.filter { it.isAvailable }.map { recognizer ->

@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
+import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -297,13 +298,14 @@ class LogEventProcessor @AssistedInject constructor(
     /** A photo to scan: classified by whichever field [LogEventState.scanTarget] is currently for, and the review opens. */
     private fun scanPicked(result: PhotoResult): Action<LogEventState, LogEventEffect> = async("scan") {
         reduce { copy(isScanning = true) }
-        try {
+        undoOnFailure(
+            undo = {
+                reduce { copy(isScanning = false) }
+            },
+        ) {
             val next = scanEditor.photoPicked(state.scan, result, classifierFor(state.scanTarget))
             val uri = scanEditor.reviewPhotoUri(next)
             reduce { copy(scan = next, scanPhotoUri = uri, isScanning = false) }
-        } catch (throwable: Throwable) {
-            reduce { copy(isScanning = false) }
-            throw throwable
         }
     }
 
@@ -488,12 +490,13 @@ class LogEventProcessor @AssistedInject constructor(
         // Clearing this here too (besides LowerOdometerCancelled/the defensive branches above) covers the confirmed-anchor
         // path, which reaches this same helper the no-known-odometer anchor path already uses.
         reduce { copy(isSaving = true, error = null, lowerOdometerConfirmationPending = false) }
-        try {
+        undoOnFailure(
+            undo = {
+                // Let the user try again; Kide logs the rethrown error.
+                reduce { copy(isSaving = false) }
+            },
+        ) {
             write()
-        } catch (throwable: Throwable) {
-            // Let the user try again; Kide logs the rethrown error.
-            reduce { copy(isSaving = false) }
-            throw throwable
         }
         emit(LogEventEffect.Saved)
     }

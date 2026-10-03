@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
+import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
@@ -127,17 +128,18 @@ class EventDetailsProcessor @AssistedInject constructor(
         val originalEvent = state.event ?: return null
         return async("edit-save") {
             reduce { copy(edit = edit.copy(isSaving = true)) }
-            try {
+            undoOnFailure(
+                undo = {
+                    // Let the user try again; Kide logs the rethrown error.
+                    reduce { copy(edit = edit.copy(isSaving = false)) }
+                },
+            ) {
                 val note = edit.noteDraft.ifBlank { null }
                 if (note != originalEvent.note) repository.updateEventNote(vehicleId, eventId, note)
                 val keptIds = edit.keptPhotos.map { it.first }
                 val removedIds = originalEvent.photoIds.filter { it !in keptIds }
                 for (id in removedIds) repository.removeEventPhoto(vehicleId, eventId, id)
                 for (pendingId in edit.newPhotos.pendingIds) repository.addEventPhoto(vehicleId, eventId, PendingPicture(pendingId))
-            } catch (throwable: Throwable) {
-                // Let the user try again; Kide logs the rethrown error.
-                reduce { copy(edit = edit.copy(isSaving = false)) }
-                throw throwable
             }
             // The live `observe("event", ...)` observer picks up the change too, but asynchronously (it needs its
             // own round of photo URI lookups): closing the screen only after re-reading the event and its photos

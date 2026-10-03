@@ -15,6 +15,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -33,6 +34,8 @@ class FirebaseAuthRepository(private val currentActivity: CurrentActivityHolder)
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
+    // Every other sign-in failure (Credential Manager, the ID token, Firebase) becomes the Result the sign-in screen reports.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun signIn(): Result<Unit> {
         val activity = currentActivity.current
             ?: return Result.failure(IllegalStateException("No current activity to sign in from."))
@@ -50,11 +53,13 @@ class FirebaseAuthRepository(private val currentActivity: CurrentActivityHolder)
         } catch (e: GetCredentialCancellationException) {
             // Distinct from every other failure: `firebase-auth` requires cancelling to leave no error on screen
             // (SignInProcessor branches on the exception type, not a message).
-            Result.failure(SignInCancelledException())
+            Result.failure(SignInCancelledException(e))
         } catch (e: NoCredentialException) {
             // No Google account on the device: reported like any other sign-in failure (the sign-in screen shows its
             // message). Caught on its own so the case is visibly handled, not lost in the generic catch below.
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

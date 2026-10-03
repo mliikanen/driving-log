@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.add
 
 import com.mikonoma.drivinglog.locale.DeviceLocale
+import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.color.ColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
@@ -114,13 +115,14 @@ class AddVehicleProcessor(
     /** A photo to scan for the odometer: recognized and classified as a new vehicle's odometer, and the review opens. */
     private fun scanPicked(result: PhotoResult): Action<AddVehicleState, AddVehicleEffect> = async("scan") {
         reduce { copy(isScanning = true) }
-        try {
+        undoOnFailure(
+            undo = {
+                reduce { copy(isScanning = false) }
+            },
+        ) {
             val next = scanEditor.photoPicked(state.scan, result, ::detectInitialOdometer)
             val uri = scanEditor.reviewPhotoUri(next)
             reduce { copy(scan = next, scanPhotoUri = uri, isScanning = false) }
-        } catch (throwable: Throwable) {
-            reduce { copy(isScanning = false) }
-            throw throwable
         }
     }
 
@@ -176,15 +178,16 @@ class AddVehicleProcessor(
         if (fields !is VehicleFieldsResult.Valid || initialOdometer == null) return null
         return async("save") {
             reduce { copy(isSaving = true) }
-            try {
+            undoOnFailure(
+                undo = {
+                    // Let the user try again; Kide logs the rethrown error.
+                    reduce { copy(isSaving = false) }
+                },
+            ) {
                 repository.addVehicle(
                     fields.fields.name, fields.fields.licensePlate, state.type, state.color, state.entry.unit, initialOdometer, state.picture.draft.forAdd(),
                     capture = state.scan.accepted, fuelType = state.fuelType,
                 )
-            } catch (throwable: Throwable) {
-                // Let the user try again; Kide logs the rethrown error.
-                reduce { copy(isSaving = false) }
-                throw throwable
             }
             emit(AddVehicleEffect.Saved)
         }
