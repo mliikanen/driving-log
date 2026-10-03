@@ -93,9 +93,11 @@
       Firebase App Distribution with the expected notes, and `git ls-remote --tags origin 'dist-v*'` shows the new
       tag. If the upload rejects the federated credential, switch to the key-file fallback
       (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`, design.md decision 4), record that in design.md, and rerun.
-- [ ] 4.6 Confirm a pull request can't reach the release secrets. Verify: in a throwaway PR, a workflow step that
+- [x] 4.6 Confirm a pull request can't reach the release secrets. Verify: in a throwaway PR, a workflow step that
       references `secrets.KEYSTORE_PASSWORD` gets an empty value, and a job declaring
       `environment: firebase-deployment` from the PR branch is refused. Close the PR without merging.
+      Done (PR #2, closed): without the environment the secret was empty; the job declaring `firebase-deployment` was
+      refused before any step ("Branch refs/pull/2/merge is not allowed to deploy to firebase-deployment").
 - [x] 4.7 Add `.github/rulesets/main.json` ("CI must pass": target `main`, required status checks
       `tests-and-build` and `code-quality` from GitHub Actions, branches up to date before merging, a pull request
       required for every change, an empty bypass list, nothing else) and create it with
@@ -105,10 +107,13 @@
       Done: the developer created `main-is-pr-only` (required checks `tests-and-build` and `code-quality`, strict; a
       pull request required, 0 approvals; no force pushes; empty bypass list, `current_user_can_bypass: never`) and
       `main-retain` (no deletion, no force push). Both are exported into `.github/rulesets/`.
-- [ ] 4.8 Confirm merging is blocked (spec: "A pull request cannot be merged until its checks pass"). Verify: on a
+- [x] 4.8 Confirm merging is blocked (spec: "A pull request cannot be merged until its checks pass"). Verify: on a
       throwaway PR with a misformatted line, `gh pr merge` is refused while `code-quality` is pending and after it
       fails; after fixing the line and both checks passing, the merge is allowed (close it instead of merging).
       Then confirm a direct push to `main`, as the repository admin, is refused.
+      Done (PR #3, closed): `mergeStateStatus` was `BLOCKED` while the checks ran and after `code-quality` failed, and
+      `CLEAN` once both passed (read from the API instead of attempting `gh pr merge`, so a wrong rule couldn't merge the
+      probe). A direct push of an empty commit to `main` was refused (GH013, repository rule violations).
 
 ## 5. Documentation
 
