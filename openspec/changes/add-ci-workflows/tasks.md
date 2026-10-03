@@ -150,6 +150,6 @@
 
 ## 6. Final regression run
 
-- [ ] 6.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`
+- [x] 6.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`
       (no Maestro: this change touches no app screen or flow). Verify: both pass, and both PR checks on the change's
       PR are green.
