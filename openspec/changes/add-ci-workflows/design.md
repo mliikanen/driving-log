@@ -104,9 +104,10 @@ PR body notes: the release job finds the pull request for its commit
 `## ` heading. If that text is non-empty it's the notes. Otherwise it uses the script's output. If both are empty,
 it publishes nothing (summary: "nothing to release").
 
-The PR check writes the same choice to its job summary. On a pull request it uses the PR's current body and the
-merge commit GitHub checks out, so the summary shows what merging would publish. The PR body is read through the
-API on each run, so edits to the body show up the next time the check runs.
+A separate workflow, `release-notes.yml` (job `release-notes`), writes the same choice to its job summary. It uses the
+PR's body from the event and the merge commit GitHub checks out, so the summary shows what merging would publish. It
+runs on `opened`, `synchronize`, `reopened` and `edited`, so editing the description updates the preview without
+rerunning the build. It's informational, not a required check: there is nothing for it to pass or fail.
 
 ### 6. Tags: fetched first, pushed after upload, rerun-safe
 
@@ -138,20 +139,24 @@ harmless duplicate.
 - The gate is one step per part (`:shared:allTests`, `:androidApp:assembleDebug`,
   `openspec validate --all --strict`), so a failure names its step (spec scenario "A test fails").
 
-### 8. Two PR check jobs, both required by a ruleset on `main`
+### 8. Three PR check jobs, all required by a ruleset on `main`
 
-`pr-check.yml` has two jobs, running in parallel, each reported as its own status check:
-- `tests-and-build`: `:shared:allTests`, `:androidApp:assembleDebug`, `openspec validate --all --strict`, and the
-  release-notes preview (decision 5).
+`pr-check.yml` has three jobs, running in parallel, each reported as its own status check:
+- `tests-and-build`: `:shared:allTests` and `:androidApp:assembleDebug`.
+- `spec-validation`: `openspec validate --all --strict`. It needs only Node and the OpenSpec CLI (the only job that
+  installs it), so it reports in well under a minute, and a failure says "the specs are invalid" by name.
 - `code-quality`: `./gradlew codeQuality` (ktlint, detekt, both Android lint debug variants, from
   `add-lint-quality-gates`). There are no baselines to check since `clean-up-lint-baselines`.
 
-Both need the placeholder `google-services.json` (lint on `productionDebug` reads it too) and the same toolchain
-setup, which goes in a local composite action, `.github/actions/setup-build`, so the two jobs can't drift.
-Separate jobs give two clearly named required checks, and a lint failure reports without waiting for the tests.
+The two Gradle jobs need the placeholder `google-services.json` (lint on `productionDebug` reads it too) and the same
+toolchain setup, which goes in a local composite action, `.github/actions/setup-build`, so they can't drift.
+Separate jobs give clearly named required checks, and a lint or spec failure reports without waiting for the tests.
+**Changed during apply:** spec validation and the release-notes preview first ran as steps of `tests-and-build`; they
+became the `spec-validation` job and the `release-notes.yml` workflow (decision 5), so each failure has its own name
+and the preview can follow description edits.
 The cost is running the setup twice, which Gradle caching mostly absorbs.
 
-A repository ruleset on `main` ("CI must pass") requires both checks (`tests-and-build`, `code-quality`, from
+A repository ruleset on `main` requires the three checks (`tests-and-build`, `code-quality`, `spec-validation`, from
 GitHub Actions) and requires branches to be up to date before merging, so a PR is checked against the `main` it
 merges into. It also requires a pull request for every change to `main`, and its bypass list is empty: since every
 change lives on its own `change/<name>` branch until it's merged (`docs/change-workflow.md`), nobody needs to push to

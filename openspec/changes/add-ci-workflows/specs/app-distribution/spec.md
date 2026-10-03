@@ -49,8 +49,9 @@ exception is when generation has nothing to generate from: when no change has be
 distribution, the system SHALL let the developer supply release notes by hand instead, since generation is not
 possible, rather than uploading with empty notes.
 
-For a CI distribution, the review happens on the pull request before it is merged: the pull request's checks SHALL
-show the draft that merging it would publish. When the merged pull request's description has a `## Release notes`
+For a CI distribution, the review happens on the pull request before it is merged: the pull request SHALL
+show, in an informational check that is not required for merging, the draft that merging it would publish, kept
+current when the pull request's description is edited. When the merged pull request's description has a `## Release notes`
 section, its text SHALL be the release notes, so a reviewed or edited version replaces the generated draft and a
 pull request that archives nothing can still supply notes. Otherwise, the generated draft SHALL be the release
 notes. A commit that reaches `main` without a pull request SHALL use the generated draft.
@@ -73,7 +74,11 @@ notes. A commit that reaches `main` without a pull request SHALL use the generat
 
 #### Scenario: The draft is shown on the pull request
 - **WHEN** a pull request targeting `main` archives one or more changes
-- **THEN** its checks show the release notes that merging it would publish, generated from the changes archived since the previous distribution
+- **THEN** its release notes preview shows the release notes that merging it would publish, generated from the changes archived since the previous distribution
+
+#### Scenario: The description is edited
+- **WHEN** the description of an open pull request is edited, for example to add a `## Release notes` section
+- **THEN** the preview is updated to the new notes without the tests and build running again
 
 #### Scenario: The pull request supplies the notes
 - **WHEN** a merged pull request's description has a `## Release notes` section

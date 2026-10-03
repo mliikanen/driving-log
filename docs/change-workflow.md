@@ -84,9 +84,10 @@ check. Instructions for the change's branch (also shown in the PR and the status
 ## Merging
 
 You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR runs two
-checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build, spec validation, and the
-release notes merging would publish, in its summary) and `code-quality` (`./gradlew codeQuality`). Once the ruleset
-on `main` exists (`.github/rulesets/main.json`, `docs/distribution.md`'s one-time CI setup), both must pass on the PR's
+checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build), `code-quality`
+(`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth, informational one,
+`release-notes` (`release-notes.yml`), shows what merging would publish, and updates when you edit the description. Once the ruleset
+on `main` exists (`.github/rulesets/main.json`, `docs/distribution.md`'s one-time CI setup), all three must pass on the PR's
 latest commit, with the branch up to date, before it can merge, and `main` takes changes only through PRs, from
 everyone, with no bypass. Until the GitHub plan allows rulesets, the checks run and report but don't block. Merging
 publishes to the testers (`docs/distribution.md`).

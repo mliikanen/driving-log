@@ -14,12 +14,14 @@ merge to `main`").
 ## What Changes
 
 - A **PR check** GitHub Actions workflow runs on every pull request to `main`, and on every push to `main` as
-  well (each merge is one), so the commit the release builds has passed the same checks. It has two jobs, each its own status check:
-  - `tests-and-build`: `:shared:allTests`, `:androidApp:assembleDebug`, `openspec validate --all --strict`, and the
-    release-notes draft the merge would publish, in the job summary, so it can be reviewed before merging;
+  well (each merge is one), so the commit the release builds has passed the same checks. It has three jobs, each its own required status check:
+  - `tests-and-build`: `:shared:allTests` and `:androidApp:assembleDebug`;
+  - `spec-validation`: `openspec validate --all --strict`, which needs no Gradle and reports in under a minute;
   - `code-quality`: `codeQuality` (ktlint, detekt, Android lint; there are no baselines since
     `clean-up-lint-baselines`).
-- **Both checks block merging.** A repository ruleset on `main` requires both to pass, on the PR's latest commit,
+  A separate, informational **release notes preview** (`release-notes.yml`) shows what merging would publish, and
+  reruns when the PR description is edited.
+- **All three checks block merging.** A repository ruleset on `main` requires them to pass, on the PR's latest commit,
   before a pull request can be merged, and `main` takes changes only through pull requests, from everyone: no
   bypass. Every change already lives on its own `change/<name>` branch until it's merged (`docs/change-workflow.md`),
   so nothing needs a direct push.
@@ -67,7 +69,7 @@ merge to `main`").
   and `scripts/distribute.sh` (`scripts/release-notes.sh`).
 - Changed: `scripts/distribute.sh` (fetch/push tags, shared notes script).
 - Docs: `docs/app-distribution.md`, `docs/distribution.md`, `docs/change-workflow.md`.
-- GitHub repo settings: a ruleset on `main` requiring both checks; the `firebase-deployment` environment with its
+- GitHub repo settings: a ruleset on `main` requiring the three checks; the `firebase-deployment` environment with its
   secrets; Actions with write permission for tags on the release job only.
 - **Prerequisite: GitHub Pro, or making the repository public.** On the current plan GitHub refuses rulesets and
   branch protection for this private repository ("Upgrade to GitHub Pro or make this repository public"), so no

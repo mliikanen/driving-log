@@ -115,7 +115,7 @@ Every merge to `main` publishes to the testers, with no developer machine involv
   is already tagged isn't published again.
 - **Release notes.** The merged PR's `## Release notes` section when it has one (the herd's reviewer writes it; a
   person can edit it before merging), otherwise the archive-generated list (`scripts/release-notes.sh`, the same
-  generation the local script drafts from). The PR check shows that text in its job summary, so it's reviewed before
+  generation the local script drafts from). The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
   merging: that is the review the local script does in `$EDITOR`.
 - **Secrets** live in the `firebase-deployment` GitHub environment, which only `main` can enter (no pull request, even
   one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,

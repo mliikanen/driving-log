@@ -41,6 +41,11 @@
       and the file).
       Done on PR #1: both checks passed; the broken test failed `tests-and-build` at "Shared tests"; the misformatted
       line failed `code-quality` at "Static analysis", naming ktlint and `UndoOnFailure.kt:9`; both reverted, green again.
+- [ ] 2.6 Move spec validation into its own required job, `spec-validation` (Node and the OpenSpec CLI only; the CLI
+      leaves `setup-build`), and the release-notes preview into its own informational workflow, `release-notes.yml`,
+      which also runs on PR description edits (design.md decisions 5 and 8). Add `spec-validation` to the live ruleset
+      and re-export `.github/rulesets/main.json`. Verify: on PR #1 the three checks pass and the preview appears; the
+      ruleset lists the three checks.
 
 ## 3. Release workflow
 

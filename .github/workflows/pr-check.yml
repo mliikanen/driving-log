@@ -1,6 +1,7 @@
-# The final regression run (CLAUDE.md) on every pull request to main and on every push to main (each merge), as two
+# The final regression run (CLAUDE.md) on every pull request to main and on every push to main (each merge), as three
 # status checks that a ruleset on main requires before merging (add-ci-workflows, design.md decision 8). No secrets:
-# the production flavor builds with a placeholder google-services.json.
+# the production flavor builds with a placeholder google-services.json. The release-notes preview is its own
+# workflow (release-notes.yml), since it isn't a check and also runs when the PR description changes.
 name: PR check
 
 on:
@@ -30,13 +31,21 @@ jobs:
         run: ./gradlew :shared:allTests
       - name: Debug build
         run: ./gradlew :androidApp:assembleDebug
+
+  # Needs only Node and the OpenSpec CLI, so it reports in well under a minute.
+  spec-validation:
+    name: spec-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      # The version the project's specs are validated with locally; bump it here deliberately.
+      - name: Install the OpenSpec CLI
+        run: npm install -g @fission-ai/openspec@1.13.2
       - name: Spec validation
         run: openspec validate --all --strict
-      - name: Release notes preview
-        if: github.event_name == 'pull_request'
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: scripts/ci/release-notes-preview.sh >> "$GITHUB_STEP_SUMMARY"
 
   code-quality:
     name: code-quality

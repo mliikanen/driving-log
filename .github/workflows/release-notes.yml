@@ -1,0 +1,31 @@
+# What merging a pull request would publish to the testers, in the job summary (add-ci-workflows, spec "The draft is
+# shown on the pull request"). Informational, not a required check. It also runs when the PR description is edited,
+# so an edited `## Release notes` section shows up without rerunning the build.
+name: Release notes preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-notes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-notes:
+    name: release-notes
+    runs-on: ubuntu-latest
+    steps:
+      # GitHub's merge of the PR into main, with history and tags: the notes start at the last dist-v* tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Release notes preview
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: scripts/ci/release-notes-preview.sh >> "$GITHUB_STEP_SUMMARY"

@@ -55,7 +55,7 @@ run for you once you've logged in.
 ## Cutting a release
 
 **Normally you don't: merging a PR into `main` publishes it** (`.github/workflows/release.yml`, see
-`docs/app-distribution.md`). What goes out is shown in the PR check's job summary before you merge. To change the
+`docs/app-distribution.md`). What goes out is shown by the PR's `release-notes` check (its job summary) before you merge. To change the
 notes, add or edit a `## Release notes` section in the PR description; its text replaces the generated list. A merge
 that archives no change and has no such section publishes nothing. To publish the current `main` again by hand, run the
 **Release** workflow (*Actions → Release → Run workflow*); a commit that's already tagged is skipped.
@@ -123,9 +123,9 @@ console).
    gh secret set RELEASE_KEYSTORE_BASE64 --env firebase-deployment --body "$(base64 -w0 ~/.android-keystores/driving-log-release.jks)"
    gh secret set KEYSTORE_PASSWORD --env firebase-deployment   # prompts for the password
    ```
-5. **The rulesets on `main`**, once both PR checks have passed on `main` at least once (GitHub only offers check names
+5. **The rulesets on `main`**, once the PR checks have passed on `main` at least once (GitHub only offers check names
    it has seen). `.github/rulesets/` holds exports of the live ones:
-   - `main.json` (`main-is-pr-only`): a pull request for every change, both checks passing on its latest commit with
+   - `main.json` (`main-is-pr-only`): a pull request for every change, the three checks passing on its latest commit with
      the branch up to date, no approvals required, no force pushes, and an **empty bypass list**;
    - `main-retain.json`: `main` can't be deleted or force-pushed.
    To re-create one: `gh api -X POST repos/mliikanen/driving-log/rulesets --input .github/rulesets/<file>.json`. After
