@@ -1,13 +1,13 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 
 /**
  * Keeps the picture files under [root]: `{root}/{id}-small.{ext}` and `-large.{ext}` for pictures in use, and
@@ -15,12 +15,8 @@ import kotlinx.io.readByteArray
  * with the time it was made (`{epochMillis}-{uuid}`), because kotlinx-io does not tell a file's age and the sweep needs it.
  * [newId] makes the unique part of an id.
  */
-class FilePictureStore(
-    private val root: Path,
-    private val dispatcher: CoroutineDispatcher,
-    private val clock: Clock,
-    private val newId: () -> String,
-) : PictureStore {
+class FilePictureStore(private val root: Path, private val dispatcher: CoroutineDispatcher, private val clock: Clock, private val newId: () -> String) :
+    PictureStore {
 
     private val fs = SystemFileSystem
     private val pending = Path(root, PENDING_DIR)
@@ -31,11 +27,9 @@ class FilePictureStore(
         pendingId
     }
 
-    override suspend fun readPendingSource(pendingId: String): ByteArray? =
-        withContext(dispatcher) { readOrNull(Path(pending, "$pendingId-$SOURCE")) }
+    override suspend fun readPendingSource(pendingId: String): ByteArray? = withContext(dispatcher) { readOrNull(Path(pending, "$pendingId-$SOURCE")) }
 
-    override suspend fun discardPendingSource(pendingId: String) =
-        withContext(dispatcher) { fs.delete(Path(pending, "$pendingId-$SOURCE"), mustExist = false) }
+    override suspend fun discardPendingSource(pendingId: String) = withContext(dispatcher) { fs.delete(Path(pending, "$pendingId-$SOURCE"), mustExist = false) }
 
     override suspend fun putPending(pendingId: String, small: EncodedImage, large: EncodedImage) = withContext(dispatcher) {
         deleteVersions(pending, pendingId)
@@ -98,8 +92,10 @@ class FilePictureStore(
     }
 
     private fun deleteVersions(dir: Path, id: String) {
-        for (size in PictureSize.entries) for (extension in KNOWN_EXTENSIONS) {
-            fs.delete(Path(dir, "$id-${size.name.lowercase()}.$extension"), mustExist = false)
+        for (size in PictureSize.entries) {
+            for (extension in KNOWN_EXTENSIONS) {
+                fs.delete(Path(dir, "$id-${size.name.lowercase()}.$extension"), mustExist = false)
+            }
         }
     }
 
@@ -108,8 +104,7 @@ class FilePictureStore(
         fs.sink(path).buffered().use { it.write(bytes) }
     }
 
-    private fun readOrNull(path: Path): ByteArray? =
-        if (fs.exists(path)) fs.source(path).buffered().use { it.readByteArray() } else null
+    private fun readOrNull(path: Path): ByteArray? = if (fs.exists(path)) fs.source(path).buffered().use { it.readByteArray() } else null
 
     private companion object {
         const val PENDING_DIR = "pending"

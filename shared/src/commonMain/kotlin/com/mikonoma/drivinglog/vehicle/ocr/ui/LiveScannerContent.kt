@@ -59,11 +59,7 @@ import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun LiveScannerContent(
-    error: PictureError?,
-    newLiveScanner: () -> LiveScanner,
-    callbacks: ScanCallbacks,
-) {
+fun LiveScannerContent(error: PictureError?, newLiveScanner: () -> LiveScanner, callbacks: ScanCallbacks) {
     val close = callbacks.onClose
     BackHandler(onBack = close)
     val permission = rememberCameraPermission()
@@ -82,7 +78,10 @@ fun LiveScannerContent(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { callbacks.onErrorDismissed(); picker.launch() },
+                onClick = {
+                    callbacks.onErrorDismissed()
+                    picker.launch()
+                },
                 modifier = Modifier.testTag("scanner_photo"),
             ) { Icon(PhotoIcons.Camera, contentDescription = "Scan a photo instead") }
         },

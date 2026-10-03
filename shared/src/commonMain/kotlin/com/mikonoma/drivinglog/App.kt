@@ -15,8 +15,8 @@ import com.mikonoma.drivinglog.auth.AuthState
 import com.mikonoma.drivinglog.auth.SignInProcessor
 import com.mikonoma.drivinglog.auth.SignInScreen
 import com.mikonoma.drivinglog.di.AppGraph
-import com.mikonoma.drivinglog.ui.theme.DrivingLogTheme
 import com.mikonoma.drivinglog.landing.LandingNavKey
+import com.mikonoma.drivinglog.ui.theme.DrivingLogTheme
 import com.mikonoma.drivinglog.vehicle.ocr.sweepCaptures
 import com.mikonoma.drivinglog.vehicle.picture.sweepPictures
 import com.mikonoma.drivinglog.vehicle.registerVehicleNavKeys
@@ -45,10 +45,12 @@ fun App(authRepository: AuthRepository, graphFor: (uid: String) -> AppGraph, mod
         Box(modifier) {
             when (val state = authState) {
                 AuthState.Loading -> Unit
+
                 AuthState.SignedOut -> {
                     val processor = remember(authRepository) { SignInProcessor(authRepository) }
                     SignInScreen(processor)
                 }
+
                 is AuthState.SignedIn -> {
                     val graph = remember(state.uid) { graphFor(state.uid) }
                     // Before the back stack, which may be restored from saved state and needs the registry.

@@ -1,20 +1,12 @@
 package com.mikonoma.drivinglog.vehicle.add
 
-import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
-import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
-import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
-import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
-import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
-import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
-import com.mikonoma.drivinglog.ui.theme.HeaderDivider
-import com.mikonoma.drivinglog.ui.ScreenBottomSpace
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -32,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -43,23 +36,26 @@ import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.RequiredFieldNote
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
+import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
-import com.mikonoma.drivinglog.vehicle.picture.PictureField
+import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
 import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ui.LiveScannerContent
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanCallbacks
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanProgressContent
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReadingAction
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReviewContent
-import androidx.compose.runtime.remember
+import com.mikonoma.drivinglog.vehicle.picture.PictureField
+import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 import com.mikonoma.drivinglog.vehicle.ui.label
 
 @Composable
-fun AddVehicleScreen(
-    processor: AddVehicleProcessor,
-    deviceLocale: DeviceLocale,
-    onBack: () -> Unit,
-) {
+fun AddVehicleScreen(processor: AddVehicleProcessor, deviceLocale: DeviceLocale, onBack: () -> Unit) {
     val state by processor.states.collectAsState()
 
     LaunchedEffect(processor) {

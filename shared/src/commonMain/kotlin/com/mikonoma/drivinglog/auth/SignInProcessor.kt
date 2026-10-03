@@ -8,8 +8,7 @@ import org.fuusio.kide.presentation.reduce
 /** `firebase-auth`'s "Signing in uses Google": offers "Sign in with Google," shows an error on failure/cancellation
  * without crashing. The actual move to the signed-in screen follows `AuthState` directly (App.kt), not an effect
  * here. */
-class SignInProcessor(private val authRepository: AuthRepository) :
-    PresentationProcessor<SignInIntent, SignInState, SignInEffect>(SignInState()) {
+class SignInProcessor(private val authRepository: AuthRepository) : PresentationProcessor<SignInIntent, SignInState, SignInEffect>(SignInState()) {
 
     override suspend fun map(intent: SignInIntent): Action<SignInState, SignInEffect>? = when (intent) {
         SignInIntent.SignIn -> signIn()

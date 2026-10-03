@@ -3,14 +3,14 @@ package com.mikonoma.drivinglog.vehicle.ocr
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.EncodedImage
 import com.mikonoma.drivinglog.vehicle.picture.fileUri
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 
 /**
  * The photos of scans (`odometer-ocr-capture`), in the application's private storage. Unlike a vehicle's or an event's picture, a scan
@@ -44,12 +44,8 @@ interface CaptureStore {
  * Keeps scan photos under [root]: `{root}/{photoId}.{ext}` in use and `{root}/pending/{pendingId}.{ext}` pending. A pending id starts
  * with the time it was made (`{epochMillis}-{uuid}`), as in `FilePictureStore`, because kotlinx-io does not tell a file's age.
  */
-class FileCaptureStore(
-    private val root: Path,
-    private val dispatcher: CoroutineDispatcher,
-    private val clock: Clock,
-    private val newId: () -> String,
-) : CaptureStore {
+class FileCaptureStore(private val root: Path, private val dispatcher: CoroutineDispatcher, private val clock: Clock, private val newId: () -> String) :
+    CaptureStore {
 
     private val fs = SystemFileSystem
     private val pending = Path(root, PENDING_DIR)
@@ -61,8 +57,7 @@ class FileCaptureStore(
         pendingId
     }
 
-    override suspend fun pendingUri(pendingId: String): String? =
-        withContext(dispatcher) { find(pending, pendingId)?.let { fileUri(it.toString()) } }
+    override suspend fun pendingUri(pendingId: String): String? = withContext(dispatcher) { find(pending, pendingId)?.let { fileUri(it.toString()) } }
 
     override suspend fun discardPending(pendingId: String) = withContext(dispatcher) { deleteAll(pending, pendingId) }
 

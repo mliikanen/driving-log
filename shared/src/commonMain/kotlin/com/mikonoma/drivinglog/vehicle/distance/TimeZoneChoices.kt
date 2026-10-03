@@ -1,9 +1,9 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
-import kotlin.math.abs
-import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.offsetAt
+import kotlin.math.abs
+import kotlin.time.Instant
 
 /** A zone the user can pick: its IANA id and its UTC offset at the moment the list was built for. */
 data class ZoneChoice(val id: String, val offsetSeconds: Int)
@@ -21,12 +21,7 @@ private fun isReadableZoneId(id: String) = CONTINENTS.any { id.startsWith("$it/"
  * and `UTC` are offered, plus the device's own zone whatever it looks like. Sorted by id, with the device zone first when
  * [query] is blank. [query] filters by a case-insensitive substring of the id, where a space matches an underscore.
  */
-fun timeZoneChoices(
-    availableIds: Collection<String>,
-    deviceZoneId: String,
-    at: Instant,
-    query: String = "",
-): List<ZoneChoice> {
+fun timeZoneChoices(availableIds: Collection<String>, deviceZoneId: String, at: Instant, query: String = ""): List<ZoneChoice> {
     val ids = (availableIds.filter { isReadableZoneId(it) || it == "UTC" } + deviceZoneId).distinct().sorted()
     val needle = query.trim().replace(' ', '_').lowercase()
     val matching = ids.filter { needle.isEmpty() || it.lowercase().contains(needle) }

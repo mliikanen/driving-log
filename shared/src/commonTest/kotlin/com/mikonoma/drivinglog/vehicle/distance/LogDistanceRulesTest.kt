@@ -6,11 +6,11 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
 
 class LogDistanceRulesTest {
 

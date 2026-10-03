@@ -76,9 +76,9 @@ object PpOcr {
         val out = FloatArray(3 * plane)
         for (i in 0 until plane) {
             val p = image.pixels[i]
-            out[i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f                       // B
-            out[plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f       // G
-            out[2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f  // R
+            out[i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f // B
+            out[plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f // G
+            out[2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f // R
         }
         return out
     }
@@ -92,11 +92,13 @@ object PpOcr {
         val mask = BooleanArray(map.size) { map[it] > DETECTION_THRESHOLD }
         val dilated = BooleanArray(map.size)
         // OpenCV's 2x2 dilation, anchored at the kernel's center (1, 1): a pixel is set when it or its left, upper or upper-left neighbour is.
-        for (y in 0 until mapHeight) for (x in 0 until mapWidth) {
-            dilated[y * mapWidth + x] = mask[y * mapWidth + x] ||
-                (x > 0 && mask[y * mapWidth + x - 1]) ||
-                (y > 0 && mask[(y - 1) * mapWidth + x]) ||
-                (x > 0 && y > 0 && mask[(y - 1) * mapWidth + x - 1])
+        for (y in 0 until mapHeight) {
+            for (x in 0 until mapWidth) {
+                dilated[y * mapWidth + x] = mask[y * mapWidth + x] ||
+                    (x > 0 && mask[y * mapWidth + x - 1]) ||
+                    (y > 0 && mask[(y - 1) * mapWidth + x]) ||
+                    (x > 0 && y > 0 && mask[(y - 1) * mapWidth + x - 1])
+            }
         }
         val result = mutableListOf<Quad>()
         for (region in regions(dilated, mapWidth, mapHeight)) {
@@ -115,7 +117,9 @@ object PpOcr {
                     round(p.y / mapHeight * destHeight).coerceIn(0.0, destHeight.toDouble()),
                 )
             }
-            val quad = clockwise(scaled).let { q -> Quad(clip(q.tl, destWidth, destHeight), clip(q.tr, destWidth, destHeight), clip(q.br, destWidth, destHeight), clip(q.bl, destWidth, destHeight)) }
+            val quad = clockwise(scaled).let { q ->
+                Quad(clip(q.tl, destWidth, destHeight), clip(q.tr, destWidth, destHeight), clip(q.br, destWidth, destHeight), clip(q.bl, destWidth, destHeight))
+            }
             if (distance(quad.tl, quad.tr).toInt() <= MIN_BOX_SIDE || distance(quad.tl, quad.bl).toInt() <= MIN_BOX_SIDE) continue
             result += quad
         }
@@ -138,12 +142,17 @@ object PpOcr {
                 pixels += i
                 val x = i % w
                 val y = i / w
-                for (dy in -1..1) for (dx in -1..1) {
-                    val nx = x + dx
-                    val ny = y + dy
-                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
-                    val j = ny * w + nx
-                    if (mask[j] && !seen[j]) { seen[j] = true; stack[top++] = j }
+                for (dy in -1..1) {
+                    for (dx in -1..1) {
+                        val nx = x + dx
+                        val ny = y + dy
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                        val j = ny * w + nx
+                        if (mask[j] && !seen[j]) {
+                            seen[j] = true
+                            stack[top++] = j
+                        }
+                    }
                 }
             }
             out += pixels.toIntArray()
@@ -166,8 +175,13 @@ object PpOcr {
         val y1 = ceil(quad.maxY).toInt().coerceIn(0, h - 1)
         var sum = 0.0
         var n = 0
-        for (y in y0..y1) for (x in x0..x1) {
-            if (quad.contains(x.toDouble(), y.toDouble())) { sum += map[y * w + x]; n++ }
+        for (y in y0..y1) {
+            for (x in x0..x1) {
+                if (quad.contains(x.toDouble(), y.toDouble())) {
+                    sum += map[y * w + x]
+                    n++
+                }
+            }
         }
         return if (n == 0) 0.0 else sum / n
     }
@@ -180,7 +194,8 @@ object PpOcr {
         return Quad(tl, tr, br, bl)
     }
 
-    private fun clip(p: Point, w: Int, h: Int) = Point(p.x.coerceIn(0.0, (w - 1).toDouble()).toInt().toDouble(), p.y.coerceIn(0.0, (h - 1).toDouble()).toInt().toDouble())
+    private fun clip(p: Point, w: Int, h: Int) =
+        Point(p.x.coerceIn(0.0, (w - 1).toDouble()).toInt().toDouble(), p.y.coerceIn(0.0, (h - 1).toDouble()).toInt().toDouble())
 
     /**
      * The text inside [quad], taken out of [image] and straightened (a perspective warp onto an upright rectangle, edges replicated),
@@ -189,11 +204,19 @@ object PpOcr {
     fun crop(image: RgbImage, quad: Quad): RgbImage {
         val w = max(distance(quad.tl, quad.tr), distance(quad.br, quad.bl)).toInt().coerceAtLeast(1)
         val h = max(distance(quad.tl, quad.bl), distance(quad.tr, quad.br)).toInt().coerceAtLeast(1)
-        val toSource = invert3(perspectiveTransform(quad.points, listOf(Point(0.0, 0.0), Point(w.toDouble(), 0.0), Point(w.toDouble(), h.toDouble()), Point(0.0, h.toDouble()))))
+        val toSource =
+            invert3(
+                perspectiveTransform(
+                    quad.points,
+                    listOf(Point(0.0, 0.0), Point(w.toDouble(), 0.0), Point(w.toDouble(), h.toDouble()), Point(0.0, h.toDouble())),
+                ),
+            )
         val out = IntArray(w * h)
-        for (y in 0 until h) for (x in 0 until w) {
-            val s = applyTransform(toSource, Point(x.toDouble(), y.toDouble()))
-            out[y * w + x] = RgbImage.rgb(image.sample(s.x, s.y, 0), image.sample(s.x, s.y, 1), image.sample(s.x, s.y, 2))
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val s = applyTransform(toSource, Point(x.toDouble(), y.toDouble()))
+                out[y * w + x] = RgbImage.rgb(image.sample(s.x, s.y, 0), image.sample(s.x, s.y, 1), image.sample(s.x, s.y, 2))
+            }
         }
         val cropped = RgbImage(w, h, out)
         return if (h.toDouble() / w >= 1.5) cropped.turnedCounterclockwise() else cropped
@@ -207,12 +230,14 @@ object PpOcr {
             val w = min(ceil(REC_HEIGHT * line.width.toDouble() / line.height).toInt(), batchWidth).coerceAtLeast(1)
             val resized = line.resized(w, REC_HEIGHT)
             val base = n * 3 * plane
-            for (y in 0 until REC_HEIGHT) for (x in 0 until w) {
-                val p = resized.pixels[y * w + x]
-                val i = y * batchWidth + x
-                out[base + i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f
-                out[base + plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f
-                out[base + 2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f
+            for (y in 0 until REC_HEIGHT) {
+                for (x in 0 until w) {
+                    val p = resized.pixels[y * w + x]
+                    val i = y * batchWidth + x
+                    out[base + i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f
+                    out[base + plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f
+                    out[base + 2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f
+                }
             }
         }
         return out
@@ -236,7 +261,10 @@ object PpOcr {
             var bestScore = scores.values[base]
             for (c in 1 until scores.classes) {
                 val v = scores.values[base + c]
-                if (v > bestScore) { best = c; bestScore = v }
+                if (v > bestScore) {
+                    best = c
+                    bestScore = v
+                }
             }
             if (best != previous && best != 0) {
                 text.append(characterOf(best, characters))

@@ -19,7 +19,9 @@ fun knownOdometerAt(eventsOldestFirst: List<VehicleEvent>, at: Instant): Distanc
             // Any event that sets the odometer is a baseline: the initial odometer, an odometer anchor, or a
             // refueling logged by "New odometer" (its `odometer` already resolves to that reading).
             reading != null -> meters = reading.meters
+
             event is VehicleEvent.DistanceEntry -> meters = meters?.plus(event.distance.meters)
+
             // A refueling logged by "Trip distance" (add-refueling-logging) adds to the total the same way.
             event is VehicleEvent.Refueling && event.mileage is RefuelingMileage.Added ->
                 meters = meters?.plus(event.mileage.distance.meters)
@@ -29,5 +31,4 @@ fun knownOdometerAt(eventsOldestFirst: List<VehicleEvent>, at: Instant): Distanc
 }
 
 /** The current odometer: the known odometer at the end of the log. */
-fun currentOdometer(eventsOldestFirst: List<VehicleEvent>): Distance? =
-    knownOdometerAt(eventsOldestFirst, Instant.DISTANT_FUTURE)
+fun currentOdometer(eventsOldestFirst: List<VehicleEvent>): Distance? = knownOdometerAt(eventsOldestFirst, Instant.DISTANT_FUTURE)

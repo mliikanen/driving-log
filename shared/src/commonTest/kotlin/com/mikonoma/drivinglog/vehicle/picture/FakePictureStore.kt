@@ -65,11 +65,9 @@ class FakePictureStore : PictureStore {
     }
 
     /** A fake URI naming the picture and size, so tests can tell them apart; null when the picture is not there. */
-    override suspend fun uri(pictureId: String, size: PictureSize): String? =
-        if (pictureId in pictures) fakeUri("pictures", pictureId, size) else null
+    override suspend fun uri(pictureId: String, size: PictureSize): String? = if (pictureId in pictures) fakeUri("pictures", pictureId, size) else null
 
-    override suspend fun pendingUri(pendingId: String, size: PictureSize): String? =
-        if (pendingId in pending) fakeUri("pending", pendingId, size) else null
+    override suspend fun pendingUri(pendingId: String, size: PictureSize): String? = if (pendingId in pending) fakeUri("pending", pendingId, size) else null
 
     override suspend fun read(pictureId: String, size: PictureSize): ByteArray? =
         pictures[pictureId]?.let { if (size == PictureSize.SMALL) it.small.bytes else it.large.bytes }
@@ -86,7 +84,6 @@ class FakePictureStore : PictureStore {
     companion object {
         fun fakeUri(area: String, id: String, size: PictureSize) = "file:///fake/$area/$id-${size.name.lowercase()}.webp"
 
-        fun image(vararg bytes: Int, extension: String = "webp") =
-            EncodedImage(ByteArray(bytes.size) { bytes[it].toByte() }, extension, 1, 1)
+        fun image(vararg bytes: Int, extension: String = "webp") = EncodedImage(ByteArray(bytes.size) { bytes[it].toByte() }, extension, 1, 1)
     }
 }

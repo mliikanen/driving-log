@@ -29,9 +29,19 @@ data class Quad(val tl: Point, val tr: Point, val br: Point, val bl: Point) {
             val a = points[i]
             val b = points[(i + 1) % 4]
             val cross = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)
-            val s = if (cross > 1e-9) 1 else if (cross < -1e-9) -1 else 0
+            val s = if (cross > 1e-9) {
+                1
+            } else if (cross < -1e-9) {
+                -1
+            } else {
+                0
+            }
             if (s != 0) {
-                if (sign == 0) sign = s else if (s != sign) return false
+                if (sign == 0) {
+                    sign = s
+                } else if (s != sign) {
+                    return false
+                }
             }
         }
         return true
@@ -92,11 +102,17 @@ fun minAreaRect(points: List<Point>): RotatedRect {
         if (len < 1e-12) continue
         val u = e * (1 / len)
         val v = Point(-u.y, u.x)
-        var minU = Double.MAX_VALUE; var maxU = -Double.MAX_VALUE; var minV = Double.MAX_VALUE; var maxV = -Double.MAX_VALUE
+        var minU = Double.MAX_VALUE
+        var maxU = -Double.MAX_VALUE
+        var minV = Double.MAX_VALUE
+        var maxV = -Double.MAX_VALUE
         for (p in hull) {
             val pu = p.x * u.x + p.y * u.y
             val pv = p.x * v.x + p.y * v.y
-            minU = min(minU, pu); maxU = max(maxU, pu); minV = min(minV, pv); maxV = max(maxV, pv)
+            minU = min(minU, pu)
+            maxU = max(maxU, pu)
+            minV = min(minV, pv)
+            maxV = max(maxV, pv)
         }
         val area = (maxU - minU) * (maxV - minV)
         if (area < bestArea) {
@@ -123,13 +139,17 @@ fun perspectiveTransform(from: List<Point>, to: List<Point>): DoubleArray {
     }
     for (col in 0 until 8) {
         val pivot = (col until 8).maxBy { abs(a[it][col]) }
-        val tmp = a[col]; a[col] = a[pivot]; a[pivot] = tmp
+        val tmp = a[col]
+        a[col] = a[pivot]
+        a[pivot] = tmp
         val p = a[col][col]
         require(abs(p) > 1e-12) { "The corners do not make a quadrilateral" }
         for (c in col until 9) a[col][c] /= p
-        for (r in 0 until 8) if (r != col) {
-            val f = a[r][col]
-            if (f != 0.0) for (c in col until 9) a[r][c] -= f * a[col][c]
+        for (r in 0 until 8) {
+            if (r != col) {
+                val f = a[r][col]
+                if (f != 0.0) for (c in col until 9) a[r][c] -= f * a[col][c]
+            }
         }
     }
     return DoubleArray(9) { if (it < 8) a[it][8] else 1.0 }
@@ -144,7 +164,10 @@ fun applyTransform(m: DoubleArray, p: Point): Point {
 /** The inverse of a 3x3 matrix, row-major. */
 fun invert3(m: DoubleArray): DoubleArray {
     val (a, b, c, d, e) = m
-    val f = m[5]; val g = m[6]; val h = m[7]; val i = m[8]
+    val f = m[5]
+    val g = m[6]
+    val h = m[7]
+    val i = m[8]
     val det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
     require(abs(det) > 1e-18) { "Not invertible" }
     return doubleArrayOf(

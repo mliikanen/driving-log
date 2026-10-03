@@ -36,17 +36,16 @@ object VehicleIcons {
         pathData.mapValues { (type, path) -> build(type, path) }
     }
 
-    private fun build(type: VehicleType, path: String): ImageVector =
-        ImageVector.Builder(
-            name = type.label,
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 256f,
-            viewportHeight = 256f,
-        ).addPath(
-            pathData = PathParser().parsePathString(path).toNodes(),
-            fill = SolidColor(Color.Black),
-        ).build()
+    private fun build(type: VehicleType, path: String): ImageVector = ImageVector.Builder(
+        name = type.label,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 256f,
+        viewportHeight = 256f,
+    ).addPath(
+        pathData = PathParser().parsePathString(path).toNodes(),
+        fill = SolidColor(Color.Black),
+    ).build()
 
     /** Phosphor `car-fill`. */
     private const val CAR_PATH =

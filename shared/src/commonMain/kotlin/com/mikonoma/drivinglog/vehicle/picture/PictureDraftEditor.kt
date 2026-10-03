@@ -27,11 +27,7 @@ const val MAX_PHOTO_BYTES = 40L * 1024 * 1024
  * and never re-implement a rule. [removedDraft] is the draft "Remove picture" leads to: [PictureDraft.None] when adding,
  * [PictureDraft.Removed] when editing.
  */
-class PictureDraftEditor(
-    private val store: PictureStore,
-    private val codec: ImageCodec,
-    private val removedDraft: PictureDraft,
-) {
+class PictureDraftEditor(private val store: PictureStore, private val codec: ImageCodec, private val removedDraft: PictureDraft) {
     /**
      * The system's chooser gave [result]. A photo is kept and the crop opens; leaving without one changes nothing; a photo that cannot
      * be opened (not an image, or too large) and a refused camera change nothing but set their error. Choosing again while a crop is
@@ -39,8 +35,11 @@ class PictureDraftEditor(
      */
     suspend fun photoPicked(state: PictureEditState, result: PhotoResult): PictureEditState = when (result) {
         PhotoResult.Cancelled -> state
+
         PhotoResult.Unreadable -> state.copy(error = PictureError.COULD_NOT_OPEN)
+
         PhotoResult.CameraDenied -> state.copy(error = PictureError.CAMERA_DENIED)
+
         is PhotoResult.Chosen -> {
             val bytes = result.bytes
             if (bytes.size > MAX_PHOTO_BYTES || codec.decode(bytes) == null) {

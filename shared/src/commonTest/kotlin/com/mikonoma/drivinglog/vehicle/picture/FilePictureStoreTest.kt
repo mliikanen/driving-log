@@ -1,16 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
 import com.mikonoma.drivinglog.vehicle.data.FakeClock
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertContentEquals
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -18,6 +8,16 @@ import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FilePictureStoreTest {
@@ -43,8 +43,7 @@ class FilePictureStoreTest {
     private val small = image(1, 2, 3)
     private val large = image(4, 5, 6, 7)
 
-    private fun names(dir: Path): List<String> =
-        if (SystemFileSystem.exists(dir)) SystemFileSystem.list(dir).map { it.name }.sorted() else emptyList()
+    private fun names(dir: Path): List<String> = if (SystemFileSystem.exists(dir)) SystemFileSystem.list(dir).map { it.name }.sorted() else emptyList()
 
     // ---- The photo waiting to be cropped
 
@@ -268,7 +267,13 @@ class FilePictureStoreTest {
         val rest = uri.removePrefix("file://")
         var i = 0
         while (i < rest.length) {
-            if (rest[i] == '%') { out += rest.substring(i + 1, i + 3).toInt(16).toByte(); i += 3 } else { out += rest[i].code.toByte(); i++ }
+            if (rest[i] == '%') {
+                out += rest.substring(i + 1, i + 3).toInt(16).toByte()
+                i += 3
+            } else {
+                out += rest[i].code.toByte()
+                i++
+            }
         }
         return out.toByteArray().decodeToString()
     }

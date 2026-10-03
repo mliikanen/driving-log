@@ -18,7 +18,8 @@ class OnnxPpOcrModels(
     override val characters: List<String>,
     private val threads: Int = 0,
     private val spinning: Boolean = true,
-) : PpOcrModels, AutoCloseable {
+) : PpOcrModels,
+    AutoCloseable {
     private val env = OrtEnvironment.getEnvironment()
     private fun options() = OrtSession.SessionOptions().apply {
         if (threads > 0) setIntraOpNumThreads(threads)

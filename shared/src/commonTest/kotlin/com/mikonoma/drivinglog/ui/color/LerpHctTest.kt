@@ -83,9 +83,13 @@ class LerpHctTest {
 
     @Test
     fun everyStepBetweenEveryPairOfPresetsIsAValidColor() {
-        for (a in VehicleColors.presets) for (b in VehicleColors.presets) for (t in listOf(0.25f, 0.5f, 0.75f)) {
-            val color = lerpHct(a.color, b.color, t)
-            assertTrue(color.rgb in 0..0xFFFFFF, "${a.name} to ${b.name} at $t")
+        for (a in VehicleColors.presets) {
+            for (b in VehicleColors.presets) {
+                for (t in listOf(0.25f, 0.5f, 0.75f)) {
+                    val color = lerpHct(a.color, b.color, t)
+                    assertTrue(color.rgb in 0..0xFFFFFF, "${a.name} to ${b.name} at $t")
+                }
+            }
         }
     }
 }

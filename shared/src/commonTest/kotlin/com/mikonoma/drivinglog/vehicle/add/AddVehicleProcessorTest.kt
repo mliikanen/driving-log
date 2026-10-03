@@ -1,7 +1,5 @@
 package com.mikonoma.drivinglog.vehicle.add
 
-import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.vehicle.AddCall
@@ -10,24 +8,19 @@ import com.mikonoma.drivinglog.vehicle.color.FakeColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.format.formatSteps
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
-import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -35,6 +28,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.fuusio.kide.test.test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 private class FakeLocale(override val regionCode: String?) : DeviceLocale {
     override fun numberSymbols() = NumberSymbols.ENGLISH_US
@@ -152,13 +152,20 @@ class AddVehicleProcessorTest {
         val processor = processor()
         processor.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS))
         val shown = buildList {
-            processor.type(1); add(processor.shown())
-            processor.type(2); add(processor.shown())
-            processor.dispatch(AddVehicleIntent.OdometerEdited("1")); add(processor.shown())
-            processor.dispatch(AddVehicleIntent.OdometerEdited("")); add(processor.shown())
-            processor.type(2); add(processor.shown())
-            processor.type(3); add(processor.shown())
-            processor.type(0); add(processor.shown())
+            processor.type(1)
+            add(processor.shown())
+            processor.type(2)
+            add(processor.shown())
+            processor.dispatch(AddVehicleIntent.OdometerEdited("1"))
+            add(processor.shown())
+            processor.dispatch(AddVehicleIntent.OdometerEdited(""))
+            add(processor.shown())
+            processor.type(2)
+            add(processor.shown())
+            processor.type(3)
+            add(processor.shown())
+            processor.type(0)
+            add(processor.shown())
         }
         assertEquals(listOf("0.1", "1.2", "0.1", "", "0.2", "2.3", "23.0"), shown)
     }
@@ -225,16 +232,18 @@ class AddVehicleProcessorTest {
 
     private fun AddVehicleProcessor.edit(text: String) = dispatch(AddVehicleIntent.OdometerEdited(text))
 
-    private fun tenthsProcessor(): AddVehicleProcessor =
-        processor().also { it.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS)) }
+    private fun tenthsProcessor(): AddVehicleProcessor = processor().also { it.dispatch(AddVehicleIntent.UnitSelected(OdometerUnit.KILOMETERS_TENTHS)) }
 
     @Test
     fun aFirstZeroIsKeptWhileTypingMoreDigits() {
         val processor = tenthsProcessor()
         val shown = buildList {
-            processor.type(0); add(processor.shown())
-            processor.type(5); add(processor.shown())
-            processor.type(3); add(processor.shown())
+            processor.type(0)
+            add(processor.shown())
+            processor.type(5)
+            add(processor.shown())
+            processor.type(3)
+            add(processor.shown())
         }
         assertEquals(listOf("0.0", "0.5", "5.3"), shown)
     }
@@ -245,9 +254,12 @@ class AddVehicleProcessorTest {
         processor.type(0, 5, 3)
 
         val shown = buildList {
-            processor.edit("05"); add(processor.shown())
-            processor.edit("0"); add(processor.shown())
-            processor.edit(""); add(processor.shown())
+            processor.edit("05")
+            add(processor.shown())
+            processor.edit("0")
+            add(processor.shown())
+            processor.edit("")
+            add(processor.shown())
         }
 
         assertEquals(listOf("0.5", "0.0", ""), shown)
@@ -1140,13 +1152,21 @@ class AddVehicleProcessorTest {
 
     private fun line(vararg elements: com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement) = com.mikonoma.drivinglog.vehicle.ocr.RecognizedLine(
         elements.joinToString(" ") { it.text },
-        com.mikonoma.drivinglog.vehicle.ocr.TextBox(elements.minOf { it.box.left }, elements.minOf { it.box.top }, elements.maxOf { it.box.right }, elements.maxOf { it.box.bottom }),
+        com.mikonoma.drivinglog.vehicle.ocr.TextBox(
+            elements.minOf {
+                it.box.left
+            },
+            elements.minOf { it.box.top },
+            elements.maxOf { it.box.right },
+            elements.maxOf { it.box.bottom },
+        ),
         elements.toList(),
     )
 
     /** A dashboard with the odometer "ODO 71140km", a trip meter "TRIP 168.1" and a speedometer dial's "120". */
     private val dashboard = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
-        1280, 720,
+        1280,
+        720,
         listOf(
             line(element("ODO", 524, 403, 554, 415)),
             line(element("71140km", 529, 412, 619, 433)),
@@ -1173,10 +1193,17 @@ class AddVehicleProcessorTest {
 
     private fun liveReading(value: String): com.mikonoma.drivinglog.vehicle.ocr.LiveReading {
         val detection = com.mikonoma.drivinglog.vehicle.ocr.Detection(
-            value, value, com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
-            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO",
+            value,
+            value,
+            com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
+            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER,
+            com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+            "ODO",
         )
-        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), listOf(detection))
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(
+            com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)),
+            listOf(detection),
+        )
         return com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detection, frame, clock.current)
     }
 

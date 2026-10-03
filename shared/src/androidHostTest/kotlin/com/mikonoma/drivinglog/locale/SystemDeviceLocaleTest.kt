@@ -1,7 +1,7 @@
 package com.mikonoma.drivinglog.locale
 
-import java.util.Locale
 import kotlinx.datetime.DayOfWeek
+import java.util.Locale
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

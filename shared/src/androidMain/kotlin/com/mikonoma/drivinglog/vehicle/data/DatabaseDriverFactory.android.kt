@@ -6,6 +6,5 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 
 actual class DatabaseDriverFactory(private val context: Context) {
-    actual fun createDriver(databaseName: String): SqlDriver =
-        AndroidSqliteDriver(DrivingLogDatabase.Schema, context, databaseName)
+    actual fun createDriver(databaseName: String): SqlDriver = AndroidSqliteDriver(DrivingLogDatabase.Schema, context, databaseName)
 }

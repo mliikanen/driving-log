@@ -1,7 +1,5 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.VehiclePicture
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 
 /**
  * The picture part of the add and edit forms: the preview, which is itself the action ("Add picture" or "Change picture": tapping

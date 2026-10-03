@@ -17,22 +17,21 @@ import com.mikonoma.drivinglog.vehicle.ocr.Detection
 import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
 import com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto
-import com.mikonoma.drivinglog.vehicle.ocr.detectFuelAmount
-import com.mikonoma.drivinglog.vehicle.ocr.detectReadings
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft
 import com.mikonoma.drivinglog.vehicle.ocr.ScanEditor
 import com.mikonoma.drivinglog.vehicle.ocr.TextRecognizer
+import com.mikonoma.drivinglog.vehicle.ocr.detectFuelAmount
+import com.mikonoma.drivinglog.vehicle.ocr.detectReadings
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
-import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Named
-import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -43,6 +42,7 @@ import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
+import kotlin.time.Clock
 
 class LogEventProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
@@ -75,8 +75,9 @@ class LogEventProcessor @AssistedInject constructor(
         val fuelPreferences = combine(repository.observeLastFuelUnit(), repository.observeLastFuelType()) { unit, type -> unit to type }
         observe("fuel-preferences", fuelPreferences) { (unit, type) ->
             reduce {
-                if (fuelPreferencesLoaded) this
-                else if (fuelTypeFor.isNotEmpty()) {
+                if (fuelPreferencesLoaded) {
+                    this
+                } else if (fuelTypeFor.isNotEmpty()) {
                     // The fuel type was already resolved — by the vehicle loading, or by a manual choice that
                     // raced ahead of this one-time load — before the remembered preference arrived: never
                     // reconsider it here, only fuelUnit (which has no equivalent per-vehicle filter to race against).
@@ -116,8 +117,11 @@ class LogEventProcessor @AssistedInject constructor(
         // change of vehicle needs no second code path. Before a choice has been made (chooseVehicle, still loading), this observes nothing.
         val selected: Flow<Pair<VehicleDetails?, List<VehicleEvent>>> = states.map { it.selectedVehicleId }.distinctUntilChanged()
             .flatMapLatest { id ->
-                if (id.isEmpty()) flowOf(null to emptyList())
-                else combine(repository.observeVehicle(id), repository.observeLog(id)) { details, log -> details to log }
+                if (id.isEmpty()) {
+                    flowOf(null to emptyList())
+                } else {
+                    combine(repository.observeVehicle(id), repository.observeLog(id)) { details, log -> details to log }
+                }
             }
         observe("vehicle", selected) { (details, log) ->
             if (details == null) {
@@ -131,14 +135,21 @@ class LogEventProcessor @AssistedInject constructor(
                 reduce {
                     // The fuel type is re-resolved against the filter of the vehicle now shown, the same way the unit is
                     // re-initialised below (vehicle-fuel-type): kept when still offered, else the filter's first entry.
-                    val resolvedFuelType = if (fuelTypeFor == details.vehicle.id) fuelType else {
+                    val resolvedFuelType = if (fuelTypeFor == details.vehicle.id) {
+                        fuelType
+                    } else {
                         val allowed = vehicleFuelType.allowedFuelTypes()
                         if (fuelType in allowed) fuelType else allowed.first()
                     }
                     if (unitFor == details.vehicle.id) {
                         copy(
-                            isLoading = false, notFound = false, vehicleUnit = vehicleUnit, vehicleFuelType = vehicleFuelType, log = log,
-                            fuelType = resolvedFuelType, fuelTypeFor = details.vehicle.id,
+                            isLoading = false,
+                            notFound = false,
+                            vehicleUnit = vehicleUnit,
+                            vehicleFuelType = vehicleFuelType,
+                            log = log,
+                            fuelType = resolvedFuelType,
+                            fuelTypeFor = details.vehicle.id,
                         )
                     } else {
                         // The unit is (re)initialised from the vehicle now shown; the digits already typed are kept, converted to it,
@@ -165,68 +176,105 @@ class LogEventProcessor @AssistedInject constructor(
 
     override suspend fun map(intent: LogEventIntent): Action<LogEventState, LogEventEffect>? = when (intent) {
         is LogEventIntent.WayChanged -> reduce { copy(way = intent.way, error = null) }
+
         is LogEventIntent.UnitFamilySelected -> reduce { withUnit(unitOf(intent.miles, unit.hasTenths)) }
+
         is LogEventIntent.TenthsChanged -> reduce { withUnit(unitOf(unit.isMiles, intent.included)) }
+
         is LogEventIntent.OdometerEdited -> reduce { withActiveEntry(activeEntry.applyEdit(intent.text)) }
+
         LogEventIntent.OdometerCleared -> reduce { withActiveEntry(activeEntry.clear(), keepError = true) }
+
         is LogEventIntent.FuelAmountEdited -> reduce { withFuelAmount(fuelAmount.applyEdit(intent.text)) }
+
         LogEventIntent.FuelAmountCleared -> reduce { withFuelAmount(fuelAmount.clear(), keepError = true) }
+
         is LogEventIntent.FuelUnitSelected -> reduce { copy(fuelUnit = intent.unit) }
+
         // Pins fuelTypeFor to the vehicle chosen for, same as a resolved load would: a manual choice is never
         // reconsidered by a same-vehicle resolution that only hasn't run yet (e.g. one still queued behind this
         // dispatch), only by an actual later vehicle change.
         is LogEventIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.type, fuelTypeFor = selectedVehicleId) }
+
         is LogEventIntent.FilledUpChanged -> reduce { copy(filledUp = intent.checked) }
+
         is LogEventIntent.DateChanged -> reduce { copy(localDateTime = withDate(localDateTime, intent.date), error = null) }
+
         is LogEventIntent.TimeChanged -> reduce { copy(localDateTime = withTime(localDateTime, intent.hour, intent.minute), error = null) }
+
         is LogEventIntent.ZoneChanged -> reduce { copy(zoneId = intent.zoneId, error = null) }
+
         is LogEventIntent.VehicleSelected -> reduce {
             if (chooseVehicle && vehicles.any { it.id == intent.vehicleId }) copy(selectedVehicleId = intent.vehicleId, error = null) else this
         }
+
         is LogEventIntent.KindSelected -> reduce { copy(kind = intent.kind, error = null) }
+
         LogEventIntent.NoteEditorOpened -> reduce { copy(noteDraft = pendingNote ?: "") }
+
         is LogEventIntent.NoteDraftEdited -> reduce { copy(noteDraft = intent.text) }
+
         LogEventIntent.NoteAttached -> reduce { copy(pendingNote = noteDraft?.trim()?.ifBlank { null }, noteDraft = null) }
+
         LogEventIntent.NoteDiscarded -> reduce { copy(noteDraft = null) }
+
         LogEventIntent.NoteRemoveRequested -> reduce { copy(noteRemovalPending = true) }
+
         LogEventIntent.NoteRemoveConfirmed -> reduce { copy(pendingNote = null, noteRemovalPending = false) }
+
         LogEventIntent.NoteRemoveCancelled -> reduce { copy(noteRemovalPending = false) }
+
         LogEventIntent.LowerOdometerConfirmed -> saveConfirmedLowerOdometer()
+
         LogEventIntent.LowerOdometerCancelled -> reduce { copy(lowerOdometerConfirmationPending = false) }
+
         LogEventIntent.PhotoPreviewRefresh -> async("refresh") {
             val previews = photoEditor.previewUris(state.photos)
             val scanUri = scanEditor.reviewPhotoUri(state.scan)
             reduce { copy(photoPreviewUris = previews, scanPhotoUri = scanUri) }
         }
+
         is LogEventIntent.PhotoPicked -> photoStep { photoEditor.photoPicked(it, intent.result) }
+
         is LogEventIntent.PhotoRemoveRequested -> reduce { copy(photos = photoEditor.removeRequested(photos, intent.pendingId)) }
+
         LogEventIntent.PhotoRemoveConfirmed -> photoStep { photoEditor.removeConfirmed(it) }
+
         LogEventIntent.PhotoRemoveCancelled -> reduce { copy(photos = photoEditor.removeCancelled(photos)) }
+
         is LogEventIntent.ScanPhotoPicked -> scanPicked(intent.result)
+
         is LogEventIntent.ScanCandidateSelected -> reduce { copy(scan = scanEditor.selected(scan, intent.index)) }
+
         LogEventIntent.ScanConfirmed -> scanConfirmed()
+
         LogEventIntent.ScanCancelled -> scanStep { scanEditor.cancelled(it) }
+
         LogEventIntent.ScanErrorDismissed -> reduce { copy(scan = scanEditor.errorDismissed(scan)) }
+
         is LogEventIntent.ScannerOpened -> reduce { copy(scan = scanEditor.scannerOpened(scan), scanTarget = intent.target) }
+
         LogEventIntent.ScannerClosed -> scanStep { scanEditor.scannerClosed(it) }
+
         is LogEventIntent.LiveReadingTapped -> async("scan") {
             val next = scanEditor.liveAccepted(state.scan, intent.reading) ?: return@async
             reduce { withScannedReading(intent.reading.detection).copy(scan = next, scanPhotoUri = null) }
         }
+
         LogEventIntent.Left -> async("leave") {
             photoEditor.discardAll(state.photos)
             scanEditor.discardAll(state.scan)
         }
+
         LogEventIntent.Save -> save()
     }
 
     /** Applies a photo-strip change, then rebuilds the thumbnail URIs it means (`add-event-pictures`). */
-    private fun photoStep(change: suspend (EventPhotoDraft) -> EventPhotoDraft): Action<LogEventState, LogEventEffect> =
-        async("photo") {
-            val next = change(state.photos)
-            val previews = photoEditor.previewUris(next)
-            reduce { copy(photos = next, photoPreviewUris = previews) }
-        }
+    private fun photoStep(change: suspend (EventPhotoDraft) -> EventPhotoDraft): Action<LogEventState, LogEventEffect> = async("photo") {
+        val next = change(state.photos)
+        val previews = photoEditor.previewUris(next)
+        reduce { copy(photos = next, photoPreviewUris = previews) }
+    }
 
     /** A fresh live scanner for one opening of the scanner screen (`add-live-scanner`), for whichever field
      * [LogEventState.scanTarget] currently names (`add-fuel-amount-ocr`), reading frames with the same recognizers. */
@@ -288,17 +336,31 @@ class LogEventProcessor @AssistedInject constructor(
             val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer)
         ) {
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
+
             LogDistanceResult.NeedsLowerOdometerConfirmation -> reduce { copy(lowerOdometerConfirmationPending = true) }
+
             is LogDistanceResult.Valid -> saving {
                 repository.addDistanceEntry(
-                    vehicleId, moment, result.distance, result.loggedOdometer,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
+                    vehicleId,
+                    moment,
+                    result.distance,
+                    result.loggedOdometer,
+                    tenthsIncluded = form.unit.hasTenths,
+                    note = form.pendingNote,
+                    photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
+
             is LogDistanceResult.Anchor -> saving {
                 repository.addOdometerAnchor(
-                    vehicleId, moment, result.reading,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
+                    vehicleId,
+                    moment,
+                    result.reading,
+                    tenthsIncluded = form.unit.hasTenths,
+                    note = form.pendingNote,
+                    photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
         }
@@ -326,7 +388,9 @@ class LogEventProcessor @AssistedInject constructor(
             val result = validateLogDistance(form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer)
         ) {
             is LogDistanceResult.Invalid -> reduce { copy(error = result.error) }
+
             LogDistanceResult.NeedsLowerOdometerConfirmation -> reduce { copy(lowerOdometerConfirmationPending = true) }
+
             is LogDistanceResult.Valid -> saving {
                 repository.addRefueling(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
@@ -335,6 +399,7 @@ class LogEventProcessor @AssistedInject constructor(
                     capture = form.scan.accepted,
                 )
             }
+
             is LogDistanceResult.Anchor -> saving {
                 repository.addRefueling(
                     vehicleId, moment, amount, form.fuelUnit, form.fuelType, form.filledUp,
@@ -362,16 +427,29 @@ class LogEventProcessor @AssistedInject constructor(
         val moment = form.moment
         return when (
             val result = validateLogDistance(
-                form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer, lowerOdometerConfirmed = true,
+                form.way,
+                form.activeEntry,
+                moment,
+                clock.now(),
+                form.knownOdometer,
+                form.mostRecentKnownOdometer,
+                lowerOdometerConfirmed = true,
             )
         ) {
             is LogDistanceResult.Anchor -> saving {
                 repository.addOdometerAnchor(
-                    vehicleId, moment, result.reading,
-                    tenthsIncluded = form.unit.hasTenths, note = form.pendingNote, photos = photoEditor.toPending(form.photos), capture = form.scan.accepted,
+                    vehicleId,
+                    moment,
+                    result.reading,
+                    tenthsIncluded = form.unit.hasTenths,
+                    note = form.pendingNote,
+                    photos = photoEditor.toPending(form.photos),
+                    capture = form.scan.accepted,
                 )
             }
+
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
+
             LogDistanceResult.NeedsLowerOdometerConfirmation, is LogDistanceResult.Valid -> reduce { copy(lowerOdometerConfirmationPending = false) }
         }
     }
@@ -382,7 +460,13 @@ class LogEventProcessor @AssistedInject constructor(
             ?: return reduce { copy(lowerOdometerConfirmationPending = false, error = LogDistanceError.FuelAmountEmpty) }
         return when (
             val result = validateLogDistance(
-                form.way, form.activeEntry, moment, clock.now(), form.knownOdometer, form.mostRecentKnownOdometer, lowerOdometerConfirmed = true,
+                form.way,
+                form.activeEntry,
+                moment,
+                clock.now(),
+                form.knownOdometer,
+                form.mostRecentKnownOdometer,
+                lowerOdometerConfirmed = true,
             )
         ) {
             is LogDistanceResult.Anchor -> saving {
@@ -393,7 +477,9 @@ class LogEventProcessor @AssistedInject constructor(
                     capture = form.scan.accepted,
                 )
             }
+
             is LogDistanceResult.Invalid -> reduce { copy(lowerOdometerConfirmationPending = false, error = result.error) }
+
             LogDistanceResult.NeedsLowerOdometerConfirmation, is LogDistanceResult.Valid -> reduce { copy(lowerOdometerConfirmationPending = false) }
         }
     }

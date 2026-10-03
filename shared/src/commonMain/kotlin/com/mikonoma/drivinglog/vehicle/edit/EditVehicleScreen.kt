@@ -1,20 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
-import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
-import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
-import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
-import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
-import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
-import com.mikonoma.drivinglog.ui.theme.HeaderDivider
-import com.mikonoma.drivinglog.ui.ScreenBottomSpace
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -35,7 +26,16 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.RequiredFieldNote
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
+import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
 import com.mikonoma.drivinglog.vehicle.picture.PictureField
+import com.mikonoma.drivinglog.vehicle.type.VehicleTypeChoice
 
 @Composable
 fun EditVehicleScreen(processor: EditVehicleProcessor, onBack: () -> Unit) {
@@ -62,11 +62,7 @@ fun EditVehicleScreen(processor: EditVehicleProcessor, onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditVehicleContent(
-    state: EditVehicleState,
-    onIntent: (EditVehicleIntent) -> Unit,
-    onBack: () -> Unit,
-) {
+fun EditVehicleContent(state: EditVehicleState, onIntent: (EditVehicleIntent) -> Unit, onBack: () -> Unit) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {

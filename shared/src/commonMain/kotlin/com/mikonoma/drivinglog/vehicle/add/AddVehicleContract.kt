@@ -1,10 +1,10 @@
 package com.mikonoma.drivinglog.vehicle.add
 
+import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
-import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
 import com.mikonoma.drivinglog.vehicle.ocr.LiveReading
 import com.mikonoma.drivinglog.vehicle.ocr.ScanDraft

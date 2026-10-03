@@ -9,20 +9,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -120,6 +120,7 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
     val latestCrop by rememberUpdatedState(crop)
     val latestSpace by rememberUpdatedState(freeSpace)
     val margin = with(LocalDensity.current) { 24.dp.toPx() }
+
     /** Where the frame is drawn on a screen of [width] by [height]: in the free space (the whole screen until the controls have been measured). */
     val frameFor: (Float, Float) -> CropFrame = { width, height ->
         val space = latestSpace
@@ -180,13 +181,7 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
 }
 
 /** What the buttons and the keyboard do, so the two ways share one definition. */
-private class CropControls(
-    val zoomIn: () -> Unit,
-    val zoomOut: () -> Unit,
-    val move: (CropMove) -> Unit,
-    val rotate: () -> Unit,
-    val reset: () -> Unit,
-)
+private class CropControls(val zoomIn: () -> Unit, val zoomOut: () -> Unit, val move: (CropMove) -> Unit, val rotate: () -> Unit, val reset: () -> Unit)
 
 @Composable
 private fun CropCanvas(
@@ -257,10 +252,22 @@ private fun CropButtons(controls: CropControls, sideBySide: Boolean) {
     }
     if (sideBySide) {
         // A column: "+" above "-", as on a slider that runs upwards.
-        Column(Modifier.padding(end = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { zoomIn(); zoomOut(); rest() }
+        Column(Modifier.padding(end = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            zoomIn()
+            zoomOut()
+            rest()
+        }
     } else {
         // A row: "-" to the left of "+", as on a slider that runs to the right.
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { zoomOut(); zoomIn(); rest() }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            zoomOut()
+            zoomIn()
+            rest()
+        }
     }
 }
 

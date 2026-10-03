@@ -1,14 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.log
 
-import androidx.compose.foundation.layout.Column
-import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
-import com.mikonoma.drivinglog.ui.theme.HeaderDivider
-import com.mikonoma.drivinglog.ui.ScreenBottomSpace
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +22,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.ui.EventRow
 
@@ -69,7 +69,9 @@ fun VehicleLogContent(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> Unit
+
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
+
                 else -> LazyColumn(
                     Modifier.fillMaxSize().testTag("log_list"),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = ScreenBottomSpace),

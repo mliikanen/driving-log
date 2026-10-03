@@ -5,8 +5,7 @@ import kotlin.test.assertEquals
 
 class VehicleInputTest {
 
-    private fun valid(name: String, plate: String) =
-        (validateVehicleFields(name, plate) as VehicleFieldsResult.Valid).fields
+    private fun valid(name: String, plate: String) = (validateVehicleFields(name, plate) as VehicleFieldsResult.Valid).fields
 
     @Test
     fun surroundingWhitespaceIsTrimmed() {

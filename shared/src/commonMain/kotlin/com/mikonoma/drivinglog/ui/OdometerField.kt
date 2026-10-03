@@ -64,10 +64,7 @@ fun OdometerField(
 }
 
 /** Draws the entry's digits as a locale-formatted number. Offsets all map to the end, where the cursor is. */
-private class OdometerTransformation(
-    private val hasTenths: Boolean,
-    private val symbols: NumberSymbols,
-) : VisualTransformation {
+private class OdometerTransformation(private val hasTenths: Boolean, private val symbols: NumberSymbols) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         // An empty entry is drawn as nothing at all, not as 0 or 0.0.
         val shown = text.text.toLongOrNull()?.let { formatSteps(it, hasTenths, symbols) } ?: ""

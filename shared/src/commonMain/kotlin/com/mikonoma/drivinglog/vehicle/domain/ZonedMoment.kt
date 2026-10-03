@@ -1,11 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.domain
 
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.offsetAt
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
  * This instant with the seconds and milliseconds dropped. Minutes start at the same instant in every time zone, so the result is
@@ -34,7 +34,6 @@ data class ZonedMoment(val instant: Instant, val zone: EventZone? = null) {
         get() = zone?.let { (instant + it.offsetSeconds.seconds).toLocalDateTime(TimeZone.UTC) }
 
     companion object {
-        fun of(instant: Instant, timeZone: TimeZone) =
-            ZonedMoment(instant, EventZone(timeZone.id, timeZone.offsetAt(instant).totalSeconds))
+        fun of(instant: Instant, timeZone: TimeZone) = ZonedMoment(instant, EventZone(timeZone.id, timeZone.offsetAt(instant).totalSeconds))
     }
 }

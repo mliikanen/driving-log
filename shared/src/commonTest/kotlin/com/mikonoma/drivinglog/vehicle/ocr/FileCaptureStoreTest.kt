@@ -2,6 +2,12 @@ package com.mikonoma.drivinglog.vehicle.ocr
 
 import com.mikonoma.drivinglog.vehicle.data.FakeClock
 import com.mikonoma.drivinglog.vehicle.picture.EncodedImage
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemTemporaryDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -10,12 +16,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FileCaptureStoreTest {
@@ -37,8 +37,7 @@ class FileCaptureStoreTest {
         fs.delete(path, mustExist = false)
     }
 
-    private fun names(dir: Path): List<String> =
-        if (SystemFileSystem.exists(dir)) SystemFileSystem.list(dir).map { it.name }.sorted() else emptyList()
+    private fun names(dir: Path): List<String> = if (SystemFileSystem.exists(dir)) SystemFileSystem.list(dir).map { it.name }.sorted() else emptyList()
 
     @Test
     fun aPendingScanHasAFileUri() = runTest {

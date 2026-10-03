@@ -9,12 +9,12 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import com.mikonoma.drivinglog.vehicle.picture.MAX_DECODE_SIDE
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.math.roundToInt
 
 /**
  * ML Kit's on-device Latin-script recognizer, with its model bundled in the app, so it reads text without a network
@@ -38,8 +38,12 @@ class MlKitTextRecognizer(private val dispatcher: CoroutineDispatcher = ioDispat
         // A small photo is recognized at up to twice its size (design.md): small dashboard digits that are dropped or misread at their
         // own size read right when larger. The boxes are scaled back to the decoded photo's pixels.
         val scale = recognitionScale(bitmap.width, bitmap.height)
-        val input = if (scale == 1.0) bitmap else withContext(dispatcher) {
-            Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt(), true)
+        val input = if (scale == 1.0) {
+            bitmap
+        } else {
+            withContext(dispatcher) {
+                Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt(), true)
+            }
         }
         val text = suspendCancellableCoroutine { continuation ->
             recognizer.process(InputImage.fromBitmap(input, 0))

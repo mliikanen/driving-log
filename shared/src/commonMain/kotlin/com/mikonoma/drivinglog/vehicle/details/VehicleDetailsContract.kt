@@ -1,11 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.details
 
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
@@ -35,6 +35,7 @@ sealed interface VehicleDetailsIntent : ViewIntent {
     data object EditClicked : VehicleDetailsIntent
     data object ViewLogClicked : VehicleDetailsIntent
     data object LogEventClicked : VehicleDetailsIntent
+
     /** A recent-events row was tapped (add-event-details-view). */
     data class EventClicked(val eventId: String) : VehicleDetailsIntent
 }

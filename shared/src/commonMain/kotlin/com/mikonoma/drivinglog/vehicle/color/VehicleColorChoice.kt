@@ -62,7 +62,13 @@ internal fun colorChoice(color: Rgb, pictureColor: Rgb?, savedColor: Rgb?): Colo
         if (current != null) add(Triple("Current color", current, "vehicle_color_current"))
     }
     // The photo color is the newest thing the user did, so it is shown before the old color when both are there and equal; the order of the row is old, photo, current.
-    val selectedLabel = if (preset != null) null else listOf("Photo color", "Old color", "Current color").firstOrNull { label -> candidates.any { it.first == label && it.second == color } }
+    val selectedLabel = if (preset !=
+        null
+    ) {
+        null
+    } else {
+        listOf("Photo color", "Old color", "Current color").firstOrNull { label -> candidates.any { it.first == label && it.second == color } }
+    }
     return ColorChoiceModel(
         palette = VehicleColors.presets.map { ColorSwatch(it.name, it.color, "vehicle_color_${it.color.hex}", selected = it.color == color) },
         segments = candidates.map { (label, segmentColor, tag) -> ColorSegment(label, segmentColor, tag, selected = label == selectedLabel) },
@@ -75,13 +81,7 @@ internal fun colorChoice(color: Rgb, pictureColor: Rgb?, savedColor: Rgb?): Colo
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun VehicleColorChoice(
-    color: Rgb,
-    pictureColor: Rgb?,
-    savedColor: Rgb?,
-    onSelect: (Rgb) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun VehicleColorChoice(color: Rgb, pictureColor: Rgb?, savedColor: Rgb?, onSelect: (Rgb) -> Unit, modifier: Modifier = Modifier) {
     val choice = colorChoice(color, pictureColor, savedColor)
     Column(modifier.testTag("vehicle_color_choice"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Vehicle color", style = MaterialTheme.typography.titleSmall)

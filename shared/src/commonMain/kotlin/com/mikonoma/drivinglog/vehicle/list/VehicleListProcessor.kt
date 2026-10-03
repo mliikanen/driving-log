@@ -11,10 +11,8 @@ import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.sideEffect
 
 @Inject
-class VehicleListProcessor(
-    repository: VehicleRepository,
-    private val pictures: PictureStore,
-) : PresentationProcessor<VehicleListIntent, VehicleListState, VehicleListEffect>(VehicleListState()) {
+class VehicleListProcessor(repository: VehicleRepository, private val pictures: PictureStore) :
+    PresentationProcessor<VehicleListIntent, VehicleListState, VehicleListEffect>(VehicleListState()) {
 
     init {
         observe("vehicles", repository.observeVehicles()) { vehicles ->
@@ -28,8 +26,7 @@ class VehicleListProcessor(
         VehicleListIntent.AddVehicle -> sideEffect { VehicleListEffect.ShowAdd }
     }
 
-    private suspend fun Vehicle.toItem() =
-        VehicleListItem(id, name, licensePlate, pictureId?.let { pictures.uri(it, PictureSize.SMALL) }, type, color)
+    private suspend fun Vehicle.toItem() = VehicleListItem(id, name, licensePlate, pictureId?.let { pictures.uri(it, PictureSize.SMALL) }, type, color)
 
     private companion object {
         fun List<Vehicle>.sortedForList(): List<Vehicle> = sortedWith(VehicleNameOrder)

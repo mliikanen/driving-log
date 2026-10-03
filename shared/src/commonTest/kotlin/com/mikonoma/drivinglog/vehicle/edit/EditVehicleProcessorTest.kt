@@ -1,30 +1,23 @@
 package com.mikonoma.drivinglog.vehicle.edit
 
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.UpdateCall
 import com.mikonoma.drivinglog.vehicle.color.FakeColorExtractor
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
+import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.CropRect
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureDraft
-import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureEditState
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -33,6 +26,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.fuusio.kide.test.test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EditVehicleProcessorTest {
@@ -200,8 +200,7 @@ class EditVehicleProcessorTest {
         assertEquals(1, repository.updateCalls.size)
     }
 
-    private suspend fun FakeVehicleRepository.observeVehicleName(): String? =
-        observeVehicle("v1").first()?.vehicle?.name
+    private suspend fun FakeVehicleRepository.observeVehicleName(): String? = observeVehicle("v1").first()?.vehicle?.name
 
     // ---- The picture
 

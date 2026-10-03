@@ -4,11 +4,11 @@ import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.refuelingEvent
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
 
 class KnownOdometerTest {
 

@@ -142,10 +142,12 @@ class PpOcrTest {
         val m = perspectiveTransform(from, to)
         for (i in 0 until 4) {
             val p = applyTransform(m, from[i])
-            near(to[i].x, p.x, 1e-9); near(to[i].y, p.y, 1e-9)
+            near(to[i].x, p.x, 1e-9)
+            near(to[i].y, p.y, 1e-9)
         }
         val back = applyTransform(invert3(m), to[2])
-        near(48.0, back.x, 1e-9); near(30.0, back.y, 1e-9)
+        near(48.0, back.x, 1e-9)
+        near(30.0, back.y, 1e-9)
     }
 
     // Cropping
@@ -222,7 +224,8 @@ class PpOcrTest {
     fun aTextBoxInARotatedFrameComesBackUpright() {
         // A frame to be turned 90 degrees clockwise to be upright (a phone held upright, the camera's rotationDegrees 90): a white bar
         // across the top of the upright scene lies along the frame's left edge. Turned upright, it is at the top again.
-        val w = 20; val h = 10
+        val w = 20
+        val h = 10
         val frame = RgbImage(w, h, IntArray(w * h) { i -> if (i % w < 2) 0xFFFFFFFF.toInt() else 0xFF000000.toInt() })
         val upright = frame.turnedClockwise(1)
         assertEquals(10 to 20, upright.width to upright.height)

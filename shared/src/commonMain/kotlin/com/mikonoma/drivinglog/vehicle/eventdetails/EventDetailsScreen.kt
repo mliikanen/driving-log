@@ -56,12 +56,7 @@ import com.mikonoma.drivinglog.vehicle.format.eventRowContent
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 
 @Composable
-fun EventDetailsScreen(
-    processor: EventDetailsProcessor,
-    deviceLocale: DeviceLocale,
-    deviceTimeZone: DeviceTimeZone,
-    onBack: () -> Unit,
-) {
+fun EventDetailsScreen(processor: EventDetailsProcessor, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
     val state by processor.states.collectAsState()
     EventDetailsContent(state, deviceLocale, deviceTimeZone, onIntent = processor::dispatch, onBack = onBack)
 }
@@ -117,7 +112,9 @@ fun EventDetailsContent(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> Unit
+
                 state.notFound || content == null -> Text("This event no longer exists.", Modifier.padding(16.dp))
+
                 else -> LazyColumn(
                     Modifier.fillMaxSize().testTag("event_details_content"),
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
@@ -293,8 +290,11 @@ private fun EventEditContent(edit: EventEditState, onIntent: (EventDetailsIntent
                 previewUris = previewUris,
                 onPhotoPicked = { onIntent(EventDetailsIntent.EditPhotoPicked(it)) },
                 onRemoveRequested = { id ->
-                    if (id in keptIds) onIntent(EventDetailsIntent.EditSavedPhotoRemoveRequested(id))
-                    else onIntent(EventDetailsIntent.EditNewPhotoRemoveRequested(id))
+                    if (id in keptIds) {
+                        onIntent(EventDetailsIntent.EditSavedPhotoRemoveRequested(id))
+                    } else {
+                        onIntent(EventDetailsIntent.EditNewPhotoRemoveRequested(id))
+                    }
                 },
             )
         }

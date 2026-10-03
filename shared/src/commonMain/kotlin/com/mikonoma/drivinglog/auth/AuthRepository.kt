@@ -9,12 +9,7 @@ sealed interface AuthState {
 
     data object SignedOut : AuthState
 
-    data class SignedIn(
-        val uid: String,
-        val displayName: String?,
-        val email: String?,
-        val photoUrl: String?,
-    ) : AuthState
+    data class SignedIn(val uid: String, val displayName: String?, val email: String?, val photoUrl: String?) : AuthState
 }
 
 /**

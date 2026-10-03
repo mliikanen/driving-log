@@ -113,8 +113,13 @@ class OdometerEntryTest {
     @Test
     fun typeDeleteToEmptyAndTypeAgainForTenths() {
         val steps = listOf<(OdometerEntry) -> OdometerEntry>(
-            { it.press(1) }, { it.press(2) }, { it.backspace() }, { it.backspace() },
-            { it.press(2) }, { it.press(3) }, { it.press(0) },
+            { it.press(1) },
+            { it.press(2) },
+            { it.backspace() },
+            { it.backspace() },
+            { it.press(2) },
+            { it.press(3) },
+            { it.press(0) },
         )
         val shown = steps.runningFold(tenths()) { e, step -> step(e) }.drop(1).map { it.shown() }
         assertEquals(listOf("0.1", "1.2", "0.1", "", "0.2", "2.3", "23.0"), shown)
@@ -123,8 +128,13 @@ class OdometerEntryTest {
     @Test
     fun typeDeleteToEmptyAndTypeAgainForWholeUnits() {
         val steps = listOf<(OdometerEntry) -> OdometerEntry>(
-            { it.press(1) }, { it.press(2) }, { it.backspace() }, { it.backspace() },
-            { it.press(2) }, { it.press(3) }, { it.press(0) },
+            { it.press(1) },
+            { it.press(2) },
+            { it.backspace() },
+            { it.backspace() },
+            { it.press(2) },
+            { it.press(3) },
+            { it.press(0) },
         )
         val shown = steps.runningFold(whole()) { e, step -> step(e) }.drop(1).map { it.shown() }
         assertEquals(listOf("1", "12", "1", "", "2", "23", "230"), shown)
@@ -282,10 +292,12 @@ class OdometerEntryTest {
 
     @Test
     fun anEmptyEntryStaysEmptyWhateverTheUnitChange() {
-        for (from in OdometerUnit.entries) for (to in OdometerUnit.entries) {
-            val changed = OdometerEntry(from).withUnit(to)
-            assertTrue(changed.isEmpty, "$from -> $to")
-            assertEquals(to, changed.unit)
+        for (from in OdometerUnit.entries) {
+            for (to in OdometerUnit.entries) {
+                val changed = OdometerEntry(from).withUnit(to)
+                assertTrue(changed.isEmpty, "$from -> $to")
+                assertEquals(to, changed.unit)
+            }
         }
     }
 

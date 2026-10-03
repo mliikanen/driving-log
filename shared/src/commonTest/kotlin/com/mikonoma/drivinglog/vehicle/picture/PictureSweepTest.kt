@@ -1,9 +1,9 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.coroutines.test.runTest
 
 class PictureSweepTest {
 

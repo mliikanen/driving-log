@@ -46,8 +46,10 @@ data class OdometerEntry(val unit: OdometerUnit, val steps: Long? = null, val ze
         return when {
             // The first digit: a 0 is the typed zero (in a tenths unit it is the tenth).
             current == null -> copy(steps = digit.toLong())
+
             // Only the typed zero so far: another 0 changes nothing, any other digit turns the zero into the prefix.
             current == 0L -> if (digit == 0) this else copy(steps = digit.toLong(), zeroPrefix = true)
+
             else -> {
                 val next = current * 10 + digit
                 if (next > unit.maxSteps) this else copy(steps = next)

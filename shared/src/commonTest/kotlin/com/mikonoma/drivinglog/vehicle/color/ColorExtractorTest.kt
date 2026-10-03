@@ -17,8 +17,7 @@ class ColorExtractorTest {
     private val darkGrey = 0xFF303030.toInt()
     private val clear = 0x00000000
 
-    private fun image(size: Int = 100, pixel: (x: Int, y: Int) -> Int) =
-        PixelSamples(size, size, IntArray(size * size) { pixel(it % size, it / size) })
+    private fun image(size: Int = 100, pixel: (x: Int, y: Int) -> Int) = PixelSamples(size, size, IntArray(size * size) { pixel(it % size, it / size) })
 
     @Test
     fun aSolidColorGivesThatColor() {
@@ -132,7 +131,15 @@ class ColorExtractorTest {
 
     @Test
     fun theSameSamplesGiveTheSameColorTwice() {
-        val samples = image { x, y -> if ((x / 7 + y / 5) % 3 == 0) red else if ((x + y) % 2 == 0) blue else green }
+        val samples = image { x, y ->
+            if ((x / 7 + y / 5) % 3 == 0) {
+                red
+            } else if ((x + y) % 2 == 0) {
+                blue
+            } else {
+                green
+            }
+        }
 
         assertEquals(extractor.extract(samples), extractor.extract(samples))
         assertEquals(extractor.extract(samples), HistogramColorExtractor().extract(samples))

@@ -25,6 +25,8 @@ import platform.UIKit.UIAlertActionStyleDefault
 import platform.UIKit.UIAlertController
 import platform.UIKit.UIAlertControllerStyleActionSheet
 import platform.UIKit.UIApplication
+import platform.UIKit.UIDocumentPickerDelegateProtocol
+import platform.UIKit.UIDocumentPickerViewController
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import platform.UIKit.UIImagePickerController
@@ -34,8 +36,6 @@ import platform.UIKit.UIImagePickerControllerSourceType
 import platform.UIKit.UINavigationControllerDelegateProtocol
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
-import platform.UIKit.UIDocumentPickerDelegateProtocol
-import platform.UIKit.UIDocumentPickerViewController
 import platform.UniformTypeIdentifiers.UTTypeImage
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
@@ -82,9 +82,11 @@ private class IosPhotoSources {
     private fun takePhoto() {
         when (AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo)) {
             AVAuthorizationStatusAuthorized -> presentCamera()
+
             AVAuthorizationStatusNotDetermined -> AVCaptureDevice.requestAccessForMediaType(AVMediaTypeVideo) { granted ->
                 dispatch_async(dispatch_get_main_queue()) { if (granted) presentCamera() else onResult(PhotoResult.CameraDenied) }
             }
+
             else -> onResult(PhotoResult.CameraDenied) // refused, or restricted
         }
     }
@@ -119,7 +121,9 @@ private class IosPhotoSources {
     }
 }
 
-private class LibraryDelegate(val done: (PhotoResult) -> Unit) : NSObject(), PHPickerViewControllerDelegateProtocol {
+private class LibraryDelegate(val done: (PhotoResult) -> Unit) :
+    NSObject(),
+    PHPickerViewControllerDelegateProtocol {
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
         picker.dismissViewControllerAnimated(true, null)
         val provider = (didFinishPicking.firstOrNull() as? PHPickerResult)?.itemProvider
@@ -135,7 +139,9 @@ private class LibraryDelegate(val done: (PhotoResult) -> Unit) : NSObject(), PHP
 }
 
 private class CameraDelegate(val done: (PhotoResult) -> Unit) :
-    NSObject(), UIImagePickerControllerDelegateProtocol, UINavigationControllerDelegateProtocol {
+    NSObject(),
+    UIImagePickerControllerDelegateProtocol,
+    UINavigationControllerDelegateProtocol {
 
     override fun imagePickerController(picker: UIImagePickerController, didFinishPickingMediaWithInfo: Map<Any?, *>) {
         picker.dismissViewControllerAnimated(true, null)
@@ -152,7 +158,9 @@ private class CameraDelegate(val done: (PhotoResult) -> Unit) :
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private class DocumentDelegate(val done: (PhotoResult) -> Unit) : NSObject(), UIDocumentPickerDelegateProtocol {
+private class DocumentDelegate(val done: (PhotoResult) -> Unit) :
+    NSObject(),
+    UIDocumentPickerDelegateProtocol {
 
     override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {
         val url = didPickDocumentsAtURLs.firstOrNull() as? NSURL

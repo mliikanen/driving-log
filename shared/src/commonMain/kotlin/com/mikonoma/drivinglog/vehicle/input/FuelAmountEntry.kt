@@ -39,7 +39,9 @@ data class FuelAmountEntry(val steps: Long? = null, val zeroPrefix: Boolean = fa
         val current = steps
         return when {
             current == null -> copy(steps = digit.toLong())
+
             current == 0L -> if (digit == 0) this else copy(steps = digit.toLong(), zeroPrefix = true)
+
             else -> {
                 val next = current * 10 + digit
                 if (next > MAX_STEPS) this else copy(steps = next)

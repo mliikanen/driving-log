@@ -1,32 +1,29 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
-import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
-import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
-import com.mikonoma.drivinglog.ui.theme.HeaderDivider
-import com.mikonoma.drivinglog.ui.ScreenBottomSpace
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -69,6 +66,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -82,8 +80,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
@@ -99,36 +95,35 @@ import com.mikonoma.drivinglog.locale.DeviceLocale
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.CloseButton
+import com.mikonoma.drivinglog.ui.OdometerField
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.RequiredFieldNote
-import com.mikonoma.drivinglog.ui.OdometerField
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.VehiclePicture
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.FuelType
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.format.formatFuelSteps
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.format.formatTimeOfDay
-import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
-import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
-import com.mikonoma.drivinglog.vehicle.picture.PictureError
-import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ui.LiveScannerContent
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanCallbacks
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanProgressContent
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReadingAction
 import com.mikonoma.drivinglog.vehicle.ocr.ui.ScanReviewContent
-import kotlin.time.Instant
+import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
+import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
+import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 @Composable
-fun LogEventScreen(
-    processor: LogEventProcessor,
-    deviceLocale: DeviceLocale,
-    deviceTimeZone: DeviceTimeZone,
-    onBack: () -> Unit,
-) {
+fun LogEventScreen(processor: LogEventProcessor, deviceLocale: DeviceLocale, deviceTimeZone: DeviceTimeZone, onBack: () -> Unit) {
     val state by processor.states.collectAsState()
 
     LaunchedEffect(processor) {
@@ -241,7 +236,9 @@ fun LogEventContent(
         ) {
             when {
                 state.isLoading -> Unit
+
                 state.notFound -> Text("This vehicle no longer exists.")
+
                 else -> {
                     // The Kind selector is always shown; the vehicle selector only when the form was opened without a vehicle (from the Home
                     // screen — a vehicle's details screen fixes it and shows no selector). With both, they share one row, split in half.
@@ -273,6 +270,7 @@ fun LogEventContent(
                                 ScanReadingAction(onOpen = { onIntent(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE)) })
                             }
                         }
+
                         LogKind.REFUELING -> {
                             MomentRow(state, deviceLocale, onDate = { showDate = true }, onTime = { showTime = true }, onZone = { showZone = true })
                             if (state.error is LogDistanceError.TimeInFuture) ErrorText(errorMessage(state, symbols))
@@ -310,7 +308,8 @@ fun LogEventContent(
                                 isError = state.error != null && state.error !is LogDistanceError.TimeInFuture &&
                                     state.error !is LogDistanceError.FuelAmountEmpty && state.error !is LogDistanceError.FuelAmountNotPositive,
                                 errorText = state.error?.takeIf {
-                                    it !is LogDistanceError.TimeInFuture && it !is LogDistanceError.FuelAmountEmpty && it !is LogDistanceError.FuelAmountNotPositive
+                                    it !is LogDistanceError.TimeInFuture && it !is LogDistanceError.FuelAmountEmpty &&
+                                        it !is LogDistanceError.FuelAmountNotPositive
                                 }?.let { errorMessage(state, symbols) },
                             )
                             if (state.canScan) {
@@ -414,7 +413,10 @@ private fun KindSelector(kind: LogKind, modifier: Modifier = Modifier, onSelect:
             for (option in LogKind.entries) {
                 DropdownMenuItem(
                     text = { Text(option.label) },
-                    onClick = { onSelect(option); expanded = false },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
                     modifier = Modifier.testTag("log_kind_option_${option.name.lowercase()}"),
                 )
             }
@@ -451,7 +453,10 @@ private fun VehicleSelector(vehicles: List<VehicleChoice>, selected: VehicleChoi
                         }
                     },
                     leadingIcon = { VehicleChoiceIcon(vehicle) },
-                    onClick = { onSelect(vehicle.id); expanded = false },
+                    onClick = {
+                        onSelect(vehicle.id)
+                        expanded = false
+                    },
                     modifier = Modifier.testTag("log_vehicle_option_${vehicle.id}"),
                 )
             }
@@ -484,13 +489,7 @@ private fun WayChoice(selected: LogWay, onSelect: (LogWay) -> Unit) {
 }
 
 @Composable
-private fun MomentRow(
-    state: LogEventState,
-    deviceLocale: DeviceLocale,
-    onDate: () -> Unit,
-    onTime: () -> Unit,
-    onZone: () -> Unit,
-) {
+private fun MomentRow(state: LogEventState, deviceLocale: DeviceLocale, onDate: () -> Unit, onTime: () -> Unit, onZone: () -> Unit) {
     val local = state.localDateTime
     val offset = state.moment.zone?.offsetSeconds ?: 0
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -650,7 +649,10 @@ private fun FuelTypeSelector(selected: FuelType, allowed: Set<FuelType>, onSelec
                 if (option !in allowed) continue
                 DropdownMenuItem(
                     text = { Text(option.label) },
-                    onClick = { onSelect(option); expanded = false },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
                     modifier = Modifier.testTag("fuel_type_option_${option.name.lowercase()}"),
                 )
             }
@@ -700,11 +702,12 @@ private fun KnownOdometerInfo(state: LogEventState, symbols: com.mikonoma.drivin
  * floated (the box never receives real focus, so an empty, never-focused field would otherwise show a large,
  * centered label with no visible content). `DecorationBox` has no `modifier` of its own — in the usual pattern it
  * decorates a `BasicTextField`, which carries one — so the tap target, width and test tag are on the wrapping [Box].
+ *
+ * `internal`, not `private` (add-event-editing): reused as-is by the event details screen's "Edit" action, where
+ * [showRemoveAction] is false — that screen's only way to clear a note is opening the editor and blanking the text
+ * (see its own spec scenario), not a separate trash-can action.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-/** `internal`, not `private` (add-event-editing): reused as-is by the event details screen's "Edit" action, where
- * [showRemoveAction] is false — that screen's only way to clear a note is opening the editor and blanking the text
- * (see its own spec scenario), not a separate trash-can action. */
 @Composable
 internal fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () -> Unit, showRemoveAction: Boolean = true) {
     val shown = pendingNote ?: "Add a note..."
@@ -744,7 +747,9 @@ internal fun NoteField(pendingNote: String?, onOpen: () -> Unit, onRemove: () ->
                         Icon(Icons.Filled.Delete, contentDescription = "Remove note")
                     }
                 }
-            } else null,
+            } else {
+                null
+            },
         )
     }
 }
@@ -761,7 +766,13 @@ private fun PhotoStripField(
     previewUris: List<Pair<String, String>>,
     onPhotoPicked: (PhotoResult) -> Unit,
     onRemoveRequested: (String) -> Unit,
-) = PhotoStripField(isFull = photos.isFull, error = photos.error, previewUris = previewUris, onPhotoPicked = onPhotoPicked, onRemoveRequested = onRemoveRequested)
+) = PhotoStripField(
+    isFull = photos.isFull,
+    error = photos.error,
+    previewUris = previewUris,
+    onPhotoPicked = onPhotoPicked,
+    onRemoveRequested = onRemoveRequested,
+)
 
 /**
  * The strip itself, decoupled from [EventPhotoDraft]: `internal`, not `private` (add-event-editing), reused as-is by
@@ -952,17 +963,22 @@ private fun ErrorText(message: String) {
     Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("log_error"))
 }
 
-private fun errorMessage(state: LogEventState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols): String =
-    when (val error = state.error) {
-        null -> ""
-        LogDistanceError.FieldEmpty ->
-            if (state.way == LogWay.TRIP_DISTANCE) "Enter the trip distance" else "Enter the odometer reading"
-        LogDistanceError.TimeInFuture -> "The time cannot be in the future"
-        LogDistanceError.DistanceNotPositive -> "The distance must be more than zero"
-        is LogDistanceError.OdometerNotHigher -> "Enter a reading higher than " + formatOdometer(error.known, state.vehicleUnit, symbols)
-        LogDistanceError.FuelAmountEmpty -> "Enter the fuel amount"
-        LogDistanceError.FuelAmountNotPositive -> "The fuel amount must be more than zero"
-    }
+private fun errorMessage(state: LogEventState, symbols: com.mikonoma.drivinglog.locale.NumberSymbols): String = when (val error = state.error) {
+    null -> ""
+
+    LogDistanceError.FieldEmpty ->
+        if (state.way == LogWay.TRIP_DISTANCE) "Enter the trip distance" else "Enter the odometer reading"
+
+    LogDistanceError.TimeInFuture -> "The time cannot be in the future"
+
+    LogDistanceError.DistanceNotPositive -> "The distance must be more than zero"
+
+    is LogDistanceError.OdometerNotHigher -> "Enter a reading higher than " + formatOdometer(error.known, state.vehicleUnit, symbols)
+
+    LogDistanceError.FuelAmountEmpty -> "Enter the fuel amount"
+
+    LogDistanceError.FuelAmountNotPositive -> "The fuel amount must be more than zero"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1004,13 +1020,7 @@ private fun TimeDialog(hour: Int, minute: Int, is24Hour: Boolean, onDismiss: () 
 }
 
 @Composable
-private fun TimeZoneDialog(
-    at: Instant,
-    deviceZoneId: String,
-    selectedId: String,
-    onDismiss: () -> Unit,
-    onPicked: (String) -> Unit,
-) {
+private fun TimeZoneDialog(at: Instant, deviceZoneId: String, selectedId: String, onDismiss: () -> Unit, onPicked: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val choices = remember(query, at, deviceZoneId) { timeZoneChoices(TimeZone.availableZoneIds, deviceZoneId, at, query) }
     AlertDialog(
@@ -1035,7 +1045,9 @@ private fun TimeZoneDialog(
                             supportingContent = { SubtleText(formatUtcOffset(choice.offsetSeconds)) },
                             trailingContent = if (choice.id == selectedId) {
                                 { Icon(Icons.Filled.Check, contentDescription = "Selected") }
-                            } else null,
+                            } else {
+                                null
+                            },
                             modifier = Modifier
                                 .clickable {
                                     onPicked(choice.id)

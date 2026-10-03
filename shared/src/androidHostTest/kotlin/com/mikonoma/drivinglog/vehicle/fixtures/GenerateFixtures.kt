@@ -10,13 +10,13 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.TimeZone
 import java.io.File
 import kotlin.test.Test
 import kotlin.time.Clock
 import kotlin.time.Instant
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.TimeZone
 
 /**
  * Regenerates the `.db` fixture files Maestro flows seed onto a device before a rendering-focused flow runs

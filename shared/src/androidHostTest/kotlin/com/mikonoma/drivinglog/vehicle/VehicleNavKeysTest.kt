@@ -3,14 +3,14 @@ package com.mikonoma.drivinglog.vehicle
 import com.mikonoma.drivinglog.di.createAppGraph
 import com.mikonoma.drivinglog.locale.FakeDeviceLocale
 import com.mikonoma.drivinglog.vehicle.data.createTestDriver
+import com.mikonoma.drivinglog.vehicle.distance.LogEventState
+import kotlinx.serialization.encoding.CompositeDecoder
+import org.fuusio.kide.navigation.ScreenNavKeyRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlinx.serialization.encoding.CompositeDecoder
-import com.mikonoma.drivinglog.vehicle.distance.LogEventState
-import org.fuusio.kide.navigation.ScreenNavKeyRegistry
 
 class VehicleNavKeysTest {
 

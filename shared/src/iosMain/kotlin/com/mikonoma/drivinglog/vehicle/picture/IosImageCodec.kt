@@ -3,8 +3,6 @@ package com.mikonoma.drivinglog.vehicle.picture
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
-import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.useContents
@@ -20,10 +18,10 @@ import platform.CoreGraphics.CGContextConcatCTM
 import platform.CoreGraphics.CGContextDrawImage
 import platform.CoreGraphics.CGContextRelease
 import platform.CoreGraphics.CGContextSetInterpolationQuality
-import platform.CoreGraphics.kCGInterpolationHigh
 import platform.CoreGraphics.CGImageAlphaInfo
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
+import platform.CoreGraphics.kCGInterpolationHigh
 import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.UIKit.UIGraphicsImageRenderer
@@ -32,6 +30,8 @@ import platform.UIKit.UIGraphicsImageRendererFormat
 import platform.UIKit.UIImage
 import platform.UIKit.UIImagePNGRepresentation
 import platform.posix.memcpy
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Decodes with `UIImage` and encodes PNG: the image APIs on iOS read WebP but cannot write it, so the versions are stored as PNG
@@ -43,8 +43,7 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
 
     private class Decoded(private val image: UIImage, override val width: Int, override val height: Int) : DecodedImage {
         // Skia decodes the PNG of the upright image; it applies no orientation of its own.
-        override fun toImageBitmap(): ImageBitmap =
-            Image.makeFromEncoded(requireNotNull(UIImagePNGRepresentation(image)).toByteArray()).toComposeImageBitmap()
+        override fun toImageBitmap(): ImageBitmap = Image.makeFromEncoded(requireNotNull(UIImagePNGRepresentation(image)).toByteArray()).toComposeImageBitmap()
 
         override fun turnedClockwise(quarterTurns: Int): DecodedImage {
             val turns = quarterTurns.mod(4)
@@ -59,11 +58,10 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
         Decoded(upright, upright.size.useContents { width.roundToInt() }, upright.size.useContents { height.roundToInt() })
     }
 
-    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? =
-        withContext(dispatcher) {
-            val image = upright(bytes)?.let { if (quarterTurns.mod(4) == 0) it else turnedImage(it, quarterTurns) } ?: return@withContext null
-            EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
-        }
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? = withContext(dispatcher) {
+        val image = upright(bytes)?.let { if (quarterTurns.mod(4) == 0) it else turnedImage(it, quarterTurns) } ?: return@withContext null
+        EncodedPicture(encode(image, crop, sides.small), encode(image, crop, sides.large))
+    }
 
     /** iOS has no live scanner (`add-live-scanner`), so no frame is ever encoded here. */
     override suspend fun encode(image: com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage): EncodedImage? = null
@@ -93,7 +91,13 @@ class IosImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatcher) 
         val space = CGColorSpaceCreateDeviceRGB()
         rgba.usePinned { pinned ->
             val context = CGBitmapContextCreate(
-                pinned.addressOf(0), w.toULong(), h.toULong(), 8u, (w * 4).toULong(), space, CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value,
+                pinned.addressOf(0),
+                w.toULong(),
+                h.toULong(),
+                8u,
+                (w * 4).toULong(),
+                space,
+                CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value,
             )
             CGContextDrawImage(context, CGRectMake(0.0, 0.0, w.toDouble(), h.toDouble()), cgImage)
             CGContextRelease(context)
@@ -160,8 +164,7 @@ private fun turnedImage(image: UIImage, quarterTurns: Int): UIImage {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun ByteArray.toNSData(): NSData =
-    if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.toULong()) }
+internal fun ByteArray.toNSData(): NSData = if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.toULong()) }
 
 @OptIn(ExperimentalForeignApi::class)
 internal fun NSData.toByteArray(): ByteArray {

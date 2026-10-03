@@ -3,18 +3,17 @@ package com.mikonoma.drivinglog.vehicle.format
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
 
 class OdometerFormatTest {
 
     private val us = NumberSymbols.ENGLISH_US
     private val fi = NumberSymbols.FINNISH
 
-    private fun km(meters: Long, unit: OdometerUnit, symbols: NumberSymbols) =
-        formatOdometer(Distance(meters), unit, symbols)
+    private fun km(meters: Long, unit: OdometerUnit, symbols: NumberSymbols) = formatOdometer(Distance(meters), unit, symbols)
 
     @Test
     fun englishKilometers() {

@@ -21,10 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
-import java.io.File
-import java.io.IOException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 
 /**
  * The system's chooser: one `createChooser` over "get an image" whose extra initial intent is the camera app, so the system lists

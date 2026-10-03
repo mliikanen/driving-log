@@ -1,8 +1,5 @@
 package com.mikonoma.drivinglog.vehicle.data
 
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
@@ -12,11 +9,21 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
 import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
-import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -33,13 +40,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.TimeZone
 
 /** The default is on a whole minute, where a vehicle's initial event is dated exactly (see the minute precision tests). */
 class FakeClock(var current: Instant = Instant.fromEpochMilliseconds(60_000)) : Clock {
@@ -301,13 +301,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     /** Adds a distance entry; the tenths choice only matters to the tests about it. */
-    private suspend fun addEntry(
-        vehicleId: String,
-        occurredAt: ZonedMoment,
-        distance: Distance,
-        loggedOdometer: Distance?,
-        tenthsIncluded: Boolean = false,
-    ) = repository.addDistanceEntry(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
+    private suspend fun addEntry(vehicleId: String, occurredAt: ZonedMoment, distance: Distance, loggedOdometer: Distance?, tenthsIncluded: Boolean = false) =
+        repository.addDistanceEntry(vehicleId, occurredAt, distance, loggedOdometer, tenthsIncluded)
 
     private suspend fun assertCurrentOdometer(id: String, meters: Long) {
         val fromSql = repository.observeVehicle(id).first()?.currentOdometer
@@ -426,12 +421,22 @@ class SqlDelightVehicleRepositoryTest {
             eventPictures = eventPictureStore,
         )
         val id = repositoryWithSeparateStores.addVehicle(
-            "Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(45_200_000),
+            "Family car",
+            null,
+            VehicleType.CAR,
+            VehicleColors.default,
+            OdometerUnit.KILOMETERS,
+            Distance(45_200_000),
         )
         val eventPhoto = PendingPicture(eventPictureStore.addPending())
 
         val eventId = repositoryWithSeparateStores.addDistanceEntry(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, photos = listOf(eventPhoto),
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            Distance(30_000),
+            null,
+            tenthsIncluded = false,
+            photos = listOf(eventPhoto),
         )
 
         val entry = repositoryWithSeparateStores.observeLog(id).first().first { it.id == eventId } as VehicleEvent.DistanceEntry
@@ -457,15 +462,23 @@ class SqlDelightVehicleRepositoryTest {
     )
 
     private fun scan(accepted: Int = 0) = com.mikonoma.drivinglog.vehicle.ocr.ScanResult(
-        1280, 720,
+        1280,
+        720,
         listOf(
             com.mikonoma.drivinglog.vehicle.ocr.Detection(
-                "71140km", "71140", com.mikonoma.drivinglog.vehicle.ocr.TextBox(529, 412, 619, 433),
-                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO",
+                "71140km",
+                "71140",
+                com.mikonoma.drivinglog.vehicle.ocr.TextBox(529, 412, 619, 433),
+                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.ODOMETER,
+                com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+                "ODO",
             ),
             com.mikonoma.drivinglog.vehicle.ocr.Detection(
-                "917", "917", com.mikonoma.drivinglog.vehicle.ocr.TextBox(445, 246, 481, 264),
-                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.MAGNITUDE,
+                "917",
+                "917",
+                com.mikonoma.drivinglog.vehicle.ocr.TextBox(445, 246, 481, 264),
+                com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.TRIP,
+                com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.MAGNITUDE,
             ),
         ),
         accepted,
@@ -477,7 +490,12 @@ class SqlDelightVehicleRepositoryTest {
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
 
         val eventId = repositoryWithCaptures.addDistanceEntry(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            Distance(30_000),
+            null,
+            tenthsIncluded = false,
+            capture = capture,
         )
 
         val stored = assertNotNull(repositoryWithCaptures.captureOf(eventId))
@@ -493,7 +511,11 @@ class SqlDelightVehicleRepositoryTest {
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
 
         val eventId = repositoryWithCaptures.addOdometerAnchor(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(71_140_000), tenthsIncluded = false, capture = capture,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            Distance(71_140_000),
+            tenthsIncluded = false,
+            capture = capture,
         )
 
         assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
@@ -506,9 +528,14 @@ class SqlDelightVehicleRepositoryTest {
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
 
         val eventId = repositoryWithCaptures.addRefueling(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
-            filledUp = true, mileage = RefuelingMileage.Anchor(Distance(71_140_000)), capture = capture,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            mileage = RefuelingMileage.Anchor(Distance(71_140_000)),
+            capture = capture,
         )
 
         assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
@@ -519,8 +546,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         val eventId = repositoryWithCaptures.addRefueling(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
         )
 
         assertNull(repositoryWithCaptures.captureOf(eventId))
@@ -533,16 +564,24 @@ class SqlDelightVehicleRepositoryTest {
         // The same event id twice: the second insert fails on the primary key.
         idCounter = 0
         repositoryWithCaptures.addRefueling(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(1_000),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(1_000),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
         )
         idCounter = 0
 
         assertFails {
             repositoryWithCaptures.addRefueling(
-                id, ZonedMoment.of(clock.current, TimeZone.UTC), com.mikonoma.drivinglog.vehicle.domain.Volume(2_000),
-                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
-                filledUp = true, capture = capture,
+                id,
+                ZonedMoment.of(clock.current, TimeZone.UTC),
+                com.mikonoma.drivinglog.vehicle.domain.Volume(2_000),
+                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                filledUp = true,
+                capture = capture,
             )
         }
 
@@ -556,7 +595,13 @@ class SqlDelightVehicleRepositoryTest {
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
 
         val id = repositoryWithCaptures.addVehicle(
-            "Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(71_140_000), capture = capture,
+            "Family car",
+            null,
+            VehicleType.CAR,
+            VehicleColors.default,
+            OdometerUnit.KILOMETERS,
+            Distance(71_140_000),
+            capture = capture,
         )
 
         val initial = repositoryWithCaptures.observeLog(id).first().single() as VehicleEvent.InitialOdometer
@@ -583,7 +628,15 @@ class SqlDelightVehicleRepositoryTest {
         idCounter = 0
 
         assertFails {
-            repositoryWithCaptures.addVehicle("Second", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(71_140_000), capture = capture)
+            repositoryWithCaptures.addVehicle(
+                "Second",
+                null,
+                VehicleType.CAR,
+                VehicleColors.default,
+                OdometerUnit.KILOMETERS,
+                Distance(71_140_000),
+                capture = capture,
+            )
         }
 
         assertTrue(captureStore.photos.isEmpty())
@@ -595,7 +648,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
         val eventId = repositoryWithCaptures.addDistanceEntry(
-            id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture,
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            Distance(30_000),
+            null,
+            tenthsIncluded = false,
+            capture = capture,
         )
         driver.execute(null, "PRAGMA foreign_keys = ON", 0)
 
@@ -623,7 +681,14 @@ class SqlDelightVehicleRepositoryTest {
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture("capture-pending-gone", scan())
 
         assertFails {
-            repositoryWithCaptures.addDistanceEntry(id, ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture)
+            repositoryWithCaptures.addDistanceEntry(
+                id,
+                ZonedMoment.of(clock.current, TimeZone.UTC),
+                Distance(30_000),
+                null,
+                tenthsIncluded = false,
+                capture = capture,
+            )
         }
 
         assertEquals(1, repositoryWithCaptures.observeLog(id).first().size)
@@ -637,7 +702,14 @@ class SqlDelightVehicleRepositoryTest {
         driver.execute(null, "PRAGMA foreign_keys = ON", 0)
 
         assertFails {
-            repositoryWithCaptures.addDistanceEntry("no-such-vehicle", ZonedMoment.of(clock.current, TimeZone.UTC), Distance(30_000), null, tenthsIncluded = false, capture = capture)
+            repositoryWithCaptures.addDistanceEntry(
+                "no-such-vehicle",
+                ZonedMoment.of(clock.current, TimeZone.UTC),
+                Distance(30_000),
+                null,
+                tenthsIncluded = false,
+                capture = capture,
+            )
         }
 
         assertTrue(captureStore.photos.isEmpty())
@@ -923,7 +995,12 @@ class SqlDelightVehicleRepositoryTest {
     fun addEventPhotoAppendsAfterPhotosAlreadyThere() = runTest {
         val id = vehicleAtNoon()
         val eventId = repository.addDistanceEntry(
-            id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+            id,
+            at(1.hours),
+            Distance(30_000),
+            null,
+            tenthsIncluded = false,
+            photos = listOf(PendingPicture(pictureStore.addPending())),
         )
 
         repository.addEventPhoto(id, eventId, PendingPicture(pictureStore.addPending()))
@@ -953,10 +1030,20 @@ class SqlDelightVehicleRepositoryTest {
     fun removingAPhotoFromOneEventDoesNotTouchAnothers() = runTest {
         val id = vehicleAtNoon()
         val firstEvent = repository.addDistanceEntry(
-            id, at(1.hours), Distance(30_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+            id,
+            at(1.hours),
+            Distance(30_000),
+            null,
+            tenthsIncluded = false,
+            photos = listOf(PendingPicture(pictureStore.addPending())),
         )
         val secondEvent = repository.addDistanceEntry(
-            id, at(2.hours), Distance(10_000), null, tenthsIncluded = false, photos = listOf(PendingPicture(pictureStore.addPending())),
+            id,
+            at(2.hours),
+            Distance(10_000),
+            null,
+            tenthsIncluded = false,
+            photos = listOf(PendingPicture(pictureStore.addPending())),
         )
         val secondPhotoId = (repository.observeLog(id).first().first { it.id == secondEvent } as VehicleEvent.DistanceEntry).photoIds.single()
 
@@ -1164,22 +1251,29 @@ class SqlDelightVehicleRepositoryTest {
 
     // ---- Pictures
 
-    private fun updatedAtOf(vehicleId: String): Long =
-        driver.executeQuery(
-            identifier = null,
-            sql = "SELECT updated_at FROM vehicle WHERE id = '$vehicleId'",
-            mapper = { cursor ->
-                cursor.next()
-                QueryResult.Value(cursor.getLong(0)!!)
-            },
-            parameters = 0,
-        ).value
+    private fun updatedAtOf(vehicleId: String): Long = driver.executeQuery(
+        identifier = null,
+        sql = "SELECT updated_at FROM vehicle WHERE id = '$vehicleId'",
+        mapper = { cursor ->
+            cursor.next()
+            QueryResult.Value(cursor.getLong(0)!!)
+        },
+        parameters = 0,
+    ).value
 
     private suspend fun pictureIdOf(vehicleId: String): String? = repository.observeVehicle(vehicleId).first()!!.vehicle.pictureId
 
     private suspend fun addCarWithPicture(): Pair<String, String> {
         val pending = pictureStore.addPending()
-        val id = repository.addVehicle("Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(45_200_000), PendingPicture(pending))
+        val id = repository.addVehicle(
+            "Family car",
+            "ABC-123",
+            VehicleType.CAR,
+            VehicleColors.default,
+            OdometerUnit.KILOMETERS,
+            Distance(45_200_000),
+            PendingPicture(pending),
+        )
         return id to pictureIdOf(id)!!
     }
 
@@ -1189,7 +1283,15 @@ class SqlDelightVehicleRepositoryTest {
         val large = FakePictureStore.image(2, 2)
         val pending = pictureStore.addPending(small, large)
 
-        val id = repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(45_200_000), PendingPicture(pending))
+        val id = repository.addVehicle(
+            "Family car",
+            null,
+            VehicleType.CAR,
+            VehicleColors.default,
+            OdometerUnit.KILOMETERS,
+            Distance(45_200_000),
+            PendingPicture(pending),
+        )
 
         val pictureId = pictureIdOf(id)!!
         assertEquals(pictureId, repository.observeVehicles().first().single().pictureId)
@@ -1221,7 +1323,9 @@ class SqlDelightVehicleRepositoryTest {
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
         val pending = pictureStore.addPending()
 
-        assertFails { repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending)) }
+        assertFails {
+            repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending))
+        }
 
         assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
         assertEquals(emptySet(), pictureStore.everything())
@@ -1229,7 +1333,9 @@ class SqlDelightVehicleRepositoryTest {
 
     @Test
     fun aPendingPictureThatIsGoneFailsTheAddAndSavesNothing() = runTest {
-        assertFails { repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture("gone")) }
+        assertFails {
+            repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture("gone"))
+        }
 
         assertEquals(emptyList(), repository.observeVehicles().first())
     }
@@ -1239,7 +1345,9 @@ class SqlDelightVehicleRepositoryTest {
         val pending = pictureStore.addPending()
         pictureStore.promoteFailure = IllegalStateException("disk full")
 
-        assertFails { repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending)) }
+        assertFails {
+            repository.addVehicle("Family car", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), PendingPicture(pending))
+        }
 
         assertEquals(emptyList(), repository.observeVehicles().first())
     }
@@ -1294,7 +1402,9 @@ class SqlDelightVehicleRepositoryTest {
         val replacement = pictureStore.addPending()
         driver.execute(null, "CREATE TRIGGER fail_update BEFORE UPDATE ON vehicle BEGIN SELECT RAISE(ABORT, 'boom'); END", 0)
 
-        assertFails { repository.updateVehicle(id, "Changed", null, VehicleType.CAR, VehicleColors.default, PictureChange.Replace(PendingPicture(replacement))) }
+        assertFails {
+            repository.updateVehicle(id, "Changed", null, VehicleType.CAR, VehicleColors.default, PictureChange.Replace(PendingPicture(replacement)))
+        }
 
         assertEquals(oldPictureId, pictureIdOf(id))
         assertEquals("Family car", repository.observeVehicles().first().single().name)
@@ -1332,16 +1442,15 @@ class SqlDelightVehicleRepositoryTest {
 
     private suspend fun typeOf(vehicleId: String): VehicleType = repository.observeVehicle(vehicleId).first()!!.vehicle.type
 
-    private fun storedTypeOf(vehicleId: String): String =
-        driver.executeQuery(
-            identifier = null,
-            sql = "SELECT vehicle_type FROM vehicle WHERE id = '$vehicleId'",
-            mapper = { cursor ->
-                cursor.next()
-                QueryResult.Value(cursor.getString(0)!!)
-            },
-            parameters = 0,
-        ).value
+    private fun storedTypeOf(vehicleId: String): String = driver.executeQuery(
+        identifier = null,
+        sql = "SELECT vehicle_type FROM vehicle WHERE id = '$vehicleId'",
+        mapper = { cursor ->
+            cursor.next()
+            QueryResult.Value(cursor.getString(0)!!)
+        },
+        parameters = 0,
+    ).value
 
     @Test
     fun aVehicleAddedWithEachTypeReadsItBackAndStoresItsCode() = runTest {
@@ -1436,16 +1545,15 @@ class SqlDelightVehicleRepositoryTest {
 
     private suspend fun colorOf(vehicleId: String): Rgb = repository.observeVehicle(vehicleId).first()!!.vehicle.color
 
-    private fun storedColorOf(vehicleId: String): String =
-        driver.executeQuery(
-            identifier = null,
-            sql = "SELECT vehicle_color FROM vehicle WHERE id = '$vehicleId'",
-            mapper = { cursor ->
-                cursor.next()
-                QueryResult.Value(cursor.getString(0)!!)
-            },
-            parameters = 0,
-        ).value
+    private fun storedColorOf(vehicleId: String): String = driver.executeQuery(
+        identifier = null,
+        sql = "SELECT vehicle_color FROM vehicle WHERE id = '$vehicleId'",
+        mapper = { cursor ->
+            cursor.next()
+            QueryResult.Value(cursor.getString(0)!!)
+        },
+        parameters = 0,
+    ).value
 
     @Test
     fun aVehicleAddedWithEachPresetReadsItBackAndStoresItsCode() = runTest {
@@ -1551,16 +1659,15 @@ class SqlDelightVehicleRepositoryTest {
 
     private suspend fun fuelTypeOf(vehicleId: String): VehicleFuelType = repository.observeVehicle(vehicleId).first()!!.vehicle.fuelType
 
-    private fun storedFuelTypeOf(vehicleId: String): String =
-        driver.executeQuery(
-            identifier = null,
-            sql = "SELECT vehicle_fuel_type FROM vehicle WHERE id = '$vehicleId'",
-            mapper = { cursor ->
-                cursor.next()
-                QueryResult.Value(cursor.getString(0)!!)
-            },
-            parameters = 0,
-        ).value
+    private fun storedFuelTypeOf(vehicleId: String): String = driver.executeQuery(
+        identifier = null,
+        sql = "SELECT vehicle_fuel_type FROM vehicle WHERE id = '$vehicleId'",
+        mapper = { cursor ->
+            cursor.next()
+            QueryResult.Value(cursor.getString(0)!!)
+        },
+        parameters = 0,
+    ).value
 
     @Test
     fun addingWithNoFuelTypeDefaultsToPetrol() = runTest {
@@ -1573,7 +1680,15 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aVehicleAddedWithEachFuelTypeReadsItBackAndStoresItsCode() = runTest {
         for (fuelType in VehicleFuelType.entries) {
-            val id = repository.addVehicle(fuelType.name, null, VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = fuelType)
+            val id = repository.addVehicle(
+                fuelType.name,
+                null,
+                VehicleType.CAR,
+                VehicleColors.default,
+                OdometerUnit.KILOMETERS,
+                Distance(1),
+                fuelType = fuelType,
+            )
 
             assertEquals(fuelType, fuelTypeOf(id), fuelType.name)
             assertEquals(fuelType, repository.observeVehicles().first().single { it.id == id }.fuelType, fuelType.name)
@@ -1594,7 +1709,15 @@ class SqlDelightVehicleRepositoryTest {
 
     @Test
     fun anEditThatKeepsTheFuelTypeLeavesIt() = runTest {
-        val id = repository.addVehicle("Bike", null, VehicleType.MOTORCYCLE, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = VehicleFuelType.LPG)
+        val id = repository.addVehicle(
+            "Bike",
+            null,
+            VehicleType.MOTORCYCLE,
+            VehicleColors.default,
+            OdometerUnit.KILOMETERS,
+            Distance(1),
+            fuelType = VehicleFuelType.LPG,
+        )
 
         repository.updateVehicle(id, "Big bike", null, VehicleType.MOTORCYCLE, VehicleColors.default, fuelType = VehicleFuelType.LPG)
 
@@ -1634,8 +1757,12 @@ class SqlDelightVehicleRepositoryTest {
     fun pastRefuelingsKeepTheirOwnFuelTypeAfterTheVehicleEditChangesItsFuelType() = runTest {
         val id = addFamilyCar()
         val refuelingId = repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.REGULAR_PETROL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.REGULAR_PETROL,
+            filledUp = true,
         )
 
         repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.DIESEL)
@@ -1660,7 +1787,9 @@ class SqlDelightVehicleRepositoryTest {
         database.vehicleQueries.insertVehicle("other", "Other", null, "KILOMETERS", 1, 1, null, "CAR", "203A43", "PETROL")
         insertEvent("id-2", "other", "INITIAL_ODOMETER", 1, 0)
 
-        assertFails { repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = VehicleFuelType.DIESEL) }
+        assertFails {
+            repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1), fuelType = VehicleFuelType.DIESEL)
+        }
 
         assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
     }
@@ -1740,7 +1869,12 @@ class SqlDelightVehicleRepositoryTest {
     fun anAlreadyOpenObserverSeesARemovedPhotoWithoutResubscribing() = runTest {
         val id = addFamilyCar()
         val entryId = repository.addDistanceEntry(
-            id, ZonedMoment(clock.current), Distance(30_000), null, false, photos = listOf(PendingPicture(pictureStore.addPending())),
+            id,
+            ZonedMoment(clock.current),
+            Distance(30_000),
+            null,
+            false,
+            photos = listOf(PendingPicture(pictureStore.addPending())),
         )
         val photoId = repository.observeEvent(id, entryId).first()!!.photoIds.single()
         val seen = mutableListOf<List<String>>()
@@ -1811,8 +1945,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         val eventId = repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
         )
 
         val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
@@ -1829,8 +1967,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
             mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)),
         )
 
@@ -1842,8 +1984,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
             mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(50_000_000)),
         )
 
@@ -1856,9 +2002,14 @@ class SqlDelightVehicleRepositoryTest {
         val pending = PendingPicture(pictureStore.addPending())
 
         val eventId = repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = false,
-            note = "cheap gas today", photos = listOf(pending),
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = false,
+            note = "cheap gas today",
+            photos = listOf(pending),
         )
 
         val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
@@ -1873,8 +2024,12 @@ class SqlDelightVehicleRepositoryTest {
 
         assertFails {
             repository.addRefueling(
-                id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(0),
-                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+                id,
+                ZonedMoment(clock.current),
+                com.mikonoma.drivinglog.vehicle.domain.Volume(0),
+                com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                filledUp = true,
             )
         }
     }
@@ -1884,8 +2039,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
         )
 
         assertEquals(id, repository.observeLastLoggedVehicleId().first())
@@ -1902,8 +2061,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
 
         repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, com.mikonoma.drivinglog.vehicle.domain.FuelType.PREMIUM_PETROL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.PREMIUM_PETROL,
+            filledUp = true,
         )
 
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, repository.observeLastFuelUnit().first())
@@ -1915,8 +2078,12 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
         val other = repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1))
         repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, com.mikonoma.drivinglog.vehicle.domain.FuelType.E85, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.E85,
+            filledUp = true,
         )
 
         // A vehicle that has never had a refueling still sees the same global preference.
@@ -1934,8 +2101,12 @@ class SqlDelightVehicleRepositoryTest {
         // does not gate on confirmation (that's the processor's job, `validateLogDistance`), but it must still
         // save the anchor unconditionally once the caller (having confirmed) calls it, exactly like addOdometerAnchor.
         val eventId = repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
             mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(44_000_000)),
         )
 
@@ -1948,8 +2119,12 @@ class SqlDelightVehicleRepositoryTest {
     fun editingARefuelingsNoteNeverTouchesItsFuelFields() = runTest {
         val id = addFamilyCar()
         val eventId = repository.addRefueling(
-            id, ZonedMoment(clock.current), com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true,
+            id,
+            ZonedMoment(clock.current),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
             mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)),
         )
 

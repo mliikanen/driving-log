@@ -42,11 +42,7 @@ enum class PictureError {
  * photo, while the crop screen is open) and why the last attempt failed, if it did ([error]).
  */
 @Serializable
-data class PictureEditState(
-    val draft: PictureDraft = PictureDraft.None,
-    val cropSourceId: String? = null,
-    val error: PictureError? = null,
-) {
+data class PictureEditState(val draft: PictureDraft = PictureDraft.None, val cropSourceId: String? = null, val error: PictureError? = null) {
     val isCropping: Boolean get() = cropSourceId != null
 }
 

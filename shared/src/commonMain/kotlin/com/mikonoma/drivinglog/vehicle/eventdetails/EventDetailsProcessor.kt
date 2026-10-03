@@ -1,6 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
+import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
@@ -10,7 +11,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Named
-import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import org.fuusio.kide.presentation.Action
@@ -59,23 +59,33 @@ class EventDetailsProcessor @AssistedInject constructor(
         EventDetailsIntent.EditClicked -> reduce {
             copy(edit = EventEditState(noteDraft = event?.note.orEmpty(), keptPhotos = photoThumbnailUris))
         }
+
         EventDetailsIntent.EditNoteOpened -> reduce { copy(edit = edit?.copy(noteEditorText = edit.noteDraft)) }
+
         is EventDetailsIntent.EditNoteTextEdited -> reduce { copy(edit = edit?.copy(noteEditorText = intent.text)) }
+
         EventDetailsIntent.EditNoteAttached -> reduce {
             copy(edit = edit?.let { it.copy(noteDraft = it.noteEditorText.orEmpty().trim(), noteEditorText = null) })
         }
+
         EventDetailsIntent.EditNoteDiscarded -> reduce { copy(edit = edit?.copy(noteEditorText = null)) }
+
         is EventDetailsIntent.EditPhotoPicked -> editPhotoStep { current ->
             if (current.isFull) current else current.copy(newPhotos = photoEditor.photoPicked(current.newPhotos, intent.result))
         }
+
         is EventDetailsIntent.EditNewPhotoRemoveRequested -> reduce {
             copy(edit = edit?.let { it.copy(newPhotos = photoEditor.removeRequested(it.newPhotos, intent.pendingId)) })
         }
+
         EventDetailsIntent.EditNewPhotoRemoveConfirmed -> editPhotoStep { it.copy(newPhotos = photoEditor.removeConfirmed(it.newPhotos)) }
+
         EventDetailsIntent.EditNewPhotoRemoveCancelled -> reduce {
             copy(edit = edit?.let { it.copy(newPhotos = photoEditor.removeCancelled(it.newPhotos)) })
         }
+
         is EventDetailsIntent.EditSavedPhotoRemoveRequested -> reduce { copy(edit = edit?.copy(savedPhotoRemovalPendingId = intent.photoId)) }
+
         EventDetailsIntent.EditSavedPhotoRemoveConfirmed -> reduce {
             copy(
                 edit = edit?.let {
@@ -83,14 +93,19 @@ class EventDetailsProcessor @AssistedInject constructor(
                 },
             )
         }
+
         EventDetailsIntent.EditSavedPhotoRemoveCancelled -> reduce { copy(edit = edit?.copy(savedPhotoRemovalPendingId = null)) }
+
         EventDetailsIntent.EditSaved -> editSaved()
+
         EventDetailsIntent.EditLeft -> editLeft()
+
         is EventDetailsIntent.PhotoClicked -> async("view-photo") {
             reduce { copy(viewingPhotoId = intent.photoId, viewingPhotoUri = null) }
             val uri = eventPictures.uri(intent.photoId, PictureSize.LARGE)
             reduce { copy(viewingPhotoUri = uri) }
         }
+
         EventDetailsIntent.PhotoViewerClosed -> reduce { copy(viewingPhotoId = null, viewingPhotoUri = null) }
     }
 

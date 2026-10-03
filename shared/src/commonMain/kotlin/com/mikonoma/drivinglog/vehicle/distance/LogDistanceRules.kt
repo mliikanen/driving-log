@@ -49,8 +49,7 @@ sealed interface LogDistanceResult {
  * The distance a new odometer count means: the count minus the previous known odometer, or null when the count is not
  * higher. Integer meters only, so it is exact whatever the unit the count was typed in.
  */
-fun distanceByOdometer(entered: Distance, known: Distance): Distance? =
-    if (entered.meters > known.meters) Distance(entered.meters - known.meters) else null
+fun distanceByOdometer(entered: Distance, known: Distance): Distance? = if (entered.meters > known.meters) Distance(entered.meters - known.meters) else null
 
 /**
  * Checks a log distance form. The first failing rule wins, in this order: an empty field, a moment in the future, then the
@@ -78,8 +77,11 @@ fun validateLogDistance(
     if (moment.instant > now) return LogDistanceResult.Invalid(LogDistanceError.TimeInFuture)
     return when (way) {
         LogWay.TRIP_DISTANCE ->
-            if (typed.meters > 0) LogDistanceResult.Valid(typed, loggedOdometer = null)
-            else LogDistanceResult.Invalid(LogDistanceError.DistanceNotPositive)
+            if (typed.meters > 0) {
+                LogDistanceResult.Valid(typed, loggedOdometer = null)
+            } else {
+                LogDistanceResult.Invalid(LogDistanceError.DistanceNotPositive)
+            }
 
         LogWay.NEW_ODOMETER -> {
             // Nothing to compare with: the count itself becomes the odometer at that time.
@@ -89,7 +91,9 @@ fun validateLogDistance(
                     // A later event already exists: this entry is backdated into history, not replacing the
                     // vehicle's current odometer, so it needs no confirmation.
                     known.meters != mostRecentKnown?.meters -> LogDistanceResult.Anchor(typed)
+
                     lowerOdometerConfirmed -> LogDistanceResult.Anchor(typed)
+
                     else -> LogDistanceResult.NeedsLowerOdometerConfirmation
                 }
             }

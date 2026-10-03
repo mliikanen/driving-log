@@ -17,36 +17,46 @@ class VehicleTonesTest {
         colors += "white" to Rgb(0xFFFFFF)
         colors += "black" to Rgb(0)
         for (level in 0..255 step 15) colors += "grey $level" to Rgb((level shl 16) or (level shl 8) or level)
-        for (hue in 0 until 360 step 10) for (chroma in listOf(4.0, 16.0, 32.0, 60.0, 100.0)) for (tone in listOf(15.0, 50.0, 85.0)) {
-            colors += "h$hue c${chroma.toInt()} t${tone.toInt()}" to HctColors.build(hue.toDouble(), chroma, tone)
+        for (hue in 0 until 360 step 10) {
+            for (chroma in listOf(4.0, 16.0, 32.0, 60.0, 100.0)) {
+                for (tone in listOf(15.0, 50.0, 85.0)) {
+                    colors += "h$hue c${chroma.toInt()} t${tone.toInt()}" to HctColors.build(hue.toDouble(), chroma, tone)
+                }
+            }
         }
         return colors
     }
 
     @Test
     fun theIconReachesThreeToOneOnItsContainerForEveryColorInBothSchemes() {
-        for ((name, color) in sweep()) for (dark in listOf(false, true)) {
-            val tones = VehicleTones.of(color, dark)
-            val ratio = contrastRatio(tones.icon.toColor(), tones.container.toColor())
-            assertTrue(ratio >= 3.0, "$name ${if (dark) "dark" else "light"}: $ratio")
+        for ((name, color) in sweep()) {
+            for (dark in listOf(false, true)) {
+                val tones = VehicleTones.of(color, dark)
+                val ratio = contrastRatio(tones.icon.toColor(), tones.container.toColor())
+                assertTrue(ratio >= 3.0, "$name ${if (dark) "dark" else "light"}: $ratio")
+            }
         }
     }
 
     @Test
     fun theIconIsInFactReadableAsTextForEveryColorToo() {
         // The tone rule gives about 4.5:1; the requirement is 3:1, so there is headroom.
-        for ((name, color) in sweep()) for (dark in listOf(false, true)) {
-            val tones = VehicleTones.of(color, dark)
-            assertTrue(contrastRatio(tones.icon.toColor(), tones.container.toColor()) >= 4.0, "$name dark=$dark")
+        for ((name, color) in sweep()) {
+            for (dark in listOf(false, true)) {
+                val tones = VehicleTones.of(color, dark)
+                assertTrue(contrastRatio(tones.icon.toColor(), tones.container.toColor()) >= 4.0, "$name dark=$dark")
+            }
         }
     }
 
     @Test
     fun greysWhiteAndBlackGiveNeutralTones() {
-        for (color in listOf(Rgb(0xFFFFFF), Rgb(0), Rgb(0x808080), Rgb(0x9E9E9E))) for (dark in listOf(false, true)) {
-            val tones = VehicleTones.of(color, dark)
-            assertTrue(HctColors.read(tones.icon).chroma < 4.0, "icon of ${color.hex}")
-            assertTrue(HctColors.read(tones.container).chroma < 4.0, "container of ${color.hex}")
+        for (color in listOf(Rgb(0xFFFFFF), Rgb(0), Rgb(0x808080), Rgb(0x9E9E9E))) {
+            for (dark in listOf(false, true)) {
+                val tones = VehicleTones.of(color, dark)
+                assertTrue(HctColors.read(tones.icon).chroma < 4.0, "icon of ${color.hex}")
+                assertTrue(HctColors.read(tones.container).chroma < 4.0, "container of ${color.hex}")
+            }
         }
     }
 

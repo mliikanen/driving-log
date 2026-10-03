@@ -179,8 +179,7 @@ class LogEventNavKey(private val graph: AppGraph, val vehicleId: String = "") : 
  * [saveArgs] string (`"$vehicleId|$eventId"`) since [ScreenNavKey.saveArgs] carries only one string; both ids are
  * plain UUIDs (`Uuid.random().toString()`), which never contain `|`.
  */
-class EventDetailsNavKey(private val graph: AppGraph, val vehicleId: String = "", val eventId: String = "") :
-    ScreenNavKey<EventDetailsProcessor> {
+class EventDetailsNavKey(private val graph: AppGraph, val vehicleId: String = "", val eventId: String = "") : ScreenNavKey<EventDetailsProcessor> {
     override val serialKey: String = "event-details"
 
     override fun equals(other: Any?): Boolean = other is EventDetailsNavKey && other.vehicleId == vehicleId && other.eventId == eventId

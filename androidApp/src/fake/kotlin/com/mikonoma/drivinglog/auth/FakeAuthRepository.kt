@@ -56,11 +56,14 @@ class FakeAuthRepository(private val currentActivity: CurrentActivityHolder) : A
                 state.value = TestAccountA
                 Result.success(Unit)
             }
+
             TestAccountPickerActivity.PickResult.ACCOUNT_B -> {
                 state.value = TestAccountB
                 Result.success(Unit)
             }
+
             TestAccountPickerActivity.PickResult.CANCELLED -> Result.failure(SignInCancelledException())
+
             TestAccountPickerActivity.PickResult.SIMULATED_FAILURE -> Result.failure(Exception("Simulated sign-in failure"))
         }
     }

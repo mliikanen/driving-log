@@ -1,9 +1,9 @@
 package com.mikonoma.drivinglog.vehicle.format
 
 import com.mikonoma.drivinglog.locale.TimeFormat
+import kotlinx.datetime.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.datetime.LocalDateTime
 
 class FormatTimeTest {
 

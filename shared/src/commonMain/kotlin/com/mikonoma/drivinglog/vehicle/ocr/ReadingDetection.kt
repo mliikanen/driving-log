@@ -1,8 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
+import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.math.max
-import kotlinx.serialization.Serializable
 
 /** What a detected reading is taken to be: the odometer's count, a trip meter's distance, or a refueling's fuel amount. */
 @Serializable
@@ -111,25 +111,40 @@ private val NUMBER = Regex("""^(\d+)(?:[.,](\d{1,2}))?([A-Za-z]*)$""")
  * (`add-seven-segment-ocr`: LCD readings often come back without unit or label; dial numbers are whole numbers). The rest are kept with a
  * null kind. Where two recognizers read the same place, one detection is kept ([onePerPlace]).
  */
-fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detection> =
-    photo.lines.flatMap { line ->
-        line.elements.mapIndexedNotNull { index, element ->
-            val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
-            val (wholeDigits, fraction, attached) = match.destructured
-            if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_DIGITS..ReadingThresholds.MAX_DIGITS) return@mapIndexedNotNull null
-            val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
-            val label = labelOf(photo, line, index, element.box, DISTANCE_LABEL_KINDS)
-            val hasUnit = isDistanceUnit(attached) || isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty())
-            val byMagnitude = kindByMagnitude(value.toDouble(), knownOdometer)
-            when {
-                label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first, hasUnit)
-                hasUnit -> Detection(element.text, value, element.box, byMagnitude, if (byMagnitude == null) DetectionBasis.IMPLAUSIBLE else DetectionBasis.MAGNITUDE, hasUnit = true)
-                byMagnitude == ReadingKind.ODOMETER || (byMagnitude == ReadingKind.TRIP && fraction.isNotEmpty()) ->
-                    Detection(element.text, value, element.box, byMagnitude, DetectionBasis.MAGNITUDE)
-                else -> Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
-            }
+fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detection> = photo.lines.flatMap { line ->
+    line.elements.mapIndexedNotNull { index, element ->
+        val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
+        val (wholeDigits, fraction, attached) = match.destructured
+        if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_DIGITS..ReadingThresholds.MAX_DIGITS) return@mapIndexedNotNull null
+        val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
+        val label = labelOf(photo, line, index, element.box, DISTANCE_LABEL_KINDS)
+        val hasUnit = isDistanceUnit(attached) || isDistanceUnit(line.elements.getOrNull(index + 1)?.text.orEmpty())
+        val byMagnitude = kindByMagnitude(value.toDouble(), knownOdometer)
+        when {
+            label != null -> Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first, hasUnit)
+
+            hasUnit -> Detection(
+                element.text,
+                value,
+                element.box,
+                byMagnitude,
+                if (byMagnitude ==
+                    null
+                ) {
+                    DetectionBasis.IMPLAUSIBLE
+                } else {
+                    DetectionBasis.MAGNITUDE
+                },
+                hasUnit = true,
+            )
+
+            byMagnitude == ReadingKind.ODOMETER || (byMagnitude == ReadingKind.TRIP && fraction.isNotEmpty()) ->
+                Detection(element.text, value, element.box, byMagnitude, DetectionBasis.MAGNITUDE)
+
+            else -> Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
         }
-    }.onePerPlace()
+    }
+}.onePerPlace()
 
 /**
  * The readings of [photo] as a new vehicle's odometer (`scan-initial-odometer`): with no known odometer to compare with, a number labeled
@@ -137,21 +152,20 @@ fun detectReadings(photo: RecognizedPhoto, knownOdometer: Double?): List<Detecti
  * not offered, nor an unlabeled one without a unit of [ReadingThresholds.MAX_TRIP] or less (a dial's scale, a clock). Labels, units and
  * [onePerPlace] work as in [detectReadings]; only the kinds differ.
  */
-fun detectInitialOdometer(photo: RecognizedPhoto): List<Detection> =
-    detectReadings(photo, knownOdometer = null).map { d ->
-        val kind = when {
-            d.basis == DetectionBasis.LABEL -> d.kind.takeIf { it == ReadingKind.ODOMETER }
-            d.hasUnit -> ReadingKind.ODOMETER
-            d.value.toDouble() > ReadingThresholds.MAX_TRIP -> ReadingKind.ODOMETER
-            else -> null
-        }
-        val basis = when {
-            d.basis == DetectionBasis.LABEL -> DetectionBasis.LABEL
-            kind != null -> DetectionBasis.MAGNITUDE
-            else -> DetectionBasis.NO_UNIT
-        }
-        d.copy(kind = kind, basis = basis)
+fun detectInitialOdometer(photo: RecognizedPhoto): List<Detection> = detectReadings(photo, knownOdometer = null).map { d ->
+    val kind = when {
+        d.basis == DetectionBasis.LABEL -> d.kind.takeIf { it == ReadingKind.ODOMETER }
+        d.hasUnit -> ReadingKind.ODOMETER
+        d.value.toDouble() > ReadingThresholds.MAX_TRIP -> ReadingKind.ODOMETER
+        else -> null
     }
+    val basis = when {
+        d.basis == DetectionBasis.LABEL -> DetectionBasis.LABEL
+        kind != null -> DetectionBasis.MAGNITUDE
+        else -> DetectionBasis.NO_UNIT
+    }
+    d.copy(kind = kind, basis = basis)
+}
 
 /**
  * Every number in [photo] that could be a refueling's fuel amount (`add-fuel-amount-ocr`, design.md), classified
@@ -162,18 +176,24 @@ fun detectInitialOdometer(photo: RecognizedPhoto): List<Detection> =
  * ([ReadingThresholds.MIN_FUEL_AMOUNT_DIGITS]/[ReadingThresholds.MAX_FUEL_AMOUNT_DIGITS]): a realistic fuel amount
  * is one or two digits, not the three-to-seven an odometer reading needs to even be considered.
  */
-fun detectFuelAmount(photo: RecognizedPhoto): List<Detection> =
-    photo.lines.flatMap { line ->
-        line.elements.mapIndexedNotNull { index, element ->
-            val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
-            val (wholeDigits, fraction, _) = match.destructured
-            if (wholeDigits.trimStart('0').length !in ReadingThresholds.MIN_FUEL_AMOUNT_DIGITS..ReadingThresholds.MAX_FUEL_AMOUNT_DIGITS) return@mapIndexedNotNull null
-            val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
-            val label = labelOf(photo, line, index, element.box, VOLUME_LABEL_KINDS)
-            if (label != null) Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
-            else Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
+fun detectFuelAmount(photo: RecognizedPhoto): List<Detection> = photo.lines.flatMap { line ->
+    line.elements.mapIndexedNotNull { index, element ->
+        val match = NUMBER.matchEntire(element.text) ?: return@mapIndexedNotNull null
+        val (wholeDigits, fraction, _) = match.destructured
+        if (wholeDigits.trimStart('0').length !in
+            ReadingThresholds.MIN_FUEL_AMOUNT_DIGITS..ReadingThresholds.MAX_FUEL_AMOUNT_DIGITS
+        ) {
+            return@mapIndexedNotNull null
         }
-    }.onePerPlace()
+        val value = if (fraction.isEmpty()) wholeDigits.trimStart('0') else "${wholeDigits.trimStart('0')}.$fraction"
+        val label = labelOf(photo, line, index, element.box, VOLUME_LABEL_KINDS)
+        if (label != null) {
+            Detection(element.text, value, element.box, label.second, DetectionBasis.LABEL, label.first)
+        } else {
+            Detection(element.text, value, element.box, null, DetectionBasis.NO_UNIT)
+        }
+    }
+}.onePerPlace()
 
 /**
  * One detection per place in the photo: where two overlap (their intersection is at least [ReadingThresholds.SAME_PLACE] of the smaller

@@ -39,24 +39,26 @@ class HistogramColorExtractor : ColorExtractor {
         val sums = Array(3) { LongArray(BINS) }
         var region = 0
         var opaque = 0
-        for (y in marginY until samples.height - marginY) for (x in marginX until samples.width - marginX) {
-            region++
-            val pixel = samples.argb[y * samples.width + x]
-            if ((pixel ushr 24) < MIN_ALPHA) continue
-            val r = (pixel shr 16) and 0xFF
-            val g = (pixel shr 8) and 0xFF
-            val b = pixel and 0xFF
-            val dx = (x - centerX) / halfX
-            val dy = (y - centerY) / halfY
-            val chroma = (maxOf(r, g, b) - minOf(r, g, b)) / 255.0
-            val weight = exp(-CENTER_FALLOFF * (dx * dx + dy * dy)) * (1.0 + CHROMA_BOOST * chroma)
-            val bin = ((r shr 4) shl 8) or ((g shr 4) shl 4) or (b shr 4)
-            weights[bin] += (weight * WEIGHT_SCALE).roundToLong()
-            counts[bin]++
-            sums[0][bin] += r.toLong()
-            sums[1][bin] += g.toLong()
-            sums[2][bin] += b.toLong()
-            opaque++
+        for (y in marginY until samples.height - marginY) {
+            for (x in marginX until samples.width - marginX) {
+                region++
+                val pixel = samples.argb[y * samples.width + x]
+                if ((pixel ushr 24) < MIN_ALPHA) continue
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                val dx = (x - centerX) / halfX
+                val dy = (y - centerY) / halfY
+                val chroma = (maxOf(r, g, b) - minOf(r, g, b)) / 255.0
+                val weight = exp(-CENTER_FALLOFF * (dx * dx + dy * dy)) * (1.0 + CHROMA_BOOST * chroma)
+                val bin = ((r shr 4) shl 8) or ((g shr 4) shl 4) or (b shr 4)
+                weights[bin] += (weight * WEIGHT_SCALE).roundToLong()
+                counts[bin]++
+                sums[0][bin] += r.toLong()
+                sums[1][bin] += g.toLong()
+                sums[2][bin] += b.toLong()
+                opaque++
+            }
         }
         if (opaque == 0 || opaque * 100 < region) return null
         var best = -1

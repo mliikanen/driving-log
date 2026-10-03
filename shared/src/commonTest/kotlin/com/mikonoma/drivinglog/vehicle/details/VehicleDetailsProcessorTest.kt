@@ -1,22 +1,16 @@
 package com.mikonoma.drivinglog.vehicle.details
 
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
-import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
-import com.mikonoma.drivinglog.vehicle.picture.PictureSize
+import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
-import com.mikonoma.drivinglog.vehicle.distanceEvent
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.initialEvent
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
+import com.mikonoma.drivinglog.vehicle.picture.PictureSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -24,6 +18,12 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.fuusio.kide.test.test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleDetailsProcessorTest {
@@ -184,8 +184,12 @@ class VehicleDetailsProcessorTest {
         repository.seedVehicle("v1", "Family car")
         // The repository returns the log newest first by time: the backdated entry "old" (time 150) was added last.
         val newestFirst = listOf(
-            distanceEvent("e5", 600, 1_000), distanceEvent("e4", 500, 1_000), distanceEvent("e3", 400, 1_000),
-            distanceEvent("e2", 300, 1_000), distanceEvent("e1", 200, 1_000), distanceEvent("old", 150, 1_000),
+            distanceEvent("e5", 600, 1_000),
+            distanceEvent("e4", 500, 1_000),
+            distanceEvent("e3", 400, 1_000),
+            distanceEvent("e2", 300, 1_000),
+            distanceEvent("e1", 200, 1_000),
+            distanceEvent("old", 150, 1_000),
             initialEvent("i", 100, 45_200_000),
         )
         repository.seedEvents("v1", newestFirst)

@@ -28,10 +28,7 @@ data class EventPhotoDraft(
  * removing one (with confirmation) and cleaning up. Works on an [EventPhotoDraft] and returns the next one, keeping
  * [store]'s files in step, so a caller only calls it and never re-implements a rule.
  */
-class EventPhotoDraftEditor(
-    private val store: PictureStore,
-    private val codec: ImageCodec,
-) {
+class EventPhotoDraftEditor(private val store: PictureStore, private val codec: ImageCodec) {
     /**
      * The system's chooser gave [result]. Already at the [EventPhotoDraft.MAX_PHOTOS] cap, a photo that cannot be
      * opened (not an image, or too large) or a refused camera leave [state] as it is except for [EventPhotoDraft.error];
@@ -39,8 +36,11 @@ class EventPhotoDraftEditor(
      */
     suspend fun photoPicked(state: EventPhotoDraft, result: PhotoResult): EventPhotoDraft = when (result) {
         PhotoResult.Cancelled -> state
+
         PhotoResult.Unreadable -> state.copy(error = PictureError.COULD_NOT_OPEN)
+
         PhotoResult.CameraDenied -> state.copy(error = PictureError.CAMERA_DENIED)
+
         is PhotoResult.Chosen -> {
             if (state.isFull) {
                 state

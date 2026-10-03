@@ -11,10 +11,7 @@ import kotlinx.coroutines.withContext
  * PaddleOCR's PP-OCR models on ONNX Runtime (`add-seven-segment-ocr`): the recognizer that reads seven-segment LCD digits, which ML Kit
  * cannot. [loadModel] gives a model file's bytes by name (the app's assets); the models are loaded on the first scan, not at start-up.
  */
-class PpOcrTextRecognizer(
-    private val loadModel: (String) -> ByteArray,
-    private val dispatcher: CoroutineDispatcher = ioDispatcher,
-) : TextRecognizer {
+class PpOcrTextRecognizer(private val loadModel: (String) -> ByteArray, private val dispatcher: CoroutineDispatcher = ioDispatcher) : TextRecognizer {
 
     private val models by lazy {
         OnnxPpOcrModels(

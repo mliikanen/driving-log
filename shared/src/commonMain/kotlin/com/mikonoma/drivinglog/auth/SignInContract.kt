@@ -4,10 +4,7 @@ import org.fuusio.kide.presentation.SideEffect
 import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
 
-data class SignInState(
-    val isSigningIn: Boolean = false,
-    val error: String? = null,
-) : ViewState
+data class SignInState(val isSigningIn: Boolean = false, val error: String? = null) : ViewState
 
 sealed interface SignInIntent : ViewIntent {
     data object SignIn : SignInIntent

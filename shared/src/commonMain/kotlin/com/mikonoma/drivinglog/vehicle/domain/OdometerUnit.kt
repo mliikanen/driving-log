@@ -7,15 +7,12 @@ import kotlinx.serialization.Serializable
  * and must never change once released.
  */
 @Serializable
-enum class OdometerUnit(
-    val code: String,
-    val isMiles: Boolean,
-    val hasTenths: Boolean,
-) {
+enum class OdometerUnit(val code: String, val isMiles: Boolean, val hasTenths: Boolean) {
     KILOMETERS("KILOMETERS", isMiles = false, hasTenths = false),
     KILOMETERS_TENTHS("KILOMETERS_TENTHS", isMiles = false, hasTenths = true),
     MILES("MILES", isMiles = true, hasTenths = false),
-    MILES_TENTHS("MILES_TENTHS", isMiles = true, hasTenths = true);
+    MILES_TENTHS("MILES_TENTHS", isMiles = true, hasTenths = true),
+    ;
 
     /** Largest entry, counted in this unit's steps (whole units, or tenths): 7 whole digits. */
     val maxSteps: Long get() = if (hasTenths) 99_999_999L else 9_999_999L
@@ -44,8 +41,7 @@ enum class OdometerUnit(
         private const val METERS_PER_MILE_SCALED = 1_609_344L
         private const val HALF_MILE_SCALED = METERS_PER_MILE_SCALED / 2
 
-        fun fromCode(code: String): OdometerUnit =
-            entries.firstOrNull { it.code == code } ?: error("Unknown odometer unit code: $code")
+        fun fromCode(code: String): OdometerUnit = entries.firstOrNull { it.code == code } ?: error("Unknown odometer unit code: $code")
     }
 }
 

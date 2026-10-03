@@ -30,8 +30,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
-import java.util.concurrent.Executors
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.Executors
 
 @Composable
 actual fun rememberCameraPermission(): CameraPermission {

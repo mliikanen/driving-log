@@ -12,10 +12,8 @@ import org.fuusio.kide.presentation.sideEffect
 
 /** The Home screen: what its tiles are follows whether the user has any vehicle; nothing typed is kept, so nothing is saved across a rotation. */
 @Inject
-class LandingProcessor(
-    repository: VehicleRepository,
-    private val authRepository: AuthRepository,
-) : PresentationProcessor<LandingIntent, LandingState, LandingEffect>(LandingState()) {
+class LandingProcessor(repository: VehicleRepository, private val authRepository: AuthRepository) :
+    PresentationProcessor<LandingIntent, LandingState, LandingEffect>(LandingState()) {
 
     init {
         observe("vehicles", repository.observeVehicles()) { vehicles ->
@@ -30,10 +28,15 @@ class LandingProcessor(
 
     override suspend fun map(intent: LandingIntent): Action<LandingState, LandingEffect>? = when (intent) {
         LandingIntent.OpenVehicles -> sideEffect { LandingEffect.ShowVehicles }
+
         LandingIntent.AddVehicle -> sideEffect { LandingEffect.ShowAddVehicle }
+
         LandingIntent.OpenLogEvent -> if (state.hasVehicles) sideEffect { LandingEffect.ShowLogEvent } else null
+
         LandingIntent.ToggleAccountMenu -> reduce { copy(isAccountMenuOpen = !isAccountMenuOpen) }
+
         LandingIntent.DismissAccountMenu -> reduce { copy(isAccountMenuOpen = false) }
+
         LandingIntent.SignOut -> async("sign-out") {
             reduce { copy(isAccountMenuOpen = false) }
             authRepository.signOut()

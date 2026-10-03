@@ -28,8 +28,10 @@ class VehicleIconsTest {
         val paths = VehicleType.entries.map { VehicleIcons.pathData.getValue(it) }
 
         assertEquals(8, paths.toSet().size)
-        for (a in VehicleType.entries) for (b in VehicleType.entries) {
-            if (a != b) assertNotEquals(VehicleIcons.pathData[a], VehicleIcons.pathData[b], "$a and $b")
+        for (a in VehicleType.entries) {
+            for (b in VehicleType.entries) {
+                if (a != b) assertNotEquals(VehicleIcons.pathData[a], VehicleIcons.pathData[b], "$a and $b")
+            }
         }
     }
 

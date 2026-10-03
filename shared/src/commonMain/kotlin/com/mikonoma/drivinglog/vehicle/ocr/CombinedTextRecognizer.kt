@@ -1,10 +1,10 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Several recognizers over the same photo, as one (`add-seven-segment-ocr`): ML Kit for printed text and PP-OCR for seven-segment
@@ -45,6 +45,12 @@ class CombinedTextRecognizer(private val recognizers: List<TextRecognizer>) : Te
         val sx = w.toDouble() / width
         val sy = h.toDouble() / height
         fun TextBox.scaled() = TextBox((left * sx).toInt(), (top * sy).toInt(), (right * sx).toInt(), (bottom * sy).toInt())
-        return RecognizedPhoto(w, h, lines.map { line -> RecognizedLine(line.text, line.box.scaled(), line.elements.map { RecognizedElement(it.text, it.box.scaled()) }) })
+        return RecognizedPhoto(
+            w,
+            h,
+            lines.map { line ->
+                RecognizedLine(line.text, line.box.scaled(), line.elements.map { RecognizedElement(it.text, it.box.scaled()) })
+            },
+        )
     }
 }

@@ -28,11 +28,7 @@ sealed interface VehicleEvent {
     val photoIds: List<String>
 
     /** Written once, when the vehicle is added. It sets the odometer. */
-    data class InitialOdometer(
-        override val id: String,
-        override val occurredAt: ZonedMoment,
-        val reading: Distance,
-    ) : VehicleEvent {
+    data class InitialOdometer(override val id: String, override val occurredAt: ZonedMoment, val reading: Distance) : VehicleEvent {
         override val odometer: Distance get() = reading
         override val note: String? get() = null
         override val photoIds: List<String> get() = emptyList()

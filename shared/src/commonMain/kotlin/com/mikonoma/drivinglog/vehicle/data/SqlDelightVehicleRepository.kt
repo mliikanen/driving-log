@@ -17,29 +17,29 @@ import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
-import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
-import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
-import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
-import com.mikonoma.drivinglog.vehicle.ocr.ScanResult
 import com.mikonoma.drivinglog.vehicle.domain.PictureChange
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
+import com.mikonoma.drivinglog.vehicle.domain.StoredCapture
 import com.mikonoma.drivinglog.vehicle.domain.Vehicle
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleDetails
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
-import com.mikonoma.drivinglog.vehicle.domain.Rgb
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
+import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.ScanResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
-import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class SqlDelightVehicleRepository(
     private val database: DrivingLogDatabase,
@@ -61,8 +61,7 @@ class SqlDelightVehicleRepository(
     private val eventPhotos get() = database.eventPictureQueries
     private val eventCaptures get() = database.eventCaptureQueries
 
-    override fun observeVehicles(): Flow<List<Vehicle>> =
-        vehicles.selectVehicles().asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
+    override fun observeVehicles(): Flow<List<Vehicle>> = vehicles.selectVehicles().asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
 
     override fun observeVehicle(id: String): Flow<VehicleDetails?> =
         vehicles.selectVehicleDetails(id).asFlow().mapToOneOrNull(dispatcher).map { it?.toDomain() }
@@ -71,18 +70,15 @@ class SqlDelightVehicleRepository(
         events.selectRecentEvents(vehicleId, limit.toLong()).asFlow().mapToList(dispatcher)
             .map { rows -> rows.mapNotNull { it.toDomain() } }
 
-    override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> =
-        events.selectLog(vehicleId).asFlow().mapToList(dispatcher)
-            .map { rows -> rows.mapNotNull { it.toDomain() } }
+    override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.selectLog(vehicleId).asFlow().mapToList(dispatcher)
+        .map { rows -> rows.mapNotNull { it.toDomain() } }
 
     override fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?> =
         events.selectEventById(vehicleId, eventId).asFlow().mapToOneOrNull(dispatcher).map { it?.toDomain() }
 
-    private suspend fun photoIdsOf(eventId: String): List<String> =
-        withContext(dispatcher) { eventPhotos.selectPhotoIdsForEvent(eventId).executeAsList() }
+    private suspend fun photoIdsOf(eventId: String): List<String> = withContext(dispatcher) { eventPhotos.selectPhotoIdsForEvent(eventId).executeAsList() }
 
-    override fun observeLastLoggedVehicleId(): Flow<String?> =
-        appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
+    override fun observeLastLoggedVehicleId(): Flow<String?> = appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
 
     override fun observeLastFuelUnit(): Flow<FuelUnit?> =
         appState.selectAppState(LAST_FUEL_UNIT_KEY).asFlow().mapToOneOrNull(dispatcher).map { it?.let(FuelUnit::fromCode) }
@@ -121,7 +117,17 @@ class SqlDelightVehicleRepository(
             database.transaction {
                 vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex, fuelType.code)
                 // The initial odometer event never carries a note (add-event-notes): it is created by this flow, not the log event form.
-                events.insertEvent(eventId, vehicleId, INITIAL_ODOMETER, occurredAt.toEpochMilliseconds(), initialOdometer.meters, now, zone?.id, zone?.offsetSeconds?.toLong(), null)
+                events.insertEvent(
+                    eventId,
+                    vehicleId,
+                    INITIAL_ODOMETER,
+                    occurredAt.toEpochMilliseconds(),
+                    initialOdometer.meters,
+                    now,
+                    zone?.id,
+                    zone?.offsetSeconds?.toLong(),
+                    null,
+                )
                 promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
             }
         } catch (throwable: Throwable) {
@@ -265,7 +271,15 @@ class SqlDelightVehicleRepository(
         }
     }
 
-    override suspend fun updateVehicle(id: String, name: String, licensePlate: String?, type: VehicleType, color: Rgb, picture: PictureChange, fuelType: VehicleFuelType) {
+    override suspend fun updateVehicle(
+        id: String,
+        name: String,
+        licensePlate: String?,
+        type: VehicleType,
+        color: Rgb,
+        picture: PictureChange,
+        fuelType: VehicleFuelType,
+    ) {
         withContext(dispatcher) {
             val now = clock.now().toEpochMilliseconds()
             val newPictureId = (picture as? PictureChange.Replace)?.let { promoted(it.picture) }
@@ -297,22 +311,21 @@ class SqlDelightVehicleRepository(
         }
     }
 
-    override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String =
-        withContext(dispatcher) {
-            val photoId = promotedEventPhoto(photo)
-            try {
-                // touchEvent: see its own doc comment — event_picture alone does not make a live-observed event
-                // (details screen, recent events, full log) notice this change.
-                database.transaction {
-                    insertEventPhotos(eventId, listOf(photoId))
-                    events.touchEvent(eventId)
-                }
-            } catch (throwable: Throwable) {
-                eventPictures.delete(photoId)
-                throw throwable
+    override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String = withContext(dispatcher) {
+        val photoId = promotedEventPhoto(photo)
+        try {
+            // touchEvent: see its own doc comment — event_picture alone does not make a live-observed event
+            // (details screen, recent events, full log) notice this change.
+            database.transaction {
+                insertEventPhotos(eventId, listOf(photoId))
+                events.touchEvent(eventId)
             }
-            photoId
+        } catch (throwable: Throwable) {
+            eventPictures.delete(photoId)
+            throw throwable
         }
+        photoId
+    }
 
     override suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String) {
         withContext(dispatcher) {
@@ -346,8 +359,7 @@ class SqlDelightVehicleRepository(
         eventCaptures.selectEventCapture(eventId).executeAsOneOrNull()?.let { StoredCapture(it.photo_id, ScanResult.fromJson(it.detections)) }
     }
 
-    override suspend fun capturePhotoIds(): Set<String> =
-        withContext(dispatcher) { eventCaptures.selectCapturePhotoIds().executeAsList().toSet() }
+    override suspend fun capturePhotoIds(): Set<String> = withContext(dispatcher) { eventCaptures.selectCapturePhotoIds().executeAsList().toSet() }
 
     /** Inserts one `event_picture` row per already-promoted [photoIds], appended after whatever the event already has. */
     private fun insertEventPhotos(eventId: String, photoIds: List<String>) {
@@ -445,6 +457,7 @@ class SqlDelightVehicleRepository(
                 occurredAt = moment,
                 reading = Distance(requireNotNull(odometerMeters) { "Initial odometer event without a reading" }),
             )
+
             ODOMETER_ANCHOR -> VehicleEvent.OdometerAnchor(
                 id = id,
                 occurredAt = moment,
@@ -452,6 +465,7 @@ class SqlDelightVehicleRepository(
                 note = note,
                 photoIds = photoIdsOf(id),
             )
+
             DISTANCE -> VehicleEvent.DistanceEntry(
                 id = id,
                 occurredAt = moment,
@@ -460,6 +474,7 @@ class SqlDelightVehicleRepository(
                 note = note,
                 photoIds = photoIdsOf(id),
             )
+
             // A refueling's mileage (add-refueling-logging) reuses the same odometer/distance columns an odometer
             // anchor/distance entry already do: odometer_meters set means it was logged by "New odometer",
             // distance_meters set means "Trip distance", and neither set means no mileage was given.
@@ -478,6 +493,7 @@ class SqlDelightVehicleRepository(
                 note = note,
                 photoIds = photoIdsOf(id),
             )
+
             else -> null
         }
     }

@@ -37,8 +37,7 @@ class PpOcrRealPhotosJvmTest {
     private fun words(name: String): List<String> = recognize(name).lines.flatMap { line -> line.elements.map { it.text } }
 
     /** The fuel-amount candidates [name] actually produces, as "value (label)", in no particular order. */
-    private fun fuelAmountCandidates(name: String): List<String> =
-        detectFuelAmount(recognize("fuel/$name")).candidates().map { "${it.value} (${it.label})" }
+    private fun fuelAmountCandidates(name: String): List<String> = detectFuelAmount(recognize("fuel/$name")).candidates().map { "${it.value} (${it.label})" }
 
     private fun assertReads(name: String, vararg expected: String) {
         val words = words(name)

@@ -31,39 +31,41 @@ fun eventRowContent(
     symbols: NumberSymbols,
     deviceZone: TimeZone,
     timeFormat: TimeFormat = TimeFormat(),
-): EventRowContent =
-    when (event) {
-        is VehicleEvent.InitialOdometer -> EventRowContent(
-            label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
-            trailing = formatOdometer(event.reading, unit, symbols),
-            loggedOdometer = null,
-        )
-        is VehicleEvent.OdometerAnchor -> EventRowContent(
-            label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
-            trailing = formatOdometer(event.reading, unit, symbols),
-            loggedOdometer = null,
-            hasNote = event.note != null,
-            hasPhotos = event.photoIds.isNotEmpty(),
-        )
-        is VehicleEvent.DistanceEntry -> EventRowContent(
-            label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
-            trailing = "+" + formatOdometer(event.distance, unit, symbols),
-            loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
-            isDistance = true,
-            hasNote = event.note != null,
-            hasPhotos = event.photoIds.isNotEmpty(),
-        )
-        is VehicleEvent.Refueling -> EventRowContent(
-            label = event.label,
-            moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
-            // Shown in the unit it was entered in, never a plus sign: a refueling is not itself a distance
-            // (`vehicle-log`'s "Recent events on the details screen").
-            trailing = formatFuelAmount(event.amount, event.unit, symbols),
-            loggedOdometer = null,
-            hasNote = event.note != null,
-            hasPhotos = event.photoIds.isNotEmpty(),
-        )
-    }
+): EventRowContent = when (event) {
+    is VehicleEvent.InitialOdometer -> EventRowContent(
+        label = event.label,
+        moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+        trailing = formatOdometer(event.reading, unit, symbols),
+        loggedOdometer = null,
+    )
+
+    is VehicleEvent.OdometerAnchor -> EventRowContent(
+        label = event.label,
+        moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+        trailing = formatOdometer(event.reading, unit, symbols),
+        loggedOdometer = null,
+        hasNote = event.note != null,
+        hasPhotos = event.photoIds.isNotEmpty(),
+    )
+
+    is VehicleEvent.DistanceEntry -> EventRowContent(
+        label = event.label,
+        moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+        trailing = "+" + formatOdometer(event.distance, unit, symbols),
+        loggedOdometer = event.loggedOdometer?.let { "Odometer " + formatOdometer(it, unit, symbols) },
+        isDistance = true,
+        hasNote = event.note != null,
+        hasPhotos = event.photoIds.isNotEmpty(),
+    )
+
+    is VehicleEvent.Refueling -> EventRowContent(
+        label = event.label,
+        moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
+        // Shown in the unit it was entered in, never a plus sign: a refueling is not itself a distance
+        // (`vehicle-log`'s "Recent events on the details screen").
+        trailing = formatFuelAmount(event.amount, event.unit, symbols),
+        loggedOdometer = null,
+        hasNote = event.note != null,
+        hasPhotos = event.photoIds.isNotEmpty(),
+    )
+}

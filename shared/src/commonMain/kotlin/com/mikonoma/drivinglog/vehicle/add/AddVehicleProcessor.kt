@@ -25,11 +25,11 @@ import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import com.mikonoma.drivinglog.vehicle.picture.forAdd
 import dev.zacsweers.metro.Inject
-import kotlin.time.Clock
 import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
+import kotlin.time.Clock
 
 @Inject
 class AddVehicleProcessor(
@@ -51,34 +51,57 @@ class AddVehicleProcessor(
 
     override suspend fun map(intent: AddVehicleIntent): Action<AddVehicleState, AddVehicleEffect>? = when (intent) {
         is AddVehicleIntent.NameChanged -> reduce { copy(name = intent.text) }
+
         is AddVehicleIntent.LicensePlateChanged -> reduce { copy(licensePlate = intent.text) }
+
         is AddVehicleIntent.UnitSelected -> reduce { copy(entry = entry.withUnit(intent.unit)) }
+
         is AddVehicleIntent.TypeSelected -> reduce { copy(type = intent.type) }
+
         is AddVehicleIntent.FuelTypeSelected -> reduce { copy(fuelType = intent.fuelType) }
+
         is AddVehicleIntent.ColorSelected -> reduce { copy(color = intent.color) }
+
         is AddVehicleIntent.OdometerEdited -> reduce { copy(entry = entry.applyEdit(intent.text)) }
+
         AddVehicleIntent.OdometerCleared -> reduce { copy(entry = entry.clear()) }
+
         AddVehicleIntent.Save -> save()
+
         is AddVehicleIntent.PhotoPicked -> pictureStep { editor.photoPicked(it, intent.result) }
+
         AddVehicleIntent.PictureRefresh -> pictureStep { it }
+
         is AddVehicleIntent.CropConfirmed -> pictureStep(ColorStep.FromConfirmedCrop) { editor.cropConfirmed(it, intent.crop, intent.quarterTurns) }
+
         AddVehicleIntent.CropCancelled -> pictureStep { editor.cropCancelled(it) }
+
         AddVehicleIntent.PictureRemoved -> pictureStep(ColorStep.ClearPictureColor) { editor.removed(it) }
+
         AddVehicleIntent.PictureErrorDismissed -> pictureStep { editor.errorDismissed(it) }
+
         AddVehicleIntent.ScannerOpened -> reduce { copy(scan = scanEditor.scannerOpened(scan)) }
+
         AddVehicleIntent.ScannerClosed -> scanStep { scanEditor.scannerClosed(it) }
+
         is AddVehicleIntent.LiveReadingTapped -> async("scan") {
             val next = scanEditor.liveAccepted(state.scan, intent.reading) ?: return@async
             reduce { withScannedOdometer(intent.reading.detection).copy(scan = next, scanPhotoUri = null) }
         }
+
         is AddVehicleIntent.ScanPhotoPicked -> scanPicked(intent.result)
+
         is AddVehicleIntent.ScanCandidateSelected -> reduce { copy(scan = scanEditor.selected(scan, intent.index)) }
+
         AddVehicleIntent.ScanConfirmed -> async("scan") {
             val (next, reading) = scanEditor.confirmed(state.scan) ?: return@async
             reduce { withScannedOdometer(reading).copy(scan = next, scanPhotoUri = null) }
         }
+
         AddVehicleIntent.ScanCancelled -> scanStep { scanEditor.cancelled(it) }
+
         AddVehicleIntent.ScanErrorDismissed -> reduce { copy(scan = scanEditor.errorDismissed(scan)) }
+
         AddVehicleIntent.Left -> async("leave") {
             editor.discardAll(state.picture)
             scanEditor.discardAll(state.scan)
@@ -112,35 +135,37 @@ class AddVehicleProcessor(
      * Applies a picture change, then rebuilds what is derived from it: the preview, the photo being cropped and, as [colorStep] says, the
      * color; and the scanned photo's URI, which a restored form (`PictureRefresh`) needs as much as the picture's.
      */
-    private fun pictureStep(colorStep: ColorStep = ColorStep.Keep, change: suspend (PictureEditState) -> PictureEditState): Action<AddVehicleState, AddVehicleEffect> =
-        async("picture") {
-            var next = change(state.picture)
-            var cropImage = if (next.isCropping) editor.cropImage(next) else null
-            // A photo that is gone (or cannot be decoded any more) closes the crop with the error instead of leaving it waiting.
-            if (next.isCropping && cropImage == null) {
-                next = editor.cropCancelled(next).copy(error = PictureError.COULD_NOT_OPEN)
-                cropImage = null
-            }
-            val preview = editor.previewUri(next, savedPictureId = null)
-            // A confirmed crop gives the color of its picture (null: the picture has none, so the color stays as it was).
-            val confirmed = colorStep == ColorStep.FromConfirmedCrop && next.error == null && next.draft is PictureDraft.Pending
-            val extracted = if (confirmed) editor.sampleColor(next, colors) else null
-            val scanUri = scanEditor.reviewPhotoUri(state.scan)
-            reduce {
-                copy(
-                    picture = next,
-                    previewUri = preview,
-                    cropImage = cropImage,
-                    scanPhotoUri = scanUri,
-                    pictureColor = when {
-                        confirmed -> extracted
-                        colorStep == ColorStep.ClearPictureColor -> null
-                        else -> pictureColor
-                    },
-                    color = extracted ?: color,
-                )
-            }
+    private fun pictureStep(
+        colorStep: ColorStep = ColorStep.Keep,
+        change: suspend (PictureEditState) -> PictureEditState,
+    ): Action<AddVehicleState, AddVehicleEffect> = async("picture") {
+        var next = change(state.picture)
+        var cropImage = if (next.isCropping) editor.cropImage(next) else null
+        // A photo that is gone (or cannot be decoded any more) closes the crop with the error instead of leaving it waiting.
+        if (next.isCropping && cropImage == null) {
+            next = editor.cropCancelled(next).copy(error = PictureError.COULD_NOT_OPEN)
+            cropImage = null
         }
+        val preview = editor.previewUri(next, savedPictureId = null)
+        // A confirmed crop gives the color of its picture (null: the picture has none, so the color stays as it was).
+        val confirmed = colorStep == ColorStep.FromConfirmedCrop && next.error == null && next.draft is PictureDraft.Pending
+        val extracted = if (confirmed) editor.sampleColor(next, colors) else null
+        val scanUri = scanEditor.reviewPhotoUri(state.scan)
+        reduce {
+            copy(
+                picture = next,
+                previewUri = preview,
+                cropImage = cropImage,
+                scanPhotoUri = scanUri,
+                pictureColor = when {
+                    confirmed -> extracted
+                    colorStep == ColorStep.ClearPictureColor -> null
+                    else -> pictureColor
+                },
+                color = extracted ?: color,
+            )
+        }
+    }
 
     private fun save(): Action<AddVehicleState, AddVehicleEffect>? {
         if (state.isSaving) return null

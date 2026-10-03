@@ -11,6 +11,11 @@ import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -19,11 +24,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EventDetailsProcessorTest {
@@ -350,9 +350,13 @@ class EventDetailsProcessorTest {
             "v1",
             listOf(
                 com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
-                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
-                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
-                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, note = "cheap gas today",
+                    "e2",
+                    ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+                    com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                    filledUp = true,
+                    note = "cheap gas today",
                 ),
             ),
         )
@@ -368,9 +372,14 @@ class EventDetailsProcessorTest {
             "v1",
             listOf(
                 com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
-                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
-                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
-                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, note = note, photoIds = photoIds,
+                    "e2",
+                    ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+                    com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                    filledUp = true,
+                    note = note,
+                    photoIds = photoIds,
                 ),
             ),
         )
@@ -411,9 +420,13 @@ class EventDetailsProcessorTest {
             "v1",
             listOf(
                 com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
-                    "e2", ZonedMoment(Instant.fromEpochMilliseconds(200)),
-                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
-                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true, mileage = mileage,
+                    "e2",
+                    ZonedMoment(Instant.fromEpochMilliseconds(200)),
+                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+                    com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+                    filledUp = true,
+                    mileage = mileage,
                 ),
             ),
         )

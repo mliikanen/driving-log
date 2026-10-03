@@ -80,33 +80,35 @@ class EditVehicleProcessor @AssistedInject constructor(
     }
 
     /** Applies a picture change, then rebuilds what is derived from it: the preview, the photo being cropped and, as [colorStep] says, the color. */
-    private fun pictureStep(colorStep: ColorStep = ColorStep.Keep, change: suspend (PictureEditState) -> PictureEditState): Action<EditVehicleState, EditVehicleEffect> =
-        async("picture") {
-            var next = change(state.picture)
-            var cropImage = if (next.isCropping) editor.cropImage(next) else null
-            // A photo that is gone (or cannot be decoded any more) closes the crop with the error instead of leaving it waiting.
-            if (next.isCropping && cropImage == null) {
-                next = editor.cropCancelled(next).copy(error = PictureError.COULD_NOT_OPEN)
-                cropImage = null
-            }
-            val preview = editor.previewUri(next, state.savedPictureId)
-            // A confirmed crop gives the color of its picture (null: the picture has none, so the color stays as it was).
-            val confirmed = colorStep == ColorStep.FromConfirmedCrop && next.error == null && next.draft is PictureDraft.Pending
-            val extracted = if (confirmed) editor.sampleColor(next, colors) else null
-            reduce {
-                copy(
-                    picture = next,
-                    previewUri = preview,
-                    cropImage = cropImage,
-                    pictureColor = when {
-                        confirmed -> extracted
-                        colorStep == ColorStep.ClearPictureColor -> null
-                        else -> pictureColor
-                    },
-                    color = extracted ?: color,
-                )
-            }
+    private fun pictureStep(
+        colorStep: ColorStep = ColorStep.Keep,
+        change: suspend (PictureEditState) -> PictureEditState,
+    ): Action<EditVehicleState, EditVehicleEffect> = async("picture") {
+        var next = change(state.picture)
+        var cropImage = if (next.isCropping) editor.cropImage(next) else null
+        // A photo that is gone (or cannot be decoded any more) closes the crop with the error instead of leaving it waiting.
+        if (next.isCropping && cropImage == null) {
+            next = editor.cropCancelled(next).copy(error = PictureError.COULD_NOT_OPEN)
+            cropImage = null
         }
+        val preview = editor.previewUri(next, state.savedPictureId)
+        // A confirmed crop gives the color of its picture (null: the picture has none, so the color stays as it was).
+        val confirmed = colorStep == ColorStep.FromConfirmedCrop && next.error == null && next.draft is PictureDraft.Pending
+        val extracted = if (confirmed) editor.sampleColor(next, colors) else null
+        reduce {
+            copy(
+                picture = next,
+                previewUri = preview,
+                cropImage = cropImage,
+                pictureColor = when {
+                    confirmed -> extracted
+                    colorStep == ColorStep.ClearPictureColor -> null
+                    else -> pictureColor
+                },
+                color = extracted ?: color,
+            )
+        }
+    }
 
     private fun save(): Action<EditVehicleState, EditVehicleEffect>? {
         if (state.isSaving || !state.loaded || state.notFound) return null
@@ -118,6 +120,7 @@ class EditVehicleProcessor @AssistedInject constructor(
         // defense-in-depth no-op against a direct dispatch, not a path a tap can reach.
         return when (val result = validateVehicleFields(state.name, state.licensePlate)) {
             VehicleFieldsResult.NameRequired -> null
+
             is VehicleFieldsResult.Valid -> async("save") {
                 reduce { copy(isSaving = true) }
                 try {

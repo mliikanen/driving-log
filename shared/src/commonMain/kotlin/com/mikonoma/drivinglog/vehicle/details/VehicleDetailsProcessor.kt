@@ -51,16 +51,18 @@ class VehicleDetailsProcessor @AssistedInject constructor(
         }
     }
 
-    override suspend fun map(intent: VehicleDetailsIntent): Action<VehicleDetailsState, VehicleDetailsEffect>? =
-        when (intent) {
-            VehicleDetailsIntent.EditClicked -> sideEffect { VehicleDetailsEffect.ShowEdit(vehicleId) }
-            VehicleDetailsIntent.ViewLogClicked -> sideEffect { VehicleDetailsEffect.ShowLog(vehicleId) }
-            VehicleDetailsIntent.LogEventClicked -> sideEffect { VehicleDetailsEffect.ShowLogEvent(vehicleId) }
-            is VehicleDetailsIntent.EventClicked -> {
-                val eventId = intent.eventId
-                sideEffect { VehicleDetailsEffect.ShowEventDetails(vehicleId, eventId) }
-            }
+    override suspend fun map(intent: VehicleDetailsIntent): Action<VehicleDetailsState, VehicleDetailsEffect>? = when (intent) {
+        VehicleDetailsIntent.EditClicked -> sideEffect { VehicleDetailsEffect.ShowEdit(vehicleId) }
+
+        VehicleDetailsIntent.ViewLogClicked -> sideEffect { VehicleDetailsEffect.ShowLog(vehicleId) }
+
+        VehicleDetailsIntent.LogEventClicked -> sideEffect { VehicleDetailsEffect.ShowLogEvent(vehicleId) }
+
+        is VehicleDetailsIntent.EventClicked -> {
+            val eventId = intent.eventId
+            sideEffect { VehicleDetailsEffect.ShowEventDetails(vehicleId, eventId) }
         }
+    }
 
     companion object {
         const val RECENT_EVENT_LIMIT = 5

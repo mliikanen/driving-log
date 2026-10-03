@@ -1,15 +1,19 @@
 package com.mikonoma.drivinglog.vehicle.data
 
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.input.OdometerEntry
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import java.io.File
 import java.util.Locale
 import kotlin.test.AfterTest
@@ -17,10 +21,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleStorageJvmTest {
@@ -50,7 +50,9 @@ class VehicleStorageJvmTest {
 
         // The empty file is a brand new database: create the schema, add a vehicle, close it.
         val first = JdbcSqliteDriver(url).also { DrivingLogDatabase.Schema.create(it) }
-        val id = repository(first).addVehicle("Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS_TENTHS, Distance(45_200_300))
+        val id = repository(
+            first,
+        ).addVehicle("Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, OdometerUnit.KILOMETERS_TENTHS, Distance(45_200_300))
         first.close()
 
         // Reopen the same file without creating the schema again.
@@ -66,20 +68,19 @@ class VehicleStorageJvmTest {
         second.close()
     }
 
-    private fun rows(driver: SqlDriver, sql: String, columns: Int): List<List<Any?>> =
-        driver.executeQuery(
-            identifier = null,
-            sql = sql,
-            mapper = { cursor ->
-                val rows = mutableListOf<List<Any?>>()
-                while (cursor.next().value) {
-                    // Read every column as text so the raw stored form can be compared and inspected.
-                    rows += (0 until columns).map { i -> cursor.getString(i) }
-                }
-                QueryResult.Value(rows)
-            },
-            parameters = 0,
-        ).value
+    private fun rows(driver: SqlDriver, sql: String, columns: Int): List<List<Any?>> = driver.executeQuery(
+        identifier = null,
+        sql = sql,
+        mapper = { cursor ->
+            val rows = mutableListOf<List<Any?>>()
+            while (cursor.next().value) {
+                // Read every column as text so the raw stored form can be compared and inspected.
+                rows += (0 until columns).map { i -> cursor.getString(i) }
+            }
+            QueryResult.Value(rows)
+        },
+        parameters = 0,
+    ).value
 
     /** Types 1, 2, 3, 5 into a tenths odometer and saves the vehicle, all under [locale]. Returns the raw stored rows. */
     private fun storedRowsUnder(locale: String): List<List<Any?>> {

@@ -118,10 +118,14 @@ class ColorChoiceTest {
     @Test
     fun noSegmentIsSelectedTwiceAndNeverMoreThanOneElementIsSelected() {
         val colors = listOf(VehicleColors.default, red, teal, custom, other)
-        for (color in colors) for (picture in listOf(null, red, custom, other)) for (saved in listOf(null, teal, custom)) {
-            val model = colorChoice(color, picture, saved)
-            assertEquals(1, selected(model).size, "color ${color.hex} picture ${picture?.hex} saved ${saved?.hex}")
-            assertTrue(model.segments.size <= 3)
+        for (color in colors) {
+            for (picture in listOf(null, red, custom, other)) {
+                for (saved in listOf(null, teal, custom)) {
+                    val model = colorChoice(color, picture, saved)
+                    assertEquals(1, selected(model).size, "color ${color.hex} picture ${picture?.hex} saved ${saved?.hex}")
+                    assertTrue(model.segments.size <= 3)
+                }
+            }
         }
     }
 

@@ -9,11 +9,11 @@ import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
 
 class EventRowContentTest {
 
@@ -25,8 +25,7 @@ class EventRowContentTest {
     private fun distance(meters: Long, logged: Long? = null, moment: ZonedMoment = at) =
         VehicleEvent.DistanceEntry("d", moment, Distance(meters), logged?.let { Distance(it) })
 
-    private fun row(event: VehicleEvent, unit: OdometerUnit = OdometerUnit.KILOMETERS, zone: TimeZone = helsinki) =
-        eventRowContent(event, unit, us, zone)
+    private fun row(event: VehicleEvent, unit: OdometerUnit = OdometerUnit.KILOMETERS, zone: TimeZone = helsinki) = eventRowContent(event, unit, us, zone)
 
     @Test
     fun anInitialOdometerShowsItsReadingInTheVehiclesUnit() {
@@ -180,12 +179,8 @@ class EventRowContentTest {
 
     // ---- Refueling (add-refueling-logging)
 
-    private fun refueling(
-        milliliters: Long,
-        unit: FuelUnit = FuelUnit.LITERS,
-        note: String? = null,
-        photoIds: List<String> = emptyList(),
-    ) = VehicleEvent.Refueling("r", at, Volume(milliliters), unit, FuelType.DIESEL, filledUp = true, note = note, photoIds = photoIds)
+    private fun refueling(milliliters: Long, unit: FuelUnit = FuelUnit.LITERS, note: String? = null, photoIds: List<String> = emptyList()) =
+        VehicleEvent.Refueling("r", at, Volume(milliliters), unit, FuelType.DIESEL, filledUp = true, note = note, photoIds = photoIds)
 
     @Test
     fun aRefuelingIsLabelledRefueling() {

@@ -3,10 +3,10 @@ package com.mikonoma.drivinglog.vehicle.format
 import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
 
 class FormatMomentTest {
 

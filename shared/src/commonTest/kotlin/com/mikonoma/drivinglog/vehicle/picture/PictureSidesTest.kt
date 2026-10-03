@@ -67,7 +67,10 @@ class PictureSidesTest {
         for (from in listOf(257, 300, 511, 512, 513, 1000, 1023, 1024, 2047, 3072)) {
             for (to in listOf(128, 256, 1024)) {
                 val steps = downscaleSteps(from, to)
-                if (from <= to) { assertEquals(emptyList(), steps); continue }
+                if (from <= to) {
+                    assertEquals(emptyList(), steps)
+                    continue
+                }
                 assertEquals(to, steps.last(), "$from to $to ends at the size wanted")
                 var before = from
                 for (step in steps) {
@@ -111,10 +114,14 @@ class PictureSidesTest {
 
     @Test
     fun theLongerSideNeverExceedsTheCapAndNeitherSideIsEnlarged() {
-        for (width in listOf(100, 600, 2048, 4000)) for (height in listOf(100, 400, 2048, 3000)) for (cap in listOf(256, 2048)) {
-            val (w, h) = scaledToFit(width, height, cap)
-            assertTrue(maxOf(w, h) <= cap, "$width x $height capped at $cap")
-            assertTrue(w <= width && h <= height, "$width x $height capped at $cap is not enlarged")
+        for (width in listOf(100, 600, 2048, 4000)) {
+            for (height in listOf(100, 400, 2048, 3000)) {
+                for (cap in listOf(256, 2048)) {
+                    val (w, h) = scaledToFit(width, height, cap)
+                    assertTrue(maxOf(w, h) <= cap, "$width x $height capped at $cap")
+                    assertTrue(w <= width && h <= height, "$width x $height capped at $cap is not enlarged")
+                }
+            }
         }
     }
 

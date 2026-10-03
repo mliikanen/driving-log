@@ -31,7 +31,15 @@ class TimeZoneChoicesTest {
     @Test
     fun continentCityNamesAndUtcAreKept() {
         val all = ids()
-        for (kept in listOf("Europe/Helsinki", "America/New_York", "America/Argentina/Buenos_Aires", "Asia/Kolkata", "Pacific/Auckland", "Arctic/Longyearbyen", "UTC")) {
+        for (kept in listOf(
+            "Europe/Helsinki",
+            "America/New_York",
+            "America/Argentina/Buenos_Aires",
+            "Asia/Kolkata",
+            "Pacific/Auckland",
+            "Arctic/Longyearbyen",
+            "UTC",
+        )) {
             assertTrue(kept in all, kept)
         }
     }

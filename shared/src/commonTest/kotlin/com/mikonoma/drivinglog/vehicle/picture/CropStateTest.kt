@@ -198,7 +198,10 @@ class CropStateTest {
     private fun assertNear(expected: Int, actual: Int) = assertTrue(kotlin.math.abs(expected - actual) <= 1, "$actual is $expected within a pixel")
 
     private fun assertRectsWithinAPixel(expected: CropRect, actual: CropRect) {
-        assertTrue(kotlin.math.abs(expected.x - actual.x) <= 1 && kotlin.math.abs(expected.y - actual.y) <= 1 && kotlin.math.abs(expected.side - actual.side) <= 1, "$actual is $expected within a pixel")
+        assertTrue(
+            kotlin.math.abs(expected.x - actual.x) <= 1 && kotlin.math.abs(expected.y - actual.y) <= 1 && kotlin.math.abs(expected.side - actual.side) <= 1,
+            "$actual is $expected within a pixel",
+        )
     }
 
     @Test
@@ -250,7 +253,10 @@ class CropStateTest {
         for (start in listOf(landscape().zoomInStep(), portrait().zoomInStep(), square().zoomInStep(), landscape(), CropState.initial(100, 100))) {
             for (direction in CropMove.values()) {
                 var state = start
-                repeat(200) { state = state.movePhoto(direction); assertInside(state) }
+                repeat(200) {
+                    state = state.movePhoto(direction)
+                    assertInside(state)
+                }
             }
         }
     }
@@ -287,7 +293,10 @@ class CropStateTest {
     @Test
     fun aTurnedFrameCanBeMovedAndZoomedAndStaysInside() {
         var state = aZoomedFrame().rotatedClockwise()
-        for (direction in CropMove.values()) { state = state.movePhoto(direction).zoomInStep(); assertInside(state) }
+        for (direction in CropMove.values()) {
+            state = state.movePhoto(direction).zoomInStep()
+            assertInside(state)
+        }
     }
 
     @Test
@@ -359,7 +368,8 @@ class CropStateTest {
     fun aPinchKeepsThePointUnderTheFingersUnderThem() {
         for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(2f, 1500f, 2000f))) {
             for (zoom in listOf(1.5f, 0.8f)) {
-                val x = 300f; val y = 800f
+                val x = 300f
+                val y = 800f
                 val before = photoPointAt(start, x, y)
                 val pinched = start.transformedBy(frame, x, y, 0f, 0f, zoom)
                 // Unless a limit stopped the zoom (or the photo's edge stopped the frame), the same point of the photo is still there.

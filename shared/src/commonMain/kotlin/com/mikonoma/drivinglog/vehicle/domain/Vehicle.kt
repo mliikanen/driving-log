@@ -22,7 +22,4 @@ data class Vehicle(
 )
 
 /** A vehicle with its current odometer, which is derived from the log and never stored. */
-data class VehicleDetails(
-    val vehicle: Vehicle,
-    val currentOdometer: Distance?,
-)
+data class VehicleDetails(val vehicle: Vehicle, val currentOdometer: Distance?)

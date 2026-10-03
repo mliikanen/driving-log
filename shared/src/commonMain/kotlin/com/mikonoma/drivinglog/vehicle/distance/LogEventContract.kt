@@ -8,8 +8,8 @@ import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
-import com.mikonoma.drivinglog.vehicle.domain.allowedFuelTypes
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import com.mikonoma.drivinglog.vehicle.domain.allowedFuelTypes
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
 import com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt
 import com.mikonoma.drivinglog.vehicle.input.FuelAmountEntry
@@ -42,14 +42,7 @@ enum class LogKind(val label: String) {
 enum class ScanTarget { MILEAGE, FUEL_AMOUNT }
 
 /** One vehicle as the selector draws it: its picture or icon, its name and, when it has one, its plate. In the order of [com.mikonoma.drivinglog.vehicle.domain.VehicleNameOrder]. */
-data class VehicleChoice(
-    val id: String,
-    val name: String,
-    val licensePlate: String?,
-    val type: VehicleType,
-    val color: Rgb,
-    val pictureUri: String?,
-)
+data class VehicleChoice(val id: String, val name: String, val licensePlate: String?, val type: VehicleType, val color: Rgb, val pictureUri: String?)
 
 /**
  * The log distance form. What the user typed and chose is saved so it survives rotation and process death; what comes from

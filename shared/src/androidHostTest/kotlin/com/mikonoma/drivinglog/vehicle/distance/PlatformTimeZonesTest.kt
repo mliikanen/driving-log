@@ -1,11 +1,11 @@
 package com.mikonoma.drivinglog.vehicle.distance
 
+import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
 
 /** The picker's list built from the platform's real zone ids (here the JVM's `java.time` list). */
 class PlatformTimeZonesTest {

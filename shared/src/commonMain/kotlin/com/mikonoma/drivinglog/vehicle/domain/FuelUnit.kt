@@ -29,6 +29,7 @@ enum class FuelUnit(val code: String, val abbreviation: String) {
     companion object {
         // A US gallon is exactly 3.785411784 liters = 3,785,411,784 mL scaled by 1,000,000 - an exact integer, no rounding.
         private const val ML_PER_GALLON_SCALED = 3_785_411_784L
+
         // Steps are hundredths of a unit (x100); the gallon constant above is scaled by 1,000,000, so converting
         // steps <-> milliliters divides/multiplies by both scales together: 100 * 1,000,000.
         private const val STEPS_DENOM = 100_000_000L

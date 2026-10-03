@@ -26,8 +26,7 @@ class OdometerEntryZeroPrefixTest {
         digits.toList().runningFold(this) { e, d -> e.press(d) }.drop(1).map { it.shown() }
 
     /** The readings after each of [count] backspaces. */
-    private fun OdometerEntry.backspaces(count: Int): List<String> =
-        (1..count).runningFold(this) { e, _ -> e.backspace() }.drop(1).map { it.shown() }
+    private fun OdometerEntry.backspaces(count: Int): List<String> = (1..count).runningFold(this) { e, _ -> e.backspace() }.drop(1).map { it.shown() }
 
     // Tenths units
 
@@ -246,8 +245,13 @@ class OdometerEntryZeroPrefixTest {
         assertEquals(listOf("0.1", "1.2", "12.3"), tenths().shownAfterEach(1, 2, 3))
         assertEquals(listOf("1.2", "0.1", ""), tenths().pressAll(1, 2, 3).backspaces(3))
         val steps = listOf<(OdometerEntry) -> OdometerEntry>(
-            { it.press(1) }, { it.press(2) }, { it.backspace() }, { it.backspace() },
-            { it.press(2) }, { it.press(3) }, { it.press(0) },
+            { it.press(1) },
+            { it.press(2) },
+            { it.backspace() },
+            { it.backspace() },
+            { it.press(2) },
+            { it.press(3) },
+            { it.press(0) },
         )
         val shown = steps.runningFold(tenths()) { e, step -> step(e) }.drop(1).map { it.shown() }
         assertEquals(listOf("0.1", "1.2", "0.1", "", "0.2", "2.3", "23.0"), shown)

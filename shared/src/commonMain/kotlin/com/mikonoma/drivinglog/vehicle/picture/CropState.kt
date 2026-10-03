@@ -32,13 +32,7 @@ data class CropRect(val x: Int, val y: Int, val side: Int)
  * always fits. The centre is kept where the whole frame is inside the photo, and the zoom between 1 and [maxZoom], which keeps
  * the frame at least [MIN_SIDE] pixels (or the whole shorter side of a smaller photo). A state never leaves those limits.
  */
-class CropState private constructor(
-    val imageWidth: Int,
-    val imageHeight: Int,
-    val zoom: Float,
-    val centerX: Float,
-    val centerY: Float,
-) {
+class CropState private constructor(val imageWidth: Int, val imageHeight: Int, val zoom: Float, val centerX: Float, val centerY: Float) {
     private val shorterSide = min(imageWidth, imageHeight)
 
     /** The frame's side, in pixels of the photo. */
@@ -112,9 +106,8 @@ class CropState private constructor(
         return CropRect(x, y, whole)
     }
 
-    override fun equals(other: Any?): Boolean =
-        other is CropState && imageWidth == other.imageWidth && imageHeight == other.imageHeight &&
-            zoom == other.zoom && centerX == other.centerX && centerY == other.centerY
+    override fun equals(other: Any?): Boolean = other is CropState && imageWidth == other.imageWidth && imageHeight == other.imageHeight &&
+        zoom == other.zoom && centerX == other.centerX && centerY == other.centerY
 
     override fun hashCode(): Int = listOf(imageWidth, imageHeight, zoom, centerX, centerY).hashCode()
 
@@ -150,7 +143,9 @@ class CropState private constructor(
         private fun of(width: Int, height: Int, zoom: Float, centerX: Float, centerY: Float): CropState {
             val half = min(width, height) / zoom / 2
             return CropState(
-                width, height, zoom,
+                width,
+                height,
+                zoom,
                 centerX.coerceIn(half, width - half),
                 centerY.coerceIn(half, height - half),
             )

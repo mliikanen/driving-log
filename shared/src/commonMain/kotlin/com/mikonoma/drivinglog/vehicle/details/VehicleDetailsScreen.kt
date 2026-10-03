@@ -1,19 +1,15 @@
 package com.mikonoma.drivinglog.vehicle.details
 
-import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
-import com.mikonoma.drivinglog.ui.theme.HeaderDivider
-import com.mikonoma.drivinglog.ui.ScreenBottomSpace
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -33,14 +29,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
-import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.ui.color.rememberAnimatedColor
+import com.mikonoma.drivinglog.ui.theme.HeaderDivider
+import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
+import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.format.formatOdometer
 import com.mikonoma.drivinglog.vehicle.ui.EventRow
@@ -119,10 +119,18 @@ fun VehicleDetailsContent(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> Unit
+
                 state.notFound -> Text("This vehicle no longer exists.", Modifier.padding(16.dp))
+
                 else -> LazyColumn(
                     Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom =
+                        16.dp + ScreenBottomSpace,
+                    ),
                 ) {
                     item {
                         // One animated color for the screen, remembered once the vehicle has loaded, so it opens in the vehicle's color.

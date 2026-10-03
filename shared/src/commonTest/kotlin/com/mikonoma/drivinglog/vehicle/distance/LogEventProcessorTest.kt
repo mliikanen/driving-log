@@ -14,17 +14,6 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -38,6 +27,17 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import org.fuusio.kide.test.test
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LogEventProcessorTest {
@@ -187,12 +187,14 @@ class LogEventProcessorTest {
         seedVehicle()
         val processor = processor()
         val seen = mutableSetOf<OdometerUnit>()
-        for (miles in listOf(false, true)) for (tenths in listOf(false, true)) {
-            processor.dispatch(LogEventIntent.UnitFamilySelected(miles))
-            processor.dispatch(LogEventIntent.TenthsChanged(tenths))
-            seen += processor.state.unit
-            assertEquals(miles, processor.state.unit.isMiles)
-            assertEquals(tenths, processor.state.unit.hasTenths)
+        for (miles in listOf(false, true)) {
+            for (tenths in listOf(false, true)) {
+                processor.dispatch(LogEventIntent.UnitFamilySelected(miles))
+                processor.dispatch(LogEventIntent.TenthsChanged(tenths))
+                seen += processor.state.unit
+                assertEquals(miles, processor.state.unit.isMiles)
+                assertEquals(tenths, processor.state.unit.hasTenths)
+            }
         }
         assertEquals(OdometerUnit.entries.toSet(), seen)
     }
@@ -1273,7 +1275,10 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = true)
         seedRemembered("b", OdometerUnit.MILES_TENTHS, remembered = false)
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(
+            OdometerUnit.KILOMETERS_TENTHS,
+            LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
         assertEquals(OdometerUnit.MILES, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
     }
 
@@ -1282,8 +1287,14 @@ class LogEventProcessorTest {
         seedRemembered("a", OdometerUnit.KILOMETERS, remembered = null)
         seedRemembered("b", OdometerUnit.KILOMETERS_TENTHS, remembered = null)
 
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(
+            OdometerUnit.KILOMETERS,
+            LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
+        assertEquals(
+            OdometerUnit.KILOMETERS_TENTHS,
+            LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
     }
 
     @Test
@@ -1292,8 +1303,14 @@ class LogEventProcessorTest {
         seedRemembered("m", OdometerUnit.MILES, remembered = true)
         seedRemembered("k", OdometerUnit.KILOMETERS, remembered = true)
 
-        assertEquals(OdometerUnit.MILES_TENTHS, LogEventProcessor("m", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("k", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(
+            OdometerUnit.MILES_TENTHS,
+            LogEventProcessor("m", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
+        assertEquals(
+            OdometerUnit.KILOMETERS_TENTHS,
+            LogEventProcessor("k", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
     }
 
     @Test
@@ -1366,7 +1383,10 @@ class LogEventProcessorTest {
         processor.dispatch(LogEventIntent.Save) // nothing typed
 
         assertEquals(LogDistanceError.FieldEmpty, processor.state.error)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(
+            OdometerUnit.KILOMETERS,
+            LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
     }
 
     @Test
@@ -1381,8 +1401,14 @@ class LogEventProcessorTest {
             expectSideEffect(LogEventEffect.Saved)
         }
 
-        assertEquals(OdometerUnit.KILOMETERS_TENTHS, LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
-        assertEquals(OdometerUnit.KILOMETERS, LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit)
+        assertEquals(
+            OdometerUnit.KILOMETERS_TENTHS,
+            LogEventProcessor("a", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
+        assertEquals(
+            OdometerUnit.KILOMETERS,
+            LogEventProcessor("b", repository, pictures, eventPictures, codec, clock, deviceZone, recognizer, captures).state.unit,
+        )
     }
 
     // ---- Scanning a reading (odometer-ocr-capture)
@@ -1392,13 +1418,21 @@ class LogEventProcessorTest {
 
     private fun line(vararg elements: com.mikonoma.drivinglog.vehicle.ocr.RecognizedElement) = com.mikonoma.drivinglog.vehicle.ocr.RecognizedLine(
         elements.joinToString(" ") { it.text },
-        com.mikonoma.drivinglog.vehicle.ocr.TextBox(elements.minOf { it.box.left }, elements.minOf { it.box.top }, elements.maxOf { it.box.right }, elements.maxOf { it.box.bottom }),
+        com.mikonoma.drivinglog.vehicle.ocr.TextBox(
+            elements.minOf {
+                it.box.left
+            },
+            elements.minOf { it.box.top },
+            elements.maxOf { it.box.right },
+            elements.maxOf { it.box.bottom },
+        ),
         elements.toList(),
     )
 
     /** A dashboard with an odometer reading (45 260, just above the known 45 230) and a trip reading of 123.4. */
     private val dashboard = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
-        1280, 720,
+        1280,
+        720,
         listOf(
             line(element("ODO", 524, 403, 554, 415)),
             line(element("45260km", 529, 412, 619, 433)),
@@ -1423,7 +1457,8 @@ class LogEventProcessorTest {
 
     /** The same dashboard as above, but also showing a fuel-amount-shaped reading next to a recognized volume label. */
     private val dashboardWithFuelAmount = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
-        1280, 720,
+        1280,
+        720,
         listOf(
             line(element("ODO", 524, 403, 554, 415)),
             line(element("45260km", 529, 412, 619, 433)),
@@ -1498,10 +1533,17 @@ class LogEventProcessorTest {
         processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
         processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT))
         val detection = com.mikonoma.drivinglog.vehicle.ocr.Detection(
-            "12.34", "12.34", com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
-            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "GAL",
+            "12.34",
+            "12.34",
+            com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
+            com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT,
+            com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+            "GAL",
         )
-        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), listOf(detection))
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(
+            com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)),
+            listOf(detection),
+        )
         val reading = com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detection, frame, now)
 
         processor.dispatch(LogEventIntent.LiveReadingTapped(reading))
@@ -1651,7 +1693,12 @@ class LogEventProcessorTest {
     fun aPhotoWithNoReadingOpensTheReviewWithNoCandidates() {
         seedVehicle()
         val processor = processor()
-        recognizer.photo = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(983, 1310, listOf(line(element("RPMx", 340, 652, 361, 665), element("1000", 363, 654, 381, 667))))
+        recognizer.photo =
+            com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+                983,
+                1310,
+                listOf(line(element("RPMx", 340, 652, 361, 665), element("1000", 363, 654, 381, 667))),
+            )
 
         processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1))))
 
@@ -1804,10 +1851,26 @@ class LogEventProcessorTest {
 
     private fun liveReading(value: String, kind: com.mikonoma.drivinglog.vehicle.ocr.ReadingKind): com.mikonoma.drivinglog.vehicle.ocr.LiveReading {
         val detections = listOf(
-            com.mikonoma.drivinglog.vehicle.ocr.Detection("RPMx", "1000", com.mikonoma.drivinglog.vehicle.ocr.TextBox(0, 0, 10, 10), null, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.NO_UNIT),
-            com.mikonoma.drivinglog.vehicle.ocr.Detection(value, value, com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430), kind, com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL, "ODO"),
+            com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                "RPMx",
+                "1000",
+                com.mikonoma.drivinglog.vehicle.ocr.TextBox(0, 0, 10, 10),
+                null,
+                com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.NO_UNIT,
+            ),
+            com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                value,
+                value,
+                com.mikonoma.drivinglog.vehicle.ocr.TextBox(500, 400, 600, 430),
+                kind,
+                com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+                "ODO",
+            ),
         )
-        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)), detections)
+        val frame = com.mikonoma.drivinglog.vehicle.ocr.LiveFrame(
+            com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage(1280, 720, IntArray(1280 * 720)),
+            detections,
+        )
         return com.mikonoma.drivinglog.vehicle.ocr.LiveReading(1, detections[1], frame, now)
     }
 
@@ -1877,7 +1940,10 @@ class LogEventProcessorTest {
         }
 
         assertTrue(first in captures.discarded)
-        assertEquals("45270", repository.anchorCalls.singleOrNull()?.capture?.result?.accepted?.value ?: repository.distanceCalls.single().capture?.result?.accepted?.value)
+        assertEquals(
+            "45270",
+            repository.anchorCalls.singleOrNull()?.capture?.result?.accepted?.value ?: repository.distanceCalls.single().capture?.result?.accepted?.value,
+        )
     }
 
     @Test
@@ -1913,7 +1979,10 @@ class LogEventProcessorTest {
         val json = kotlinx.serialization.json.Json
         val draft = com.mikonoma.drivinglog.vehicle.ocr.ScanDraft(scannerOpen = true)
 
-        val restored = json.decodeFromString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), json.encodeToString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), draft))
+        val restored = json.decodeFromString(
+            com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(),
+            json.encodeToString(com.mikonoma.drivinglog.vehicle.ocr.ScanDraft.serializer(), draft),
+        )
 
         assertTrue(restored.scannerOpen)
     }
@@ -2069,7 +2138,8 @@ class LogEventProcessorTest {
         processor.typeFuelAmount(4, 2, 3)
         processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
         recognizer.photo = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
-            1280, 720,
+            1280,
+            720,
             listOf(line(element("ODO", 524, 403, 554, 415)), line(element("44000km", 529, 412, 619, 433))),
         )
         processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))

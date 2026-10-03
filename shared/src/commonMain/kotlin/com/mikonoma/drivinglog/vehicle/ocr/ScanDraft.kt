@@ -1,9 +1,9 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
+import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.MAX_DECODE_SIDE
 import com.mikonoma.drivinglog.vehicle.picture.MAX_PHOTO_BYTES
-import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import kotlinx.serialization.Serializable
@@ -14,13 +14,7 @@ import kotlinx.serialization.Serializable
  * [selectedIndex] is an index into [detections] and only ever points at one.
  */
 @Serializable
-data class ScanReview(
-    val pendingId: String,
-    val width: Int,
-    val height: Int,
-    val detections: List<Detection>,
-    val selectedIndex: Int? = null,
-) {
+data class ScanReview(val pendingId: String, val width: Int, val height: Int, val detections: List<Detection>, val selectedIndex: Int? = null) {
     val hasCandidates: Boolean get() = detections.any { it.kind != null }
     val selected: Detection? get() = selectedIndex?.let { detections[it] }
 }
@@ -42,11 +36,7 @@ data class ScanDraft(
  * The scan logic of the log event form: choosing a photo, recognizing it, selecting and confirming a candidate, and cleaning up. It
  * works on a [ScanDraft] and returns the next one, keeping the [store]'s files in step, so the processor only calls it.
  */
-class ScanEditor(
-    private val codec: ImageCodec,
-    private val recognizer: TextRecognizer,
-    private val store: CaptureStore,
-) {
+class ScanEditor(private val codec: ImageCodec, private val recognizer: TextRecognizer, private val store: CaptureStore) {
     /**
      * The system's chooser gave [result]. A photo is encoded once, full size and uncropped, kept pending, recognized and classified by
      * [classify] (the form's own rule, as for [LiveScanner]); the review opens on it, replacing a review already open (choosing another
@@ -54,8 +44,11 @@ class ScanEditor(
      */
     suspend fun photoPicked(draft: ScanDraft, result: PhotoResult, classify: (RecognizedPhoto) -> List<Detection>): ScanDraft = when (result) {
         PhotoResult.Cancelled -> draft
+
         PhotoResult.Unreadable -> draft.copy(error = PictureError.COULD_NOT_OPEN)
+
         PhotoResult.CameraDenied -> draft.copy(error = PictureError.CAMERA_DENIED)
+
         is PhotoResult.Chosen -> {
             val bytes = result.bytes
             val photo = if (bytes.size > MAX_PHOTO_BYTES) null else codec.encodeScaled(bytes, listOf(MAX_DECODE_SIDE))?.singleOrNull()

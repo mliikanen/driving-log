@@ -14,6 +14,5 @@ class FillCenter(frameWidth: Int, frameHeight: Int, viewWidth: Float, viewHeight
     private val offsetX = (viewWidth - frameWidth * scale) / 2
     private val offsetY = (viewHeight - frameHeight * scale) / 2
 
-    fun map(box: TextBox): ViewRect =
-        ViewRect(box.left * scale + offsetX, box.top * scale + offsetY, box.right * scale + offsetX, box.bottom * scale + offsetY)
+    fun map(box: TextBox): ViewRect = ViewRect(box.left * scale + offsetX, box.top * scale + offsetY, box.right * scale + offsetX, box.bottom * scale + offsetY)
 }

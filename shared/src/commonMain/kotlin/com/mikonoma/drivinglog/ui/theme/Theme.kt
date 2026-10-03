@@ -151,10 +151,7 @@ object DrivingLogTheme {
 fun drivingLogColorScheme(darkTheme: Boolean): ColorScheme = if (darkTheme) DarkColors else LightColors
 
 @Composable
-fun DrivingLogTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun DrivingLogTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalDomainColors provides domainColors(darkTheme), LocalDarkTheme provides darkTheme) {
         MaterialTheme(
             colorScheme = drivingLogColorScheme(darkTheme),

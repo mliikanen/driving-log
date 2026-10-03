@@ -1,7 +1,5 @@
 package com.mikonoma.drivinglog.vehicle.data
 
-import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
-import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
@@ -10,9 +8,16 @@ import com.mikonoma.drivinglog.vehicle.FixedDeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleFuelType
+import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,11 +25,6 @@ import kotlin.test.assertFails
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.TimeZone
 
 /** The schema exactly as it was released in version 1, before distance entries and time zones. */
 private val VERSION_1_SCHEMA = listOf(
@@ -154,17 +154,16 @@ class VehicleMigrationJvmTest {
         pictures = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore(),
     )
 
-    private fun columns(driver: SqlDriver, table: String): List<String> =
-        driver.executeQuery(
-            identifier = null,
-            sql = "PRAGMA table_info($table)",
-            mapper = { cursor ->
-                val names = mutableListOf<String>()
-                while (cursor.next().value) names += cursor.getString(1)!!
-                QueryResult.Value(names)
-            },
-            parameters = 0,
-        ).value
+    private fun columns(driver: SqlDriver, table: String): List<String> = driver.executeQuery(
+        identifier = null,
+        sql = "PRAGMA table_info($table)",
+        mapper = { cursor ->
+            val names = mutableListOf<String>()
+            while (cursor.next().value) names += cursor.getString(1)!!
+            QueryResult.Value(names)
+        },
+        parameters = 0,
+    ).value
 
     @Test
     fun migratingKeepsTheExistingVehicleAndEvent() = runTest {
@@ -466,7 +465,11 @@ class VehicleMigrationJvmTest {
                     0,
                 )
             }
-            driver.execute(null, "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_type) VALUES ('ok', 'Has type', 'KILOMETERS', 1, 1, 'VAN')", 0)
+            driver.execute(
+                null,
+                "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_type) VALUES ('ok', 'Has type', 'KILOMETERS', 1, 1, 'VAN')",
+                0,
+            )
             assertFails { driver.execute(null, "UPDATE vehicle SET vehicle_type = NULL WHERE id = 'ok'", 0) }
         }
     }
@@ -752,7 +755,14 @@ class VehicleMigrationJvmTest {
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki"))
 
-        repository.addRefueling("v1", moment, com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, filledUp = true)
+        repository.addRefueling(
+            "v1",
+            moment,
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+        )
 
         val refueling = repository.observeLog("v1").first().first() as VehicleEvent.Refueling
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
@@ -830,7 +840,11 @@ class VehicleMigrationJvmTest {
                     0,
                 )
             }
-            driver.execute(null, "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_fuel_type) VALUES ('ok', 'Has fuel type', 'KILOMETERS', 1, 1, 'LPG')", 0)
+            driver.execute(
+                null,
+                "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_fuel_type) VALUES ('ok', 'Has fuel type', 'KILOMETERS', 1, 1, 'LPG')",
+                0,
+            )
             assertFails { driver.execute(null, "UPDATE vehicle SET vehicle_fuel_type = NULL WHERE id = 'ok'", 0) }
         }
     }
@@ -925,7 +939,11 @@ class VehicleMigrationJvmTest {
                     0,
                 )
             }
-            driver.execute(null, "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_color) VALUES ('ok', 'Has color', 'KILOMETERS', 1, 1, 'E53935')", 0)
+            driver.execute(
+                null,
+                "INSERT INTO vehicle (id, name, odometer_unit, created_at, updated_at, vehicle_color) VALUES ('ok', 'Has color', 'KILOMETERS', 1, 1, 'E53935')",
+                0,
+            )
             assertFails { driver.execute(null, "UPDATE vehicle SET vehicle_color = NULL WHERE id = 'ok'", 0) }
         }
     }

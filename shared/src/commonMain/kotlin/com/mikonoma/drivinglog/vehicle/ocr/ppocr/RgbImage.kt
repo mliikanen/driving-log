@@ -67,8 +67,7 @@ class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
     }
 
     companion object {
-        fun rgb(r: Double, g: Double, b: Double): Int =
-            (0xFF shl 24) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(b)
+        fun rgb(r: Double, g: Double, b: Double): Int = (0xFF shl 24) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(b)
 
         private fun clamp(v: Double): Int = min(255, max(0, (v + 0.5).toInt()))
     }

@@ -7,12 +7,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 
 /**
  * Decodes with [ImageDecoder], which applies the photo's EXIF orientation, and encodes lossy WebP (API 30, and the minimum
@@ -29,18 +29,16 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
         override fun turnedClockwise(quarterTurns: Int): DecodedImage = if (quarterTurns.mod(4) == 0) this else Decoded(turned(bitmap, quarterTurns))
     }
 
-    override suspend fun decode(bytes: ByteArray): DecodedImage? =
-        withContext(dispatcher) { decodeBitmap(bytes)?.let(::Decoded) }
+    override suspend fun decode(bytes: ByteArray): DecodedImage? = withContext(dispatcher) { decodeBitmap(bytes)?.let(::Decoded) }
 
-    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? =
-        withContext(dispatcher) {
-            val bitmap = decodeBitmap(bytes)?.let { turned(it, quarterTurns) } ?: return@withContext null
-            val side = crop.side.coerceIn(1, minOf(bitmap.width, bitmap.height))
-            val x = crop.x.coerceIn(0, bitmap.width - side)
-            val y = crop.y.coerceIn(0, bitmap.height - side)
-            val square = Bitmap.createBitmap(bitmap, x, y, side, side)
-            EncodedPicture(encode(square, sides.small), encode(square, sides.large))
-        }
+    override suspend fun encodeSquare(bytes: ByteArray, crop: CropRect, sides: PictureSides, quarterTurns: Int): EncodedPicture? = withContext(dispatcher) {
+        val bitmap = decodeBitmap(bytes)?.let { turned(it, quarterTurns) } ?: return@withContext null
+        val side = crop.side.coerceIn(1, minOf(bitmap.width, bitmap.height))
+        val x = crop.x.coerceIn(0, bitmap.width - side)
+        val y = crop.y.coerceIn(0, bitmap.height - side)
+        val square = Bitmap.createBitmap(bitmap, x, y, side, side)
+        EncodedPicture(encode(square, sides.small), encode(square, sides.large))
+    }
 
     override suspend fun encodeScaled(bytes: ByteArray, caps: List<Int>): List<EncodedImage>? = withContext(dispatcher) {
         val bitmap = decodeBitmap(bytes) ?: return@withContext null
@@ -118,8 +116,11 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
             val stepHeight = maxOf(1, (current.height * stepScale).roundToInt())
             current = Bitmap.createScaledBitmap(current, stepWidth, stepHeight, true)
         }
-        return if (current.width == targetWidth && current.height == targetHeight) current
-        else Bitmap.createScaledBitmap(current, targetWidth, targetHeight, true)
+        return if (current.width == targetWidth && current.height == targetHeight) {
+            current
+        } else {
+            Bitmap.createScaledBitmap(current, targetWidth, targetHeight, true)
+        }
     }
 
     private companion object {

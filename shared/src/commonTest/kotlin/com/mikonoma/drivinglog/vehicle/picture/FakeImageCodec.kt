@@ -24,8 +24,7 @@ class FakeImageCodec(var width: Int = 4000, var height: Int = 3000) : ImageCodec
 
     private class Decoded(override val width: Int, override val height: Int) : DecodedImage {
         override fun toImageBitmap(): ImageBitmap = error("A fake image has no bitmap")
-        override fun turnedClockwise(quarterTurns: Int): DecodedImage =
-            if (quarterTurns.mod(2) == 0) this else Decoded(height, width)
+        override fun turnedClockwise(quarterTurns: Int): DecodedImage = if (quarterTurns.mod(2) == 0) this else Decoded(height, width)
     }
 
     override suspend fun decode(bytes: ByteArray): DecodedImage? {
