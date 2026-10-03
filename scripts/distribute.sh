@@ -13,16 +13,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 git fetch --tags origin
+# A tag whose push failed last time (the upload had succeeded) is pushed now, so the remote knows it was distributed.
+git push --quiet origin 'refs/tags/dist-v*:refs/tags/dist-v*'
 
-last_tag="$(git tag -l 'dist-v*' --sort=-v:refname | head -1)"
-
-if [ -n "$last_tag" ]; then
-  last_tag_commit="$(git rev-list -n 1 "$last_tag")"
-  head_commit="$(git rev-parse HEAD)"
-  if [ "$last_tag_commit" = "$head_commit" ]; then
-    echo "Nothing to distribute: HEAD is the same commit already tagged $last_tag." >&2
-    exit 1
-  fi
+already="$(git tag --contains HEAD -l 'dist-v*' | tr '\n' ' ')"
+if [ -n "$already" ]; then
+  echo "Nothing to distribute: HEAD is already in a distributed build ($already)." >&2
+  exit 1
 fi
 
 notes_file="$(mktemp -t distribute-notes.XXXXXX)"

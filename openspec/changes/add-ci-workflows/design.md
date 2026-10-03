@@ -39,7 +39,9 @@ merge on a private repo, and two copies of the gate can drift. *Alternative:* `p
 `merged == true`. Rejected: the release must build a commit that passed the checks itself, and only the run on the
 merge commit (a push to `main`) shows that.
 
-Concurrency: `release.yml` uses `concurrency: { group: release, cancel-in-progress: false }`. GitHub keeps at
+Concurrency: the release **job** uses `concurrency: { group: release, cancel-in-progress: false }`; on the job, not
+the workflow, so a run for a failed check (skipped by the job's condition) never takes the pending slot (review of
+PR #1). `pr-check.yml` gives every push to `main` its own group (by SHA), so no merge commit's checks are dropped. GitHub keeps at
 most one *pending* run per group. With three quick merges the middle one is replaced by the newest, which is
 harmless: notes are computed from the last `dist-v*` tag to the run's commit, so the newest run covers what the
 replaced one would have distributed. The spec's two-merge scenario holds exactly.
@@ -109,6 +111,14 @@ PR's body from the event and the merge commit GitHub checks out, so the summary 
 runs on `opened`, `synchronize`, `reopened` and `edited`, so editing the description updates the preview without
 rerunning the build. It's informational, not a required check: there is nothing for it to pass or fail.
 
+**Changed after review (PR #1):** notes come from every pull request merged since the last tag, not only the one
+whose merge triggered the run. GitHub keeps one pending release, so a release can replace a waiting one, and reading
+only the newest PR lost the replaced PR's section (and could even publish nothing). `scripts/ci/choose-release-notes.sh`
+lists the merged PRs whose merge commit is in `<last tag>..<commit>`; each one with a section contributes it, and the
+changes it archived (its added files under `openspec/changes/archive/`) leave the generated list; every other archived
+change stays listed by name. The preview passes its own open PR (`--pr <number>`) and reads every description through
+the API, so a rerun shows the current text.
+
 ### 6. Tags: fetched first, pushed after upload, rerun-safe
 
 Both the release job and `distribute.sh` run `git fetch --tags` before computing anything. CI checks out with
@@ -117,8 +127,11 @@ Both the release job and `distribute.sh` run `git fetch --tags` before computing
 for that, plus `pull-requests: read` and `id-token: write` for decision 4. Both PR check jobs have
 `contents: read` only.
 
-If `HEAD` already carries a `dist-v*` tag (a manual rerun of a finished release), the job publishes nothing.
-That's the same guard `distribute.sh` has. If the upload succeeds but the tag push fails, a rerun uploads the
+If `HEAD` is already contained in a `dist-v*` tag, its own or a later commit's (a manual rerun of a finished
+release, or an old commit's check rerun after newer ones shipped), the job publishes nothing (`git tag --contains`);
+`distribute.sh` has the same guard. A manual run first requires a successful push-triggered PR check on its commit.
+`distribute.sh` also pushes any local `dist-v*` tag missing on the remote before that guard, so a tag push that failed
+after a successful upload is recovered on the next run. If the upload succeeds but the tag push fails, a rerun uploads the
 same `versionCode` again. Firebase accepts that as a new release of the same version; it's a visible but
 harmless duplicate.
 

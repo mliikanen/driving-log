@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # the PR's current description, and the merged PRs since the last distribution
 
 concurrency:
   group: release-notes-${{ github.ref }}
@@ -25,7 +26,9 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      # Reads the PR's description through the API, not from the event, so a rerun shows the current text.
       - name: Release notes preview
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: scripts/ci/release-notes-preview.sh >> "$GITHUB_STEP_SUMMARY"
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: scripts/ci/release-notes-preview.sh "$PR_NUMBER" >> "$GITHUB_STEP_SUMMARY"

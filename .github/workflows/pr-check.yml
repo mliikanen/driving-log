@@ -13,8 +13,10 @@ on:
 permissions:
   contents: read
 
+# A pull request's newer push replaces its older run. Every push to main gets its own group: GitHub keeps only one
+# pending run per group, so a shared one could drop a merge commit's checks, and with them its release.
 concurrency:
-  group: pr-check-${{ github.ref }}
+  group: pr-check-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

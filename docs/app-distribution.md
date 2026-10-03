@@ -109,13 +109,15 @@ device at this minSdk is 64-bit. A tester with an x86 or 32-bit ARM device could
 Every merge to `main` publishes to the testers, with no developer machine involved (`add-ci-workflows`):
 - **Trigger.** `.github/workflows/release.yml` runs when the PR check (`pr-check.yml`) has passed on a push to `main`,
   that is, on a merge commit, and builds exactly the commit that passed. It can also be run by hand (*Run workflow*).
-  One release runs at a time; a later one waits.
+  One release runs at a time; a later one waits. A run started by hand only publishes a commit whose PR check
+  passed, and no run publishes a commit older than one already distributed.
 - **Nothing to say, nothing published.** When no change was archived since the last `dist-v*` tag and the merged PR
   has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag. A commit that
   is already tagged isn't published again.
-- **Release notes.** The merged PR's `## Release notes` section when it has one (the herd's reviewer writes it; a
-  person can edit it before merging), otherwise the archive-generated list (`scripts/release-notes.sh`, the same
-  generation the local script drafts from). The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
+- **Release notes.** Everything since the last distribution: each PR merged since then contributes its
+  `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
+  and every other archived change is listed by name (`scripts/release-notes.sh`, the same generation the local script
+  drafts from). So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
   merging: that is the review the local script does in `$EDITOR`.
 - **Secrets** live in the `firebase-deployment` GitHub environment, which only `main` can enter (no pull request, even
   one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,

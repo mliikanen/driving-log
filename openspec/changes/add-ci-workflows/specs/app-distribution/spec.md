@@ -7,9 +7,11 @@ The system SHALL run the distribution automatically in CI for every push to `mai
 hand for the current `main` as well. A CI distribution SHALL build the signed, versioned `production` release from
 the pushed commit and upload it to the configured tester group, with no developer machine involved. When the
 release notes would be empty (no change archived since the previous distribution, and no release notes supplied
-with the merged pull request), the system SHALL publish nothing and create no tag, and SHALL say so in the run's
-summary. A CI distribution SHALL run only after the CI regression run has passed on the same commit. Two CI distributions
-SHALL NOT run at the same time; a later one SHALL wait for the earlier one to finish.
+with any pull request merged since), the system SHALL publish nothing and create no tag, and SHALL say so in the run's
+summary. A CI distribution SHALL run only after the CI regression run has passed on the same commit, including one
+started by hand. Two CI distributions SHALL NOT run at the same time; a later one SHALL wait for the earlier one to
+finish, and a run that won't distribute (its checks failed) SHALL NOT take a waiting distribution's place. A CI
+distribution SHALL NOT publish a commit that is already part of a distributed build, its own or a later one's.
 A CI distribution SHALL get the release keystore, its credentials and its upload identity only from the
 repository's CI configuration, available to runs on `main` and to no pull request. When one of them is missing, it
 SHALL fail before uploading anything or creating a tag, naming what is missing.
@@ -25,6 +27,14 @@ SHALL fail before uploading anything or creating a tag, naming what is missing.
 #### Scenario: Two merges in quick succession
 - **WHEN** a second commit reaches `main` while the first one's distribution is still running
 - **THEN** the second distribution starts only after the first has finished, and its notes cover only what the first did not distribute
+
+#### Scenario: Started by hand before its checks pass
+- **WHEN** a distribution is started by hand for a commit whose CI regression run hasn't passed (pending or failed)
+- **THEN** it refuses, naming the commit, and publishes nothing
+
+#### Scenario: An older commit after a newer distribution
+- **WHEN** a distribution runs again for a commit after a later commit has been distributed
+- **THEN** it publishes nothing, since that build would be older than what testers already have
 
 #### Scenario: A push whose checks fail
 - **WHEN** a commit reaches `main` and the CI regression run fails on it
@@ -51,10 +61,12 @@ possible, rather than uploading with empty notes.
 
 For a CI distribution, the review happens on the pull request before it is merged: the pull request SHALL
 show, in an informational check that is not required for merging, the draft that merging it would publish, kept
-current when the pull request's description is edited. When the merged pull request's description has a `## Release notes`
-section, its text SHALL be the release notes, so a reviewed or edited version replaces the generated draft and a
-pull request that archives nothing can still supply notes. Otherwise, the generated draft SHALL be the release
-notes. A commit that reaches `main` without a pull request SHALL use the generated draft.
+current when the pull request's description is edited. A CI distribution's notes SHALL cover every pull request merged
+since the previously distributed build: each one whose description has a `## Release notes` section contributes that
+section's text, which replaces the generated names of the changes that pull request archived, so a reviewed or edited
+version replaces the generated draft and a pull request that archives nothing can still supply notes. Every other
+change archived since the previous distribution, from a pull request without a section or from a commit that reached
+`main` without a pull request, SHALL be listed by name as in the generated draft.
 
 #### Scenario: Changes were archived since the last distribution
 - **WHEN** the developer cuts a new distribution and one or more OpenSpec changes were archived since the previously distributed build
@@ -82,7 +94,11 @@ notes. A commit that reaches `main` without a pull request SHALL use the generat
 
 #### Scenario: The pull request supplies the notes
 - **WHEN** a merged pull request's description has a `## Release notes` section
-- **THEN** the CI distribution uploads that section's text as the release notes, instead of the generated draft
+- **THEN** the CI distribution uploads that section's text as the release notes, instead of the generated names of the changes it archived
+
+#### Scenario: One distribution covers several pull requests
+- **WHEN** two pull requests are merged before either is distributed (one release replaced the other while waiting), one with a `## Release notes` section and one without
+- **THEN** the distribution's notes have the first one's section and the names of the changes the second one archived
 
 #### Scenario: A direct push to main
 - **WHEN** a commit that archives a change reaches `main` without a pull request

@@ -69,6 +69,13 @@
       `:androidApp:assembleProductionRelease :androidApp:appDistributionUploadProductionRelease
       -PdistributionReleaseNotesFile=<file>`, then tag and push `dist-v<versionName>`. Verify: `actionlint`, and
       the end-to-end run in 4.5.
+- [x] 3.4 Address the review of PR #1 (design.md decisions 1, 5 and 6): a concurrency group per push run in
+      `pr-check.yml`; the release job's concurrency on the job; a manual run requires a successful push-triggered PR
+      check on its commit; "already distributed" also covers commits contained in a later `dist-v*` tag (release job
+      and `distribute.sh`); notes from every PR merged since the last distribution (`choose-release-notes.sh`); the
+      preview reads the current PR description; `distribute.sh` pushes local `dist-v*` tags missing on the remote.
+      Verify: `actionlint` and `bash -n` pass; `choose-release-notes.sh` gives the expected notes for no merged PRs
+      (archive list) and, with a stub `gh`, for one PR with a section, one without and an open one with a section.
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 
