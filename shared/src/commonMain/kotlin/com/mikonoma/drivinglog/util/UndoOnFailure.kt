@@ -6,7 +6,7 @@ package com.mikonoma.drivinglog.util
  * `CancellationException` is rethrown like anything else, so cancellation still propagates.
  */
 @Suppress("TooGenericExceptionCaught") // Every throwable is rethrown as is after [undo]; nothing is swallowed or narrowed.
-inline fun <T> undoOnFailure( undo: () -> Unit, block: () -> T ): T {
+inline fun <T> undoOnFailure(undo: () -> Unit, block: () -> T): T {
     try {
         return block()
     } catch (throwable: Throwable) {
