@@ -22,8 +22,9 @@ Never commit a proposal to `main`.
 
 ## Applying, until the herd is onboarded
 
-On the change's branch: `/opsx:apply`, the final regression run, `/opsx:archive`, then merge into `main` (through
-the PR once branch protection is enabled). Merge `main` into the branch first if it has moved on.
+On the change's branch: `/opsx:apply`, the final regression run, `/opsx:archive`, then merge the PR into `main`. The
+branch must be up to date with `main` to merge (the ruleset requires it), so merge `main` into it first if `main` has
+moved on.
 
 ## With the herd
 
@@ -83,17 +84,17 @@ check. Instructions for the change's branch (also shown in the PR and the status
 
 ## Merging
 
-You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR runs two
-checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build), `code-quality`
-(`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth, informational one,
-`release-notes` (`release-notes.yml`), shows what merging would publish, and updates when you edit the description. Once the ruleset
-on `main` exists (`.github/rulesets/main.json`, `docs/distribution.md`'s one-time CI setup), all three must pass on the PR's
-latest commit, with the branch up to date, before it can merge, and `main` takes changes only through PRs, from
-everyone, with no bypass. Until the GitHub plan allows rulesets, the checks run and report but don't block. Merging
-publishes to the testers (`docs/distribution.md`).
+You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR, and every
+push to `main`, runs three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug
+build), `code-quality` (`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth,
+informational one, `release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit
+the description.
 
-**Still to decide:** whether every PR also needs a human approval, or the herd's review plus your Maestro pass is
-enough.
+The ruleset on `main` (`main-is-pr-only`, exported in `.github/rulesets/main.json`) blocks the merge until all three
+pass on the PR's latest commit, with the branch up to date with `main`. `main` takes changes only through PRs, from
+everyone: there is no bypass, the administrator included, and no approving review is required. A second ruleset
+(`main-retain`, `.github/rulesets/main-retain.json`) stops `main` from being deleted or force-pushed. Merging publishes
+to the testers (`docs/distribution.md`).
 
 ## Onboarding status
 
@@ -102,8 +103,9 @@ Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log spe
   branch holds only its own proposal).
 - `.herd/project.yaml` is drafted (its comments explain the values); `herd init` validates it once the herd
   exists.
-- The CI workflows exist (`pr-check.yml`, `release.yml`); the ruleset that makes the checks block merging, and the
-  release secrets, wait on the one-time CI setup in `docs/distribution.md`.
+- CI is set up (`add-ci-workflows`): the workflows (`pr-check.yml`, `release-notes.yml`, `release.yml`), the rulesets
+  on `main`, and the one-time setup in `docs/distribution.md` (the `firebase-deployment` environment limited to
+  `main`, its secrets, and Workload Identity Federation for the upload).
 - `.herd/toolchain.Dockerfile` doesn't exist yet.
 - Publishing to Firebase on merge is this project's release automation, separate from the herd
   (`docs/app-distribution.md`).
