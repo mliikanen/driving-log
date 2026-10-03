@@ -22,17 +22,29 @@ Never commit a proposal to `main`.
 
 ## Applying, until the herd is onboarded
 
-On the change's branch: `/opsx:apply`, the final regression run, `/opsx:archive`, then merge the PR into `main`. The
-branch must be up to date with `main` to merge (the ruleset requires it), so merge `main` into it first if `main` has
-moved on.
+On the change's branch, in this order:
+
+1. `/opsx:apply`, then the final regression run. The PR stays a **draft** while tasks are open.
+2. **Mark the PR ready for review** once every task is done and the regression run passes. That's the signal that
+   review starts.
+3. **Review cycles**: Copilot's review and/or a person's. Fix what's raised on the branch, reply to each comment and
+   resolve its thread, and repeat until nothing is open, including the "Previously missed" notes in Copilot's review
+   summary, which have no thread. A fix that changes behavior updates the change's spec deltas, design and tasks too.
+4. **`/opsx:archive` as the last commit**, once review is done: it syncs the deltas into `openspec/specs/` and moves the
+   change into `archive/`. Archiving earlier would mean editing the main specs and archived artifacts by hand when
+   review changes something. The checks must pass again after it.
+5. **Merge** the PR into `main`. The branch must be up to date with `main` to merge (the ruleset requires it), so
+   merge `main` into it first if `main` has moved on.
 
 ## With the herd
 
 1. **You mark the proposal ready** (below). From then on the herd owns it.
 2. **The herd** implements `tasks.md` item by item on the branch, has each task reviewed, runs the gate, reviews the
    whole change, and updates the draft PR.
-3. **You run final approval** (Maestro, below) on the branch and record the result.
-4. **The herd** archives the change and marks the PR ready for review. **You merge it.**
+3. **You run final approval** (Maestro, below) on the branch and record the result. The herd then marks the PR ready
+   for review, and GitHub's review (Copilot, or a person) runs its cycles as above; feedback goes back to the herd as
+   new tasks.
+4. **The herd** archives the change as the last commit, once review is done. **You merge it.**
 
 The herd stops and waits for you (`needs-human`) whenever it can't continue on its own. Run `herd` to open its
 herdr session: the status pane lists what's waiting on you first, with the reason, and every change still being
