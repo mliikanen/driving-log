@@ -87,15 +87,15 @@
       references `secrets.RELEASE_KEYSTORE_PASSWORD` gets an empty value, and a job declaring
       `environment: firebase-deployment` from the PR branch is refused. Close the PR without merging.
 - [ ] 4.7 Add `.github/rulesets/main.json` ("CI must pass": target `main`, required status checks
-      `tests-and-build` and `code-quality` from GitHub Actions, branches up to date before merging, the repository
-      admin role on the bypass list, nothing else) and create it with
+      `tests-and-build` and `code-quality` from GitHub Actions, branches up to date before merging, a pull request
+      required for every change, an empty bypass list, nothing else) and create it with
       `gh api -X POST repos/mliikanen/driving-log/rulesets --input .github/rulesets/main.json`, after both checks
       have passed on `main` once (design.md, Migration Plan). Verify: `gh api repos/mliikanen/driving-log/rulesets`
       lists it as active.
 - [ ] 4.8 Confirm merging is blocked (spec: "A pull request cannot be merged until its checks pass"). Verify: on a
       throwaway PR with a misformatted line, `gh pr merge` is refused while `code-quality` is pending and after it
       fails; after fixing the line and both checks passing, the merge is allowed (close it instead of merging).
-      Then confirm a direct push to `main` by the admin is still accepted.
+      Then confirm a direct push to `main`, as the repository admin, is refused.
 
 ## 5. Documentation
 

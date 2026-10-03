@@ -14,14 +14,15 @@ merge to `main`").
 ## What Changes
 
 - A **PR check** GitHub Actions workflow runs on every pull request to `main`, and on every push to `main` as
-  well, so direct pushes are checked too. It has two jobs, each its own status check:
+  well (each merge is one), so the commit the release builds has passed the same checks. It has two jobs, each its own status check:
   - `tests-and-build`: `:shared:allTests`, `:androidApp:assembleDebug`, `openspec validate --all --strict`, and the
     release-notes draft the merge would publish, in the job summary, so it can be reviewed before merging;
   - `code-quality`: `codeQuality` (ktlint, detekt, Android lint; there are no baselines since
     `clean-up-lint-baselines`).
 - **Both checks block merging.** A repository ruleset on `main` requires both to pass, on the PR's latest commit,
-  before a pull request can be merged. The repository admin keeps a bypass, so committing directly to `main` (how
-  proposals and today's changes land) still works; those commits are checked after the fact.
+  before a pull request can be merged, and `main` takes changes only through pull requests, from everyone: no
+  bypass. Every change already lives on its own `change/<name>` branch until it's merged (`docs/change-workflow.md`),
+  so nothing needs a direct push.
 - A **release** workflow runs on every push to `main` (and on manual dispatch). It builds the signed
   `production` release APK, uploads it to Firebase App Distribution's tester group, and pushes the
   `dist-v<versionName>` tag. When nothing was archived since the last distribution and the merged PR has no

@@ -21,15 +21,15 @@ of any part SHALL fail its check. CI SHALL NOT build or test iOS targets.
 - **WHEN** ktlint, detekt or Android lint reports a finding
 - **THEN** the code-quality check fails and names the tool and the finding
 
-#### Scenario: A commit is pushed directly to main
-- **WHEN** a commit reaches `main` without a pull request
-- **THEN** the regression run runs on it too, and its results are shown on the commit
+#### Scenario: A pull request is merged
+- **WHEN** a pull request is merged into `main`
+- **THEN** the regression run runs on the resulting commit on `main` too, and its results are shown on that commit
 
 ### Requirement: A pull request cannot be merged until its checks pass
 The repository SHALL refuse to merge a pull request into `main` until both CI status checks (tests-and-build and
 code-quality) have passed on the pull request's latest commit. A pending or failed check SHALL block the merge,
-whoever wrote the pull request, a person or an agent. The repository administrator SHALL keep the ability to push
-directly to `main` without a pull request; such commits are checked after they land.
+whoever wrote the pull request, a person or an agent. `main` SHALL accept changes only through pull requests, from
+everyone, the repository administrator included: a direct push to `main` SHALL be refused.
 
 #### Scenario: A check fails
 - **WHEN** a pull request's code-quality check or tests-and-build check has failed on its latest commit
@@ -43,6 +43,6 @@ directly to `main` without a pull request; such commits are checked after they l
 - **WHEN** a commit that fixes the failure is pushed to the pull request's branch and both checks pass on it
 - **THEN** the pull request can be merged
 
-#### Scenario: The administrator commits directly to main
-- **WHEN** the repository administrator pushes a commit directly to `main`
-- **THEN** the push is accepted, and both checks run on that commit afterwards
+#### Scenario: Someone pushes directly to main
+- **WHEN** anyone, the repository administrator included, pushes a commit directly to `main`
+- **THEN** the push is refused, and the change has to go through a pull request

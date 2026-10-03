@@ -36,7 +36,8 @@ the exact `head_sha` the check ran on.
 
 *Alternative:* `release.yml` on `push` running the gate itself. Rejected: it doubles the build minutes of every
 merge on a private repo, and two copies of the gate can drift. *Alternative:* `pull_request: closed` with
-`merged == true`. Rejected: it misses direct pushes to `main`, which are how changes land today.
+`merged == true`. Rejected: the release must build a commit that passed the checks itself, and only the run on the
+merge commit (a push to `main`) shows that.
 
 Concurrency: `release.yml` uses `concurrency: { group: release, cancel-in-progress: false }`. GitHub keeps at
 most one *pending* run per group. With three quick merges the middle one is replaced by the newest, which is
@@ -148,8 +149,9 @@ The cost is running the setup twice, which Gradle caching mostly absorbs.
 
 A repository ruleset on `main` ("CI must pass") requires both checks (`tests-and-build`, `code-quality`, from
 GitHub Actions) and requires branches to be up to date before merging, so a PR is checked against the `main` it
-merges into. The repository admin role is on the ruleset's bypass list, so direct pushes to `main` keep working.
-"PR-only for everyone" and "require a human approval" are left unset; they're open decisions in
+merges into. It also requires a pull request for every change to `main`, and its bypass list is empty: since every
+change lives on its own `change/<name>` branch until it's merged (`docs/change-workflow.md`), nobody needs to push to
+`main` directly, the administrator included. "Require a human approval" is left unset; it's an open decision in
 `docs/change-workflow.md`. The ruleset is created with `gh api` from a checked-in JSON file
 (`.github/rulesets/main.json`), so it's reviewable and re-creatable rather than clicked together.
 
@@ -160,18 +162,18 @@ the change isn't complete until the ruleset exists.
 
 *Alternative:* one job with all steps. Rejected: one required check that fails for either reason, and lint waits
 behind the tests. *Alternative:* classic branch protection. Rulesets are GitHub's current mechanism, can be
-exported and imported as JSON, and have the bypass list this needs.
+exported and imported as JSON.
 
 ## Risks / Trade-offs
 
 - [Actions minutes on a private repo: an Android build plus the shared tests is several minutes, and a merge
   runs the check and then the release.] → Gradle caching; the release reuses the check instead of rerunning it.
-  Watch usage in the first weeks, and drop `push` from the PR check if direct pushes become rare.
+  Watch usage in the first weeks. (The `push` run is the one the release waits for, so it stays.)
 - [Release keystore in GitHub. A leak lets someone sign builds that upgrade-install over testers' copies.] →
   Environment secret reachable only from `main`, explicit sign-off, and the backup procedure in
   `docs/distribution.md` stays the source of truth.
-- [Automatic release on every archive-bearing push changes today's habit of releasing by hand.] → Intended. Direct
-  pushes of proposals and docs archive nothing and publish nothing. `distribute.sh` remains for manual releases.
+- [Automatic release on every archive-bearing push changes today's habit of releasing by hand.] → Intended. Merges
+  that archive nothing (docs, tooling) publish nothing. `distribute.sh` remains for manual releases.
 - [Placeholder `google-services.json` could hide a broken real file.] → The release job builds with the real one
   on every distribution, so a broken real file fails there.
 - [A PR's release-notes preview is computed against the last tag as of the check; a release that lands between
