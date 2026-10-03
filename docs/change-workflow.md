@@ -83,9 +83,13 @@ check. Instructions for the change's branch (also shown in the PR and the status
 
 ## Merging
 
-You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). `main` is meant to
-be PR-only for everyone, with no bypass: nothing needs a direct push any more. The CI gate is a required check, and
-branches must be up to date before merging (`add-ci-workflows`).
+You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR runs two
+checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build, spec validation, and the
+release notes merging would publish, in its summary) and `code-quality` (`./gradlew codeQuality`). Once the ruleset
+on `main` exists (`.github/rulesets/main.json`, `docs/distribution.md`'s one-time CI setup), both must pass on the PR's
+latest commit, with the branch up to date, before it can merge, and `main` takes changes only through PRs, from
+everyone, with no bypass. Until the GitHub plan allows rulesets, the checks run and report but don't block. Merging
+publishes to the testers (`docs/distribution.md`).
 
 **Still to decide:** whether every PR also needs a human approval, or the herd's review plus your Maestro pass is
 enough.
@@ -97,7 +101,8 @@ Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log spe
   branch holds only its own proposal).
 - `.herd/project.yaml` is drafted (its comments explain the values); `herd init` validates it once the herd
   exists.
-- `.herd/toolchain.Dockerfile`, the CI workflows and branch protection don't exist yet; the CI and the ruleset are
-  planned in `add-ci-workflows` (on its branch).
-- Publishing to Firebase on merge is this project's release automation, separate from the herd. It's planned in
-  `docs/app-distribution.md` and `add-ci-workflows`.
+- The CI workflows exist (`pr-check.yml`, `release.yml`); the ruleset that makes the checks block merging, and the
+  release secrets, wait on the one-time CI setup in `docs/distribution.md`.
+- `.herd/toolchain.Dockerfile` doesn't exist yet.
+- Publishing to Firebase on merge is this project's release automation, separate from the herd
+  (`docs/app-distribution.md`).

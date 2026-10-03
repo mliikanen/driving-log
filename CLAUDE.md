@@ -55,4 +55,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
   The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`, **without Maestro**.
   `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. There are no baselines: fix a finding or suppress it with a reason.
+  CI (`.github/workflows/pr-check.yml`) runs the same final regression run on every PR and push to `main`, as two checks
+  (`tests-and-build`, `code-quality`); once the ruleset on `main` (`.github/rulesets/main.json`) exists, a PR can't merge
+  until both pass. Merging to `main` publishes to the testers (`docs/distribution.md`).
   The whole Maestro suite is for major refactorings, which the developer names.

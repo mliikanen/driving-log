@@ -128,8 +128,12 @@ harmless duplicate.
   demand.
 - `gradle/actions/setup-gradle` for wrapper validation and caching. The cache is written only from `main` runs,
   so PR runs read it and can't poison it.
-- `npm install -g @fission-ai/openspec@1.13.1`, pinned to the version the project uses. Bumping it is a
-  one-line workflow edit.
+- `npm install -g @fission-ai/openspec@1.13.2`, pinned to the version the project uses (1.13.2 is what's installed
+  locally; the CLI reported 1.13.1 when this was written). Bumping it is a one-line edit.
+- **During apply:** the toolchain steps are a composite action, `.github/actions/setup-build`, used by every job. The
+  checkout can't be inside it: a local action only loads from an already checked-out repository, so each job checks
+  out first (full history and tags). The release-notes choice is one script, `scripts/ci/choose-release-notes.sh`,
+  shared by the PR check's preview and the release job.
 - Third-party actions are pinned to full commit SHAs, with the version in a comment.
 - The gate is one step per part (`:shared:allTests`, `:androidApp:assembleDebug`,
   `openspec validate --all --strict`), so a failure names its step (spec scenario "A test fails").

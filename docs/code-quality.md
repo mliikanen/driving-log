@@ -21,6 +21,8 @@ None of them needs macOS: iOS source sets are only read, never compiled.
 ## Commands
 
 - `./gradlew codeQuality`: all three, as the gate runs them. Add `--continue` to see every tool's findings at once.
+  CI runs it on every pull request as the `code-quality` check (`.github/workflows/pr-check.yml`), which blocks
+  merging once the ruleset on `main` exists (`docs/change-workflow.md`, Merging).
 - `./gradlew ktlintFormat`: fixes formatting in place. Run it first when ktlint fails; what it leaves (for example a
   line too long to wrap automatically) needs a manual fix.
 - `./gradlew ktlintCheck`, `./gradlew detekt`, `./gradlew :androidApp:lintFakeDebug` (and the others): one tool.

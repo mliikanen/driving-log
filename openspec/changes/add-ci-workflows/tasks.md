@@ -2,12 +2,12 @@
 
 ## 1. Release notes script and local distribution
 
-- [ ] 1.1 Add `scripts/release-notes.sh [<commit>]`: prints the names of changes archived since the last `dist-v*`
+- [x] 1.1 Add `scripts/release-notes.sh [<commit>]`: prints the names of changes archived since the last `dist-v*`
       tag reachable from `<commit>` (default `HEAD`), one per line, using `distribute.sh`'s existing `git log`
       pipeline moved verbatim (design.md decision 5). Verify: on the current `main` its output is identical to the
       old inline pipeline's output (run both and `diff`), and `release-notes.sh <older commit>` lists only changes
       archived up to that commit.
-- [ ] 1.2 Change `scripts/distribute.sh` to `git fetch --tags origin` before computing the range, to call
+- [x] 1.2 Change `scripts/distribute.sh` to `git fetch --tags origin` before computing the range, to call
       `release-notes.sh` for the draft, and to `git push origin dist-v<versionName>` after tagging (spec: "A
       signed build uploads to the configured tester group"). Verify: `bash -n`, and a dry read of the script
       shows fetch → notes → build/upload → tag → push in that order, with the existing refusal when `HEAD` is
@@ -15,21 +15,22 @@
 
 ## 2. PR check workflow
 
-- [ ] 2.0 Check that `add-lint-quality-gates` is applied: `./gradlew codeQuality --dry-run` resolves. Verify: it does;
+- [x] 2.0 Check that `add-lint-quality-gates` is applied: `./gradlew codeQuality --dry-run` resolves. Verify: it does;
       if not, stop and apply that change first.
-- [ ] 2.1 Add `.github/ci/google-services.placeholder.json`: the shape of the real file with package name
+- [x] 2.1 Add `.github/ci/google-services.placeholder.json`: the shape of the real file with package name
       `com.mikonoma.drivinglog` and dummy project/API values (design.md decision 2). Verify: with the real file
       moved aside and the placeholder copied to `androidApp/src/production/google-services.json`,
       `./gradlew :androidApp:assembleDebug :androidApp:lintProductionDebug` succeeds; then restore the real file.
-- [ ] 2.2 Add the composite action `.github/actions/setup-build`: checkout with `fetch-depth: 0` and tags,
-      Temurin 25, `setup-android`, `setup-gradle` (cache written only on `main`), OpenSpec CLI 1.13.1, placeholder
-      copy. Third-party actions pinned to commit SHAs (design.md decisions 7 and 8). Verify: `actionlint` reports no
+- [x] 2.2 Add the composite action `.github/actions/setup-build`: Temurin 25, `setup-android`, `setup-gradle`
+      (cache written only on `main`), OpenSpec CLI 1.13.2 (the version installed locally), placeholder copy; each job
+      checks out (full history and tags) before using it, since a local action loads only from a checked-out
+      repository. Third-party actions pinned to commit SHAs (design.md decisions 7 and 8). Verify: `actionlint` reports no
       errors once a workflow uses it (2.3).
-- [ ] 2.3 Add `.github/workflows/pr-check.yml` (`pull_request` and `push` to `main`, `contents: read`) with two jobs
+- [x] 2.3 Add `.github/workflows/pr-check.yml` (`pull_request` and `push` to `main`, `contents: read`) with two jobs
       using `setup-build`: `tests-and-build` (`:shared:allTests`, `:androidApp:assembleDebug`,
       `openspec validate --all --strict` as separate steps) and `code-quality` (`./gradlew codeQuality`) (design.md
       decision 8). Verify: `actionlint` reports no errors.
-- [ ] 2.4 Add the release-notes preview step to the `tests-and-build` job: on a pull request, the PR body's
+- [x] 2.4 Add the release-notes preview step to the `tests-and-build` job: on a pull request, the PR body's
       `## Release notes` section if non-empty, else `release-notes.sh` on the checked-out merge commit, else
       "nothing to release". Written to the job summary (spec: "The draft is shown on the pull request"). Verify:
       the section-extraction logic, run locally on a sample body with and without the section and with a following
@@ -41,7 +42,7 @@
 
 ## 3. Release workflow
 
-- [ ] 3.1 Add `.github/workflows/release.yml`: `workflow_run` on `PR check` (completed, `main`, event `push`,
+- [x] 3.1 Add `.github/workflows/release.yml`: `workflow_run` on `PR check` (completed, `main`, event `push`,
       success only) and `workflow_dispatch`, `concurrency: { group: release, cancel-in-progress: false }`,
       `environment: firebase-deployment`, permissions `contents: write`, `pull-requests: read`, `id-token: write`. Checkout of
       the checked `head_sha` with full history and tags (design.md decisions 1 and 6). Verify: `actionlint`
@@ -99,21 +100,21 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Update `docs/app-distribution.md`: replace "Planned: publish from CI on merge to `main`" with how it
+- [x] 5.1 Update `docs/app-distribution.md`: replace "Planned: publish from CI on merge to `main`" with how it
       works now (trigger, environment, Workload Identity Federation or key, notes from the PR or the archive,
       tag push), and update the "No service-account credential file" paragraph to say it still holds for the
       local flow. Verify: no "planned"/"not built yet" wording remains for CI in the file.
-- [ ] 5.2 Update `docs/distribution.md`: CI is now the normal release path, `distribute.sh` is the manual
+- [x] 5.2 Update `docs/distribution.md`: CI is now the normal release path, `distribute.sh` is the manual
       fallback (it fetches and pushes tags), the one-time CI setup (tasks 4.1–4.4 with the exact commands), and
       how to edit release notes through the PR body. Verify: the doc's "Cutting a release" section describes both
       paths.
-- [ ] 5.3 Update `docs/change-workflow.md` ("Merging" and "Onboarding status": the two checks now exist and block
+- [x] 5.3 Update `docs/change-workflow.md` ("Merging" and "Onboarding status": the two checks now exist and block
       merging; PR-only and human approval are still open) and `CLAUDE.md`'s Commands section with one line saying CI
       runs the final regression run on every PR and push to `main`, and a PR can't merge until both checks pass.
       Verify: both files mention `pr-check.yml` and the ruleset.
-- [ ] 5.4 Update `openspec/specs/app-distribution/spec.md`'s Purpose (it says "from a developer's machine") to cover
+- [x] 5.4 Update `openspec/specs/app-distribution/spec.md`'s Purpose (it says "from a developer's machine") to cover
       CI distribution too. Verify: the Purpose mentions both.
-- [ ] 5.5 Update `docs/code-quality.md` (from `add-lint-quality-gates`) to say the `code-quality` check runs
+- [x] 5.5 Update `docs/code-quality.md` (from `add-lint-quality-gates`) to say the `code-quality` check runs
       `codeQuality` on every PR and blocks merging. Verify: the doc names the check.
 
 ## 6. Final regression run

@@ -3,7 +3,8 @@
 ## Purpose
 
 Defines how a signed, versioned Android build is cut and uploaded to the project's Firebase App Distribution
-testers from a developer's machine, and how its release notes are derived from the OpenSpec archive history.
+testers, automatically from CI on every merge to `main` or by hand from a developer's machine, and how its release
+notes are derived from the OpenSpec archive history or the merged pull request.
 
 ## Requirements
 

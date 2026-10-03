@@ -1,0 +1,36 @@
+# The toolchain every CI job builds with (add-ci-workflows, design.md decisions 7 and 8), so the jobs can't drift
+# apart. A local action can only be loaded from a checked-out repository, so each job checks out first (full history
+# and tags: versionCode is `git rev-list --count HEAD`, and release notes start at the last dist-v* tag).
+name: Set up the build
+description: JDK, Android SDK licenses, Gradle with its cache, the OpenSpec CLI, and google-services.json.
+inputs:
+  placeholder-google-services:
+    description: >-
+      Copy .github/ci/google-services.placeholder.json into the production flavor. Every PR check job does (it holds
+      no secrets); the release job writes the real file instead.
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: temurin
+        java-version: "25"
+    # Accepts the SDK licenses; AGP downloads the compileSdk platform and build-tools it needs on demand.
+    - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+    # Wrapper validation and caching. The cache is written only by runs on main, so a pull request can read it but
+    # never poison it.
+    - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      with:
+        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: "22"
+    # The version the project's specs are validated with locally; bump it here deliberately.
+    - name: Install the OpenSpec CLI
+      shell: bash
+      run: npm install -g @fission-ai/openspec@1.13.2
+    - name: Use the placeholder google-services.json
+      if: inputs.placeholder-google-services == 'true'
+      shell: bash
+      run: cp .github/ci/google-services.placeholder.json androidApp/src/production/google-services.json

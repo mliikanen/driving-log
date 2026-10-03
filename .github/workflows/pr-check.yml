@@ -1,0 +1,51 @@
+# The final regression run (CLAUDE.md) on every pull request to main and on every push to main (each merge), as two
+# status checks that a ruleset on main requires before merging (add-ci-workflows, design.md decision 8). No secrets:
+# the production flavor builds with a placeholder google-services.json.
+name: PR check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests-and-build:
+    name: tests-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: ./.github/actions/setup-build
+      - name: Shared tests
+        run: ./gradlew :shared:allTests
+      - name: Debug build
+        run: ./gradlew :androidApp:assembleDebug
+      - name: Spec validation
+        run: openspec validate --all --strict
+      - name: Release notes preview
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: scripts/ci/release-notes-preview.sh >> "$GITHUB_STEP_SUMMARY"
+
+  code-quality:
+    name: code-quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-build
+      # ktlint, detekt and Android lint (both app flavors and shared); docs/code-quality.md.
+      - name: Static analysis
+        run: ./gradlew codeQuality
