@@ -71,9 +71,10 @@
       Verify: `gh api repos/mliikanen/driving-log/rulesets` returns a list instead of the "Upgrade to GitHub Pro"
       error.
       Done: the developer made the repository public (rulesets and environment branch limits are available).
-- [ ] 4.2 **(developer)** Limit the existing `firebase-deployment` environment's deployment branches to `main`.
+- [x] 4.2 **(developer)** Limit the existing `firebase-deployment` environment's deployment branches to `main`.
       Verify: `gh api repos/mliikanen/driving-log/environments/firebase-deployment` shows a deployment branch policy
       with `main` only.
+      Done: the environment's branch policy allows `main` only (`custom_branch_policies`, one policy, `main`).
 - [ ] 4.3 **(developer, sign-off)** Create the Google Cloud service account with only
       `roles/firebaseappdistro.admin`, and a workload identity pool and GitHub OIDC provider restricted to
       `repo:mliikanen/driving-log` and `environment:firebase-deployment`, allowed to impersonate that account. Add the
