@@ -14,7 +14,7 @@ class UndoOnFailureTest {
     fun successReturnsTheResultWithoutUndoing() {
         var undone = false
         val result = undoOnFailure(undo = { undone = true }) { 42 }
-        assertEquals(43, result)
+        assertEquals(42, result)
         assertFalse(undone)
     }
 
