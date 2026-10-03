@@ -65,3 +65,11 @@
       Verify: all pass, and the PR's checks are green.
       Done: `maestro/run.sh resilience` passed 3/3 (and `distance` 4/4, task 1.1); the regression run and
       `openspec validate --all --strict` (17 items) pass, and PR #4's four checks passed on 39c9cc7.
+
+## 5. Review (added during review)
+
+- [x] 5.1 Commit system-back coverage for the three migrated handlers (Copilot on PR #4): the distance journeys press
+      the system back where they used the toolbar's — the note editor in `log-distance` (it attaches the note), the
+      live scanner and the photo review in `scan-reading` (back to the form, back to the scanner). Verify:
+      `maestro/run.sh distance` passes.
+      Done: `maestro/run.sh distance` passed 4/4.
