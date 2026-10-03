@@ -19,10 +19,12 @@ appId: com.mikonoma.drivinglog
     direction: UP
 - runFlow: ../subflows/pick-photo.yaml
 - tapOn: Use photo
-# The photo's color is the selected one, in a swatch of its own, and the default is not.
+# The photo's color is the selected one, in a swatch of its own, and the default is not. Centered: scrolled only until visible, the swatch can stop
+# at the screen's bottom edge, where a tap on its middle lands in the system's gesture area and is lost.
 - scrollUntilVisible:
     element:
       id: vehicle_color_picture
+    centerElement: true
 - assertVisible:
     id: vehicle_color_picture
     checked: true
@@ -98,6 +100,7 @@ appId: com.mikonoma.drivinglog
 - scrollUntilVisible:
     element:
       id: vehicle_color_picture
+    centerElement: true
 - assertVisible:
     id: vehicle_color_picture
     checked: true

@@ -15,6 +15,8 @@ import kotlin.time.Duration.Companion.hours
  * with the time it was made (`{epochMillis}-{uuid}`), because kotlinx-io does not tell a file's age and the sweep needs it.
  * [newId] makes the unique part of an id.
  */
+// Implements PictureStore, one function per thing done with a picture's files, plus their file-level helpers.
+@Suppress("TooManyFunctions")
 class FilePictureStore(private val root: Path, private val dispatcher: CoroutineDispatcher, private val clock: Clock, private val newId: () -> String) :
     PictureStore {
 

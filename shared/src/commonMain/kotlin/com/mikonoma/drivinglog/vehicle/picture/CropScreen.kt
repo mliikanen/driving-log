@@ -85,7 +85,6 @@ private val CropViewSaver = listSaver<CropView, Any>(
  * photo (the [CropState] keeps it inside). The app bar's "Use photo" confirms the crop, with the turns it was made at, and back navigation (its arrow or
  * the system's) discards the photo; nothing else leaves the screen, so a photo cannot be used without being cropped. The frame and the turns survive a rotation of the device.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel: () -> Unit) {
     var view by rememberSaveable(stateSaver = CropViewSaver) { mutableStateOf(CropView(0, null)) }
@@ -144,23 +143,7 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
         Scaffold(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets.safeDrawing,
-            topBar = {
-                Column {
-                    TopAppBar(
-                        colors = drivingLogTopAppBarColors(),
-                        title = { Text("Crop the photo") },
-                        navigationIcon = { BackButton(onCancel) },
-                        actions = {
-                            TextButton(
-                                colors = headerTextButtonColors(),
-                                onClick = { onConfirm(crop.rect(), view.quarterTurns) },
-                                modifier = Modifier.testTag("use_photo"),
-                            ) { Text("Use photo") }
-                        },
-                    )
-                    HeaderDivider()
-                }
-            },
+            topBar = { CropTopBar(onCancel = onCancel, onUse = { onConfirm(crop.rect(), view.quarterTurns) }) },
         ) { padding ->
             BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
                 val space = Modifier.onGloballyPositioned { freeSpace = it.boundsInRoot() }
@@ -182,6 +165,26 @@ fun CropScreen(image: DecodedImage, onConfirm: (CropRect, Int) -> Unit, onCancel
 
 /** What the buttons and the keyboard do, so the two ways share one definition. */
 private class CropControls(val zoomIn: () -> Unit, val zoomOut: () -> Unit, val move: (CropMove) -> Unit, val rotate: () -> Unit, val reset: () -> Unit)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CropTopBar(onCancel: () -> Unit, onUse: () -> Unit) {
+    Column {
+        TopAppBar(
+            colors = drivingLogTopAppBarColors(),
+            title = { Text("Crop the photo") },
+            navigationIcon = { BackButton(onCancel) },
+            actions = {
+                TextButton(
+                    colors = headerTextButtonColors(),
+                    onClick = onUse,
+                    modifier = Modifier.testTag("use_photo"),
+                ) { Text("Use photo") }
+            },
+        )
+        HeaderDivider()
+    }
+}
 
 @Composable
 private fun CropCanvas(

@@ -87,6 +87,24 @@ keeps no log. `FirebaseAuthRepository` had two baselined findings not listed abo
 - `TooManyFunctions` on `VehicleRepository`, its implementations and `PictureStore`: one repository per aggregate,
   one function per query or command. Suppressed on those declarations with that reason. `LogEventScreen.kt` (the
   file) and `ReadingDetection.kt` are split into files by concern instead.
+- **During apply:**
+  - Three more TooManyFunctions findings, suppressed with their reasons the same way: `FilePictureStore` (implements
+    `PictureStore`), `LogEventProcessor` (one action builder per intent and save path, how this project's processors are
+    written) and `CropState` (one function per crop operation), plus the `PpOcr` object itself (the ported pipeline's
+    steps).
+  - `LogEventScreen.kt` became `LogEventScreen.kt` (screen, form, its parts and dialogs wiring), `LogEventChoices.kt`
+    (selectors), `LogEventFields.kt` (moment row, fuel amount, known odometer, error text), `EventNoteAndPhotos.kt` (the
+    note and photo fields shared with the event details screen) and `LogEventDialogs.kt`.
+  - `ReadingDetection.kt` gave up `TextBoxGeometry.kt` (row and place tests on boxes) and `ReadingLabels.kt` (the label
+    sets and label lookup).
+  - Declarations that moved between files changed from `private` to `internal` (still within the module).
+  - ktlint 1.8 doesn't report unused imports, so the imports each new file inherited were pruned by name.
+  - Maestro `appearance` failed intermittently after the screen splits (1 pass in 5 runs of `color-from-photo`,
+    against 2 of 2 on the commit before this change). Probing both builds showed the same layout: the "Photo color"
+    swatch's position after `scrollUntilVisible` varies run to run in both, and selecting it works once it's fully on
+    screen. The flow tapped the swatch while it sat at the screen's bottom edge, where the tap's center lands in the
+    system's gesture area. Its two scrolls to the swatch now use `centerElement: true`, and the manifest passed three
+    runs in a row.
 
 ### 5. Magic numbers become named constants next to their use
 

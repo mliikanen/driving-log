@@ -45,6 +45,8 @@ import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
 import kotlin.time.Clock
 
+// MVI: one action builder per intent and save path, which is how this project's processors are written.
+@Suppress("TooManyFunctions")
 class LogEventProcessor @AssistedInject constructor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
@@ -325,7 +327,7 @@ class LogEventProcessor @AssistedInject constructor(
     private fun save(): Action<LogEventState, LogEventEffect>? {
         val form = state
         val vehicleId = form.selectedVehicleId
-        if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
+        if (form.isSaveBlocked) return null
         return when (form.kind) {
             LogKind.DISTANCE -> saveDistance(form, vehicleId)
             LogKind.REFUELING -> saveRefueling(form, vehicleId)
@@ -418,7 +420,7 @@ class LogEventProcessor @AssistedInject constructor(
     private fun saveConfirmedLowerOdometer(): Action<LogEventState, LogEventEffect>? {
         val form = state
         val vehicleId = form.selectedVehicleId
-        if (form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()) return null
+        if (form.isSaveBlocked) return null
         return when (form.kind) {
             LogKind.DISTANCE -> saveConfirmedLowerOdometerDistance(form, vehicleId)
             LogKind.REFUELING -> saveConfirmedLowerOdometerRefueling(form, vehicleId)
@@ -526,16 +528,7 @@ class LogEventProcessor @AssistedInject constructor(
          */
         fun LogEventState.withScannedReading(reading: Detection): LogEventState {
             val kind = reading.kind ?: return this
-            if (kind == ReadingKind.FUEL_AMOUNT) {
-                // Always hundredths (refueling-logging's FuelAmountEntry), whatever the reading's own decimal
-                // places: a single fraction digit is a tenth, padded with a trailing zero (design.md).
-                val hundredths = reading.value.substringAfter('.', "").padEnd(2, '0').take(2).toLong()
-                val steps = reading.whole * 100 + hundredths
-                if (steps > FuelAmountEntry.MAX_STEPS) return this
-                // The label that made this a candidate also says which unit it was in (design.md, "A recognized
-                // label also preselects the fuel unit"); kept as it was when the label doesn't say either way.
-                return copy(fuelAmount = FuelAmountEntry(steps = steps), fuelUnit = fuelUnitOf(reading.label) ?: fuelUnit, error = null)
-            }
+            if (kind == ReadingKind.FUEL_AMOUNT) return withScannedFuelAmount(reading)
             val tenth = reading.tenth
             val form = if (tenth != null && !unit.hasTenths) withUnit(unitOf(unit.isMiles, tenths = true)) else this
             val steps = if (form.unit.hasTenths) reading.whole * 10 + (tenth ?: 0) else reading.whole
@@ -546,6 +539,18 @@ class LogEventProcessor @AssistedInject constructor(
                 ReadingKind.TRIP -> form.copy(way = LogWay.TRIP_DISTANCE, tripDistance = entry, error = null)
                 ReadingKind.FUEL_AMOUNT -> form // unreachable: handled above
             }
+        }
+
+        /** [withScannedReading] for a fuel amount reading. */
+        private fun LogEventState.withScannedFuelAmount(reading: Detection): LogEventState {
+            // Always hundredths (refueling-logging's FuelAmountEntry), whatever the reading's own decimal
+            // places: a single fraction digit is a tenth, padded with a trailing zero (design.md).
+            val hundredths = reading.value.substringAfter('.', "").padEnd(2, '0').take(2).toLong()
+            val steps = reading.whole * 100 + hundredths
+            if (steps > FuelAmountEntry.MAX_STEPS) return this
+            // The label that made this a candidate also says which unit it was in (design.md, "A recognized
+            // label also preselects the fuel unit"); kept as it was when the label doesn't say either way.
+            return copy(fuelAmount = FuelAmountEntry(steps = steps), fuelUnit = fuelUnitOf(reading.label) ?: fuelUnit, error = null)
         }
 
         /** The fuel unit a recognized volume label implies (`add-fuel-amount-ocr`, design.md's evaluation): liters

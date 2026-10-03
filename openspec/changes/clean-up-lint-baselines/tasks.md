@@ -62,17 +62,22 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 6. Size and complexity (design.md decision 4)
 
-- [ ] 6.1 Before refactoring, check each remaining complex or long function has a test that would catch a behavior
+- [x] 6.1 Before refactoring, check each remaining complex or long function has a test that would catch a behavior
       change (processor tests for processors; Maestro manifests for screens). Add a processor test where one is
       missing. Verify: the list of functions and their covering tests is in this task's notes.
-- [ ] 6.2 Split the long screen composables (`AddVehicleContent`, `EditVehicleContent`, `CropScreen`,
+      Notes: `validateLogDistance` → `LogDistanceRulesTest`; `LogEventProcessor` save guards and
+      `withScannedReading` → `LogEventProcessorTest` (save, lower-odometer confirmation and scan cases); the screens
+      (`AddVehicleContent`, `EditVehicleContent`, `CropScreen`, `VehicleDetailsContent`, `LogEventContent`,
+      `EventDetailsContent`, `EventEditContent`) → Maestro `vehicles`, `distance`, `appearance` and `picture`. No test
+      was missing.
+- [x] 6.2 Split the long screen composables (`AddVehicleContent`, `EditVehicleContent`, `CropScreen`,
       `EventDetails` ×2, `LogEventContent`, `VehicleDetails`) into sub-composables, keeping every test tag and
       semantics property. Verify: `:shared:allTests` passes, the LongMethod/CyclomaticComplexMethod entries for screens
       are gone, and Maestro `vehicles`, `distance` and `appearance` pass.
-- [ ] 6.3 Restructure the processors' and helpers' remaining ReturnCount/ComplexCondition findings (e.g.
+- [x] 6.3 Restructure the processors' and helpers' remaining ReturnCount/ComplexCondition findings (e.g.
       `LogEventProcessor`'s form-state condition as a named property). Verify: processor tests pass, and the entries are
       gone.
-- [ ] 6.4 Split `LogEventScreen.kt` and `ReadingDetection.kt` into files by concern. Suppress TooManyFunctions on
+- [x] 6.4 Split `LogEventScreen.kt` and `ReadingDetection.kt` into files by concern. Suppress TooManyFunctions on
       `VehicleRepository`, its implementations and `PictureStore`, and suppress the complexity rules on `PpOcr`'s and
       `Geometry`'s ported functions, each with the reason from design.md decision 4. Verify: `:shared:allTests` passes
       (OCR tests including `PpOcrRealPhotosJvmTest` give identical results), and the detekt baseline is empty.

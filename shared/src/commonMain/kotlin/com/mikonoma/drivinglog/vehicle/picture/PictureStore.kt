@@ -12,6 +12,8 @@ class EncodedImage(val bytes: ByteArray, val extension: String, val width: Int, 
  * cropped, or one already encoded but waiting for its owning record to be saved) is *pending*, named by a pending id, and is
  * moved under a new picture id by [promote] when the owning record is saved.
  */
+// One function per thing done with a picture's files (stage, promote, read, delete, sweep).
+@Suppress("TooManyFunctions")
 interface PictureStore {
     /**
      * Keeps the bytes of a chosen photo and mints a new pending id for it. A caller that crops reads it back with

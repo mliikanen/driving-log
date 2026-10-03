@@ -2,6 +2,8 @@ package com.mikonoma.drivinglog.vehicle.domain
 
 import kotlinx.coroutines.flow.Flow
 
+// One repository per aggregate: one function per query or command it offers.
+@Suppress("TooManyFunctions")
 interface VehicleRepository {
     /** All vehicles, in no particular order. */
     fun observeVehicles(): Flow<List<Vehicle>>

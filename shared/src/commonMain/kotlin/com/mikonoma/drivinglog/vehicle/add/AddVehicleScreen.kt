@@ -43,6 +43,7 @@ import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
 import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.vehicle.color.VehicleColorChoice
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.fueltype.VehicleFuelTypeChoice
 import com.mikonoma.drivinglog.vehicle.ocr.LiveScanner
 import com.mikonoma.drivinglog.vehicle.ocr.ui.LiveScannerContent
@@ -83,7 +84,6 @@ fun AddVehicleScreen(processor: AddVehicleProcessor, deviceLocale: DeviceLocale,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddVehicleContent(
     state: AddVehicleState,
@@ -104,40 +104,22 @@ fun AddVehicleContent(
             onErrorDismissed = { onIntent(AddVehicleIntent.ScanErrorDismissed) },
         )
     }
-    if (state.isScanning) {
-        ScanProgressContent()
-        return
+    val review = state.scan.review
+    when {
+        state.isScanning -> ScanProgressContent()
+        review != null -> ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
+        state.scan.scannerOpen -> LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
+        else -> AddVehicleForm(state, deviceLocale, onIntent, onBack)
     }
-    state.scan.review?.let { review ->
-        ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
-        return
-    }
-    if (state.scan.scannerOpen) {
-        LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
-        return
-    }
+}
+
+@Composable
+private fun AddVehicleForm(state: AddVehicleState, deviceLocale: DeviceLocale, onIntent: (AddVehicleIntent) -> Unit, onBack: () -> Unit) {
     // One animated color for the whole screen: everything drawn from the vehicle's color takes it from here, so it all moves together.
     val animatedColor = rememberAnimatedColor(state.color)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            Column {
-                TopAppBar(
-                    colors = drivingLogTopAppBarColors(),
-                    title = { Text("Add vehicle") },
-                    navigationIcon = { CloseButton(onBack) },
-                    actions = {
-                        TextButton(
-                            colors = headerTextButtonColors(),
-                            onClick = { onIntent(AddVehicleIntent.Save) },
-                            enabled = !state.isSaving && state.name.isNotBlank() && !state.entry.isEmpty,
-                            modifier = Modifier.testTag("save_vehicle"),
-                        ) { Text("Save") }
-                    },
-                )
-                HeaderDivider()
-            }
-        },
+        topBar = { AddVehicleTopBar(state, onIntent, onBack) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -146,34 +128,7 @@ fun AddVehicleContent(
                 .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + ScreenBottomSpace),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            PictureField(
-                picture = state.picture,
-                previewUri = state.previewUri,
-                type = state.type,
-                color = animatedColor,
-                cropImage = state.cropImage,
-                onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
-                onCropConfirmed = { crop, turns -> onIntent(AddVehicleIntent.CropConfirmed(crop, turns)) },
-                onCropCancelled = { onIntent(AddVehicleIntent.CropCancelled) },
-                onRemove = { onIntent(AddVehicleIntent.PictureRemoved) },
-                onRefresh = { onIntent(AddVehicleIntent.PictureRefresh) },
-            )
-            OutlinedTextField(
-                value = state.name,
-                onValueChange = { onIntent(AddVehicleIntent.NameChanged(it)) },
-                modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
-                label = { Text("Name *") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-            )
-            OutlinedTextField(
-                value = state.licensePlate,
-                onValueChange = { onIntent(AddVehicleIntent.LicensePlateChanged(it)) },
-                modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
-                label = { Text("License plate") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            )
+            AddVehicleIdentityFields(state, animatedColor, onIntent)
             UnitChoice(
                 selected = state.entry.unit,
                 onSelect = { onIntent(AddVehicleIntent.UnitSelected(it)) },
@@ -206,6 +161,60 @@ fun AddVehicleContent(
             RequiredFieldNote()
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddVehicleTopBar(state: AddVehicleState, onIntent: (AddVehicleIntent) -> Unit, onBack: () -> Unit) {
+    Column {
+        TopAppBar(
+            colors = drivingLogTopAppBarColors(),
+            title = { Text("Add vehicle") },
+            navigationIcon = { CloseButton(onBack) },
+            actions = {
+                TextButton(
+                    colors = headerTextButtonColors(),
+                    onClick = { onIntent(AddVehicleIntent.Save) },
+                    enabled = !state.isSaving && state.name.isNotBlank() && !state.entry.isEmpty,
+                    modifier = Modifier.testTag("save_vehicle"),
+                ) { Text("Save") }
+            },
+        )
+        HeaderDivider()
+    }
+}
+
+/** The picture, name and license plate. */
+@Composable
+private fun AddVehicleIdentityFields(state: AddVehicleState, animatedColor: Rgb, onIntent: (AddVehicleIntent) -> Unit) {
+    PictureField(
+        picture = state.picture,
+        previewUri = state.previewUri,
+        type = state.type,
+        color = animatedColor,
+        cropImage = state.cropImage,
+        onPhotoPicked = { onIntent(AddVehicleIntent.PhotoPicked(it)) },
+        onCropConfirmed = { crop, turns -> onIntent(AddVehicleIntent.CropConfirmed(crop, turns)) },
+        onCropCancelled = { onIntent(AddVehicleIntent.CropCancelled) },
+        onRemove = { onIntent(AddVehicleIntent.PictureRemoved) },
+        onRefresh = { onIntent(AddVehicleIntent.PictureRefresh) },
+    )
+    OutlinedTextField(
+        value = state.name,
+        onValueChange = { onIntent(AddVehicleIntent.NameChanged(it)) },
+        modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
+        label = { Text("Name *") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+    )
+    OutlinedTextField(
+        value = state.licensePlate,
+        onValueChange = { onIntent(AddVehicleIntent.LicensePlateChanged(it)) },
+        modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
+        label = { Text("License plate") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    )
 }
 
 @Composable

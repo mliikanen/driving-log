@@ -1,33 +1,5 @@
 <?xml version="1.0" ?>
 <SmellBaseline>
   <ManuallySuppressedIssues/>
-  <CurrentIssues>
-    <ID>ComplexCondition:LogEventProcessor.kt:LogEventProcessor$form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()</ID>
-    <ID>ComplexCondition:PpOcr.kt:PpOcr$nx &lt; 0 || ny &lt; 0 || nx &gt;= w || ny &gt;= h</ID>
-    <ID>CyclomaticComplexMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailsContent</ID>
-    <ID>CyclomaticComplexMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
-    <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$fun boxes: List&lt;Quad&gt;</ID>
-    <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
-    <ID>LongMethod:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
-    <ID>LongMethod:CropScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun CropScreen</ID>
-    <ID>LongMethod:EditVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EditVehicleContent</ID>
-    <ID>LongMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailsContent</ID>
-    <ID>LongMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable private fun EventEditContent</ID>
-    <ID>LongMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
-    <ID>LongMethod:VehicleDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun VehicleDetailsContent</ID>
-    <ID>LoopWithTooManyJumpStatements:PpOcr.kt:PpOcr$for</ID>
-    <ID>NestedBlockDepth:Geometry.kt:fun perspectiveTransform: DoubleArray</ID>
-    <ID>NestedBlockDepth:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
-    <ID>ReturnCount:LogDistanceRules.kt:fun validateLogDistance: LogDistanceResult</ID>
-    <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor.Companion$fun LogEventState.withScannedReading: LogEventState</ID>
-    <ID>TooManyFunctions:CropState.kt:CropState</ID>
-    <ID>TooManyFunctions:FilePictureStore.kt:FilePictureStore : PictureStore</ID>
-    <ID>TooManyFunctions:LogEventProcessor.kt:LogEventProcessor : PresentationProcessor</ID>
-    <ID>TooManyFunctions:LogEventScreen.kt:com.mikonoma.drivinglog.vehicle.distance.LogEventScreen.kt</ID>
-    <ID>TooManyFunctions:PictureStore.kt:PictureStore</ID>
-    <ID>TooManyFunctions:PpOcr.kt:PpOcr</ID>
-    <ID>TooManyFunctions:ReadingDetection.kt:com.mikonoma.drivinglog.vehicle.ocr.ReadingDetection.kt</ID>
-    <ID>TooManyFunctions:SqlDelightVehicleRepository.kt:SqlDelightVehicleRepository : VehicleRepository</ID>
-    <ID>TooManyFunctions:VehicleRepository.kt:VehicleRepository</ID>
-  </CurrentIssues>
+  <CurrentIssues/>
 </SmellBaseline>

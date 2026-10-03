@@ -1,11 +1,7 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
 import kotlinx.serialization.Serializable
-import kotlin.math.abs
 import kotlin.math.max
-
-/** [sameRowNearby]'s sideways reach: one and a half box heights, counted in half heights. */
-private const val MAX_GAP_HALF_HEIGHTS = 3
 
 /** What a detected reading is taken to be: the odometer's count, a trip meter's distance, or a refueling's fuel amount. */
 @Serializable
@@ -87,22 +83,6 @@ object ReadingThresholds {
     const val MIN_FUEL_AMOUNT_DIGITS = 1
     const val MAX_FUEL_AMOUNT_DIGITS = 4
 }
-
-private val ODOMETER_LABELS = setOf("ODO", "ODOMETER", "TOTAL DISTANCE")
-private val TRIP_LABELS = setOf("TRIP", "TRIP A", "TRIP B", "T")
-private val DISTANCE_LABEL_KINDS: Map<String, ReadingKind> =
-    ODOMETER_LABELS.associateWith { ReadingKind.ODOMETER } + TRIP_LABELS.associateWith { ReadingKind.TRIP }
-
-/**
- * Recognized volume words next to a number mean a fuel amount (`add-fuel-amount-ocr`, design.md's evaluation):
- * `LITRAA`/`LITARA`/`LITROV` (Finnish, Croatian, Slovenian), `dm` and `dm^3` (Polish; 1 dm³ is exactly 1 liter,
- * not deciliters), and `L`/`LITERS`/`LITRES`/`GAL`/`GALLON`/`GALLONS` as an untested English/US hypothesis — no
- * real English-labeled photo was available to check those against. There is no separate list of price labels to
- * exclude by: a price or a price-per-unit number is simply never next to one of these words either (the
- * evaluation found no photo where it was), so absence of a match already excludes it.
- */
-private val VOLUME_LABELS = setOf("LITRAA", "LITARA", "LITROV", "DM^3", "DM", "L", "LITERS", "LITRES", "GAL", "GALLON", "GALLONS")
-private val VOLUME_LABEL_KINDS: Map<String, ReadingKind> = VOLUME_LABELS.associateWith { ReadingKind.FUEL_AMOUNT }
 
 /** Digits, at most one decimal separator with one or two digits after it, and letters run directly onto it (a unit, or noise). */
 private val NUMBER = Regex("""^(\d+)(?:[.,](\d{1,2}))?([A-Za-z]*)$""")
@@ -226,23 +206,6 @@ private fun betterThan(a: Detection, b: Detection): Boolean = when {
     else -> a.basis == DetectionBasis.LABEL && b.basis != DetectionBasis.LABEL
 }
 
-/** On the same row (vertically overlapping by half the lower box) and at most one and a half box heights apart sideways. */
-internal fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
-    val rows = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
-    val height = minOf(a.height, b.height)
-    if (height <= 0 || rows < height / 2) return false
-    val gap = maxOf(a.left, b.left) - minOf(a.right, b.right)
-    return gap <= maxOf(a.height, b.height) * MAX_GAP_HALF_HEIGHTS / 2
-}
-
-internal fun samePlace(a: TextBox, b: TextBox): Boolean {
-    val w = minOf(a.right, b.right) - maxOf(a.left, b.left)
-    val h = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
-    if (w <= 0 || h <= 0) return false
-    val smaller = minOf(a.width.toLong() * a.height, b.width.toLong() * b.height).coerceAtLeast(1)
-    return w.toLong() * h >= smaller * ReadingThresholds.SAME_PLACE
-}
-
 /** The detections presented to the user: those with a kind. */
 fun List<Detection>.candidates(): List<Detection> = filter { it.kind != null }
 
@@ -262,43 +225,4 @@ internal fun kindByMagnitude(value: Double, knownOdometer: Double?): ReadingKind
         value <= ReadingThresholds.MAX_TRIP && value < knownOdometer -> ReadingKind.TRIP
         else -> null
     }
-}
-
-/** The kind [labels] names for a label, comparing case-insensitively, zero read as O and spaces collapsed; null when [text] names none of them. */
-internal fun labelKind(text: String, labels: Map<String, ReadingKind>): ReadingKind? {
-    val normalized = text.uppercase().replace('0', 'O').split(' ').filter { it.isNotEmpty() }.joinToString(" ")
-    return labels[normalized]
-}
-
-/**
- * The label of the number at [index] of [line], and the kind it names from [labels]: the one or two words directly before it on its
- * line, or a whole line directly above or below it (design.md). The nearest wins when several qualify. A lone "T" counts only on the
- * number's own line: above or below it, it is as likely a mode icon beside another figure (on `odo/20220911_162029` it sits under the
- * clock) — harmless to exclude when [labels] has no entry shaped like a lone letter anyway (`add-fuel-amount-ocr`'s [VOLUME_LABEL_KINDS]).
- */
-private fun labelOf(photo: RecognizedPhoto, line: RecognizedLine, index: Int, box: TextBox, labels: Map<String, ReadingKind>): Pair<String, ReadingKind>? {
-    for (count in 2 downTo 1) {
-        if (index - count < 0) continue
-        val words = line.elements.subList(index - count, index).joinToString(" ") { it.text }
-        labelKind(words, labels)?.let { return words to it }
-    }
-    val maxGap = box.height * ReadingThresholds.LABEL_GAP_HEIGHTS
-    return photo.lines.asSequence()
-        .filter { it !== line }
-        .filter { !isLoneT(it.text) }
-        .mapNotNull { other -> labelKind(other.text, labels)?.let { Triple(other, it, verticalGap(other.box, box)) } }
-        .filter { (other, _, gap) -> gap <= maxGap && horizontallyNear(other.box, box) }
-        .minByOrNull { (_, _, gap) -> gap }
-        ?.let { (other, kind, _) -> other.text to kind }
-}
-
-private fun isLoneT(text: String): Boolean = text.trim().equals("T", ignoreCase = true)
-
-/** The vertical space between two boxes, zero when they overlap vertically. */
-private fun verticalGap(a: TextBox, b: TextBox): Int = max(0, max(a.top - b.bottom, b.top - a.bottom))
-
-/** The boxes overlap horizontally, or are apart by at most [number]'s width. */
-private fun horizontallyNear(label: TextBox, number: TextBox): Boolean {
-    val gap = max(label.left - number.right, number.left - label.right)
-    return gap <= 0 || abs(gap) <= number.width
 }

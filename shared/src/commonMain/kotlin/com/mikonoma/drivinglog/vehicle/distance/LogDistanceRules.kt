@@ -83,23 +83,26 @@ fun validateLogDistance(
                 LogDistanceResult.Invalid(LogDistanceError.DistanceNotPositive)
             }
 
-        LogWay.NEW_ODOMETER -> {
-            // Nothing to compare with: the count itself becomes the odometer at that time.
-            if (known == null) return LogDistanceResult.Anchor(typed)
-            if (typed.meters < known.meters) {
-                return when {
-                    // A later event already exists: this entry is backdated into history, not replacing the
-                    // vehicle's current odometer, so it needs no confirmation.
-                    known.meters != mostRecentKnown?.meters -> LogDistanceResult.Anchor(typed)
+        LogWay.NEW_ODOMETER -> validateNewOdometer(typed, known, mostRecentKnown, lowerOdometerConfirmed)
+    }
+}
 
-                    lowerOdometerConfirmed -> LogDistanceResult.Anchor(typed)
+/** [validateLogDistance]'s rules for a new odometer count [typed]. */
+private fun validateNewOdometer(typed: Distance, known: Distance?, mostRecentKnown: Distance?, lowerOdometerConfirmed: Boolean): LogDistanceResult {
+    // Nothing to compare with: the count itself becomes the odometer at that time.
+    if (known == null) return LogDistanceResult.Anchor(typed)
+    if (typed.meters < known.meters) {
+        return when {
+            // A later event already exists: this entry is backdated into history, not replacing the
+            // vehicle's current odometer, so it needs no confirmation.
+            known.meters != mostRecentKnown?.meters -> LogDistanceResult.Anchor(typed)
 
-                    else -> LogDistanceResult.NeedsLowerOdometerConfirmation
-                }
-            }
-            val distance = distanceByOdometer(typed, known)
-                ?: return LogDistanceResult.Invalid(LogDistanceError.OdometerNotHigher(known))
-            LogDistanceResult.Valid(distance, loggedOdometer = typed)
+            lowerOdometerConfirmed -> LogDistanceResult.Anchor(typed)
+
+            else -> LogDistanceResult.NeedsLowerOdometerConfirmation
         }
     }
+    val distance = distanceByOdometer(typed, known)
+        ?: return LogDistanceResult.Invalid(LogDistanceError.OdometerNotHigher(known))
+    return LogDistanceResult.Valid(distance, loggedOdometer = typed)
 }

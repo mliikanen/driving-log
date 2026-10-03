@@ -60,29 +60,11 @@ fun EditVehicleScreen(processor: EditVehicleProcessor, onBack: () -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditVehicleContent(state: EditVehicleState, onIntent: (EditVehicleIntent) -> Unit, onBack: () -> Unit) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            Column {
-                TopAppBar(
-                    colors = drivingLogTopAppBarColors(),
-                    title = { Text("Edit vehicle") },
-                    navigationIcon = { CloseButton(onBack) },
-                    actions = {
-                        TextButton(
-                            colors = headerTextButtonColors(),
-                            onClick = { onIntent(EditVehicleIntent.Save) },
-                            enabled = state.loaded && !state.notFound && !state.isSaving && state.name.isNotBlank(),
-                            modifier = Modifier.testTag("save_vehicle"),
-                        ) { Text("Save") }
-                    },
-                )
-                HeaderDivider()
-            }
-        },
+        topBar = { EditVehicleTopBar(state, onIntent, onBack) },
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).verticalScroll(rememberScrollState())
@@ -92,55 +74,82 @@ fun EditVehicleContent(state: EditVehicleState, onIntent: (EditVehicleIntent) ->
             if (state.notFound) {
                 Text("This vehicle no longer exists.")
             } else if (state.loaded) {
-                // One animated color for the form: everything drawn from the vehicle's color takes it from here. It is remembered inside the loaded branch, so the
-                // form opens in the saved color instead of animating from a placeholder.
-                val color = state.color ?: VehicleColors.default
-                val animatedColor = rememberAnimatedColor(color)
-                PictureField(
-                    picture = state.picture,
-                    previewUri = state.previewUri,
-                    type = state.type,
-                    color = animatedColor,
-                    cropImage = state.cropImage,
-                    onPhotoPicked = { onIntent(EditVehicleIntent.PhotoPicked(it)) },
-                    onCropConfirmed = { crop, turns -> onIntent(EditVehicleIntent.CropConfirmed(crop, turns)) },
-                    onCropCancelled = { onIntent(EditVehicleIntent.CropCancelled) },
-                    onRemove = { onIntent(EditVehicleIntent.PictureRemoved) },
-                    onRefresh = { onIntent(EditVehicleIntent.PictureRefresh) },
-                )
-                OutlinedTextField(
-                    value = state.name,
-                    onValueChange = { onIntent(EditVehicleIntent.NameChanged(it)) },
-                    modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
-                    label = { Text("Name *") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-                )
-                OutlinedTextField(
-                    value = state.licensePlate,
-                    onValueChange = { onIntent(EditVehicleIntent.LicensePlateChanged(it)) },
-                    modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
-                    label = { Text("License plate") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                )
-                VehicleTypeChoice(
-                    selected = state.type,
-                    onSelect = { onIntent(EditVehicleIntent.TypeSelected(it)) },
-                    color = animatedColor,
-                )
-                VehicleFuelTypeChoice(
-                    selected = state.fuelType,
-                    onSelect = { onIntent(EditVehicleIntent.FuelTypeSelected(it)) },
-                )
-                VehicleColorChoice(
-                    color = color,
-                    pictureColor = state.pictureColor,
-                    savedColor = state.savedColor,
-                    onSelect = { onIntent(EditVehicleIntent.ColorSelected(it)) },
-                )
-                RequiredFieldNote()
+                EditVehicleFields(state, onIntent)
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditVehicleTopBar(state: EditVehicleState, onIntent: (EditVehicleIntent) -> Unit, onBack: () -> Unit) {
+    Column {
+        TopAppBar(
+            colors = drivingLogTopAppBarColors(),
+            title = { Text("Edit vehicle") },
+            navigationIcon = { CloseButton(onBack) },
+            actions = {
+                TextButton(
+                    colors = headerTextButtonColors(),
+                    onClick = { onIntent(EditVehicleIntent.Save) },
+                    enabled = state.loaded && !state.notFound && !state.isSaving && state.name.isNotBlank(),
+                    modifier = Modifier.testTag("save_vehicle"),
+                ) { Text("Save") }
+            },
+        )
+        HeaderDivider()
+    }
+}
+
+/** The form's fields, once the vehicle is loaded. */
+@Composable
+private fun EditVehicleFields(state: EditVehicleState, onIntent: (EditVehicleIntent) -> Unit) {
+    // One animated color for the form: everything drawn from the vehicle's color takes it from here. It is remembered only once loaded, so the
+    // form opens in the saved color instead of animating from a placeholder.
+    val color = state.color ?: VehicleColors.default
+    val animatedColor = rememberAnimatedColor(color)
+    PictureField(
+        picture = state.picture,
+        previewUri = state.previewUri,
+        type = state.type,
+        color = animatedColor,
+        cropImage = state.cropImage,
+        onPhotoPicked = { onIntent(EditVehicleIntent.PhotoPicked(it)) },
+        onCropConfirmed = { crop, turns -> onIntent(EditVehicleIntent.CropConfirmed(crop, turns)) },
+        onCropCancelled = { onIntent(EditVehicleIntent.CropCancelled) },
+        onRemove = { onIntent(EditVehicleIntent.PictureRemoved) },
+        onRefresh = { onIntent(EditVehicleIntent.PictureRefresh) },
+    )
+    OutlinedTextField(
+        value = state.name,
+        onValueChange = { onIntent(EditVehicleIntent.NameChanged(it)) },
+        modifier = Modifier.fillMaxWidth().testTag("vehicle_name"),
+        label = { Text("Name *") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+    )
+    OutlinedTextField(
+        value = state.licensePlate,
+        onValueChange = { onIntent(EditVehicleIntent.LicensePlateChanged(it)) },
+        modifier = Modifier.fillMaxWidth().testTag("vehicle_plate"),
+        label = { Text("License plate") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+    )
+    VehicleTypeChoice(
+        selected = state.type,
+        onSelect = { onIntent(EditVehicleIntent.TypeSelected(it)) },
+        color = animatedColor,
+    )
+    VehicleFuelTypeChoice(
+        selected = state.fuelType,
+        onSelect = { onIntent(EditVehicleIntent.FuelTypeSelected(it)) },
+    )
+    VehicleColorChoice(
+        color = color,
+        pictureColor = state.pictureColor,
+        savedColor = state.savedColor,
+        onSelect = { onIntent(EditVehicleIntent.ColorSelected(it)) },
+    )
+    RequiredFieldNote()
 }

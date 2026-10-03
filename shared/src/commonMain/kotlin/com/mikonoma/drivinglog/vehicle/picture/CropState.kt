@@ -32,6 +32,8 @@ data class CropRect(val x: Int, val y: Int, val side: Int)
  * always fits. The centre is kept where the whole frame is inside the photo, and the zoom between 1 and [maxZoom], which keeps
  * the frame at least [MIN_SIDE] pixels (or the whole shorter side of a smaller photo). A state never leaves those limits.
  */
+// An immutable state with one function per crop operation (pan, zoom, move, rotate, save, restore).
+@Suppress("TooManyFunctions")
 class CropState private constructor(val imageWidth: Int, val imageHeight: Int, val zoom: Float, val centerX: Float, val centerY: Float) {
     private val shorterSide = min(imageWidth, imageHeight)
 

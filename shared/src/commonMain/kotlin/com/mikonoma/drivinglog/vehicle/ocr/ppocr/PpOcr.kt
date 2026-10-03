@@ -31,6 +31,8 @@ class RecognitionScores(val values: FloatArray, val count: Int, val steps: Int, 
  * RapidOCR's PP-OCR pipeline, ported with its constants (design.md, "The PP-OCR pipeline"), around the models the platform runs.
  * Everything here is arithmetic on pixels and scores, and is the same on every platform.
  */
+// Ported from RapidOCR's PP-OCR pipeline (design.md of add-seven-segment-ocr) and kept structurally parallel to it, so results can be compared line by line.
+@Suppress("TooManyFunctions")
 object PpOcr {
     const val MIN_SIDE = 30
     const val MAX_SIDE = 2000
@@ -105,6 +107,8 @@ object PpOcr {
      * (DB post-processing): pixels above [DETECTION_THRESHOLD], dilated 2x2, form regions; each region's minimum-area rectangle is kept
      * when the map's mean inside it is at least [BOX_THRESHOLD], grown by the unclip distance, scaled and clipped to the image.
      */
+    // Ported from RapidOCR's PP-OCR pipeline (design.md of add-seven-segment-ocr) and kept structurally parallel to it, so results can be compared line by line. The same for this function's branches and loop exits.
+    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements")
     fun boxes(map: FloatArray, mapWidth: Int, mapHeight: Int, destWidth: Int, destHeight: Int): List<Quad> {
         val mask = BooleanArray(map.size) { map[it] > DETECTION_THRESHOLD }
         val dilated = BooleanArray(map.size)
@@ -144,6 +148,8 @@ object PpOcr {
     }
 
     /** The 8-connected regions of set pixels, each as its pixel indices. */
+    // Ported from RapidOCR's PP-OCR pipeline (design.md of add-seven-segment-ocr) and kept structurally parallel to it, so results can be compared line by line. The same for this flood fill's nesting and bounds check.
+    @Suppress("CyclomaticComplexMethod", "NestedBlockDepth", "ComplexCondition")
     private fun regions(mask: BooleanArray, w: Int, h: Int): List<IntArray> {
         val seen = BooleanArray(mask.size)
         val out = mutableListOf<IntArray>()

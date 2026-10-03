@@ -142,6 +142,8 @@ fun minAreaRect(points: List<Point>): RotatedRect {
  * The 3x3 perspective transform (row-major, last element 1) that takes [from]'s four corners to [to]'s, like OpenCV's
  * `getPerspectiveTransform`, solved as the usual 8x8 linear system.
  */
+// Gauss-Jordan elimination as in OpenCV's getPerspectiveTransform, kept in its usual nested form.
+@Suppress("NestedBlockDepth")
 fun perspectiveTransform(from: List<Point>, to: List<Point>): DoubleArray {
     val a = Array(UNKNOWNS) { DoubleArray(UNKNOWNS + 1) }
     for (i in 0 until CORNERS) {

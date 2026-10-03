@@ -135,6 +135,10 @@ data class LogEventState(
 
     val activeEntry: OdometerEntry get() = if (way == LogWay.TRIP_DISTANCE) tripDistance else newOdometer
 
+    /** True while a save can't start whatever is entered: one is already running, the form is still loading or its
+     * vehicle is gone, or no vehicle is chosen. */
+    val isSaveBlocked: Boolean get() = isSaving || isLoading || notFound || selectedVehicleId.isEmpty()
+
     /** Whether Save can be tapped, besides the loading/saving/vehicle checks every kind shares: a "Distance" entry needs
      * its active field filled in; a refueling needs only the fuel amount — its optional mileage section never gates
      * Save (`refueling-logging`'s "The fuel amount must be entered and above zero"). */

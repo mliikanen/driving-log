@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.mikonoma.drivinglog.locale.DeviceLocale
+import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.VehiclePicture
@@ -81,7 +82,6 @@ fun VehicleDetailsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VehicleDetailsContent(
     state: VehicleDetailsState,
@@ -100,21 +100,7 @@ fun VehicleDetailsContent(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            Column {
-                TopAppBar(
-                    colors = drivingLogTopAppBarColors(),
-                    title = { Text(state.name, modifier = Modifier.testTag("vehicle_title")) },
-                    navigationIcon = { BackButton(onBack) },
-                    actions = {
-                        IconButton(onClick = onEdit, modifier = Modifier.testTag("edit_vehicle")) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit vehicle")
-                        }
-                    },
-                )
-                HeaderDivider()
-            }
-        },
+        topBar = { VehicleDetailsTopBar(state.name, onEdit, onBack) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
@@ -132,41 +118,7 @@ fun VehicleDetailsContent(
                         16.dp + ScreenBottomSpace,
                     ),
                 ) {
-                    item {
-                        // One animated color for the screen, remembered once the vehicle has loaded, so it opens in the vehicle's color.
-                        val animatedColor = rememberAnimatedColor(state.color)
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            // Large, but not the whole screen: the odometer and the actions stay near the top.
-                            Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
-                                VehiclePicture(
-                                    state.pictureUri,
-                                    state.type,
-                                    animatedColor,
-                                    Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).testTag("vehicle_picture_large"),
-                                    contentDescription = "Picture of ${state.name}",
-                                )
-                            }
-                            state.licensePlate?.let { plate ->
-                                Text("License plate", style = MaterialTheme.typography.labelMedium)
-                                Text(plate, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("vehicle_plate"))
-                            }
-                            Text("Current odometer", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
-                            Text(
-                                formatOdometer(state.currentOdometer ?: Distance.ZERO, state.unit, symbols),
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier.testTag("current_odometer"),
-                            )
-                            Button(
-                                onClick = onLogEvent,
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("log_event"),
-                            ) { Text("Log event") }
-                            Text(
-                                "Recent activity",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-                            )
-                        }
-                    }
+                    item { VehicleSummary(state, symbols, onLogEvent) }
                     items(state.recentEvents, key = { it.id }) { event ->
                         EventRow(event, state.unit, symbols, deviceZone, timeFormat, onEventClick, Modifier.testTag("recent_event"))
                         HorizontalDivider()
@@ -180,5 +132,61 @@ fun VehicleDetailsContent(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleDetailsTopBar(name: String, onEdit: () -> Unit, onBack: () -> Unit) {
+    Column {
+        TopAppBar(
+            colors = drivingLogTopAppBarColors(),
+            title = { Text(name, modifier = Modifier.testTag("vehicle_title")) },
+            navigationIcon = { BackButton(onBack) },
+            actions = {
+                IconButton(onClick = onEdit, modifier = Modifier.testTag("edit_vehicle")) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit vehicle")
+                }
+            },
+        )
+        HeaderDivider()
+    }
+}
+
+/** The picture, plate, current odometer and "Log event", above the recent activity. */
+@Composable
+private fun VehicleSummary(state: VehicleDetailsState, symbols: NumberSymbols, onLogEvent: () -> Unit) {
+    // One animated color for the screen, remembered once the vehicle has loaded, so it opens in the vehicle's color.
+    val animatedColor = rememberAnimatedColor(state.color)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        // Large, but not the whole screen: the odometer and the actions stay near the top.
+        Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
+            VehiclePicture(
+                state.pictureUri,
+                state.type,
+                animatedColor,
+                Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f).testTag("vehicle_picture_large"),
+                contentDescription = "Picture of ${state.name}",
+            )
+        }
+        state.licensePlate?.let { plate ->
+            Text("License plate", style = MaterialTheme.typography.labelMedium)
+            Text(plate, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("vehicle_plate"))
+        }
+        Text("Current odometer", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
+        Text(
+            formatOdometer(state.currentOdometer ?: Distance.ZERO, state.unit, symbols),
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.testTag("current_odometer"),
+        )
+        Button(
+            onClick = onLogEvent,
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag("log_event"),
+        ) { Text("Log event") }
+        Text(
+            "Recent activity",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+        )
     }
 }

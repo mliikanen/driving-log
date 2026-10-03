@@ -42,6 +42,8 @@ import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+// Implements VehicleRepository: one repository per aggregate: one function per query or command it offers.
+@Suppress("TooManyFunctions")
 class SqlDelightVehicleRepository(
     private val database: DrivingLogDatabase,
     private val clock: Clock,
