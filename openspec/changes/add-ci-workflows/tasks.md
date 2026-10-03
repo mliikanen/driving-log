@@ -86,6 +86,8 @@
       into `main` (most recently updated first, 100 per request) and stops before the last distribution, instead of one
       request per commit. Verify: for PR #1 it makes 3 API calls and gives the same notes; with a stub `gh`, an unmerged
       PR and one merged outside the range are ignored, and a failing page request exits non-zero.
+      Also from that review: `section_of`'s awk stopped reading at the next heading, so on a long PR description the
+      writer got SIGPIPE and the script failed (exit 141 on a 329 KB body); it now reads to the end (exit 0, same section).
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 

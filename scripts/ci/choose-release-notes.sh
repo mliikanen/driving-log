@@ -25,11 +25,12 @@ fi
 commit="${1:-HEAD}"
 repo="${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 
-# The `## Release notes` section of a pull request body on stdin, without surrounding blank lines.
+# The `## Release notes` section of a pull request body on stdin, without surrounding blank lines. awk reads to the
+# end rather than exiting at the next heading: exiting early would SIGPIPE the writer on a long body, failing the script.
 section_of() {
   tr -d '\r' | awk '
-    /^## / { if (in_section) exit; if ($0 ~ /^## Release notes[[:space:]]*$/) { in_section = 1; next } }
-    in_section { print }
+    /^## / { if (in_section) { done = 1 } else if ($0 ~ /^## Release notes[[:space:]]*$/) { in_section = 1; next } }
+    in_section && !done { print }
   ' | sed -e '/./,$!d' | sed -e ':a' -e '/^\n*$/{$d;N;ba' -e '}'
 }
 
