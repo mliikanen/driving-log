@@ -123,12 +123,14 @@ console).
    gh secret set RELEASE_KEYSTORE_BASE64 --env firebase-deployment --body "$(base64 -w0 ~/.android-keystores/driving-log-release.jks)"
    gh secret set KEYSTORE_PASSWORD --env firebase-deployment   # prompts for the password
    ```
-5. **The ruleset on `main`**, once both PR checks have passed on `main` at least once (GitHub only offers check names
-   it has seen):
-   ```sh
-   gh api -X POST repos/mliikanen/driving-log/rulesets --input .github/rulesets/main.json
-   ```
-   It requires a pull request for every change to `main`, both checks passing and the branch up to date, for everyone.
+5. **The rulesets on `main`**, once both PR checks have passed on `main` at least once (GitHub only offers check names
+   it has seen). `.github/rulesets/` holds exports of the live ones:
+   - `main.json` (`main-is-pr-only`): a pull request for every change, both checks passing on its latest commit with
+     the branch up to date, no approvals required, no force pushes, and an **empty bypass list**;
+   - `main-retain.json`: `main` can't be deleted or force-pushed.
+   To re-create one: `gh api -X POST repos/mliikanen/driving-log/rulesets --input .github/rulesets/<file>.json`. After
+   changing one in the UI, export it again into its file
+   (`gh api repos/mliikanen/driving-log/rulesets/<id> --jq '{name, target, enforcement, conditions, bypass_actors, rules}'`).
 
 Then run the **Release** workflow once by hand to prove the path end to end.
 

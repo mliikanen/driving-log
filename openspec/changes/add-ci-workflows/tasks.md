@@ -96,12 +96,15 @@
 - [ ] 4.6 Confirm a pull request can't reach the release secrets. Verify: in a throwaway PR, a workflow step that
       references `secrets.KEYSTORE_PASSWORD` gets an empty value, and a job declaring
       `environment: firebase-deployment` from the PR branch is refused. Close the PR without merging.
-- [ ] 4.7 Add `.github/rulesets/main.json` ("CI must pass": target `main`, required status checks
+- [x] 4.7 Add `.github/rulesets/main.json` ("CI must pass": target `main`, required status checks
       `tests-and-build` and `code-quality` from GitHub Actions, branches up to date before merging, a pull request
       required for every change, an empty bypass list, nothing else) and create it with
       `gh api -X POST repos/mliikanen/driving-log/rulesets --input .github/rulesets/main.json`, after both checks
       have passed on `main` once (design.md, Migration Plan). Verify: `gh api repos/mliikanen/driving-log/rulesets`
       lists it as active.
+      Done: the developer created `main-is-pr-only` (required checks `tests-and-build` and `code-quality`, strict; a
+      pull request required, 0 approvals; no force pushes; empty bypass list, `current_user_can_bypass: never`) and
+      `main-retain` (no deletion, no force push). Both are exported into `.github/rulesets/`.
 - [ ] 4.8 Confirm merging is blocked (spec: "A pull request cannot be merged until its checks pass"). Verify: on a
       throwaway PR with a misformatted line, `gh pr merge` is refused while `code-quality` is pending and after it
       fails; after fixing the line and both checks passing, the merge is allowed (close it instead of merging).

@@ -1,34 +1,53 @@
 {
-  "name": "CI must pass",
-  "target": "branch",
-  "enforcement": "active",
+  "bypass_actors": [],
   "conditions": {
     "ref_name": {
-      "include": ["refs/heads/main"],
-      "exclude": []
+      "exclude": [],
+      "include": [
+        "refs/heads/main"
+      ]
     }
   },
-  "bypass_actors": [],
+  "enforcement": "active",
+  "name": "main-is-pr-only",
   "rules": [
     {
-      "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 0,
-        "dismiss_stale_reviews_on_push": false,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": false
-      }
+        "do_not_enforce_on_create": true,
+        "required_status_checks": [
+          {
+            "context": "code-quality",
+            "integration_id": 15368
+          },
+          {
+            "context": "tests-and-build",
+            "integration_id": 15368
+          }
+        ],
+        "strict_required_status_checks_policy": true
+      },
+      "type": "required_status_checks"
     },
     {
-      "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
-        "required_status_checks": [
-          { "context": "tests-and-build", "integration_id": 15368 },
-          { "context": "code-quality", "integration_id": 15368 }
-        ]
-      }
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ],
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
+        "required_review_thread_resolution": true,
+        "required_reviewers": []
+      },
+      "type": "pull_request"
+    },
+    {
+      "type": "non_fast_forward"
     }
-  ]
+  ],
+  "target": "branch"
 }
