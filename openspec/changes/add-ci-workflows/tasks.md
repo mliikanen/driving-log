@@ -35,10 +35,12 @@
       "nothing to release". Written to the job summary (spec: "The draft is shown on the pull request"). Verify:
       the section-extraction logic, run locally on a sample body with and without the section and with a following
       `## ` heading, prints the expected text.
-- [ ] 2.5 Open this change's branch as a pull request. Verify: both checks run and pass, and the job summary shows
+- [x] 2.5 Open this change's branch as a pull request. Verify: both checks run and pass, and the job summary shows
       the notes preview. Then push two deliberately failing commits, one at a time, and revert each: a broken test
       (`tests-and-build` fails naming `:shared:allTests`) and a misformatted line (`code-quality` fails naming ktlint
       and the file).
+      Done on PR #1: both checks passed; the broken test failed `tests-and-build` at "Shared tests"; the misformatted
+      line failed `code-quality` at "Static analysis", naming ktlint and `UndoOnFailure.kt:9`; both reverted, green again.
 
 ## 3. Release workflow
 
@@ -63,11 +65,12 @@
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 
-- [ ] 4.1 **(developer, decision)** Choose how to get rulesets and environment branch limits for this repository:
+- [x] 4.1 **(developer, decision)** Choose how to get rulesets and environment branch limits for this repository:
       upgrade the account to GitHub Pro, or make the repository public (GitHub refuses both on the current plan;
       design.md decision 8). Until one is done, tasks 4.7 and 4.8 can't be completed, and the change isn't done.
       Verify: `gh api repos/mliikanen/driving-log/rulesets` returns a list instead of the "Upgrade to GitHub Pro"
       error.
+      Done: the developer made the repository public (rulesets and environment branch limits are available).
 - [ ] 4.2 **(developer)** Limit the existing `firebase-deployment` environment's deployment branches to `main`.
       Verify: `gh api repos/mliikanen/driving-log/environments/firebase-deployment` shows a deployment branch policy
       with `main` only.
