@@ -43,9 +43,9 @@ class HistogramColorExtractor : ColorExtractor {
             for (x in marginX until samples.width - marginX) {
                 region++
                 val pixel = samples.argb[y * samples.width + x]
-                if ((pixel ushr 24) < MIN_ALPHA) continue
-                val r = (pixel shr 16) and 0xFF
-                val g = (pixel shr 8) and 0xFF
+                if ((pixel ushr ALPHA_SHIFT) < MIN_ALPHA) continue
+                val r = (pixel shr RED_SHIFT) and 0xFF
+                val g = (pixel shr GREEN_SHIFT) and 0xFF
                 val b = pixel and 0xFF
                 val dx = (x - centerX) / halfX
                 val dy = (y - centerY) / halfY
@@ -60,17 +60,25 @@ class HistogramColorExtractor : ColorExtractor {
                 opaque++
             }
         }
-        if (opaque == 0 || opaque * 100 < region) return null
+        if (opaque == 0 || opaque * MIN_OPAQUE_SHARE < region) return null
         var best = -1
         for (bin in 0 until BINS) if (counts[bin] > 0 && (best < 0 || weights[bin] > weights[best])) best = bin
         val n = counts[best]
         fun mean(channel: Int) = ((sums[channel][best] + n / 2) / n).toInt()
-        return Rgb((mean(0) shl 16) or (mean(1) shl 8) or mean(2))
+        return Rgb((mean(0) shl RED_SHIFT) or (mean(1) shl GREEN_SHIFT) or mean(2))
     }
 
     companion object {
         private const val BINS = 4096
         private const val WEIGHT_SCALE = 1_000_000.0
+
+        // Where the channels sit in an ARGB int.
+        private const val ALPHA_SHIFT = 24
+        private const val RED_SHIFT = 16
+        private const val GREEN_SHIFT = 8
+
+        /** At least one pixel in this many of the sampled region must be opaque for the region to have a color. */
+        private const val MIN_OPAQUE_SHARE = 100
         const val MIN_ALPHA = 128
 
         /** How fast the weight falls towards the edge of the counted region: `exp(-2)`, about 0.135, at the middle of an edge. */

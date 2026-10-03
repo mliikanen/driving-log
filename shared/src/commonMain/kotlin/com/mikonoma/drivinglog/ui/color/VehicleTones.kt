@@ -13,9 +13,15 @@ data class VehicleTones(val icon: Rgb, val container: Rgb) {
         /** The chroma is capped so that a very saturated color does not give a garish container. */
         const val MAX_CHROMA = 48.0
 
+        // Material's primary / primaryContainer tones (see above).
+        private const val LIGHT_ICON_TONE = 40.0
+        private const val LIGHT_CONTAINER_TONE = 90.0
+        private const val DARK_ICON_TONE = 80.0
+        private const val DARK_CONTAINER_TONE = 30.0
+
         fun of(color: Rgb, dark: Boolean): VehicleTones = VehicleTones(
-            icon = HctColors.atTone(color, if (dark) 80.0 else 40.0, MAX_CHROMA),
-            container = HctColors.atTone(color, if (dark) 30.0 else 90.0, MAX_CHROMA),
+            icon = HctColors.atTone(color, if (dark) DARK_ICON_TONE else LIGHT_ICON_TONE, MAX_CHROMA),
+            container = HctColors.atTone(color, if (dark) DARK_CONTAINER_TONE else LIGHT_CONTAINER_TONE, MAX_CHROMA),
         )
     }
 }

@@ -81,6 +81,13 @@ Each number gets a `private const val` (or a companion constant) whose name says
 `MILLIS_PER_MINUTE = 60_000L`. Constants for a published formula (WCAG relative luminance, sRGB) cite it in a
 comment. No new shared constants file: a constant lives next to its only use.
 
+**During apply:** one exception. `applyTransform` (`Geometry.kt`) reads `m[0]` to `m[8]` as the elements of a row-major
+3×3 matrix, written as the formula reads. Naming each index doesn't read better than the formula, so that function
+is suppressed with that reason. `perspectiveTransform` names the system's shape instead (`CORNERS`, `UNKNOWNS`), and
+`corners()` was rewritten to take the left and right pairs instead of indexing four points. Also, the two `0xFF`
+channel masks in `PpOcr`/`RgbImage` showed up as new MagicNumber findings once their expressions' other numbers were
+named (one baseline entry had covered the whole expression), and they became `CHANNEL_MASK`.
+
 ### 6. Android lint, one decision per finding
 
 | Finding | Resolution |
@@ -99,6 +106,11 @@ comment. No new shared constants file: a constant lives next to its only use.
   doesn't count a commented block as empty), and the unused parameters are suppressed with the same reason.
 - MatchingDeclarationName (`LiveCamera.kt` declares `CameraPermission`, `TimeZoneChoices.kt` declares
   `ZoneChoice`): the file is renamed after its declaration.
+  **Changed during apply:** both files are named after their main function (`LiveCameraPreview`, with its
+  `LiveCamera.android.kt`/`LiveCamera.ios.kt` actuals; `timeZoneChoices()`, with `TimeZoneChoicesTest`), and their one
+  class is a helper. Renaming them after the class would break that pairing, so each has a file-level suppression with
+  that reason instead. `CurrentActivityHolder`'s empty bodies are lifecycle callbacks the interface requires:
+  `EmptyFunctionBlock.ignoreOverridden: true` in `detekt.yml`, with that reason.
 
 ## Risks / Trade-offs
 

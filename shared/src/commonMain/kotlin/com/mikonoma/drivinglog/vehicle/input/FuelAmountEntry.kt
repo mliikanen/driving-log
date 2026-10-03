@@ -4,6 +4,10 @@ import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.Volume
 import kotlinx.serialization.Serializable
 
+/** Steps are entered digit by digit, in base ten. */
+private const val DIGIT_BASE = 10L
+private const val MAX_DIGIT = 9
+
 /**
  * A microwave-style fuel amount entry, mirroring [OdometerEntry]'s digit-entry mechanics but always at two decimal
  * places (hundredths of whichever unit interprets [steps]). Unlike a distance/odometer entry, a fuel amount's
@@ -35,7 +39,7 @@ data class FuelAmountEntry(val steps: Long? = null, val zeroPrefix: Boolean = fa
         }
 
     fun press(digit: Int): FuelAmountEntry {
-        require(digit in 0..9) { "Not a digit: $digit" }
+        require(digit in 0..MAX_DIGIT) { "Not a digit: $digit" }
         val current = steps
         return when {
             current == null -> copy(steps = digit.toLong())
@@ -53,7 +57,7 @@ data class FuelAmountEntry(val steps: Long? = null, val zeroPrefix: Boolean = fa
         val current = steps ?: return this
         return when {
             current == 0L -> copy(steps = null)
-            current >= 10 -> copy(steps = current / 10)
+            current >= DIGIT_BASE -> copy(steps = current / DIGIT_BASE)
             zeroPrefix -> copy(steps = 0, zeroPrefix = false)
             else -> copy(steps = null)
         }

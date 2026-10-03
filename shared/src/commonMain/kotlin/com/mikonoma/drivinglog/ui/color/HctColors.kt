@@ -4,6 +4,10 @@ import androidx.compose.ui.graphics.Color
 import com.materialkolor.hct.Hct
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 
+/** Hues are degrees around the color wheel; tones run from 0 (black) to 100 (white). */
+private const val FULL_TURN = 360.0
+private const val MAX_TONE = 100.0
+
 /** A color in the HCT color space: hue in degrees (0 up to 360), chroma (0 for greys up to about 120) and tone (0 black to 100 white). */
 data class HctValue(val hue: Double, val chroma: Double, val tone: Double)
 
@@ -21,7 +25,7 @@ object HctColors {
      * colorful) gives the most colorful color that does.
      */
     fun build(hue: Double, chroma: Double, tone: Double): Rgb =
-        Rgb.fromArgb(Hct.from(hue.mod(360.0), chroma.coerceAtLeast(0.0), tone.coerceIn(0.0, 100.0)).toInt())
+        Rgb.fromArgb(Hct.from(hue.mod(FULL_TURN), chroma.coerceAtLeast(0.0), tone.coerceIn(0.0, MAX_TONE)).toInt())
 
     /** The same color at another tone, with its chroma at most [maxChroma]. */
     fun atTone(color: Rgb, tone: Double, maxChroma: Double): Rgb {

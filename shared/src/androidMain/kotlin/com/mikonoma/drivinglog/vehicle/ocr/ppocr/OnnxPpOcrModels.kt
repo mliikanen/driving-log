@@ -5,6 +5,9 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import java.nio.FloatBuffer
 
+/** The models take NCHW tensors of RGB images. */
+private const val RGB_CHANNELS = 3L
+
 /**
  * The two PP-OCR models on ONNX Runtime (`add-seven-segment-ocr`), from their bytes, and the recognizer's [characters] (its character
  * list file, one per line). The list is shipped as a file rather than read from the model's metadata, which ONNX Runtime's Java API
@@ -34,10 +37,10 @@ class OnnxPpOcrModels(
     }
 
     override fun detect(input: FloatArray, width: Int, height: Int): FloatArray =
-        run(detection, input, longArrayOf(1, 3, height.toLong(), width.toLong())) { it.floatBuffer.toArray() }
+        run(detection, input, longArrayOf(1, RGB_CHANNELS, height.toLong(), width.toLong())) { it.floatBuffer.toArray() }
 
     override fun recognize(input: FloatArray, count: Int, width: Int): RecognitionScores =
-        run(recognition, input, longArrayOf(count.toLong(), 3, PpOcr.REC_HEIGHT.toLong(), width.toLong())) { out ->
+        run(recognition, input, longArrayOf(count.toLong(), RGB_CHANNELS, PpOcr.REC_HEIGHT.toLong(), width.toLong())) { out ->
             val shape = out.info.shape
             RecognitionScores(out.floatBuffer.toArray(), shape[0].toInt(), shape[1].toInt(), shape[2].toInt())
         }

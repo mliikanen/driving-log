@@ -4,6 +4,9 @@ import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.math.max
 
+/** [sameRowNearby]'s sideways reach: one and a half box heights, counted in half heights. */
+private const val MAX_GAP_HALF_HEIGHTS = 3
+
 /** What a detected reading is taken to be: the odometer's count, a trip meter's distance, or a refueling's fuel amount. */
 @Serializable
 enum class ReadingKind { ODOMETER, TRIP, FUEL_AMOUNT }
@@ -229,7 +232,7 @@ internal fun sameRowNearby(a: TextBox, b: TextBox): Boolean {
     val height = minOf(a.height, b.height)
     if (height <= 0 || rows < height / 2) return false
     val gap = maxOf(a.left, b.left) - minOf(a.right, b.right)
-    return gap <= maxOf(a.height, b.height) * 3 / 2
+    return gap <= maxOf(a.height, b.height) * MAX_GAP_HALF_HEIGHTS / 2
 }
 
 internal fun samePlace(a: TextBox, b: TextBox): Boolean {

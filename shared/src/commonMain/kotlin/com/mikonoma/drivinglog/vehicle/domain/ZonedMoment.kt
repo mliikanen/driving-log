@@ -7,6 +7,8 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
+private const val MILLIS_PER_MINUTE = 60_000L
+
 /**
  * This instant with the seconds and milliseconds dropped. Minutes start at the same instant in every time zone, so the result is
  * the start of the same wall-clock minute wherever it is shown. Times a user picks have no seconds; this puts a time taken from
@@ -14,7 +16,7 @@ import kotlin.time.Instant
  */
 fun Instant.truncatedToMinute(): Instant {
     val millis = toEpochMilliseconds()
-    return Instant.fromEpochMilliseconds(millis - millis.mod(60_000L))
+    return Instant.fromEpochMilliseconds(millis - millis.mod(MILLIS_PER_MINUTE))
 }
 
 /**

@@ -1,6 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
 private const val UNRESERVED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~/"
+private const val HEX_DIGITS = "0123456789ABCDEF"
+private const val NIBBLE_BITS = 4
 
 /**
  * The `file://` URI of an absolute path: everything outside the unreserved characters (and the `/` between segments) is
@@ -15,7 +17,7 @@ fun fileUri(absolutePath: String): String {
             encoded.append(c)
         } else {
             val v = byte.toInt() and 0xFF
-            encoded.append('%').append("0123456789ABCDEF"[v shr 4]).append("0123456789ABCDEF"[v and 0x0F])
+            encoded.append('%').append(HEX_DIGITS[v shr NIBBLE_BITS]).append(HEX_DIGITS[v and 0x0F])
         }
     }
     return encoded.toString()

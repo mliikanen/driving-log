@@ -2,6 +2,11 @@
 # (`buildUponDefaultConfig`): only overrides are listed, each with the convention it follows.
 # Test source sets: this project's are commonTest, androidHostTest and iosTest (plus the app's test/androidTest).
 
+empty-blocks:
+  EmptyFunctionBlock:
+    # Interface callbacks a class has no use for (Application.ActivityLifecycleCallbacks and the like) are empty overrides.
+    ignoreOverridden: true
+
 complexity:
   CyclomaticComplexMethod:
     # A processor's `map` is a `when` over intents with one call per branch; that's dispatch, not complexity.

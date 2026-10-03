@@ -1,3 +1,6 @@
+// Named after what it provides, timeZoneChoices() (and TimeZoneChoicesTest), not after the small class it returns.
+@file:Suppress("MatchingDeclarationName")
+
 package com.mikonoma.drivinglog.vehicle.distance
 
 import kotlinx.datetime.TimeZone

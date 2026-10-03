@@ -33,6 +33,8 @@ import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
+private const val DEGREES_PER_QUARTER_TURN = 90
+
 @Composable
 actual fun rememberCameraPermission(): CameraPermission {
     val context = LocalContext.current
@@ -123,5 +125,5 @@ private fun ImageProxy.toUprightImage(): RgbImage {
     val bitmap = toBitmap()
     val pixels = IntArray(bitmap.width * bitmap.height)
     bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-    return RgbImage(bitmap.width, bitmap.height, pixels).turnedClockwise(imageInfo.rotationDegrees / 90)
+    return RgbImage(bitmap.width, bitmap.height, pixels).turnedClockwise(imageInfo.rotationDegrees / DEGREES_PER_QUARTER_TURN)
 }

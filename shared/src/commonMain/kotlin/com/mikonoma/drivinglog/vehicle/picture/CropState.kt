@@ -123,15 +123,23 @@ class CropState private constructor(val imageWidth: Int, val imageHeight: Int, v
         /** One tap of a move button moves the photo by a tenth of the frame's side. */
         const val MOVE_STEP = 0.1f
 
+        // Positions in [toSaved]'s list.
+        private const val SAVED_WIDTH = 0
+        private const val SAVED_HEIGHT = 1
+        private const val SAVED_ZOOM = 2
+        private const val SAVED_CENTER_X = 3
+        private const val SAVED_CENTER_Y = 4
+        private const val SAVED_SIZE = 5
+
         /**
          * The state [saved] (from [toSaved]) describes, or null when there is none or it is for a photo other than [imageWidth] by [imageHeight]
          * (a saved crop means nothing on another photo). The values are brought back inside their limits, so a state never leaves them.
          */
         fun restore(saved: List<Float>?, imageWidth: Int, imageHeight: Int): CropState? {
-            if (saved == null || saved.size != 5) return null
-            if (saved[0].toInt() != imageWidth || saved[1].toInt() != imageHeight) return null
+            if (saved == null || saved.size != SAVED_SIZE) return null
+            if (saved[SAVED_WIDTH].toInt() != imageWidth || saved[SAVED_HEIGHT].toInt() != imageHeight) return null
             val start = initial(imageWidth, imageHeight)
-            return of(imageWidth, imageHeight, saved[2].coerceIn(1f, start.maxZoom), saved[3], saved[4])
+            return of(imageWidth, imageHeight, saved[SAVED_ZOOM].coerceIn(1f, start.maxZoom), saved[SAVED_CENTER_X], saved[SAVED_CENTER_Y])
         }
 
         /** The start: the largest square, in the middle of the photo. */

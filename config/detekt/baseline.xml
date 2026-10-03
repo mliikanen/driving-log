@@ -8,9 +8,6 @@
     <ID>CyclomaticComplexMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
     <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$fun boxes: List&lt;Quad&gt;</ID>
     <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:Geometry.kt:val (a, b, c, d, e) = m</ID>
-    <ID>EmptyFunctionBlock:AuthRepositoryFactory.kt:{}</ID>
-    <ID>EmptyFunctionBlock:CurrentActivityHolder.kt:CurrentActivityHolder${}</ID>
     <ID>LongMethod:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
     <ID>LongMethod:CropScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun CropScreen</ID>
     <ID>LongMethod:EditVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EditVehicleContent</ID>
@@ -19,87 +16,6 @@
     <ID>LongMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
     <ID>LongMethod:VehicleDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun VehicleDetailsContent</ID>
     <ID>LoopWithTooManyJumpStatements:PpOcr.kt:PpOcr$for</ID>
-    <ID>MagicNumber:AndroidImageCodec.kt:AndroidImageCodec.Decoded$4</ID>
-    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$100</ID>
-    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$16</ID>
-    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$24</ID>
-    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$8</ID>
-    <ID>MagicNumber:Contrast.kt:0.03928</ID>
-    <ID>MagicNumber:Contrast.kt:0.05</ID>
-    <ID>MagicNumber:Contrast.kt:0.055</ID>
-    <ID>MagicNumber:Contrast.kt:0.0722</ID>
-    <ID>MagicNumber:Contrast.kt:0.2126</ID>
-    <ID>MagicNumber:Contrast.kt:0.7152</ID>
-    <ID>MagicNumber:Contrast.kt:1.055</ID>
-    <ID>MagicNumber:Contrast.kt:12.92</ID>
-    <ID>MagicNumber:Contrast.kt:2.4</ID>
-    <ID>MagicNumber:CropState.kt:CropState.Companion$3</ID>
-    <ID>MagicNumber:CropState.kt:CropState.Companion$4</ID>
-    <ID>MagicNumber:CropState.kt:CropState.Companion$5</ID>
-    <ID>MagicNumber:FileUri.kt:4</ID>
-    <ID>MagicNumber:FuelAmountEntry.kt:FuelAmountEntry$10</ID>
-    <ID>MagicNumber:FuelAmountEntry.kt:FuelAmountEntry$9</ID>
-    <ID>MagicNumber:FuelUnit.kt:FuelUnit$10</ID>
-    <ID>MagicNumber:FuelUnit.kt:FuelUnit$5</ID>
-    <ID>MagicNumber:Geometry.kt:0.5</ID>
-    <ID>MagicNumber:Geometry.kt:1e-12</ID>
-    <ID>MagicNumber:Geometry.kt:1e-18</ID>
-    <ID>MagicNumber:Geometry.kt:3</ID>
-    <ID>MagicNumber:Geometry.kt:4</ID>
-    <ID>MagicNumber:Geometry.kt:5</ID>
-    <ID>MagicNumber:Geometry.kt:8</ID>
-    <ID>MagicNumber:Geometry.kt:9</ID>
-    <ID>MagicNumber:Geometry.kt:Quad$4</ID>
-    <ID>MagicNumber:Geometry.kt:RotatedRect$3</ID>
-    <ID>MagicNumber:HctColors.kt:HctColors$100.0</ID>
-    <ID>MagicNumber:HctColors.kt:HctColors$360.0</ID>
-    <ID>MagicNumber:IosImageCodec.kt:4</ID>
-    <ID>MagicNumber:LerpHct.kt:180.0</ID>
-    <ID>MagicNumber:LerpHct.kt:360.0</ID>
-    <ID>MagicNumber:LerpHct.kt:540.0</ID>
-    <ID>MagicNumber:LiveCamera.android.kt:90</ID>
-    <ID>MagicNumber:OdometerEntry.kt:OdometerEntry$10</ID>
-    <ID>MagicNumber:OdometerEntry.kt:OdometerEntry$9</ID>
-    <ID>MagicNumber:OdometerFormat.kt:10</ID>
-    <ID>MagicNumber:OdometerFormat.kt:12</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$100</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$10_000</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$1_000</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$50</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$500</ID>
-    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$5_000</ID>
-    <ID>MagicNumber:OnnxPpOcrModels.kt:OnnxPpOcrModels$3</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$0.5f</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$0xFF</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$1.5</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$16</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$255f</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$32</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$32.0</ID>
-    <ID>MagicNumber:PpOcr.kt:PpOcr$8</ID>
-    <ID>MagicNumber:ReadingDetection.kt:3</ID>
-    <ID>MagicNumber:Rgb.kt:Rgb$0xFFFFFF</ID>
-    <ID>MagicNumber:Rgb.kt:Rgb.Companion$0xFFFFFF</ID>
-    <ID>MagicNumber:Rgb.kt:Rgb.Companion$16</ID>
-    <ID>MagicNumber:Rgb.kt:Rgb.Companion$6</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage$0xFF</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage$16</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage$4</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage$8</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$0.5</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$0xFF</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$16</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$24</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$255</ID>
-    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$8</ID>
-    <ID>MagicNumber:SystemDeviceLocale.ios.kt:SystemDeviceLocale$7</ID>
-    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$30.0</ID>
-    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$40.0</ID>
-    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$80.0</ID>
-    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$90.0</ID>
-    <ID>MagicNumber:ZonedMoment.kt:60_000L</ID>
-    <ID>MatchingDeclarationName:LiveCamera.kt:CameraPermission</ID>
-    <ID>MatchingDeclarationName:TimeZoneChoices.kt:ZoneChoice</ID>
     <ID>NestedBlockDepth:Geometry.kt:fun perspectiveTransform: DoubleArray</ID>
     <ID>NestedBlockDepth:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
     <ID>ReturnCount:LogDistanceRules.kt:fun validateLogDistance: LogDistanceResult</ID>
@@ -129,7 +45,5 @@
     <ID>TooManyFunctions:ReadingDetection.kt:com.mikonoma.drivinglog.vehicle.ocr.ReadingDetection.kt</ID>
     <ID>TooManyFunctions:SqlDelightVehicleRepository.kt:SqlDelightVehicleRepository : VehicleRepository</ID>
     <ID>TooManyFunctions:VehicleRepository.kt:VehicleRepository</ID>
-    <ID>UnusedParameter:AuthRepositoryFactory.kt:authRepository: AuthRepository</ID>
-    <ID>UnusedParameter:AuthRepositoryFactory.kt:intent: Intent</ID>
   </CurrentIssues>
 </SmellBaseline>

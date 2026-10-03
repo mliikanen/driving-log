@@ -37,10 +37,10 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 4. Mechanical detekt fixes (design.md decisions 5 and 7)
 
-- [ ] 4.1 Replace every baselined MagicNumber with a named constant next to its use (OCR, color math, units, time),
+- [x] 4.1 Replace every baselined MagicNumber with a named constant next to its use (OCR, color math, units, time),
       with the formula cited for published ones. Verify: `:shared:allTests` passes (the color, contrast, OCR and unit
       tests pin these values), and the baseline has no MagicNumber entry.
-- [ ] 4.2 Rename `LiveCamera.kt` and `TimeZoneChoices.kt` after their declarations; comment the empty blocks and
+- [x] 4.2 Rename `LiveCamera.kt` and `TimeZoneChoices.kt` after their declarations; comment the empty blocks and
       suppress the unused parameters in `AuthRepositoryFactory`/`CurrentActivityHolder` with the flavor reason; fix
       `Geometry.kt`'s five-way destructuring. Verify: `:shared:allTests :androidApp:assembleDebug` passes and those
       entries are gone.

@@ -33,6 +33,8 @@ import platform.posix.memcpy
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+private const val QUARTER_TURNS_PER_TURN = 4
+
 /**
  * Decodes with `UIImage` and encodes PNG: the image APIs on iOS read WebP but cannot write it, so the versions are stored as PNG
  * until a WebP encoder is added (see the design). Every image is first drawn once through a renderer, which bakes the photo's
@@ -152,7 +154,7 @@ private fun renderImage(width: Double, height: Double, draw: (UIGraphicsImageRen
 @OptIn(ExperimentalForeignApi::class)
 private fun turnedImage(image: UIImage, quarterTurns: Int): UIImage {
     var current = image
-    repeat(quarterTurns.mod(4)) {
+    repeat(quarterTurns.mod(QUARTER_TURNS_PER_TURN)) {
         val (width, height) = current.size.useContents { width to height }
         val source = current
         current = renderImage(height, width) { context ->

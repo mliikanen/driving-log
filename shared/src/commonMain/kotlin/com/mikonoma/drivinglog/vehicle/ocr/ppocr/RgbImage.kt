@@ -4,6 +4,16 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 
+// Where the channels sit in a 0xAARRGGBB pixel, and their range.
+private const val ALPHA_SHIFT = 24
+private const val RED_SHIFT = 16
+private const val GREEN_SHIFT = 8
+private const val BITS_PER_CHANNEL = 8
+private const val CHANNEL_MASK = 0xFF
+private const val MAX_CHANNEL = 255
+private const val ROUND_HALF_UP = 0.5
+private const val QUARTER_TURNS_PER_TURN = 4
+
 /** A photo as the PP-OCR pipeline works on it: [width] x [height] pixels, each `0xAARRGGBB`, row by row. */
 class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
     init {
@@ -13,7 +23,7 @@ class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
     /** The red, green or blue channel ([channel] 0, 1, 2) of the pixel at ([x], [y]), 0 to 255, the coordinates clamped into the image. */
     fun channel(x: Int, y: Int, channel: Int): Int {
         val p = pixels[y.coerceIn(0, height - 1) * width + x.coerceIn(0, width - 1)]
-        return (p shr (16 - 8 * channel)) and 0xFF
+        return (p shr (RED_SHIFT - BITS_PER_CHANNEL * channel)) and CHANNEL_MASK
     }
 
     /** The value of [channel] at the fractional point ([x], [y]), interpolated between the four nearest pixels, edges replicated. */
@@ -62,13 +72,13 @@ class RgbImage(val width: Int, val height: Int, val pixels: IntArray) {
     fun turnedClockwise(quarterTurns: Int): RgbImage {
         var image = this
         // Three counterclockwise quarters are one clockwise quarter.
-        repeat((4 - quarterTurns.mod(4)) % 4) { image = image.turnedCounterclockwise() }
+        repeat((QUARTER_TURNS_PER_TURN - quarterTurns.mod(QUARTER_TURNS_PER_TURN)) % QUARTER_TURNS_PER_TURN) { image = image.turnedCounterclockwise() }
         return image
     }
 
     companion object {
-        fun rgb(r: Double, g: Double, b: Double): Int = (0xFF shl 24) or (clamp(r) shl 16) or (clamp(g) shl 8) or clamp(b)
+        fun rgb(r: Double, g: Double, b: Double): Int = (CHANNEL_MASK shl ALPHA_SHIFT) or (clamp(r) shl RED_SHIFT) or (clamp(g) shl GREEN_SHIFT) or clamp(b)
 
-        private fun clamp(v: Double): Int = min(255, max(0, (v + 0.5).toInt()))
+        private fun clamp(v: Double): Int = min(MAX_CHANNEL, max(0, (v + ROUND_HALF_UP).toInt()))
     }
 }

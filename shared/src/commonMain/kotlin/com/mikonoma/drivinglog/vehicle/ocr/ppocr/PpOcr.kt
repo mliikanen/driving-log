@@ -44,8 +44,25 @@ object PpOcr {
     const val REC_BATCH = 6
     const val TEXT_SCORE = 0.5
 
+    /** Detection sizes are multiples of the detection model's stride. */
+    private const val DETECTION_STRIDE = 32
+
+    /** A text box at least this much taller than wide is a vertical line, turned to read horizontally. */
+    private const val VERTICAL_LINE_ASPECT = 1.5
+
+    // Each model input value is `(v / 255 - 0.5) / 0.5`, per channel of a 0xAARRGGBB pixel, planes in BGR order.
+    private const val MAX_CHANNEL = 255f
+    private const val NORMALIZE_MEAN = 0.5f
+    private const val NORMALIZE_STD = 0.5f
+    private const val RED_SHIFT = 16
+    private const val GREEN_SHIFT = 8
+    private const val BLUE_SHIFT = 0
+    private const val CHANNEL_MASK = 0xFF
+
+    private fun normalized(pixel: Int, shift: Int): Float = ((((pixel shr shift) and CHANNEL_MASK) / MAX_CHANNEL) - NORMALIZE_MEAN) / NORMALIZE_STD
+
     /** A size rounded to the nearest multiple of 32, halves to even as Python's `round` does, at least 32. */
-    fun roundTo32(v: Int): Int = max(32, round(v / 32.0).toInt() * 32)
+    fun roundTo32(v: Int): Int = max(DETECTION_STRIDE, round(v / DETECTION_STRIDE.toDouble()).toInt() * DETECTION_STRIDE)
 
     /** The size the whole photo is brought to first: its longer side at most [MAX_SIDE] (then rounded to 32), its shorter side at least [MIN_SIDE]. */
     fun boundedSize(width: Int, height: Int): Pair<Int, Int> {
@@ -76,9 +93,9 @@ object PpOcr {
         val out = FloatArray(3 * plane)
         for (i in 0 until plane) {
             val p = image.pixels[i]
-            out[i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f // B
-            out[plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f // G
-            out[2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f // R
+            out[i] = normalized(p, BLUE_SHIFT)
+            out[plane + i] = normalized(p, GREEN_SHIFT)
+            out[2 * plane + i] = normalized(p, RED_SHIFT)
         }
         return out
     }
@@ -219,7 +236,7 @@ object PpOcr {
             }
         }
         val cropped = RgbImage(w, h, out)
-        return if (h.toDouble() / w >= 1.5) cropped.turnedCounterclockwise() else cropped
+        return if (h.toDouble() / w >= VERTICAL_LINE_ASPECT) cropped.turnedCounterclockwise() else cropped
     }
 
     /** One batch of line images as the recognizer's input: each 48 px high, [batchWidth] wide, its own width by its aspect (at most the batch width), zero-padded on the right. */
@@ -234,9 +251,9 @@ object PpOcr {
                 for (x in 0 until w) {
                     val p = resized.pixels[y * w + x]
                     val i = y * batchWidth + x
-                    out[base + i] = (((p and 0xFF) / 255f) - 0.5f) / 0.5f
-                    out[base + plane + i] = ((((p shr 8) and 0xFF) / 255f) - 0.5f) / 0.5f
-                    out[base + 2 * plane + i] = ((((p shr 16) and 0xFF) / 255f) - 0.5f) / 0.5f
+                    out[base + i] = normalized(p, BLUE_SHIFT)
+                    out[base + plane + i] = normalized(p, GREEN_SHIFT)
+                    out[base + 2 * plane + i] = normalized(p, RED_SHIFT)
                 }
             }
         }

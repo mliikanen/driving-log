@@ -15,6 +15,8 @@ import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+private const val QUARTER_TURNS_PER_TURN = 4
+
 /**
  * Decodes with [ImageDecoder], which applies the photo's EXIF orientation, and encodes lossy WebP (API 30, and the minimum
  * is 33). The decode is bounded to [MAX_DECODE_SIDE] with a power-of-two sample size, which is the same for [decode] and
@@ -27,7 +29,13 @@ class AndroidImageCodec(private val dispatcher: CoroutineDispatcher = ioDispatch
         override val width: Int get() = bitmap.width
         override val height: Int get() = bitmap.height
         override fun toImageBitmap(): ImageBitmap = bitmap.asImageBitmap()
-        override fun turnedClockwise(quarterTurns: Int): DecodedImage = if (quarterTurns.mod(4) == 0) this else Decoded(turned(bitmap, quarterTurns))
+        override fun turnedClockwise(quarterTurns: Int): DecodedImage = if (quarterTurns.mod(QUARTER_TURNS_PER_TURN) ==
+            0
+        ) {
+            this
+        } else {
+            Decoded(turned(bitmap, quarterTurns))
+        }
     }
 
     override suspend fun decode(bytes: ByteArray): DecodedImage? = withContext(dispatcher) { decodeBitmap(bytes)?.let(::Decoded) }

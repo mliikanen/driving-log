@@ -10,6 +10,8 @@ import platform.Foundation.NSLocaleDecimalSeparator
 import platform.Foundation.NSLocaleGroupingSeparator
 import platform.Foundation.currentLocale
 
+private const val DAYS_PER_WEEK = 7
+
 /** The iOS device's locale, calendar language and clock setting, read from Foundation on every call. */
 class SystemDeviceLocale : DeviceLocale {
     override val regionCode: String?
@@ -26,7 +28,7 @@ class SystemDeviceLocale : DeviceLocale {
     override fun weekdayName(day: DayOfWeek): String {
         // Foundation lists the weekday symbols starting with Sunday.
         val symbols = NSCalendar.currentCalendar.weekdaySymbols
-        return symbols[day.isoDayNumber % 7] as String
+        return symbols[day.isoDayNumber % DAYS_PER_WEEK] as String
     }
 
     override fun timeFormat(): TimeFormat {

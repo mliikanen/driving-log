@@ -6,6 +6,10 @@ import kotlin.math.abs
 /** A chroma below this is a grey, whose hue means nothing: the other color's hue is used instead. */
 private const val GREY_CHROMA = 2.0
 
+/** Hues are degrees around the color wheel. */
+private const val FULL_TURN = 360.0
+private const val HALF_TURN = 180.0
+
 /**
  * The color [progress] of the way (0 to 1) from [from] to [to], moving through HCT: the hue by the shortest way around the color wheel, chroma and tone
  * in a straight line. Moving through hue, chroma and tone keeps an intermediate color looking like a color on the way (no muddy grey in the middle of red
@@ -22,14 +26,14 @@ fun lerpHct(from: Rgb, to: Rgb, progress: Float): Rgb {
 fun lerpHctValues(from: HctValue, to: HctValue, t: Double): HctValue {
     val fromHue = if (from.chroma < GREY_CHROMA) to.hue else from.hue
     val toHue = if (to.chroma < GREY_CHROMA) from.hue else to.hue
-    var delta = (toHue - fromHue).mod(360.0)
-    if (delta > 180.0) delta -= 360.0
+    var delta = (toHue - fromHue).mod(FULL_TURN)
+    if (delta > HALF_TURN) delta -= FULL_TURN
     return HctValue(
-        hue = (fromHue + delta * t).mod(360.0),
+        hue = (fromHue + delta * t).mod(FULL_TURN),
         chroma = from.chroma + (to.chroma - from.chroma) * t,
         tone = from.tone + (to.tone - from.tone) * t,
     )
 }
 
 /** The distance in degrees between two hues, the short way around (0 to 180). */
-internal fun hueDistance(a: Double, b: Double): Double = abs((a - b + 540.0).mod(360.0) - 180.0)
+internal fun hueDistance(a: Double, b: Double): Double = abs((a - b + FULL_TURN + HALF_TURN).mod(FULL_TURN) - HALF_TURN)

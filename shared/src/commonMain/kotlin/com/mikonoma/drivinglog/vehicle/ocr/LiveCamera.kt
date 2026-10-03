@@ -1,3 +1,7 @@
+// Named after the live camera it declares (LiveCameraPreview, with LiveCamera.android.kt and LiveCamera.ios.kt), not after its
+// one class, the permission the camera needs.
+@file:Suppress("MatchingDeclarationName")
+
 package com.mikonoma.drivinglog.vehicle.ocr
 
 import androidx.compose.runtime.Composable

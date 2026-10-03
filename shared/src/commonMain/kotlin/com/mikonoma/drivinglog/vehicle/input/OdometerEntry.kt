@@ -4,6 +4,10 @@ import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import kotlinx.serialization.Serializable
 
+/** Steps are entered digit by digit, in base ten. */
+private const val DIGIT_BASE = 10L
+private const val MAX_DIGIT = 9
+
 /**
  * A microwave-style odometer entry: digits enter at the right-hand end and shift the earlier digits left.
  *
@@ -41,7 +45,7 @@ data class OdometerEntry(val unit: OdometerUnit, val steps: Long? = null, val ze
         }
 
     fun press(digit: Int): OdometerEntry {
-        require(digit in 0..9) { "Not a digit: $digit" }
+        require(digit in 0..MAX_DIGIT) { "Not a digit: $digit" }
         val current = steps
         return when {
             // The first digit: a 0 is the typed zero (in a tenths unit it is the tenth).
@@ -65,7 +69,7 @@ data class OdometerEntry(val unit: OdometerUnit, val steps: Long? = null, val ze
         val current = steps ?: return this
         return when {
             current == 0L -> copy(steps = null)
-            current >= 10 -> copy(steps = current / 10)
+            current >= DIGIT_BASE -> copy(steps = current / DIGIT_BASE)
             zeroPrefix -> copy(steps = 0, zeroPrefix = false)
             else -> copy(steps = null)
         }

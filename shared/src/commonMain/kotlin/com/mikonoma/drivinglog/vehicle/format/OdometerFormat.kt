@@ -11,6 +11,9 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+private const val TENTHS_PER_UNIT = 10L
+private const val HOURS_PER_HALF_DAY = 12
+
 /** Groups the digits of [value] in threes with [separator]. Internal, not private: `FuelFormat.kt` reuses it. */
 internal fun group(value: Long, separator: String): String {
     val digits = value.toString()
@@ -27,7 +30,7 @@ internal fun group(value: Long, separator: String): String {
  * decimal separator and is always shown ("0.0", "12.3"). Built from integers, so nothing is rounded twice.
  */
 fun formatSteps(steps: Long, hasTenths: Boolean, symbols: NumberSymbols): String = if (hasTenths) {
-    group(steps / 10, symbols.groupingSeparator) + symbols.decimalSeparator + (steps % 10)
+    group(steps / TENTHS_PER_UNIT, symbols.groupingSeparator) + symbols.decimalSeparator + (steps % TENTHS_PER_UNIT)
 } else {
     group(steps, symbols.groupingSeparator)
 }
@@ -45,8 +48,8 @@ private fun two(n: Int) = n.toString().padStart(2, '0')
 fun formatTimeOfDay(hour: Int, minute: Int, format: TimeFormat = TimeFormat()): String = if (format.is24Hour) {
     "${two(hour)}:${two(minute)}"
 } else {
-    val hour12 = if (hour % 12 == 0) 12 else hour % 12
-    "$hour12:${two(minute)} ${if (hour < 12) format.amMarker else format.pmMarker}"
+    val hour12 = if (hour % HOURS_PER_HALF_DAY == 0) HOURS_PER_HALF_DAY else hour % HOURS_PER_HALF_DAY
+    "$hour12:${two(minute)} ${if (hour < HOURS_PER_HALF_DAY) format.amMarker else format.pmMarker}"
 }
 
 /** A date as yyyy-MM-dd, which is the same in every locale, followed by the time of day in [format]. */
