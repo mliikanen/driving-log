@@ -1,0 +1,33 @@
+# detekt configuration (add-lint-quality-gates; see docs/code-quality.md). Builds on detekt's defaults
+# (`buildUponDefaultConfig`): only overrides are listed, each with the convention it follows.
+# Test source sets: this project's are commonTest, androidHostTest and iosTest (plus the app's test/androidTest).
+
+complexity:
+  LongParameterList:
+    # Compose screens and components take their state and callbacks as parameters by design (MVI).
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    # Test classes have one function per case.
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**']
+
+naming:
+  FunctionNaming:
+    # Compose functions are PascalCase; test names may be descriptive.
+    ignoreAnnotated: ['Composable']
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**']
+
+style:
+  MagicNumber:
+    # Compose code is full of dp/sp sizes, tones and animation durations that read best inline; tests use literal
+    # inputs and expected values.
+    ignoreAnnotated: ['Composable', 'Preview']
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**', '**/*.kts']
+  MaxLineLength:
+    # ktlint's max-line-length reports these (160, .editorconfig); one tool per finding.
+    active: false
+  UnusedPrivateFunction:
+    # @Preview functions are used by the IDE, not by code.
+    ignoreAnnotated: ['Preview']
+  WildcardImport:
+    # ktlint's no-wildcard-imports reports these; one tool per finding.
+    active: false

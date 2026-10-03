@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.firebaseAppDistribution)
     alias(libs.plugins.googleServices)
+    alias(libs.plugins.ktlint)
 }
 
 // versionCode/versionName are fully derived from git, never hand-edited (add-app-distribution/design.md).
@@ -38,6 +39,19 @@ android {
 
     // add-firebase-auth: `production` is the real app (Firebase Auth, Credential Manager); `fake` is what
     // Maestro installs, with zero Firebase/Credential Manager dependency at all (design.md decision 6).
+    // add-lint-quality-gates: lint gates the build (warnings are errors). `shared` has its own lint task
+    // (:shared:lintAndroidMain), so the app doesn't analyze it again (design.md decisions 3 and 4). Existing findings are
+    // in lint-baseline.xml, which may only shrink.
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
+        // These compare against what's published online, so they'd fail the gate on a new upstream release with no code
+        // change. Dependency updates are a deliberate change of their own, not a lint finding.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
+        checkDependencies = false
+    }
+
     flavorDimensions += "environment"
     productFlavors {
         create("production") { dimension = "environment" }
@@ -113,7 +127,7 @@ run {
         doLast {
             if (!hasKeystoreProperties) {
                 throw GradleException(
-                    "Missing $keystorePropertiesPath — release signing is not configured. See docs/distribution.md."
+                    "Missing $keystorePropertiesPath — release signing is not configured. See docs/distribution.md.",
                 )
             }
         }

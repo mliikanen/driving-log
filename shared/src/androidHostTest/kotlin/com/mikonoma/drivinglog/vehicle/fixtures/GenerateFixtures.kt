@@ -1,3 +1,7 @@
+// Named after what it is, a fixture-generating tool, not after the test class JUnit needs to run it; docs/test-fixtures.md
+// and :shared:generateMaestroFixtures refer to it by this name.
+@file:Suppress("ktlint:standard:filename")
+
 package com.mikonoma.drivinglog.vehicle.fixtures
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver

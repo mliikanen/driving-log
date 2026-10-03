@@ -69,7 +69,7 @@ and builds whatever it needs through the UI (`add-firebase-auth`).
 | When | What |
 |---|---|
 | While working on a change | The unit tests that concern the code (`./gradlew :shared:allTests` when in doubt), and **the manifests of the functionality the change touches** (a change to the vehicle picture runs `picture`; one to the add and edit forms runs `vehicles`, and so on). Only flows that were changed, or that exercise the screens changed. |
-| The final regression run of a change (before `/opsx:archive`) | `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict`. **Maestro is not part of it.** |
+| The final regression run of a change (before `/opsx:archive`) | `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`. `codeQuality` is the static analysis gate (ktlint, detekt, Android lint; see [`docs/code-quality.md`](code-quality.md)). **Maestro is not part of it.** |
 | A major refactoring (navigation, storage or theme across every screen, the build, the Maestro suite itself) | Everything, including `maestro/run.sh --all` and the device-state groups. The developer says when a change is a major refactoring; it is not decided by the change's author. |
 
 A change's tasks therefore name the manifests to run, and do not ask for the whole suite unless the change is a major refactoring.

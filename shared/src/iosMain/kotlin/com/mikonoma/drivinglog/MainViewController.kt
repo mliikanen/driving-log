@@ -35,4 +35,7 @@ private val appGraph: AppGraph by lazy {
     )
 }
 
+// PascalCase because SwiftUI calls it like a view controller type (iosApp/README.md); renaming it
+// means changing the Xcode shell too, which needs a Mac.
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
 fun MainViewController(): UIViewController = ComposeUIViewController { App(UnavailableAuthRepository, graphFor = { appGraph }) }

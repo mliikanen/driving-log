@@ -1,0 +1,5 @@
+# Commits that only reformat code, skipped by `git blame` (git config blame.ignoreRevsFile .git-blame-ignore-revs)
+# and by GitHub's blame view.
+
+# Reformat with ktlint (add-lint-quality-gates)
+d8346e7bae24edabac20e6858905ace220218849

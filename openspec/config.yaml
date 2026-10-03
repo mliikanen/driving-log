@@ -146,4 +146,4 @@ rules:
     - Keep tasks small enough to complete and verify in one sitting
     - Include test tasks for each requirement, each in the lowest kind of test that can check it (docs/test-strategy.md); a Maestro flow only follows the happy path of a feature
     - Name the Maestro manifests to run for the functionality the change touches. Do not add a task to run the whole Maestro suite unless the change is a major refactoring
-    - The final task is the regression run - `./gradlew :shared:allTests :androidApp:assembleDebug` and `openspec validate --all --strict` - without Maestro
+    - The final task is the regression run - `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict` - without Maestro

@@ -1,0 +1,19 @@
+# Formatting for Kotlin sources and Gradle Kotlin scripts. ktlint reads this file, and so do IntelliJ/Android Studio,
+# so "Reformat code" and `./gradlew ktlintCheck` agree (add-lint-quality-gates; see docs/code-quality.md).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+# Matches the IDE's formatting of kotlin.code.style=official (gradle.properties); ktlint_official is stricter than
+# what the IDE produces, and the two would fight.
+ktlint_code_style = intellij_idea
+# The existing code's practice (the docs' 120 isn't what the code follows). detekt's MaxLineLength uses the same value.
+max_line_length = 160
+# Compose functions are PascalCase by convention.
+ktlint_function_naming_ignore_when_annotated_with = Composable

@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.metro)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.androidLint)
 }
 
 kotlin {
@@ -19,6 +21,20 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         withHostTest {}
+
+        // add-lint-quality-gates: the app's checkDependencies doesn't reach a KMP library's sources, so `shared` is linted
+        // on its own (`lintAndroidMain`, enabled by the com.android.lint plugin above), with the app's settings (design.md
+        // decision 4).
+        lint {
+            warningsAsErrors = true
+            abortOnError = true
+            baseline = file("lint-baseline.xml")
+            // These compare against what's published online, so they'd fail the gate on a new upstream release with no code
+            // change. Dependency updates are a deliberate change of their own, not a lint finding.
+            disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
+            // targetSdk is the app's setting (a library has none); the app's lint reports it, against its own build file.
+            disable += "OldTargetApi"
+        }
     }
 
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->

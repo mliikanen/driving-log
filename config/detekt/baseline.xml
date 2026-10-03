@@ -1,0 +1,163 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:LogEventProcessor.kt:LogEventProcessor$form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()</ID>
+    <ID>ComplexCondition:PpOcr.kt:PpOcr$nx &lt; 0 || ny &lt; 0 || nx &gt;= w || ny &gt;= h</ID>
+    <ID>CyclomaticComplexMethod:AddVehicleProcessor.kt:AddVehicleProcessor$override suspend fun map: Action&lt;AddVehicleState, AddVehicleEffect&gt;?</ID>
+    <ID>CyclomaticComplexMethod:EventDetailsProcessor.kt:EventDetailsProcessor$override suspend fun map: Action&lt;EventDetailsState, EventDetailsEffect&gt;?</ID>
+    <ID>CyclomaticComplexMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailsContent</ID>
+    <ID>CyclomaticComplexMethod:LogEventProcessor.kt:LogEventProcessor$override suspend fun map: Action&lt;LogEventState, LogEventEffect&gt;?</ID>
+    <ID>CyclomaticComplexMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
+    <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$fun boxes: List&lt;Quad&gt;</ID>
+    <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:Geometry.kt:val (a, b, c, d, e) = m</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:InitialOdometerDetectionTest.kt:InitialOdometerDetectionTest$val (l, t, r, b) = box.split(',').map { it.toInt() }</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:LiveFramesJvmTest.kt:LiveFramesJvmTest$(name, known, value, kind)</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:ReadingDetectionTest.kt:ReadingDetectionTest$val (l, t, r, b) = box.split(',').map { it.toInt() }</ID>
+    <ID>EmptyFunctionBlock:AuthRepositoryFactory.kt:{}</ID>
+    <ID>EmptyFunctionBlock:CurrentActivityHolder.kt:CurrentActivityHolder${}</ID>
+    <ID>LargeClass:AddVehicleProcessorTest.kt:AddVehicleProcessorTest</ID>
+    <ID>LargeClass:LogEventProcessorTest.kt:LogEventProcessorTest</ID>
+    <ID>LargeClass:SqlDelightVehicleRepositoryTest.kt:SqlDelightVehicleRepositoryTest</ID>
+    <ID>LargeClass:VehicleMigrationJvmTest.kt:VehicleMigrationJvmTest</ID>
+    <ID>LongMethod:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
+    <ID>LongMethod:CropScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun CropScreen</ID>
+    <ID>LongMethod:EditVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EditVehicleContent</ID>
+    <ID>LongMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailsContent</ID>
+    <ID>LongMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable private fun EventEditContent</ID>
+    <ID>LongMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
+    <ID>LongMethod:VehicleDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun VehicleDetailsContent</ID>
+    <ID>LoopWithTooManyJumpStatements:PpOcr.kt:PpOcr$for</ID>
+    <ID>MagicNumber:AndroidImageCodec.kt:AndroidImageCodec.Decoded$4</ID>
+    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$100</ID>
+    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$16</ID>
+    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$24</ID>
+    <ID>MagicNumber:ColorExtractor.kt:HistogramColorExtractor$8</ID>
+    <ID>MagicNumber:Contrast.kt:0.03928</ID>
+    <ID>MagicNumber:Contrast.kt:0.05</ID>
+    <ID>MagicNumber:Contrast.kt:0.055</ID>
+    <ID>MagicNumber:Contrast.kt:0.0722</ID>
+    <ID>MagicNumber:Contrast.kt:0.2126</ID>
+    <ID>MagicNumber:Contrast.kt:0.7152</ID>
+    <ID>MagicNumber:Contrast.kt:1.055</ID>
+    <ID>MagicNumber:Contrast.kt:12.92</ID>
+    <ID>MagicNumber:Contrast.kt:2.4</ID>
+    <ID>MagicNumber:CropState.kt:CropState.Companion$3</ID>
+    <ID>MagicNumber:CropState.kt:CropState.Companion$4</ID>
+    <ID>MagicNumber:CropState.kt:CropState.Companion$5</ID>
+    <ID>MagicNumber:FileUri.kt:4</ID>
+    <ID>MagicNumber:FuelAmountEntry.kt:FuelAmountEntry$10</ID>
+    <ID>MagicNumber:FuelAmountEntry.kt:FuelAmountEntry$9</ID>
+    <ID>MagicNumber:FuelUnit.kt:FuelUnit$10</ID>
+    <ID>MagicNumber:FuelUnit.kt:FuelUnit$5</ID>
+    <ID>MagicNumber:Geometry.kt:0.5</ID>
+    <ID>MagicNumber:Geometry.kt:1e-12</ID>
+    <ID>MagicNumber:Geometry.kt:1e-18</ID>
+    <ID>MagicNumber:Geometry.kt:3</ID>
+    <ID>MagicNumber:Geometry.kt:4</ID>
+    <ID>MagicNumber:Geometry.kt:5</ID>
+    <ID>MagicNumber:Geometry.kt:8</ID>
+    <ID>MagicNumber:Geometry.kt:9</ID>
+    <ID>MagicNumber:Geometry.kt:Quad$4</ID>
+    <ID>MagicNumber:Geometry.kt:RotatedRect$3</ID>
+    <ID>MagicNumber:HctColors.kt:HctColors$100.0</ID>
+    <ID>MagicNumber:HctColors.kt:HctColors$360.0</ID>
+    <ID>MagicNumber:IosImageCodec.kt:4</ID>
+    <ID>MagicNumber:LerpHct.kt:180.0</ID>
+    <ID>MagicNumber:LerpHct.kt:360.0</ID>
+    <ID>MagicNumber:LerpHct.kt:540.0</ID>
+    <ID>MagicNumber:LiveCamera.android.kt:90</ID>
+    <ID>MagicNumber:OdometerEntry.kt:OdometerEntry$10</ID>
+    <ID>MagicNumber:OdometerEntry.kt:OdometerEntry$9</ID>
+    <ID>MagicNumber:OdometerFormat.kt:10</ID>
+    <ID>MagicNumber:OdometerFormat.kt:12</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$100</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$10_000</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$1_000</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$50</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$500</ID>
+    <ID>MagicNumber:OdometerUnit.kt:OdometerUnit$5_000</ID>
+    <ID>MagicNumber:OnnxPpOcrModels.kt:OnnxPpOcrModels$3</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$0.5f</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$0xFF</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$1.5</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$16</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$255f</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$32</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$32.0</ID>
+    <ID>MagicNumber:PpOcr.kt:PpOcr$8</ID>
+    <ID>MagicNumber:ReadingDetection.kt:3</ID>
+    <ID>MagicNumber:Rgb.kt:Rgb$0xFFFFFF</ID>
+    <ID>MagicNumber:Rgb.kt:Rgb.Companion$0xFFFFFF</ID>
+    <ID>MagicNumber:Rgb.kt:Rgb.Companion$16</ID>
+    <ID>MagicNumber:Rgb.kt:Rgb.Companion$6</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage$0xFF</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage$16</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage$4</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage$8</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$0.5</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$0xFF</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$16</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$24</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$255</ID>
+    <ID>MagicNumber:RgbImage.kt:RgbImage.Companion$8</ID>
+    <ID>MagicNumber:SystemDeviceLocale.ios.kt:SystemDeviceLocale$7</ID>
+    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$30.0</ID>
+    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$40.0</ID>
+    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$80.0</ID>
+    <ID>MagicNumber:VehicleTones.kt:VehicleTones.Companion$90.0</ID>
+    <ID>MagicNumber:ZonedMoment.kt:60_000L</ID>
+    <ID>MatchingDeclarationName:LiveCamera.kt:CameraPermission</ID>
+    <ID>MatchingDeclarationName:TimeZoneChoices.kt:ZoneChoice</ID>
+    <ID>NestedBlockDepth:Geometry.kt:fun perspectiveTransform: DoubleArray</ID>
+    <ID>NestedBlockDepth:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
+    <ID>ReturnCount:AddVehicleProcessor.kt:AddVehicleProcessor$private fun save: Action&lt;AddVehicleState, AddVehicleEffect&gt;?</ID>
+    <ID>ReturnCount:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
+    <ID>ReturnCount:CropState.kt:CropState.Companion$fun restore: CropState?</ID>
+    <ID>ReturnCount:EditVehicleProcessor.kt:EditVehicleProcessor$private fun save: Action&lt;EditVehicleState, EditVehicleEffect&gt;?</ID>
+    <ID>ReturnCount:EventDetailsProcessor.kt:EventDetailsProcessor$private fun editSaved: Action&lt;EventDetailsState, EventDetailsEffect&gt;?</ID>
+    <ID>ReturnCount:Geometry.kt:fun minAreaRect: RotatedRect</ID>
+    <ID>ReturnCount:IosImageCodec.kt:IosImageCodec$private fun upright: UIImage?</ID>
+    <ID>ReturnCount:LerpHct.kt:fun lerpHct: Rgb</ID>
+    <ID>ReturnCount:LogDistanceRules.kt:fun validateLogDistance: LogDistanceResult</ID>
+    <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor$private fun saveRefueling: Action&lt;LogEventState, LogEventEffect&gt;?</ID>
+    <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor.Companion$fun LogEventState.withScannedReading: LogEventState</ID>
+    <ID>ReturnCount:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
+    <ID>ReturnCount:PictureDraftEditor.kt:PictureDraftEditor$suspend fun cropConfirmed: PictureEditState</ID>
+    <ID>ReturnCount:PictureDraftEditor.kt:PictureDraftEditor$suspend fun sampleColor: Rgb?</ID>
+    <ID>ReturnCount:ReadingDetection.kt:internal fun isDistanceUnit: Boolean</ID>
+    <ID>ReturnCount:Rgb.kt:Rgb.Companion$fun parse: Rgb?</ID>
+    <ID>ReturnCount:ScanDraft.kt:ScanEditor$fun selected: ScanDraft</ID>
+    <ID>ReturnCount:ScanDraft.kt:ScanEditor$suspend fun confirmed: Pair&lt;ScanDraft, Detection&gt;?</ID>
+    <ID>ReturnCount:ScanDraft.kt:ScanEditor$suspend fun liveAccepted: ScanDraft?</ID>
+    <ID>ReturnCount:TestAccountPickerActivity.kt:TestAccountPickerActivity.Companion$suspend fun pick: PickResult</ID>
+    <ID>SwallowedException:AndroidImageCodec.kt:AndroidImageCodec$e: Exception</ID>
+    <ID>SwallowedException:CombinedTextRecognizer.kt:CombinedTextRecognizer$e: Exception</ID>
+    <ID>SwallowedException:FirebaseAuthRepository.kt:FirebaseAuthRepository$e: GetCredentialCancellationException</ID>
+    <ID>SwallowedException:PhotoDecoding.kt:e: Exception</ID>
+    <ID>SwallowedException:PhotoPicker.android.kt:e: ActivityNotFoundException</ID>
+    <ID>SwallowedException:PhotoPicker.android.kt:e: IOException</ID>
+    <ID>SwallowedException:PhotoPicker.android.kt:e: SecurityException</ID>
+    <ID>TooGenericExceptionCaught:AddVehicleProcessor.kt:AddVehicleProcessor$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AndroidImageCodec.kt:AndroidImageCodec$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CombinedTextRecognizer.kt:CombinedTextRecognizer$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EditVehicleProcessor.kt:EditVehicleProcessor$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:EventDetailsProcessor.kt:EventDetailsProcessor$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:FirebaseAuthRepository.kt:FirebaseAuthRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LogEventProcessor.kt:LogEventProcessor$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:PhotoDecoding.kt:e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SqlDelightVehicleRepository.kt:SqlDelightVehicleRepository$throwable: Throwable</ID>
+    <ID>TooManyFunctions:CropState.kt:CropState</ID>
+    <ID>TooManyFunctions:FilePictureStore.kt:FilePictureStore : PictureStore</ID>
+    <ID>TooManyFunctions:LogEventProcessor.kt:LogEventProcessor : PresentationProcessor</ID>
+    <ID>TooManyFunctions:LogEventScreen.kt:com.mikonoma.drivinglog.vehicle.distance.LogEventScreen.kt</ID>
+    <ID>TooManyFunctions:PictureStore.kt:PictureStore</ID>
+    <ID>TooManyFunctions:PpOcr.kt:PpOcr</ID>
+    <ID>TooManyFunctions:ReadingDetection.kt:com.mikonoma.drivinglog.vehicle.ocr.ReadingDetection.kt</ID>
+    <ID>TooManyFunctions:SqlDelightVehicleRepository.kt:SqlDelightVehicleRepository : VehicleRepository</ID>
+    <ID>TooManyFunctions:VehicleRepository.kt:VehicleRepository</ID>
+    <ID>UnusedParameter:AuthRepositoryFactory.kt:authRepository: AuthRepository</ID>
+    <ID>UnusedParameter:AuthRepositoryFactory.kt:intent: Intent</ID>
+  </CurrentIssues>
+</SmellBaseline>
