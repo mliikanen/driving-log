@@ -135,5 +135,5 @@ for the whole suite.
 - **THEN** they name the manifests to run for the functionality the change touches and do not include a task to run the whole suite unless the change is a major refactoring
 
 #### Scenario: Static analysis fails
-- **WHEN** the tests and build pass but the static analysis gate reports a finding not in a baseline
+- **WHEN** the tests and build pass but the static analysis gate reports a finding
 - **THEN** the final regression run fails, and the change is not ready to archive

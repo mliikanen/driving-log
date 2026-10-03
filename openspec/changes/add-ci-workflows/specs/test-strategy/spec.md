@@ -6,9 +6,8 @@
 The system SHALL run the final regression run (the shared unit and integration tests, the Android debug build, the
 static analysis gate and the strict validation of the specs, without Maestro) automatically in CI for every pull
 request targeting `main` and for every push to `main`, and SHALL report the result as status checks on the pull
-request or commit: one for the tests, build and spec validation, and one for the static analysis gate together
-with the check that no baseline grew compared with the pull request's base. A failure of any part SHALL fail its
-check. CI SHALL NOT build or test iOS targets.
+request or commit: one for the tests, build and spec validation, and one for the static analysis gate. A failure
+of any part SHALL fail its check. CI SHALL NOT build or test iOS targets.
 
 #### Scenario: A pull request is opened or updated
 - **WHEN** a pull request targeting `main` is opened, or a new commit is pushed to its branch
@@ -19,12 +18,8 @@ check. CI SHALL NOT build or test iOS targets.
 - **THEN** the tests-and-build check fails and names the failing step
 
 #### Scenario: A linter reports a finding
-- **WHEN** ktlint, detekt or Android lint reports a finding not covered by its baseline
+- **WHEN** ktlint, detekt or Android lint reports a finding
 - **THEN** the code-quality check fails and names the tool and the finding
-
-#### Scenario: A baseline grows
-- **WHEN** a pull request adds entries to a detekt or Android lint baseline
-- **THEN** the code-quality check fails and names the baseline file
 
 #### Scenario: A commit is pushed directly to main
 - **WHEN** a commit reaches `main` without a pull request

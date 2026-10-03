@@ -15,8 +15,8 @@
 
 ## 2. PR check workflow
 
-- [ ] 2.0 Check that `add-lint-quality-gates` is applied: `./gradlew codeQuality --dry-run` resolves and
-      `scripts/check-baselines.sh` exists. Verify: both hold; if not, stop and apply that change first.
+- [ ] 2.0 Check that `add-lint-quality-gates` is applied: `./gradlew codeQuality --dry-run` resolves. Verify: it does;
+      if not, stop and apply that change first.
 - [ ] 2.1 Add `.github/ci/google-services.placeholder.json`: the shape of the real file with package name
       `com.mikonoma.drivinglog` and dummy project/API values (design.md decision 2). Verify: with the real file
       moved aside and the placeholder copied to `androidApp/src/production/google-services.json`,
@@ -27,19 +27,17 @@
       errors once a workflow uses it (2.3).
 - [ ] 2.3 Add `.github/workflows/pr-check.yml` (`pull_request` and `push` to `main`, `contents: read`) with two jobs
       using `setup-build`: `tests-and-build` (`:shared:allTests`, `:androidApp:assembleDebug`,
-      `openspec validate --all --strict` as separate steps) and `code-quality` (`./gradlew codeQuality`, then
-      `scripts/check-baselines.sh` against `origin/<base branch>` on pull requests or the push's `before` commit on
-      `main`) (design.md decision 8). Verify: `actionlint` reports no errors.
+      `openspec validate --all --strict` as separate steps) and `code-quality` (`./gradlew codeQuality`) (design.md
+      decision 8). Verify: `actionlint` reports no errors.
 - [ ] 2.4 Add the release-notes preview step to the `tests-and-build` job: on a pull request, the PR body's
       `## Release notes` section if non-empty, else `release-notes.sh` on the checked-out merge commit, else
       "nothing to release". Written to the job summary (spec: "The draft is shown on the pull request"). Verify:
       the section-extraction logic, run locally on a sample body with and without the section and with a following
       `## ` heading, prints the expected text.
 - [ ] 2.5 Open this change's branch as a pull request. Verify: both checks run and pass, and the job summary shows
-      the notes preview. Then push three deliberately failing commits, one at a time, and revert each: a broken
-      test (`tests-and-build` fails naming `:shared:allTests`), a misformatted line (`code-quality` fails naming
-      ktlint and the file), and an added entry in `config/detekt/baseline.xml` (`code-quality` fails naming the
-      baseline).
+      the notes preview. Then push two deliberately failing commits, one at a time, and revert each: a broken test
+      (`tests-and-build` fails naming `:shared:allTests`) and a misformatted line (`code-quality` fails naming ktlint
+      and the file).
 
 ## 3. Release workflow
 
@@ -116,7 +114,7 @@
 - [ ] 5.4 Update `openspec/specs/app-distribution/spec.md`'s Purpose (it says "from a developer's machine") to cover
       CI distribution too. Verify: the Purpose mentions both.
 - [ ] 5.5 Update `docs/code-quality.md` (from `add-lint-quality-gates`) to say the `code-quality` check runs
-      `codeQuality` and the baseline check on every PR and blocks merging. Verify: the doc names the check.
+      `codeQuality` on every PR and blocks merging. Verify: the doc names the check.
 
 ## 6. Final regression run
 

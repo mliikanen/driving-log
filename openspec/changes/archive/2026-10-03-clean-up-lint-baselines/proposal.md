@@ -43,9 +43,10 @@ those files.
 <!-- none -->
 
 ### Modified Capabilities
-- `code-quality`: findings are never baselined. The requirement that existing findings are baselined and the
+- `code-quality`: findings are never baselined, and the one-command requirement no longer mentions baselines. The requirement that existing findings are baselined and the
   baselines only shrink is replaced by one saying every finding is fixed, suppressed with a reason, or handled by a
   documented project-wide rule configuration, and that no baseline file exists.
+- `test-strategy`: the final regression run's "Static analysis fails" scenario no longer mentions a baseline.
 
 ## Impact
 

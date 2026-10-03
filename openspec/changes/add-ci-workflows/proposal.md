@@ -17,8 +17,8 @@ merge to `main`").
   well, so direct pushes are checked too. It has two jobs, each its own status check:
   - `tests-and-build`: `:shared:allTests`, `:androidApp:assembleDebug`, `openspec validate --all --strict`, and the
     release-notes draft the merge would publish, in the job summary, so it can be reviewed before merging;
-  - `code-quality`: `codeQuality` (ktlint, detekt, Android lint) and `scripts/check-baselines.sh` against the PR's
-    base, so a baseline can't grow.
+  - `code-quality`: `codeQuality` (ktlint, detekt, Android lint; there are no baselines since
+    `clean-up-lint-baselines`).
 - **Both checks block merging.** A repository ruleset on `main` requires both to pass, on the PR's latest commit,
   before a pull request can be merged. The repository admin keeps a bypass, so committing directly to `main` (how
   proposals and today's changes land) still works; those commits are checked after the fact.
@@ -43,7 +43,7 @@ merge to `main`").
 - iOS builds and tests: there is no macOS runner in the plan.
 - Running Maestro in CI. It stays the human final check.
 - Configuring the linters themselves. That's `add-lint-quality-gates`, which **must be applied first**: this
-  change's `code-quality` job runs its `codeQuality` task and `scripts/check-baselines.sh`.
+  change's `code-quality` job runs its `codeQuality` task.
 - Any new test kind.
 - Store releases (Play Store). Firebase App Distribution remains the only distribution channel.
 

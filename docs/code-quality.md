@@ -24,8 +24,6 @@ None of them needs macOS: iOS source sets are only read, never compiled.
 - `./gradlew ktlintFormat`: fixes formatting in place. Run it first when ktlint fails; what it leaves (for example a
   line too long to wrap automatically) needs a manual fix.
 - `./gradlew ktlintCheck`, `./gradlew detekt`, `./gradlew :androidApp:lintFakeDebug` (and the others): one tool.
-- `scripts/check-baselines.sh <base-ref>` (e.g. `origin/main`): fails when a baseline has grown since `<base-ref>`.
-  `codeQuality` doesn't run it, since it needs a base; CI runs it on pull requests (`add-ci-workflows`).
 
 ## Style
 
@@ -42,8 +40,10 @@ The one-time reformat that introduced ktlint is listed in `.git-blame-ignore-rev
 already does).
 
 detekt's configuration is `config/detekt/detekt.yml`. It builds on detekt's defaults and lists only overrides, each
-with its reason: Compose functions may have long parameter lists and inline numbers, tests may have many functions
-and literal numbers, and `@Preview` functions may look unused.
+with its reason: Compose functions may have long parameter lists and inline numbers; tests may have many functions,
+literal numbers, large classes and destructured boxes; `@Preview` functions may look unused; guard-clause returns
+don't count towards `ReturnCount` (up to three others are allowed); a `when` over intents with one call per branch
+isn't counted as complexity; and empty overrides of interface callbacks are allowed.
 
 ## Suppressing a finding, or changing a rule
 
@@ -66,34 +66,24 @@ configuration, never by suppressing it file by file: `.editorconfig` for ktlint,
 detekt, the `lint {}` block of `androidApp/build.gradle.kts` or `shared/build.gradle.kts` for Android lint.
 Always with a comment naming the convention. Both modules' lint already disables `NewerVersionAvailable`,
 `GradleDependency` and `AndroidGradlePluginVersion`: they compare against versions published online, so they'd fail
-the gate on an upstream release with no code change. `shared` also disables `OldTargetApi`: `targetSdk` is the app's setting, and the app's lint
-reports it.
+the gate on an upstream release with no code change. The app also disables `OldTargetApi` (it fires whenever a newer
+SDK exists; a `targetSdk` bump is a change of its own) and `ChromeOsAbiSupport` (release builds are arm64-only on
+purpose), and `shared` disables `OldTargetApi` too (`targetSdk` is the app's setting).
 
-## Baselines: existing findings, only ever shrinking
+Shared helpers keep suppressions in one place: `undoOnFailure` (`shared/.../util/UndoOnFailure.kt`) is the one
+place that catches `Throwable`, to undo work and rethrow, so callers that need cleanup on failure or cancellation use
+it instead of their own `catch (Throwable)`.
 
-Findings in code that predates the gate are recorded in baselines and don't fail it:
+## No baselines
 
-| Baseline | Entries when introduced |
-|---|---|
-| `config/detekt/baseline.xml` | 157 |
-| `androidApp/lint-baseline.xml` | 5 |
-| `shared/lint-baseline.xml` | 5 |
+There are no baselines: every finding is fixed, suppressed in code with a reason, or handled by a commented rule
+setting (above). `add-lint-quality-gates` introduced the gate with baselines for the findings that predated it (157
+detekt, 5 + 5 Android lint), and `clean-up-lint-baselines` resolved all of them and removed the baselines.
 
-ktlint has no baseline: the code was reformatted instead.
-
-The rules:
-- **A change never adds entries to a baseline.** A new finding is fixed, or suppressed in code with a reason (above).
-  `scripts/check-baselines.sh` catches a growing baseline, and a reviewer (human or agent) rejects one.
-- **A change that edits a file with baselined findings fixes them** and removes their entries. The exception is a
-  finding whose fix would change behavior the change doesn't otherwise touch; suppress it in code with a reason
-  instead.
-- To remove fixed entries, regenerate the baseline and check the diff only removes lines:
-  - detekt: `./gradlew detektBaseline`;
-  - Android lint: delete the baseline file and run the lint task once (it writes a new file and fails that run;
-    run it again to confirm). The app's two variants share one baseline file, and lint writes only the variant
-    it runs. Write it with `:androidApp:lintProductionDebug`, since only `production` has the Firebase auth code
-    and none of the baselined findings are in `fake`-only code. Then run `:androidApp:lintFakeDebug`. If it
-    reports a finding that only exists in `src/fake`, fix it or suppress it with a reason.
+- **Don't add one** (no `baseline` setting, no `detektBaseline`, no `lint-baseline.xml`), not even to land a
+  toolchain update. When a detekt, ktlint or Android Gradle Plugin update reports findings in unchanged code, the
+  update's own change fixes them, suppresses each with a reason, or reconfigures the rule with a comment.
+- A reviewer, human or agent, rejects a change that adds a baseline file or setting.
 
 ## Not enabled (yet)
 

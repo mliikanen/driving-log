@@ -84,20 +84,20 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 7. Remove the baselines
 
-- [ ] 7.1 Delete `config/detekt/baseline.xml`, `androidApp/lint-baseline.xml`, `shared/lint-baseline.xml` and
+- [x] 7.1 Delete `config/detekt/baseline.xml`, `androidApp/lint-baseline.xml`, `shared/lint-baseline.xml` and
       `scripts/check-baselines.sh`, and remove the `baseline` settings from root `build.gradle.kts` and both `lint {}`
       blocks. Verify: `./gradlew codeQuality` passes with no baseline anywhere (`git ls-files | grep -i baseline`
       prints nothing).
-- [ ] 7.2 CI: if `add-ci-workflows` is applied, remove the baseline-check step from `pr-check.yml`'s `code-quality`
+- [x] 7.2 CI: if `add-ci-workflows` is applied, remove the baseline-check step from `pr-check.yml`'s `code-quality`
       job. If not, update its design.md decision 8, tasks 2.3 and 2.5, and its `test-strategy` delta (the
       requirement text's "no baseline grew" and the "A baseline grows" scenario) to drop it. Verify: `openspec validate
       --all --strict` passes and nothing references `check-baselines.sh` (`grep -rn check-baselines` over the repo,
       archive excepted).
-- [ ] 7.3 Update `docs/code-quality.md`: replace the baselines section with "there are none; fix or suppress",
+- [x] 7.3 Update `docs/code-quality.md`: replace the baselines section with "there are none; fix or suppress",
       including toolchain updates. Update `CLAUDE.md`'s "Baselines only shrink" line to "There are no baselines". Verify:
       neither file mentions a baseline file or the script.
 
 ## 8. Final regression run
 
-- [ ] 8.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all
+- [x] 8.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all
       --strict`, without Maestro (the manifests of the touched screens ran in groups 2, 5 and 6). Verify: all pass.

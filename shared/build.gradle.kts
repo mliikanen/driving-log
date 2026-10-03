@@ -28,7 +28,6 @@ kotlin {
         lint {
             warningsAsErrors = true
             abortOnError = true
-            baseline = file("lint-baseline.xml")
             // These compare against what's published online, so they'd fail the gate on a new upstream release with no code
             // change. Dependency updates are a deliberate change of their own, not a lint finding.
             disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")

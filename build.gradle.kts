@@ -34,8 +34,6 @@ detekt {
     basePath.set(rootDir)
     buildUponDefaultConfig.set(true)
     config.setFrom(file("config/detekt/detekt.yml"))
-    // Findings that predate the gate; may only shrink (docs/code-quality.md, scripts/check-baselines.sh).
-    baseline.set(file("config/detekt/baseline.xml"))
 }
 
 // add-lint-quality-gates: the static analysis gate, part of the final regression run (docs/code-quality.md). Not hooked into

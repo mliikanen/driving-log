@@ -21,6 +21,35 @@ one of those ways before it is archived.
 - **WHEN** a detekt, ktlint or Android Gradle Plugin update reports findings in unchanged code
 - **THEN** the update's own change fixes them, suppresses each with a reason, or reconfigures the rule with a comment; it does not add a baseline
 
+## MODIFIED Requirements
+
+### Requirement: One command runs every static analysis gate
+The project SHALL provide one Gradle command that runs the Kotlin formatting check, detekt and Android lint, and
+fails when any of them reports a finding. The command SHALL cover every Kotlin source
+set of the shared module (common, Android, iOS and test code) and of the Android app, and every Gradle Kotlin script.
+It SHALL NOT need a macOS host: iOS source sets are checked by the Kotlin formatting check and detekt, which only read
+the sources.
+
+#### Scenario: Clean code
+- **WHEN** the static analysis command runs on code with no findings
+- **THEN** it succeeds
+
+#### Scenario: A formatting violation
+- **WHEN** a Kotlin file or Gradle Kotlin script is not formatted to the project's style
+- **THEN** the command fails and names the file, line and rule
+
+#### Scenario: A new detekt finding
+- **WHEN** code added by a change triggers a detekt rule
+- **THEN** the command fails and names the file, line and rule
+
+#### Scenario: A new Android lint warning
+- **WHEN** a change introduces an Android lint warning or error in the app's debug variants of either flavor
+- **THEN** the command fails, since warnings are treated as errors, and the lint report names the issue
+
+#### Scenario: Run on Linux
+- **WHEN** the command runs on a Linux machine without Xcode
+- **THEN** it checks the iOS source sets' Kotlin with the formatting check and detekt, and does not fail for lack of iOS tooling
+
 ## REMOVED Requirements
 
 ### Requirement: Existing findings are baselined and the baselines only shrink

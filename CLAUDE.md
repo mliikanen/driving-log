@@ -26,7 +26,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   `openspec/specs/`). Read the relevant file here before touching an area it covers, e.g. `docs/test-strategy.md`
   before changing tests, `docs/test-fixtures.md` before adding a Maestro fixture or a `.sqm` migration (a migration
   makes every checked-in fixture stale; that file says exactly what to run), `docs/color-palette.md` before a color
-  change, `docs/code-quality.md` before changing lint configuration, a baseline or a suppression, `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
+  change, `docs/code-quality.md` before changing lint configuration or adding a suppression, `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
   (`docs/distribution.md` is the day-to-day "cut a release" runbook for the same area).
 
 ## Commands
@@ -46,5 +46,5 @@ Project context and artifact rules live in `openspec/config.yaml`.
 - Test strategy: see `docs/test-strategy.md`. A check goes in the lowest kind of test that can check it; Maestro flows are only the happy path of a feature end to end.
   While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
   The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`, **without Maestro**.
-  `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. Baselines only shrink: never add to one.
+  `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. There are no baselines: fix a finding or suppress it with a reason.
   The whole Maestro suite is for major refactorings, which the developer names.

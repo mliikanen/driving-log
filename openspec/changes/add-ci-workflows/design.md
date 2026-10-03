@@ -139,8 +139,7 @@ harmless duplicate.
 - `tests-and-build`: `:shared:allTests`, `:androidApp:assembleDebug`, `openspec validate --all --strict`, and the
   release-notes preview (decision 5).
 - `code-quality`: `./gradlew codeQuality` (ktlint, detekt, both Android lint debug variants, from
-  `add-lint-quality-gates`), then `scripts/check-baselines.sh origin/<base>` on pull requests (on pushes to `main`,
-  against the push's `before` commit).
+  `add-lint-quality-gates`). There are no baselines to check since `clean-up-lint-baselines`.
 
 Both need the placeholder `google-services.json` (lint on `productionDebug` reads it too) and the same toolchain
 setup, which goes in a local composite action, `.github/actions/setup-build`, so the two jobs can't drift.
