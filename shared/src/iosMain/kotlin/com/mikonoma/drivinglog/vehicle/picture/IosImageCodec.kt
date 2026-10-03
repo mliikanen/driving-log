@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.vehicle.picture
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.mikonoma.drivinglog.vehicle.data.ioDispatcher
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.useContents
@@ -165,7 +166,7 @@ private fun turnedImage(image: UIImage, quarterTurns: Int): UIImage {
     return current
 }
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal fun ByteArray.toNSData(): NSData = if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.toULong()) }
 
 @OptIn(ExperimentalForeignApi::class)

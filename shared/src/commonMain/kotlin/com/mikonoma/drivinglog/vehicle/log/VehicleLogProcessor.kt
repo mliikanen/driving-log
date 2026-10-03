@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.combine
 import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
 
-class VehicleLogProcessor @AssistedInject constructor(@Assisted vehicleId: String, repository: VehicleRepository) :
+@AssistedInject
+class VehicleLogProcessor(@Assisted vehicleId: String, repository: VehicleRepository) :
     PresentationProcessor<VehicleLogIntent, VehicleLogState, VehicleLogEffect>(VehicleLogState()) {
 
     @AssistedFactory

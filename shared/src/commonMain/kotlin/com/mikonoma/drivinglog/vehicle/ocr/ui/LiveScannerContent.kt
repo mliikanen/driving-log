@@ -32,12 +32,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.mikonoma.drivinglog.ui.CloseButton
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
@@ -61,7 +63,7 @@ import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 @Composable
 fun LiveScannerContent(error: PictureError?, newLiveScanner: () -> LiveScanner, callbacks: ScanCallbacks) {
     val close = callbacks.onClose
-    BackHandler(onBack = close)
+    NavigationBackHandler(state = rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = close)
     val permission = rememberCameraPermission()
     val picker = rememberPhotoPicker(callbacks.onPhotoPicked)
     Scaffold(

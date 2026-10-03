@@ -21,7 +21,8 @@ import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
 
-class EditVehicleProcessor @AssistedInject constructor(
+@AssistedInject
+class EditVehicleProcessor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
     pictures: PictureStore,

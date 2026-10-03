@@ -11,11 +11,9 @@ import org.fuusio.kide.presentation.Action
 import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.sideEffect
 
-class VehicleDetailsProcessor @AssistedInject constructor(
-    @Assisted private val vehicleId: String,
-    repository: VehicleRepository,
-    private val pictures: PictureStore,
-) : PresentationProcessor<VehicleDetailsIntent, VehicleDetailsState, VehicleDetailsEffect>(VehicleDetailsState()) {
+@AssistedInject
+class VehicleDetailsProcessor(@Assisted private val vehicleId: String, repository: VehicleRepository, private val pictures: PictureStore) :
+    PresentationProcessor<VehicleDetailsIntent, VehicleDetailsState, VehicleDetailsEffect>(VehicleDetailsState()) {
 
     @AssistedFactory
     fun interface Factory {

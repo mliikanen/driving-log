@@ -24,6 +24,10 @@ build.
 - **WHEN** the build script or a plugin uses a Gradle feature that Gradle reports as deprecated
 - **THEN** the build fails, naming the deprecation
 
+#### Scenario: A build script uses a deprecated API
+- **WHEN** a Gradle build script uses a deprecated Gradle or plugin API, for example a deprecated DSL block
+- **THEN** compiling the script fails the build, naming the script, line and deprecation
+
 #### Scenario: A toolchain update brings new warnings
 - **WHEN** a Kotlin, Compose, AGP or other dependency update makes existing code warn
 - **THEN** the update's own change resolves the warnings before it can pass the gate

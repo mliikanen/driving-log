@@ -30,7 +30,9 @@ lint and detekt findings. The compiler and Gradle are the remaining tools whose 
     suppressed with that reason.
 - **The build fails on any new warning**:
   - Kotlin compiler warnings become errors in every compilation of `shared` and `androidApp`;
-  - Gradle runs with `org.gradle.warning.mode=fail`, so a Gradle or plugin deprecation fails the build.
+  - Gradle runs with `org.gradle.warning.mode=fail`, so a Gradle or plugin deprecation fails the build;
+  - the build scripts' own compiler warnings fail it too (`org.gradle.kotlin.dsl.allWarningsAsErrors`). The one
+    script warning there was, KMP's deprecated `androidLibrary { }` block in `shared`, becomes `android { }`.
   - It's part of the build itself, so the final regression run, the CI checks and herd workers all apply it with no
     command change.
 - **The JVM warning from the host tests** (SQLite loading its native library) is fixed by enabling native access for

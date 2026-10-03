@@ -37,7 +37,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -51,6 +50,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import coil3.compose.SubcomposeAsyncImage
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.PhotoIcons
@@ -237,7 +239,7 @@ internal fun PhotoThumbnail(uri: String, pendingId: String, onRemove: () -> Unit
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 internal fun NoteEditorContent(text: String, onTextChanged: (String) -> Unit, onAttach: () -> Unit, onDiscard: () -> Unit) {
-    BackHandler(onBack = onAttach)
+    NavigationBackHandler(state = rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = onAttach)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {

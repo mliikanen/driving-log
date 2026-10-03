@@ -77,6 +77,12 @@ excluded by type, with a comment, until a change that runs on a Mac can clean th
 reports deprecations at the end of the build and then fails it. The build has none today, so this only catches new
 ones (a Gradle, AGP or plugin update).
 
+**Added during apply:** the build scripts are compiled by Gradle's own Kotlin DSL compiler, which neither of the above
+covers, and they had a warning the first survey missed. A script recompiles only when it changes, so `--rerun-tasks`
+didn't show it: `shared/build.gradle.kts` used KMP's deprecated `androidLibrary { }` block, now `android { }`.
+`org.gradle.kotlin.dsl.allWarningsAsErrors=true` in `gradle.properties` makes script warnings errors too. Forcing all
+four scripts to recompile shows no other script warnings.
+
 ### 5. Tool JVM warnings: fix the project's, list the rest
 
 - **SQLite in the host tests:** `--enable-native-access=ALL-UNNAMED` on `shared`'s host test JVMs

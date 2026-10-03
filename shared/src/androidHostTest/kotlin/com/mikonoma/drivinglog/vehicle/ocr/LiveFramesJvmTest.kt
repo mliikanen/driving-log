@@ -16,8 +16,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * (on ONNX Runtime's JVM library; ML Kit needs a device), classification and the tracker, as each analyzed frame goes through them.
  */
 class LiveFramesJvmTest {
-    private val modelsDir = File(System.getProperty("ocrModelsDir"))
-    private val photosDir = File(System.getProperty("ocrPhotosDir"))
+    private val modelsDir = File(requireNotNull(System.getProperty("ocrModelsDir")) { "ocrModelsDir is set by the Gradle test task" })
+    private val photosDir = File(requireNotNull(System.getProperty("ocrPhotosDir")) { "ocrPhotosDir is set by the Gradle test task" })
     private val models = OnnxPpOcrModels(
         File(modelsDir, "PP-OCRv6_det_tiny.onnx").readBytes(),
         File(modelsDir, "en_PP-OCRv5_rec_mobile.onnx").readBytes(),
