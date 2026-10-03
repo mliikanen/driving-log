@@ -107,10 +107,10 @@ device at this minSdk is 64-bit. A tester with an x86 or 32-bit ARM device could
 ## Publishing from CI
 
 Every merge to `main` publishes to the testers, with no developer machine involved (`add-ci-workflows`):
-- **Trigger.** `.github/workflows/release.yml` runs when the PR check (`pr-check.yml`) has passed on a push to `main`,
-  that is, on a merge commit, and builds exactly the commit that passed. It can also be run by hand (*Run workflow*).
-  One release runs at a time; a later one waits. A run started by hand only publishes a commit whose PR check
-  passed, and no run publishes a commit older than one already distributed.
+- **Trigger.** `.github/workflows/release.yml` runs whenever the PR check (`pr-check.yml`) finishes on a push to
+  `main` (each merge), and by hand (*Run workflow*). Either way it publishes **the newest commit on `main` whose PR
+  check passed**, so checks finishing out of order, or one release replacing a waiting one, never leave a newer
+  commit unpublished. One release runs at a time, and no run publishes a commit older than one already distributed.
 - **Nothing to say, nothing published.** When no change was archived since the last `dist-v*` tag and the merged PR
   has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag. A commit that
   is already tagged isn't published again.

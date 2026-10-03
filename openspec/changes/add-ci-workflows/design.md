@@ -39,6 +39,13 @@ merge on a private repo, and two copies of the gate can drift. *Alternative:* `p
 `merged == true`. Rejected: the release must build a commit that passed the checks itself, and only the run on the
 merge commit (a push to `main`) shows that.
 
+**Changed after the second review (PR #1):** the release job doesn't publish the commit that triggered it. It runs
+for every PR check that finishes on a push to `main` (passed or not) and for manual runs, and publishes **the newest
+first-parent commit on `main`, since the last tag, whose push PR check passed** (`scripts/ci/newest-checked-commit.sh`).
+GitHub keeps only the last-arriving pending run, which isn't always the newest commit; reconciling inside the
+serialized job makes whichever run goes ahead publish what's ready, so a replaced run, a run for a failed check, an
+out-of-order older check and a manual run all do the right thing, with no separate pre-check.
+
 Concurrency: the release **job** uses `concurrency: { group: release, cancel-in-progress: false }`; on the job, not
 the workflow, so a run for a failed check (skipped by the job's condition) never takes the pending slot (review of
 PR #1). `pr-check.yml` gives every push to `main` its own group (by SHA), so no merge commit's checks are dropped. GitHub keeps at

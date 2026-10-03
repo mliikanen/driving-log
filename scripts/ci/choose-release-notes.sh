@@ -13,6 +13,8 @@
 #
 # Usage: scripts/ci/choose-release-notes.sh [--pr <number>] [<commit>]    (needs gh with GH_TOKEN, and full history)
 set -euo pipefail
+# A failing command inside $(...) fails the script too (bash leaves errexit off in command substitutions by default).
+shopt -s inherit_errexit
 cd "$(dirname "$0")/../.."
 
 extra_pr=""
@@ -31,10 +33,12 @@ section_of() {
   ' | sed -e '/./,$!d' | sed -e ':a' -e '/^\n*$/{$d;N;ba' -e '}'
 }
 
-# The changes a pull request archived: the change directories it adds under openspec/changes/archive/.
+# The changes a pull request archived: the change directories it adds under openspec/changes/archive/. A failing API
+# call fails the script (notes built from a partial answer would be wrong); only "no such files" is an empty result.
 archived_by() {
-  gh api "repos/$repo/pulls/$1/files" --paginate --jq '.[] | select(.status == "added" or .status == "renamed") | .filename' \
-    | grep -E '^openspec/changes/archive/[^/]+/' | sed -E 's#^openspec/changes/archive/([^/]+)/.*#\1#' | sort -u || true
+  local files
+  files="$(gh api "repos/$repo/pulls/$1/files" --paginate --jq '.[] | select(.status == "added" or .status == "renamed") | .filename')"
+  { grep -E '^openspec/changes/archive/[^/]+/' <<< "$files" || true; } | sed -E 's#^openspec/changes/archive/([^/]+)/.*#\1#' | sort -u
 }
 
 last_tag="$(git tag -l 'dist-v*' --merged "$commit" --sort=-v:refname | head -1)"
@@ -44,12 +48,14 @@ else
   in_range="$(git rev-list "$commit")"
 fi
 
-# Pull requests merged since the last distribution (their merge commit is in the range), oldest first, plus --pr.
-prs="$(gh pr list --repo "$repo" --state merged --base main --limit 200 --json number,mergeCommit,mergedAt \
-  --jq 'sort_by(.mergedAt) | .[] | "\(.number) \(.mergeCommit.oid)"' \
-  | while read -r number oid; do
-      if grep -qx "$oid" <<< "$in_range"; then echo "$number"; fi
-    done)"
+# Pull requests merged into main since the last distribution, oldest first, plus --pr: the merged PRs each commit in
+# the range belongs to (works for merge, squash and rebase merges, with no cap on how many).
+merged=""
+for sha in $in_range; do
+  merged="$merged"$'\n'"$(gh api "repos/$repo/commits/$sha/pulls" \
+    --jq '.[] | select(.merged_at != null and .base.ref == "main") | "\(.merged_at) \(.number)"')"
+done
+prs="$(printf '%s\n' "$merged" | sed '/^$/d' | sort -u | sort -k1,1 | awk '!seen[$2]++ { print $2 }')"
 [ -n "$extra_pr" ] && prs="$(printf '%s\n%s\n' "$prs" "$extra_pr" | sed '/^$/d')"
 
 sections=""

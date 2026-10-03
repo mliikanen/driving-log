@@ -57,8 +57,9 @@ run for you once you've logged in.
 **Normally you don't: merging a PR into `main` publishes it** (`.github/workflows/release.yml`, see
 `docs/app-distribution.md`). What goes out is shown by the PR's `release-notes` check (its job summary) before you merge. To change the
 notes, add or edit a `## Release notes` section in the PR description; its text replaces the generated list. A merge
-that archives no change and has no such section publishes nothing. To publish the current `main` again by hand, run the
-**Release** workflow (*Actions → Release → Run workflow*); a commit that's already tagged is skipped.
+that archives no change and has no such section publishes nothing. To release by hand, run the **Release** workflow
+(*Actions → Release → Run workflow*): it publishes the newest commit on `main` whose PR check passed, unless that
+one is already distributed.
 
 ### Manual fallback: from your machine
 

@@ -1,5 +1,5 @@
-# Publishes main to the Firebase App Distribution testers after its PR check passed (add-ci-workflows, design.md
-# decisions 1 to 6), and on demand. Runs in the firebase-deployment environment, limited to main, which holds the
+# Publishes the newest commit on main whose PR check passed to the Firebase App Distribution testers, whenever a PR
+# check on main finishes, and on demand (add-ci-workflows, design.md decisions 1 to 6). Runs in the firebase-deployment environment, limited to main, which holds the
 # release secrets; no pull request can reach them.
 name: Release
 
@@ -12,24 +12,21 @@ on:
 
 jobs:
   release:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # Any PR check on main that finished, passed or not: the job publishes the newest commit that passed, so a run for
+    # a failed or an older check still releases what's ready, and one that is replaced in the queue loses nothing.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     environment: firebase-deployment
-    # One distribution at a time; a later one waits. On the job, not the workflow, so a run whose check failed (and is
-    # skipped by the condition above) never takes the pending slot from an eligible one. GitHub keeps only the newest
-    # pending run; it covers a replaced one, since its notes and build span everything since the last dist-v* tag.
+    # One distribution at a time; a later one waits. GitHub keeps only the last-arriving pending run, which is why the
+    # job doesn't publish its trigger's commit but reconciles to the newest checked one (scripts/ci/newest-checked-commit.sh).
     concurrency:
       group: release
       cancel-in-progress: false
     permissions:
-      actions: read # a manual run checks the PR check's result on the commit
+      actions: read # which commits' PR checks passed
       contents: write # the dist-v* tag
       pull-requests: read # the merged PR's release notes
       id-token: write # Workload Identity Federation
-    env:
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Check the release configuration
         env:
@@ -50,27 +47,24 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.SHA }}
+          ref: main
           fetch-depth: 0
           fetch-tags: true
-
-      # A run started by hand gets no check result with it: it publishes only a commit whose PR check passed on push.
-      - name: Require a passed PR check
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          passed="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/pr-check.yml/runs?head_sha=$SHA&event=push&status=success" --jq .total_count)"
-          if [ "$passed" = "0" ]; then
-            echo "::error::$SHA has no successful PR check on main; wait for it (or fix it) before releasing by hand."
-            exit 1
-          fi
 
       - name: Decide what to release
         id: decide
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The newest commit on main, since the last distribution, whose PR check passed. A run started by hand gets the
+          # same answer, so it can't publish a commit whose checks are pending or failed.
+          target="$(scripts/ci/newest-checked-commit.sh origin/main)"
+          if [ -z "$target" ]; then
+            echo "Nothing to release: no commit on main since the last distribution has a passed PR check yet." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git checkout --quiet --detach "$target"
           # This commit, or a later one it's part of, was already distributed: publishing it would only go backwards.
           if [ -n "$(git tag --contains HEAD -l 'dist-v*')" ]; then
             echo "Already distributed: $(git tag --contains HEAD -l 'dist-v*' | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"

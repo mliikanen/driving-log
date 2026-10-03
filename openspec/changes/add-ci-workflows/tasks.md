@@ -76,6 +76,12 @@
       preview reads the current PR description; `distribute.sh` pushes local `dist-v*` tags missing on the remote.
       Verify: `actionlint` and `bash -n` pass; `choose-release-notes.sh` gives the expected notes for no merged PRs
       (archive list) and, with a stub `gh`, for one PR with a section, one without and an open one with a section.
+- [x] 3.5 Address the second review of PR #1: the release job publishes the newest commit on `main` whose push PR
+      check passed (`scripts/ci/newest-checked-commit.sh`), for any finished PR check on `main` and for manual runs; the
+      manual-run pre-check goes, being covered by that. `choose-release-notes.sh` finds merged PRs from the commits in
+      the range (no cap, any merge method) and fails on any failing API call (`inherit_errexit`). Verify: `actionlint`
+      and `bash -n` pass; `newest-checked-commit.sh` prints nothing for today's `main`; with a stub `gh`, the notes
+      come out as before and a failing files request makes the script exit non-zero.
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 

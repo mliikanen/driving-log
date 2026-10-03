@@ -4,13 +4,13 @@
 
 ### Requirement: Every push to main publishes from CI when there is something to release
 The system SHALL run the distribution automatically in CI for every push to `main`, and SHALL let it be started by
-hand for the current `main` as well. A CI distribution SHALL build the signed, versioned `production` release from
-the pushed commit and upload it to the configured tester group, with no developer machine involved. When the
+hand as well. A CI distribution SHALL build the signed, versioned `production` release from the newest commit on
+`main` whose CI regression run has passed, whatever started it, and upload it to the configured tester group, with no
+developer machine involved. When the
 release notes would be empty (no change archived since the previous distribution, and no release notes supplied
 with any pull request merged since), the system SHALL publish nothing and create no tag, and SHALL say so in the run's
-summary. A CI distribution SHALL run only after the CI regression run has passed on the same commit, including one
-started by hand. Two CI distributions SHALL NOT run at the same time; a later one SHALL wait for the earlier one to
-finish, and a run that won't distribute (its checks failed) SHALL NOT take a waiting distribution's place. A CI
+summary. A CI distribution SHALL NOT publish a commit whose CI regression run hasn't passed, including one started by
+hand. Two CI distributions SHALL NOT run at the same time; a later one SHALL wait for the earlier one to finish. A CI
 distribution SHALL NOT publish a commit that is already part of a distributed build, its own or a later one's.
 A CI distribution SHALL get the release keystore, its credentials and its upload identity only from the
 repository's CI configuration, available to runs on `main` and to no pull request. When one of them is missing, it
@@ -28,9 +28,13 @@ SHALL fail before uploading anything or creating a tag, naming what is missing.
 - **WHEN** a second commit reaches `main` while the first one's distribution is still running
 - **THEN** the second distribution starts only after the first has finished, and its notes cover only what the first did not distribute
 
-#### Scenario: Started by hand before its checks pass
-- **WHEN** a distribution is started by hand for a commit whose CI regression run hasn't passed (pending or failed)
-- **THEN** it refuses, naming the commit, and publishes nothing
+#### Scenario: Started by hand before the newest commit's checks pass
+- **WHEN** a distribution is started by hand while the newest commit on `main` has a pending or failed regression run
+- **THEN** it publishes the newest commit whose regression run passed, if that one isn't distributed yet, and otherwise nothing
+
+#### Scenario: Checks finish out of order
+- **WHEN** commits B and then C reach `main`, and C's regression run passes before B's
+- **THEN** C is distributed (with B's changes, which it contains), and B's later passing run doesn't publish the older B
 
 #### Scenario: An older commit after a newer distribution
 - **WHEN** a distribution runs again for a commit after a later commit has been distributed
