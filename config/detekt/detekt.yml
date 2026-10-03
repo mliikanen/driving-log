@@ -3,6 +3,12 @@
 # Test source sets: this project's are commonTest, androidHostTest and iosTest (plus the app's test/androidTest).
 
 complexity:
+  CyclomaticComplexMethod:
+    # A processor's `map` is a `when` over intents with one call per branch; that's dispatch, not complexity.
+    ignoreSimpleWhenEntries: true
+  LargeClass:
+    # Test classes grow with their cases.
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**']
   LongParameterList:
     # Compose screens and components take their state and callbacks as parameters by design (MVI).
     ignoreAnnotated: ['Composable']
@@ -17,6 +23,14 @@ naming:
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**']
 
 style:
+  DestructuringDeclarationWithTooManyEntries:
+    # `val (l, t, r, b) = box` is the clearest way to read a box in a test.
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/androidHostTest/**', '**/iosTest/**']
+  ReturnCount:
+    # Processors and validators return early on each invalid input (the project's MVI style); guard clauses at the top of
+    # a function don't count, and a function may have up to three other returns.
+    excludeGuardClauses: true
+    max: 3
   MagicNumber:
     # Compose code is full of dp/sp sizes, tones and animation durations that read best inline; tests use literal
     # inputs and expected values.

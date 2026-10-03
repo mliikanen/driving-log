@@ -26,11 +26,14 @@ Each group ends with `./gradlew codeQuality` passing, after regenerating the bas
 
 ## 3. detekt configuration (design.md decisions 2 and 4)
 
-- [ ] 3.1 In `config/detekt/detekt.yml`: `ReturnCount` (`excludeGuardClauses: true`, `max: 3`),
+- [x] 3.1 In `config/detekt/detekt.yml`: `ReturnCount` (`excludeGuardClauses: true`, `max: 3`),
       `CyclomaticComplexMethod` (`ignoreSimpleWhenEntries: true`), and test source sets excluded from `LargeClass` and
       `DestructuringDeclarationWithTooManyEntries`, each with a comment naming the convention. Verify: `./gradlew
       detektBaseline` removes entries only, and the remaining ReturnCount/CyclomaticComplexMethod entries are listed
       in this task's notes for groups 5 and 6.
+      Notes: 157 → 129 entries, removals only. Remaining ReturnCount: `validateLogDistance` (LogDistanceRules.kt),
+      `LogEventState.withScannedReading` (LogEventProcessor.kt). Remaining CyclomaticComplexMethod: `EventDetailsContent`,
+      `LogEventContent` (screens, 6.2), `PpOcr.boxes`, `PpOcr.regions` (ported, 6.4).
 
 ## 4. Mechanical detekt fixes (design.md decisions 5 and 7)
 

@@ -4,23 +4,13 @@
   <CurrentIssues>
     <ID>ComplexCondition:LogEventProcessor.kt:LogEventProcessor$form.isSaving || form.isLoading || form.notFound || vehicleId.isEmpty()</ID>
     <ID>ComplexCondition:PpOcr.kt:PpOcr$nx &lt; 0 || ny &lt; 0 || nx &gt;= w || ny &gt;= h</ID>
-    <ID>CyclomaticComplexMethod:AddVehicleProcessor.kt:AddVehicleProcessor$override suspend fun map: Action&lt;AddVehicleState, AddVehicleEffect&gt;?</ID>
-    <ID>CyclomaticComplexMethod:EventDetailsProcessor.kt:EventDetailsProcessor$override suspend fun map: Action&lt;EventDetailsState, EventDetailsEffect&gt;?</ID>
     <ID>CyclomaticComplexMethod:EventDetailsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailsContent</ID>
-    <ID>CyclomaticComplexMethod:LogEventProcessor.kt:LogEventProcessor$override suspend fun map: Action&lt;LogEventState, LogEventEffect&gt;?</ID>
     <ID>CyclomaticComplexMethod:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
     <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$fun boxes: List&lt;Quad&gt;</ID>
     <ID>CyclomaticComplexMethod:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
     <ID>DestructuringDeclarationWithTooManyEntries:Geometry.kt:val (a, b, c, d, e) = m</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:InitialOdometerDetectionTest.kt:InitialOdometerDetectionTest$val (l, t, r, b) = box.split(',').map { it.toInt() }</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:LiveFramesJvmTest.kt:LiveFramesJvmTest$(name, known, value, kind)</ID>
-    <ID>DestructuringDeclarationWithTooManyEntries:ReadingDetectionTest.kt:ReadingDetectionTest$val (l, t, r, b) = box.split(',').map { it.toInt() }</ID>
     <ID>EmptyFunctionBlock:AuthRepositoryFactory.kt:{}</ID>
     <ID>EmptyFunctionBlock:CurrentActivityHolder.kt:CurrentActivityHolder${}</ID>
-    <ID>LargeClass:AddVehicleProcessorTest.kt:AddVehicleProcessorTest</ID>
-    <ID>LargeClass:LogEventProcessorTest.kt:LogEventProcessorTest</ID>
-    <ID>LargeClass:SqlDelightVehicleRepositoryTest.kt:SqlDelightVehicleRepositoryTest</ID>
-    <ID>LargeClass:VehicleMigrationJvmTest.kt:VehicleMigrationJvmTest</ID>
     <ID>LongMethod:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
     <ID>LongMethod:CropScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun CropScreen</ID>
     <ID>LongMethod:EditVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun EditVehicleContent</ID>
@@ -112,26 +102,8 @@
     <ID>MatchingDeclarationName:TimeZoneChoices.kt:ZoneChoice</ID>
     <ID>NestedBlockDepth:Geometry.kt:fun perspectiveTransform: DoubleArray</ID>
     <ID>NestedBlockDepth:PpOcr.kt:PpOcr$private fun regions: List&lt;IntArray&gt;</ID>
-    <ID>ReturnCount:AddVehicleProcessor.kt:AddVehicleProcessor$private fun save: Action&lt;AddVehicleState, AddVehicleEffect&gt;?</ID>
-    <ID>ReturnCount:AddVehicleScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddVehicleContent</ID>
-    <ID>ReturnCount:CropState.kt:CropState.Companion$fun restore: CropState?</ID>
-    <ID>ReturnCount:EditVehicleProcessor.kt:EditVehicleProcessor$private fun save: Action&lt;EditVehicleState, EditVehicleEffect&gt;?</ID>
-    <ID>ReturnCount:EventDetailsProcessor.kt:EventDetailsProcessor$private fun editSaved: Action&lt;EventDetailsState, EventDetailsEffect&gt;?</ID>
-    <ID>ReturnCount:Geometry.kt:fun minAreaRect: RotatedRect</ID>
-    <ID>ReturnCount:IosImageCodec.kt:IosImageCodec$private fun upright: UIImage?</ID>
-    <ID>ReturnCount:LerpHct.kt:fun lerpHct: Rgb</ID>
     <ID>ReturnCount:LogDistanceRules.kt:fun validateLogDistance: LogDistanceResult</ID>
-    <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor$private fun saveRefueling: Action&lt;LogEventState, LogEventEffect&gt;?</ID>
     <ID>ReturnCount:LogEventProcessor.kt:LogEventProcessor.Companion$fun LogEventState.withScannedReading: LogEventState</ID>
-    <ID>ReturnCount:LogEventScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun LogEventContent</ID>
-    <ID>ReturnCount:PictureDraftEditor.kt:PictureDraftEditor$suspend fun cropConfirmed: PictureEditState</ID>
-    <ID>ReturnCount:PictureDraftEditor.kt:PictureDraftEditor$suspend fun sampleColor: Rgb?</ID>
-    <ID>ReturnCount:ReadingDetection.kt:internal fun isDistanceUnit: Boolean</ID>
-    <ID>ReturnCount:Rgb.kt:Rgb.Companion$fun parse: Rgb?</ID>
-    <ID>ReturnCount:ScanDraft.kt:ScanEditor$fun selected: ScanDraft</ID>
-    <ID>ReturnCount:ScanDraft.kt:ScanEditor$suspend fun confirmed: Pair&lt;ScanDraft, Detection&gt;?</ID>
-    <ID>ReturnCount:ScanDraft.kt:ScanEditor$suspend fun liveAccepted: ScanDraft?</ID>
-    <ID>ReturnCount:TestAccountPickerActivity.kt:TestAccountPickerActivity.Companion$suspend fun pick: PickResult</ID>
     <ID>SwallowedException:AndroidImageCodec.kt:AndroidImageCodec$e: Exception</ID>
     <ID>SwallowedException:CombinedTextRecognizer.kt:CombinedTextRecognizer$e: Exception</ID>
     <ID>SwallowedException:FirebaseAuthRepository.kt:FirebaseAuthRepository$e: GetCredentialCancellationException</ID>
