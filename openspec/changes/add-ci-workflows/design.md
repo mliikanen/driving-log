@@ -65,7 +65,7 @@ holds the secrets:
 |---|---|---|
 | `GOOGLE_SERVICES_JSON_BASE64` | the real `google-services.json` | `androidApp/src/production/google-services.json` |
 | `RELEASE_KEYSTORE_BASE64` | the release `.jks` | `~/.android-keystores/driving-log-release.jks` |
-| `RELEASE_KEYSTORE_PASSWORD` | store and key password (PKCS12: one password) | `~/.android-keystores/keystore.properties` (with `keyAlias=driving-log`) |
+| `KEYSTORE_PASSWORD` | store and key password (PKCS12: one password) | `~/.android-keystores/keystore.properties` (with `keyAlias=driving-log`) |
 
 A first step checks every one is set and fails naming the missing ones, before any build (spec: "A release
 secret is missing").

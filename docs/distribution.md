@@ -96,22 +96,22 @@ console).
      -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
    gh api -X POST repos/mliikanen/driving-log/environments/firebase-deployment/deployment-branch-policies -f name=main
    ```
-3. **The service account and Workload Identity Federation** (`gcloud auth login` first):
+3. **The service account and Workload Identity Federation** (`gcloud auth login` first). The account is
+   `github-app-distributor@driving-log-49c48.iam.gserviceaccount.com`, whose only role is Firebase App Distribution
+   Admin and which has no keys; it already existed and is reused. This is what was run (project `driving-log-49c48`,
+   number `892237737183`):
    ```sh
-   gcloud iam service-accounts create driving-log-ci --project <project-id> --display-name "Driving Log CI distribution"
-   gcloud projects add-iam-policy-binding <project-id> \
-     --member "serviceAccount:driving-log-ci@<project-id>.iam.gserviceaccount.com" --role roles/firebaseappdistro.admin
-   gcloud iam workload-identity-pools create github --project <project-id> --location global --display-name GitHub
-   gcloud iam workload-identity-pools providers create-oidc driving-log --project <project-id> --location global \
+   P=driving-log-49c48; N=892237737183; SA=github-app-distributor@$P.iam.gserviceaccount.com
+   gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com --project $P
+   gcloud iam workload-identity-pools create github --project $P --location global --display-name GitHub
+   gcloud iam workload-identity-pools providers create-oidc driving-log --project $P --location global \
      --workload-identity-pool github --issuer-uri https://token.actions.githubusercontent.com \
      --attribute-mapping "google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.environment=assertion.environment" \
      --attribute-condition "assertion.repository == 'mliikanen/driving-log' && assertion.environment == 'firebase-deployment'"
-   gcloud iam service-accounts add-iam-policy-binding driving-log-ci@<project-id>.iam.gserviceaccount.com \
-     --project <project-id> --role roles/iam.workloadIdentityUser \
-     --member "principalSet://iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/github/attribute.repository/mliikanen/driving-log"
-   gh variable set WIF_PROVIDER --env firebase-deployment \
-     --body "projects/<project-number>/locations/global/workloadIdentityPools/github/providers/driving-log"
-   gh variable set WIF_SERVICE_ACCOUNT --env firebase-deployment --body "driving-log-ci@<project-id>.iam.gserviceaccount.com"
+   gcloud iam service-accounts add-iam-policy-binding $SA --project $P --role roles/iam.workloadIdentityUser \
+     --member "principalSet://iam.googleapis.com/projects/$N/locations/global/workloadIdentityPools/github/attribute.repository/mliikanen/driving-log"
+   gh variable set WIF_PROVIDER --env firebase-deployment --body "projects/$N/locations/global/workloadIdentityPools/github/providers/driving-log"
+   gh variable set WIF_SERVICE_ACCOUNT --env firebase-deployment --body "$SA"
    ```
    The provider only accepts tokens from this repository's `firebase-deployment` runs, and the account can do nothing
    but distribute builds. If the upload plugin turns out not to accept the federated credential, the fallback is a
@@ -121,7 +121,7 @@ console).
    ```sh
    gh secret set GOOGLE_SERVICES_JSON_BASE64 --env firebase-deployment --body "$(base64 -w0 androidApp/src/production/google-services.json)"
    gh secret set RELEASE_KEYSTORE_BASE64 --env firebase-deployment --body "$(base64 -w0 ~/.android-keystores/driving-log-release.jks)"
-   gh secret set RELEASE_KEYSTORE_PASSWORD --env firebase-deployment   # prompts for the password
+   gh secret set KEYSTORE_PASSWORD --env firebase-deployment   # prompts for the password
    ```
 5. **The ruleset on `main`**, once both PR checks have passed on `main` at least once (GitHub only offers check names
    it has seen):

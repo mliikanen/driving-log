@@ -34,12 +34,12 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
           WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
         run: |
           missing=()
-          for name in GOOGLE_SERVICES_JSON_BASE64 RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD WIF_PROVIDER WIF_SERVICE_ACCOUNT; do
+          for name in GOOGLE_SERVICES_JSON_BASE64 RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD WIF_PROVIDER WIF_SERVICE_ACCOUNT; do
             [ -n "${!name}" ] || missing+=("$name")
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -80,16 +80,16 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > androidApp/src/production/google-services.json
           mkdir -p ~/.android-keystores
           printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > ~/.android-keystores/driving-log-release.jks
           cat > ~/.android-keystores/keystore.properties <<PROPERTIES
           storeFile=$HOME/.android-keystores/driving-log-release.jks
-          storePassword=$RELEASE_KEYSTORE_PASSWORD
+          storePassword=$KEYSTORE_PASSWORD
           keyAlias=driving-log
-          keyPassword=$RELEASE_KEYSTORE_PASSWORD
+          keyPassword=$KEYSTORE_PASSWORD
           PROPERTIES
 
       - if: steps.decide.outputs.publish == 'true'

@@ -50,7 +50,7 @@
       the checked `head_sha` with full history and tags (design.md decisions 1 and 6). Verify: `actionlint`
       reports no errors.
 - [ ] 3.2 In `release.yml`, the first step fails naming every missing secret or variable (`GOOGLE_SERVICES_JSON_BASE64`,
-      `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, and the Workload Identity provider and service account
+      `RELEASE_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, and the Workload Identity provider and service account
       variables), before any build (spec: "A release secret is missing"). Then it writes the keystore,
       `keystore.properties` and `google-services.json` to the paths the build reads (design.md decision 3).
       Verify: after merging, the first run fails at this step and lists all of them, while nothing is built or
@@ -75,21 +75,26 @@
       Verify: `gh api repos/mliikanen/driving-log/environments/firebase-deployment` shows a deployment branch policy
       with `main` only.
       Done: the environment's branch policy allows `main` only (`custom_branch_policies`, one policy, `main`).
-- [ ] 4.3 **(developer, sign-off)** Create the Google Cloud service account with only
+- [x] 4.3 **(developer, sign-off)** Create the Google Cloud service account with only
       `roles/firebaseappdistro.admin`, and a workload identity pool and GitHub OIDC provider restricted to
       `repo:mliikanen/driving-log` and `environment:firebase-deployment`, allowed to impersonate that account. Add the
       provider name and account email as `firebase-deployment` environment variables. Verify: the `gcloud` commands used are
       recorded in `docs/distribution.md` (task 5.2), and `gcloud iam service-accounts get-iam-policy` shows only
       the workload identity binding.
-- [ ] 4.4 **(developer, sign-off)** Add `GOOGLE_SERVICES_JSON_BASE64`, `RELEASE_KEYSTORE_BASE64` and
-      `RELEASE_KEYSTORE_PASSWORD` as `firebase-deployment` environment secrets (`base64 -w0` of each file). Verify:
+- [x] 4.4 **(developer, sign-off)** Add `GOOGLE_SERVICES_JSON_BASE64`, `RELEASE_KEYSTORE_BASE64` and
+      `KEYSTORE_PASSWORD` as `firebase-deployment` environment secrets (`base64 -w0` of each file). Verify:
       `gh secret list --env firebase-deployment` lists all three.
+      Done for 4.3 and 4.4: the existing service account `github-app-distributor` (only
+      `roles/firebaseappdistro.admin`, no keys) is reused; pool `github` and provider `driving-log` (condition:
+      `mliikanen/driving-log` and `firebase-deployment` only); the account's IAM policy holds only the
+      `workloadIdentityUser` binding; `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` set. The developer had already set the
+      three secrets, the password as `KEYSTORE_PASSWORD`, so the workflow and docs use that name.
 - [ ] 4.5 Run `release.yml` by hand (`workflow_dispatch`) on `main`. Verify: the build reaches the tester group in
       Firebase App Distribution with the expected notes, and `git ls-remote --tags origin 'dist-v*'` shows the new
       tag. If the upload rejects the federated credential, switch to the key-file fallback
       (`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`, design.md decision 4), record that in design.md, and rerun.
 - [ ] 4.6 Confirm a pull request can't reach the release secrets. Verify: in a throwaway PR, a workflow step that
-      references `secrets.RELEASE_KEYSTORE_PASSWORD` gets an empty value, and a job declaring
+      references `secrets.KEYSTORE_PASSWORD` gets an empty value, and a job declaring
       `environment: firebase-deployment` from the PR branch is refused. Close the PR without merging.
 - [ ] 4.7 Add `.github/rulesets/main.json` ("CI must pass": target `main`, required status checks
       `tests-and-build` and `code-quality` from GitHub Actions, branches up to date before merging, a pull request
