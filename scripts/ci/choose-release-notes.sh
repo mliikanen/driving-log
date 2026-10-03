@@ -82,7 +82,9 @@ for number in $prs; do
 done
 
 # Archived changes not already described by a pull request's own section. An empty pattern list excludes nothing.
-remaining="$(scripts/release-notes.sh "$commit" | grep -vxF -f <(printf '%s\n' "$covered" | sed '/^$/d') || true)"
+# The generated list is read first, so its failure fails the script; only the filter may find nothing left.
+generated="$(scripts/release-notes.sh "$commit")"
+remaining="$(grep -vxF -f <(printf '%s\n' "$covered" | sed '/^$/d') <<< "$generated" || true)"
 
 if [ -n "$sections" ] && [ -n "$remaining" ]; then
   printf '%s\n\n%s\n' "$sections" "$remaining"

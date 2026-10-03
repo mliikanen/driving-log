@@ -91,12 +91,9 @@ jobs:
           printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > androidApp/src/production/google-services.json
           mkdir -p ~/.android-keystores
           printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > ~/.android-keystores/driving-log-release.jks
-          cat > ~/.android-keystores/keystore.properties <<PROPERTIES
-          storeFile=$HOME/.android-keystores/driving-log-release.jks
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=driving-log
-          keyPassword=$KEYSTORE_PASSWORD
-          PROPERTIES
+          # Escaped for java.util.Properties, which build.gradle.kts reads it with: any password round-trips exactly.
+          scripts/ci/write-keystore-properties.py ~/.android-keystores/keystore.properties \
+            "$HOME/.android-keystores/driving-log-release.jks" driving-log
 
       - if: steps.decide.outputs.publish == 'true'
         uses: ./.github/actions/setup-build

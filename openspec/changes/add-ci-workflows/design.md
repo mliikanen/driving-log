@@ -76,6 +76,10 @@ holds the secrets:
 | `RELEASE_KEYSTORE_BASE64` | the release `.jks` | `~/.android-keystores/driving-log-release.jks` |
 | `KEYSTORE_PASSWORD` | store and key password (PKCS12: one password) | `~/.android-keystores/keystore.properties` (with `keyAlias=driving-log`) |
 
+The password goes into `keystore.properties` through `scripts/ci/write-keystore-properties.py`, escaped the way
+`java.util.Properties` reads it (backslashes, leading spaces, separators, non-ASCII), so any password round-trips;
+written verbatim, `test\secret` would read back as `testsecret` (review of PR #1).
+
 A first step checks every one is set and fails naming the missing ones, before any build (spec: "A release
 secret is missing").
 

@@ -88,6 +88,13 @@
       PR and one merged outside the range are ignored, and a failing page request exits non-zero.
       Also from that review: `section_of`'s awk stopped reading at the next heading, so on a long PR description the
       writer got SIGPIPE and the script failed (exit 141 on a 329 KB body); it now reads to the end (exit 0, same section).
+- [x] 3.7 Address the review's "previously missed" notes on 78f7c60: the release job writes `keystore.properties`
+      with `scripts/ci/write-keystore-properties.py`, escaped for `java.util.Properties` (which `build.gradle.kts` reads
+      it with); `release-notes.sh` and `choose-release-notes.sh` read each command's output before filtering, so a
+      failing `git log` or helper fails the script and only the filter may find nothing. Verify: 7 passwords
+      (backslash, leading and trailing spaces, `=:#!`, non-ASCII with an emoji, a tab) read back exactly with Java's
+      `Properties.load`, where the old heredoc read `test\secret` as `testsecret`; with a stub `git` failing `git log`,
+      the old `release-notes.sh` exited 0 with no output and the new one exits 128, as does `choose-release-notes.sh`.
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 

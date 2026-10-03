@@ -19,7 +19,8 @@ fi
 # --no-renames: an archived change's files show up as `git mv`-style renames in `git commit`'s own summary, but
 # without rename detection each is a plain delete-at-old-path + add-at-new-path, which is what lets
 # --diff-filter=A find the new path. Forcing it off keeps this working regardless of the caller's git config.
-git log --no-renames --diff-filter=A --name-only --pretty=format: "$range" -- openspec/changes/archive \
-  | grep -E '^openspec/changes/archive/[^/]+/' \
+# The log is read first, so a failing `git log` fails the script; only the filter may legitimately find nothing.
+added="$(git log --no-renames --diff-filter=A --name-only --pretty=format: "$range" -- openspec/changes/archive)"
+{ grep -E '^openspec/changes/archive/[^/]+/' <<< "$added" || true; } \
   | sed -E 's#^openspec/changes/archive/([^/]+)/.*#\1#' \
-  | sort -u || true
+  | sort -u
