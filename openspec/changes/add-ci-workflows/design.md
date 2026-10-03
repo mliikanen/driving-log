@@ -125,6 +125,10 @@ lists the merged PRs whose merge commit is in `<last tag>..<commit>`; each one w
 changes it archived (its added files under `openspec/changes/archive/`) leave the generated list; every other archived
 change stays listed by name. The preview passes its own open PR (`--pr <number>`) and reads every description through
 the API, so a rerun shows the current text.
+Merged PRs are found by paging through closed PRs into `main` (100 per request, most recently updated first), keeping
+those whose merge commit is in the range, and stopping at the first page that reaches back before the last tag's
+commit: a PR is never merged after its last update. That's usually one request, whatever the range's size (a
+per-commit lookup, tried first, cost one request per undistributed commit on every preview; third review of PR #1).
 
 ### 6. Tags: fetched first, pushed after upload, rerun-safe
 

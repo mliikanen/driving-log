@@ -48,14 +48,26 @@ else
   in_range="$(git rev-list "$commit")"
 fi
 
-# Pull requests merged into main since the last distribution, oldest first, plus --pr: the merged PRs each commit in
-# the range belongs to (works for merge, squash and rebase merges, with no cap on how many).
+# Pull requests merged into main since the last distribution, oldest first, plus --pr: merged PRs whose merge commit
+# (the commit on main, for merge, squash and rebase merges alike) is in the range. Pages of 100, most recently updated
+# first, stopping at the first page reaching back before the last distribution: a PR is never merged after its last
+# update, so nothing older can be in the range. Usually a single request.
+cutoff=""
+[ -n "$last_tag" ] && cutoff="$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ "$last_tag")"
 merged=""
-for sha in $in_range; do
-  merged="$merged"$'\n'"$(gh api "repos/$repo/commits/$sha/pulls" \
-    --jq '.[] | select(.merged_at != null and .base.ref == "main") | "\(.merged_at) \(.number)"')"
+page=1
+while :; do
+  batch="$(gh api "repos/$repo/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page=$page" \
+    --jq '.[] | "\(.updated_at) \(.merged_at // "-") \(.merge_commit_sha // "-") \(.number)"')"
+  [ -z "$batch" ] && break
+  while read -r updated merged_at sha number; do
+    if [ "$merged_at" != "-" ] && grep -qx "$sha" <<< "$in_range"; then merged="$merged"$'\n'"$merged_at $number"; fi
+  done <<< "$batch"
+  oldest="$(tail -1 <<< "$batch" | cut -d' ' -f1)"
+  if [ -n "$cutoff" ] && [[ "$oldest" < "$cutoff" ]]; then break; fi
+  page=$((page + 1))
 done
-prs="$(printf '%s\n' "$merged" | sed '/^$/d' | sort -u | sort -k1,1 | awk '!seen[$2]++ { print $2 }')"
+prs="$(printf '%s\n' "$merged" | sed '/^$/d' | sort -k1,1 | awk '!seen[$2]++ { print $2 }')"
 [ -n "$extra_pr" ] && prs="$(printf '%s\n%s\n' "$prs" "$extra_pr" | sed '/^$/d')"
 
 sections=""

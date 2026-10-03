@@ -82,6 +82,10 @@
       the range (no cap, any merge method) and fails on any failing API call (`inherit_errexit`). Verify: `actionlint`
       and `bash -n` pass; `newest-checked-commit.sh` prints nothing for today's `main`; with a stub `gh`, the notes
       come out as before and a failing files request makes the script exit non-zero.
+- [x] 3.6 Address the third review of PR #1: `choose-release-notes.sh` finds merged PRs by paging through closed PRs
+      into `main` (most recently updated first, 100 per request) and stops before the last distribution, instead of one
+      request per commit. Verify: for PR #1 it makes 3 API calls and gives the same notes; with a stub `gh`, an unmerged
+      PR and one merged outside the range are ignored, and a failing page request exits non-zero.
 
 ## 4. Repository and cloud setup (developer, with explicit sign-off)
 
