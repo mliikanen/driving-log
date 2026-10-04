@@ -4,8 +4,8 @@
 `main` gets a change only as one merge: code and archive together. So `main`'s `openspec/changes/` holds only
 `archive/`, and `openspec/specs/` describes only what is built. This holds today, while changes are still applied
 interactively, and it is also how the herd (the planned unattended pipeline) finds work once Driving Log is onboarded
-to it. How the herd itself works is documented only in the herd repository: `../herd/docs/using-the-herd.md` for
-using it, `../herd/docs/design.md` for its design.
+to it. How the herd itself works is documented only in the herd repository: [using the herd][herd-guide] and
+[its design][herd-design].
 
 ## Proposing
 
@@ -41,12 +41,13 @@ On the change's branch, in this order:
 
 Once Driving Log is onboarded, the herd implements, reviews and archives ready changes on their branches; you
 propose, run final approval and merge. What that looks like from your side (marking ready, revising a ready change,
-`needs-human` stops, watching the herd) is in the herd repository's guide, `../herd/docs/using-the-herd.md`. This
+`needs-human` stops, watching the herd) is in the herd repository's guide, [Using the herd][herd-guide]. This
 section covers only what's specific to Driving Log.
 
 ### Before marking a proposal ready
 
-`/herd-ready` checks the herd's generic rules (the guide lists them). On top of those, for this project:
+`/herd-ready` checks the herd's generic rules ([the guide][herd-ready-rules] lists them). On top of those, for this
+project:
 
 - **Android only.** Nothing in the change may need a Mac, Xcode, a physical device or the `production` flavor's
   real Firebase/Google Sign-In; those are the manifest's `missing_capabilities`, and a task needing one stops the
@@ -111,7 +112,7 @@ its mirror.
 
 ## Onboarding status
 
-Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log specifics:
+Onboarding follows the herd repo's ["Onboarding a project"][herd-onboarding] steps. Driving Log specifics:
 - The proposals that were on `main` were moved to `change/<name>` branches (one commit removed them from `main`; each
   branch holds only its own proposal).
 - `.herd/project.yaml` is drafted (its comments explain the values); `herd init` validates it once the herd
@@ -122,3 +123,8 @@ Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log spe
 - `.herd/toolchain.Dockerfile` doesn't exist yet.
 - Publishing to Firebase on merge is this project's release automation, separate from the herd
   (`docs/app-distribution.md`).
+
+[herd-guide]: https://github.com/mliikanen/herd/blob/main/docs/using-the-herd.md
+[herd-ready-rules]: https://github.com/mliikanen/herd/blob/main/docs/using-the-herd.md#before-marking-a-proposal-ready
+[herd-design]: https://github.com/mliikanen/herd/blob/main/docs/design.md
+[herd-onboarding]: https://github.com/mliikanen/herd/blob/main/docs/design.md#onboarding-a-project

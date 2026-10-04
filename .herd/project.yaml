@@ -1,5 +1,6 @@
 # Herd manifest for Driving Log. DRAFT: the herd isn't built yet; `herd init` validates this file during
-# onboarding. Format and semantics: ../herd/docs/design.md. People's workflow: docs/change-workflow.md.
+# onboarding. Format and semantics: https://github.com/mliikanen/herd/blob/main/docs/design.md
+# People's workflow: docs/change-workflow.md.
 # The herd reads this file from `main` only, and its agents can't change it.
 workflow: openspec
 branch_prefix: change/
