@@ -67,3 +67,11 @@
       `note-fill.svg`, which `EventIcons.Note` draws for a log row with a note. It's named now. Verify: each of the 13
       SVGs in `docs/icons/phosphor/` is named in the entry, and each Phosphor glyph the `ui/*Icons.kt` files draw is one
       of them.
+- [x] 4.5 The Gradle-generated properties (Copilot's fourth review on PR #7, in its summary): the wrapper entry missed
+      `gradle/wrapper/gradle-wrapper.properties`. Copilot found three gaps in turn because task 2.1's listing left out
+      text formats, so the whole tree was audited again without that filter (every tracked file, plus a search of the
+      code for "ported", "adapted", "copied", copyright and license lines). It found two more: Gradle's
+      `gradle/gradle-daemon-jvm.properties` (added to the wrapper entry), and `PpOcr.kt`, a Kotlin port of RapidOCR's
+      Apache-2.0 pipeline, which now has its own entry, and whose KDoc says what was changed, as Apache-2.0 section 4(b)
+      asks. `Geometry.kt` writes the standard algorithms OpenCV also implements and is the project's own. Verify:
+      every tracked file is either listed or the project's own, and `./gradlew codeQuality` passes on the KDoc edit.

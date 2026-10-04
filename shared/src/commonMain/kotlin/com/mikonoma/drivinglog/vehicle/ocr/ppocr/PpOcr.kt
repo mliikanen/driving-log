@@ -30,6 +30,8 @@ class RecognitionScores(val values: FloatArray, val count: Int, val steps: Int, 
 /**
  * RapidOCR's PP-OCR pipeline, ported with its constants (design.md, "The PP-OCR pipeline"), around the models the platform runs.
  * Everything here is arithmetic on pixels and scores, and is the same on every platform.
+ *
+ * Changed from RapidOCR's Python (Apache License 2.0, Copyright (c) RapidAI): translated to Kotlin; see `THIRD_PARTY_NOTICES.md`.
  */
 // Ported from RapidOCR's PP-OCR pipeline (design.md of add-seven-segment-ocr) and kept structurally parallel to it, so results can be compared line by line.
 @Suppress("TooManyFunctions")
