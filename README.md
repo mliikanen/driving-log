@@ -34,5 +34,7 @@ See `docs/distribution.md`.
 Driving Log is licensed under the [Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE) for the copyright notice and
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the third-party material in this repository and its licenses.
 
-Contributions are accepted under the same license: anything you submit in a pull request is licensed under the Apache
-License 2.0 (section 5 of the license). There is no contributor agreement to sign and no sign-off line to add.
+Contributions are accepted only under the same license. Under section 5 of the license, anything you submit for
+inclusion is licensed under the Apache License 2.0 unless you explicitly state otherwise; a submission offered under
+other terms, or marked "Not a Contribution", is not accepted. There is no contributor agreement to sign and no
+sign-off line to add.

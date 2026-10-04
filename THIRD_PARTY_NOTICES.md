@@ -1,8 +1,9 @@
 # Third-party notices
 
 The third-party material checked into this repository, with where it comes from and its license. Everything else in
-the repository is the project's own and is under the [Apache License 2.0](LICENSE). Libraries the build downloads as
-dependencies (through `gradle/libs.versions.toml`) are not checked in and are not listed here.
+the repository is the project's own and is under the [Apache License 2.0](LICENSE). This is a complete list of what is
+checked in. Libraries the build downloads as dependencies (through `gradle/libs.versions.toml`) are outside it: an
+entry names one only where checked-in material needs it, as ONNX Runtime runs the PaddleOCR models.
 
 ## Phosphor Icons
 

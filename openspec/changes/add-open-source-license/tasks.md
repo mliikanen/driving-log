@@ -44,3 +44,16 @@
       and the PR's checks are green.
       Done: the regression run and `openspec validate --all --strict` (17 items) pass, and PR #7's four checks passed
       on d66317f.
+
+## 4. Review (added during review)
+
+- [x] 4.1 Contributions (Copilot on PR #7): section 5 makes a submission Apache-2.0 unless its submitter states
+      otherwise, so the README and the spec now accept contributions only under Apache-2.0, explain that default, and
+      say a submission under other terms or marked "Not a Contribution" is not accepted (a new scenario). Verify: the
+      README's "License" section and the spec's "Contributions" requirement say the same.
+- [x] 4.2 Downloaded dependencies (Copilot on PR #7): `THIRD_PARTY_NOTICES.md` said downloaded dependencies aren't
+      listed but kept ONNX Runtime. The complete list is now of checked-in material; a downloaded library is outside it
+      and is named only where checked-in material needs it (ONNX Runtime runs the PaddleOCR models). The spec's
+      requirement and scenarios say the same. Verify: the notices' intro and the spec agree, and
+      `openspec validate --all --strict` passes.
+

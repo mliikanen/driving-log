@@ -35,14 +35,21 @@ test photos, fixtures).
 - **THEN** it is covered by the Apache License 2.0
 
 ### Requirement: Contributions are accepted under the project's license
-The project SHALL accept contributions under the Apache License 2.0, the same license it is under, and SHALL state
-this in the README's "License" section. A contribution SHALL NOT require signing a contributor license agreement or
-adding a sign-off line.
+The project SHALL accept contributions for inclusion only under the Apache License 2.0, the same license it is
+under, and SHALL state this in the README's "License" section. Under section 5 of the license, a submission is
+under the Apache License 2.0 unless its submitter explicitly states otherwise; a submission offered under other
+terms, or marked "Not a Contribution", SHALL NOT be accepted. A contribution SHALL NOT require signing a contributor
+license agreement or adding a sign-off line.
 
 #### Scenario: A pull request from someone else
-- **WHEN** someone other than the copyright holder opens a pull request
+- **WHEN** someone other than the copyright holder opens a pull request and states no other terms
 - **THEN** the README's "License" section tells them their contribution is licensed under the Apache License 2.0,
   and nothing asks them to sign an agreement or add a sign-off
+
+#### Scenario: A submission under other terms
+- **WHEN** a pull request states that its content is under other terms than the Apache License 2.0, or marks it
+  "Not a Contribution"
+- **THEN** it is not merged
 
 ### Requirement: Third-party material is listed with its license
 The project SHALL list in `THIRD_PARTY_NOTICES.md`, at the repository root, every piece of third-party material
@@ -51,10 +58,11 @@ vendored code, generated files whose generator imposes terms). Each entry SHALL 
 where it is, where it comes from, its license, and its copyright line, and SHALL say what was changed when it is not
 the original. Where the license requires its text to accompany the material, that text SHALL be in the repository
 next to the material or linked from the entry. A change that adds third-party material SHALL add its entry in the
-same change. Libraries the build downloads as dependencies are not checked into the repository and are not listed.
+same change. Libraries the build downloads as dependencies are not checked into the repository and are outside this
+list: they need not be listed, and an entry MAY name one only where checked-in material needs it to be used.
 
 #### Scenario: Material that is already listed
-- **WHEN** someone looks up the Phosphor icons, ONNX Runtime or the PaddleOCR models in the third-party notices
+- **WHEN** someone looks up the Phosphor icons or the PaddleOCR models in the third-party notices
 - **THEN** each entry names the material, where it is, where it comes from, its license and copyright line, and the
   PaddleOCR entry says how the recognition model was changed
 
@@ -65,4 +73,5 @@ same change. Libraries the build downloads as dependencies are not checked into 
 
 #### Scenario: A downloaded dependency
 - **WHEN** the build downloads a library through the version catalog
-- **THEN** the library is not listed in `THIRD_PARTY_NOTICES.md`
+- **THEN** `THIRD_PARTY_NOTICES.md` need not list it, and lists it only where checked-in material needs it to be
+  used, as ONNX Runtime runs the checked-in PaddleOCR models
