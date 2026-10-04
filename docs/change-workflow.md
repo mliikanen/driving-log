@@ -108,6 +108,31 @@ everyone: there is no bypass, the administrator included, and no approving revie
 (`main-retain`, `.github/rulesets/main-retain.json`) stops `main` from being deleted or force-pushed. Merging publishes
 to the testers (`docs/distribution.md`).
 
+## Cleaning up after merge
+
+Remove a worktree or branch once it has no further use, so the `change/*` branches keep showing only what's in
+flight. GitHub deletes a PR's branch when the PR is merged (the repository's "Automatically delete head branches"
+setting), so what's left is local:
+
+- **Before removing anything, check two things.** Both must hold, or keep the worktree and branch:
+  - The worktree has nothing unsaved: `git -C ../driving-log-<name> status --short` is empty (`git worktree remove`
+    refuses otherwise). Gitignored local files copied in for the build (`local.properties`,
+    `androidApp/src/production/google-services.json`) are fine to drop.
+  - The branch's PR is merged and the local branch is exactly what it merged: the `headRefOid` from
+    `gh pr list --head <branch> --state merged --json number,headRefOid` equals `git rev-parse <branch>`. A commit
+    made after the merge would make them differ, and deleting the branch would lose it. Look the PR up by branch,
+    not with `git branch --merged`, which doesn't recognize squash merges.
+- **Then remove the change's worktree and local branch, and prune the deleted remote branch:**
+  `git worktree remove ../driving-log-<name>`, `git branch -D change/<name>` and `git fetch --prune`. Use `-D`: a
+  squash merge leaves the branch's own commits off `main`, so `-d` refuses even though the check above passed. The
+  same goes for `chore/*` branches. A branch merged before the setting was turned on is deleted by hand:
+  `git push origin --delete <branch>`.
+- **A PR closed without merging keeps its branch** until you decide the change is abandoned. It may be reopened or
+  reworked.
+
+With the herd, its planner skills remove the worktrees they created, and the orchestrator prunes merged branches from
+its mirror.
+
 ## Onboarding status
 
 Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log specifics:

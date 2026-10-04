@@ -33,7 +33,15 @@ missing_capabilities:
   - a physical Android device
   - real Firebase / Google Sign-In (production flavor)
 
-caps: { review_rounds: 3, added_tasks: 3, gate_fixes: 3 }
+# pr_review_rounds bounds the GitHub review rounds; tasks added during review count toward it, not added_tasks.
+# PR #7 (add-open-source-license) took five Copilot rounds to come clean.
+caps: { review_rounds: 3, added_tasks: 3, gate_fixes: 3, pr_review_rounds: 5 }
+
+# Copilot reviews every PR and again a few minutes after each push (about 2 to 4 minutes so far). Review is done
+# only once it has reviewed the current tip; 15 minutes leaves room for a slow round.
+pr_review:
+  wait_for: [copilot-pull-request-reviewer]
+  timeout: 15m
 
 # No prompt additions: CLAUDE.md, docs/test-strategy.md and openspec/config.yaml carry the conventions. Add
 # .herd/implementer.md / reviewer.md only for something agents get wrong repeatedly that doesn't belong in CLAUDE.md.
