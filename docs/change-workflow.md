@@ -124,8 +124,9 @@ setting), so what's left is local:
   `androidApp/src/production/google-services.json`) are fine to drop.
 - **A PR closed without merging keeps its branch** until you decide the change is abandoned. It may be reopened or
   reworked.
-- **Delete nothing with unmerged commits** unless you're sure it's abandoned. Check the PR's state
-  (`gh pr list --state all`) rather than `git branch --merged`, which doesn't recognize squash merges.
+- **Delete nothing with unmerged commits** unless you're sure it's abandoned. Check the state of that branch's PR
+  (`gh pr list --head <branch> --state all --json number,state`) rather than `git branch --merged`, which doesn't
+  recognize squash merges.
 
 With the herd, its planner skills remove the worktrees they created, and the orchestrator prunes merged branches from
 its mirror.
