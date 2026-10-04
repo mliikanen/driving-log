@@ -75,3 +75,9 @@
       Apache-2.0 pipeline, which now has its own entry, and whose KDoc says what was changed, as Apache-2.0 section 4(b)
       asks. `Geometry.kt` writes the standard algorithms OpenCV also implements and is the project's own. Verify:
       every tracked file is either listed or the project's own, and `./gradlew codeQuality` passes on the KDoc edit.
+- [x] 4.6 The RapidOCR copyright lines (Copilot on PR #7): "Copyright (c) RapidAI" was not RapidOCR's line. The RapidOCR
+      entry, the PaddleOCR models entry (for the ONNX conversions) and `PpOcr.kt`'s KDoc now carry the exact upstream lines:
+      "Copyright (c) 2021 RapidOCR Authors. All rights reserved." (RapidOCR v3.9.2's `LICENSE`) and "Copyright (c) 2020
+      PaddlePaddle Authors. All Rights Reserved." (its `ch_ppocr_det/main.py` and `ch_ppocr_rec/main.py`). The other entries' lines were checked against their sources
+      too (only the Gradle line lacked its period). Verify: the
+      lines match those files at the v3.9.2 tag, and `./gradlew codeQuality` passes.
