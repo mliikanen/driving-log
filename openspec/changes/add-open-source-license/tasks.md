@@ -56,4 +56,10 @@
       and is named only where checked-in material needs it (ONNX Runtime runs the PaddleOCR models). The spec's
       requirement and scenarios say the same. Verify: the notices' intro and the spec agree, and
       `openspec validate --all --strict` passes.
-
+- [x] 4.3 MIT notice (Copilot's second review on PR #7, in its summary): MIT requires its notice to be included with
+      copies, so the OpenSpec entry's external link was not enough. Its license text (from the installed
+      `@fission-ai/openspec` 1.13.2, the same as upstream's `LICENSE`) is now `.claude/OPENSPEC-LICENSE`, and the entry
+      links to it; the PaddleOCR entry links the project's `LICENSE` for its Apache-2.0 text. The spec now requires a
+      checked-in copy whenever the license requires its text to accompany copies, with a new scenario. Verify: every
+      MIT or Apache entry in `THIRD_PARTY_NOTICES.md` links to a checked-in copy, and `openspec validate --all
+      --strict` passes.

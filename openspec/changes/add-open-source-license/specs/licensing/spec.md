@@ -56,8 +56,9 @@ The project SHALL list in `THIRD_PARTY_NOTICES.md`, at the repository root, ever
 checked into the repository or bundled into the app from the repository's own files (icons, models, fonts, images,
 vendored code, generated files whose generator imposes terms). Each entry SHALL name what the material is and
 where it is, where it comes from, its license, and its copyright line, and SHALL say what was changed when it is not
-the original. Where the license requires its text to accompany the material, that text SHALL be in the repository
-next to the material or linked from the entry. A change that adds third-party material SHALL add its entry in the
+the original. Where the license requires its text or notice to accompany copies of the material, a copy of that text
+SHALL be checked into the repository (next to the material, or the project's own `LICENSE` when it is the same
+license), and the entry SHALL link to that copy; a link to an external site alone is not enough. A change that adds third-party material SHALL add its entry in the
 same change. Libraries the build downloads as dependencies are not checked into the repository and are outside this
 list: they need not be listed, and an entry MAY name one only where checked-in material needs it to be used.
 
@@ -68,8 +69,13 @@ list: they need not be listed, and an entry MAY name one only where checked-in m
 
 #### Scenario: A change adds a third-party file
 - **WHEN** a change checks in an icon, model, font or other file the project did not make
-- **THEN** the same change adds its entry to `THIRD_PARTY_NOTICES.md`, with the license text kept or linked when
-  the license requires it
+- **THEN** the same change adds its entry to `THIRD_PARTY_NOTICES.md`, and when the license requires its text to
+  accompany copies, the same change checks in a copy of that text and the entry links to it
+
+#### Scenario: A license whose notice must accompany copies
+- **WHEN** someone opens the entry of checked-in material under MIT, such as the Phosphor icons or the OpenSpec
+  skills and commands
+- **THEN** the entry links to a copy of the license text checked into the repository
 
 #### Scenario: A downloaded dependency
 - **WHEN** the build downloads a library through the version catalog
