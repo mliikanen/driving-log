@@ -6,7 +6,9 @@
       https://www.apache.org/licenses/LICENSE-2.0.txt. Verify: the file matches that text byte for byte
       (`curl -s … | diff - LICENSE`), and after the branch is pushed, GitHub's license API names it
       (`gh api repos/mliikanen/driving-log/license --jq .license.spdx_id` on the branch's ref prints `Apache-2.0`).
-      Done: the text from apache.org (sha256 `cfc7749b…`, the canonical file). The license API check runs once the branch is pushed.
+      Done: the text from apache.org (sha256 `cfc7749b…`, the canonical file). The license API reads only the default branch (`?ref=` on the branch returns 404), so before merge
+      the file was compared with GitHub's own template (`gh api licenses/apache-2.0`): the same text, whitespace aside.
+      The API check itself runs after merge.
 - [x] 1.2 Add `NOTICE` at the root: "Driving Log", "Copyright 2026 Mikko Liikanen", and one line pointing to
       `THIRD_PARTY_NOTICES.md`. Verify: the file holds those three things and nothing else (decision 2).
       Done: "Driving Log", "Copyright 2026 Mikko Liikanen" and a line pointing to `THIRD_PARTY_NOTICES.md`.
@@ -37,6 +39,8 @@
 
 ## 3. Final regression run
 
-- [ ] 3.1 Run the regression run: `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and
+- [x] 3.1 Run the regression run: `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and
       `openspec validate --all --strict`. No Maestro manifest: no app behavior or screen changes. Verify: all pass,
       and the PR's checks are green.
+      Done: the regression run and `openspec validate --all --strict` (17 items) pass, and PR #7's four checks passed
+      on d66317f.
