@@ -108,6 +108,25 @@ everyone: there is no bypass, the administrator included, and no approving revie
 (`main-retain`, `.github/rulesets/main-retain.json`) stops `main` from being deleted or force-pushed. Merging publishes
 to the testers (`docs/distribution.md`).
 
+## Cleaning up after merge
+
+Remove a worktree or branch once it has no further use, so the `change/*` branches keep showing only what's in
+flight. GitHub doesn't delete merged branches in this repository, so:
+
+- **After the PR is merged**, remove the change's worktree, its local branch and its branch on GitHub:
+  `git worktree remove ../driving-log-<name>`, `git branch -D change/<name>` and
+  `git push origin --delete change/<name>`. Use `-D`: a squash merge leaves the branch's own commits off `main`, so
+  `-d` refuses even though the PR is merged. The same goes for `chore/*` branches.
+- **First check the worktree has nothing unsaved**: `git -C ../driving-log-<name> status --short` must be empty.
+  `git worktree remove` refuses if not. Gitignored local files copied in for the build (`local.properties`,
+  `androidApp/src/production/google-services.json`) are fine to drop.
+- **A PR closed without merging keeps its branch** until you decide the change is abandoned. It may be reopened or
+  reworked.
+- **Delete nothing with unmerged commits** unless you're sure it's abandoned. Check the PR's state
+  (`gh pr list --state all`) rather than `git branch --merged`, which doesn't recognize squash merges.
+
+With the herd, it deletes merged change branches itself, and its planner skills remove the worktrees they created.
+
 ## Onboarding status
 
 Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log specifics:
