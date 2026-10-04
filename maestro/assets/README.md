@@ -2,6 +2,8 @@
 
 The pictures the Maestro flows put on the emulator (`addMedia`) and the unit tests read. The setup flow of each manifest that needs pictures (`setup.yaml` in its directory) adds them once, so a fresh emulator is enough.
 
+The real photos were taken by the project's author and the others were generated for the project; all of them are the project's own, under the [Apache License 2.0](../../LICENSE) like the rest of the repository.
+
 | File | Used for |
 |---|---|
 | `photo-landscape.png` | A generated landscape image (red, white and blue bands, a green disc): the crop, the stored versions and the `picture` and `resilience` flows (uploaded by their `setup.yaml`). |
