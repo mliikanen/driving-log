@@ -4,7 +4,8 @@
 `main` gets a change only as one merge: code and archive together. So `main`'s `openspec/changes/` holds only
 `archive/`, and `openspec/specs/` describes only what is built. This holds today, while changes are still applied
 interactively, and it is also how the herd (the planned unattended pipeline) finds work once Driving Log is onboarded
-to it. How the herd itself works is documented only in the herd repository (`../herd/docs/design.md`).
+to it. How the herd itself works is documented only in the herd repository: `../herd/docs/using-the-herd.md` for
+using it, `../herd/docs/design.md` for its design.
 
 ## Proposing
 
@@ -38,23 +39,14 @@ On the change's branch, in this order:
 
 ## With the herd
 
-1. **You mark the proposal ready** (below). From then on the herd owns it.
-2. **The herd** implements `tasks.md` item by item on the branch, has each task reviewed, runs the gate, reviews the
-   whole change, and updates the draft PR.
-3. **You run final approval** (Maestro, below) on the branch and record the result. The herd then marks the PR ready
-   for review, and GitHub's review (Copilot, or a person) runs its cycles as above; feedback goes back to the herd as
-   new tasks.
-4. **The herd** archives the change as the last commit, once review is done. **You merge it.**
-
-The herd stops and waits for you (`needs-human`) whenever it can't continue on its own. Run `herd` to open its
-herdr session: the status pane lists what's waiting on you first, with the reason, and every change still being
-drafted.
+Once Driving Log is onboarded, the herd implements, reviews and archives ready changes on their branches; you
+propose, run final approval and merge. What that looks like from your side (marking ready, revising a ready change,
+`needs-human` stops, watching the herd) is in the herd repository's guide, `../herd/docs/using-the-herd.md`. This
+section covers only what's specific to Driving Log.
 
 ### Before marking a proposal ready
 
-The herd's `herd-ready` skill (installed by `herd init`) checks the generic rules: the change validates, each
-`tasks.md` item is one reviewable commit, sections are in dependency order, and so on. On top of those, for this
-project:
+`/herd-ready` checks the herd's generic rules (the guide lists them). On top of those, for this project:
 
 - **Android only.** Nothing in the change may need a Mac, Xcode, a physical device or the `production` flavor's
   real Firebase/Google Sign-In; those are the manifest's `missing_capabilities`, and a task needing one stops the
@@ -66,22 +58,6 @@ project:
   codeQuality` and `openspec validate --all --strict`). Every task must leave it green.
 - **Anything the agents need from outside the repo** (test photos, sample receipts) is committed with the
   proposal, as `maestro/assets/` already does, so the herd doesn't have to stop and ask for it.
-
-### Marking ready
-
-`/herd-ready` checks the proposal, then sets `ready: true` in the change's `.openspec.yaml` on its branch, commits
-and pushes. A change whose `depends_on` changes aren't merged yet waits for them.
-
-After that, don't `/opsx:apply` it yourself. To revise a ready proposal, set `ready: false` on the branch (the herd
-stops after the step it's on), make your changes, and set it back. If you push while the herd is working, its own
-next push is rejected and that step is redone from your commit: nothing you push is lost.
-
-### When the herd asks for you
-
-A `needs-human` stop names its reason: a task rejected too many times, scope growing past the cap, a merge
-conflict with `main`, something the pipeline can't do, or a file it needs. Fix it on the branch (edit `tasks.md`,
-resolve the conflict, commit the requested file, revise the proposal) and mark the stop resolved. `/herd-resolve`
-walks you through it. The herd picks the change back up on its next pass.
 
 ### Final approval: Maestro
 
