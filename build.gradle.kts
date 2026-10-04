@@ -49,3 +49,14 @@ tasks.register("codeQuality") {
         ":shared:lintAndroidMain",
     )
 }
+
+// fix-build-warnings: a Kotlin compiler warning fails the build, in every module and source set, so none can pile up
+// (docs/code-quality.md). Kotlin/Native compilations (iOS binaries) are left out: they only run on a Mac, where nobody
+// building here can see or fix what they print.
+allprojects {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+        if (this !is org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile) {
+            compilerOptions.allWarningsAsErrors.set(true)
+        }
+    }
+}

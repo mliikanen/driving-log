@@ -33,6 +33,7 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.Named
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,7 +48,8 @@ import kotlin.time.Clock
 
 // MVI: one action builder per intent and save path, which is how this project's processors are written.
 @Suppress("TooManyFunctions")
-class LogEventProcessor @AssistedInject constructor(
+@AssistedInject
+class LogEventProcessor(
     @Assisted private val vehicleId: String,
     private val repository: VehicleRepository,
     private val pictures: PictureStore,
@@ -118,6 +120,8 @@ class LogEventProcessor @AssistedInject constructor(
 
         // The vehicle and its log follow whichever id is chosen now (the constructor's, when fixed; the selector's choice otherwise), so a
         // change of vehicle needs no second code path. Before a choice has been made (chooseVehicle, still loading), this observes nothing.
+        // flatMapLatest switches to the newly chosen vehicle's flows, which is exactly what this needs.
+        @OptIn(ExperimentalCoroutinesApi::class)
         val selected: Flow<Pair<VehicleDetails?, List<VehicleEvent>>> = states.map { it.selectedVehicleId }.distinctUntilChanged()
             .flatMapLatest { id ->
                 if (id.isEmpty()) {

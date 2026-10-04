@@ -111,7 +111,7 @@ class PictureDraftEditorTest {
         val second = adding.photoPicked(first, PhotoResult.Chosen(byteArrayOf(9)))
 
         assertEquals(setOf(second.cropSourceId!!), store.sources.keys)
-        assertContentEquals(byteArrayOf(9), store.sources.getValue(second.cropSourceId!!))
+        assertContentEquals(byteArrayOf(9), store.sources.getValue(second.cropSourceId))
     }
 
     @Test

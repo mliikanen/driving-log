@@ -97,7 +97,7 @@ fun EventDetailsContent(
             when {
                 state.isLoading -> Unit
 
-                state.notFound || content == null || event == null -> Text("This event no longer exists.", Modifier.padding(16.dp))
+                state.notFound || content == null -> Text("This event no longer exists.", Modifier.padding(16.dp))
 
                 else -> LazyColumn(
                     Modifier.fillMaxSize().testTag("event_details_content"),

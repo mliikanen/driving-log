@@ -36,9 +36,8 @@ appId: com.mikonoma.drivinglog
 - tapOn: "While using the app"
 - assertVisible:
     id: scanner
-# Leaving the scanner without a reading: the form as it was.
-- tapOn:
-    id: back
+# Leaving the scanner without a reading, with the system back: the form as it was.
+- pressKey: back
 - assertVisible:
     id: log_way_distance
     checked: true
@@ -57,6 +56,26 @@ appId: com.mikonoma.drivinglog
     visible: "Photo taken on.*"
     timeout: 12000
 # The cluster photo is uploaded last by setup.yaml, so it is the newest: the picker lists it first.
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: scan_review
+    timeout: 20000
+# The system back on the review returns to the scanner; choose the photo again.
+- pressKey: back
+- assertVisible:
+    id: scanner
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
 - tapOn:
     text: "Photo taken on.*"
     index: 0

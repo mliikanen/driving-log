@@ -76,6 +76,28 @@ Shared helpers keep suppressions in one place: `undoOnFailure` (`shared/.../util
 place that catches `Throwable`, to undo work and rethrow, so callers that need cleanup on failure or cancellation use
 it instead of their own `catch (Throwable)`.
 
+## Compiler and Gradle warnings
+
+The build has no warnings, and any new one fails it (`fix-build-warnings`):
+- **Kotlin compiler warnings are errors** in every compilation of every module: common, Android, the iOS sources'
+  common compilation, tests, and the app (root `build.gradle.kts`, `allWarningsAsErrors`). The exception is
+  Kotlin/Native (iOS binaries), which only compiles on a Mac, where nobody building here could see or fix its
+  warnings.
+- **Gradle and plugin deprecations fail the build** (`org.gradle.warning.mode=fail` in `gradle.properties`).
+- **The build scripts' own compiler warnings fail it too** (`org.gradle.kotlin.dsl.allWarningsAsErrors=true`). A
+  script only recompiles when it changes, so a deprecated DSL block shows up the first time its script is edited.
+
+Fix a warning where you can: replace a deprecated API with its successor, add the opt-in an experimental API asks
+for, remove the dead code a "condition is always …" warning points at. When the warned-about code is deliberate,
+suppress that warning at the narrowest scope, with a comment saying why, as for a linter finding (above). For example,
+`MainActivity.onActivityResult` keeps calling the deprecated `super` because `ActivityResultBridge` needs it. A
+dependency update that brings new deprecations is resolved by that update's own change.
+
+**Left on purpose:** warnings that tools print about their own internals, not about this project's code or build,
+don't fail the build. Today there is one: ktlint 1.8's embedded Kotlin compiler (2.2.21) calls `sun.misc.Unsafe`, and
+JDK 25 warns about it (`A terminally deprecated method in sun.misc.Unsafe has been called`, once per ktlint task). It
+should go away with a ktlint release built on a newer compiler.
+
 ## No baselines
 
 There are no baselines: every finding is fixed, suppressed in code with a reason, or handled by a commented rule

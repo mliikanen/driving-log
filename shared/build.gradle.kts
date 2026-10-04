@@ -15,7 +15,7 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidLibrary {
+    android {
         namespace = "com.mikonoma.drivinglog.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -52,6 +52,7 @@ kotlin {
             implementation(libs.compose.icons.core)
             implementation(libs.compose.ui)
             implementation(libs.compose.ui.backhandler)
+            implementation(libs.navigationevent.compose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             api(libs.kotlinx.io.core)
@@ -125,6 +126,8 @@ tasks.withType<Test>().configureEach {
     // add-seven-segment-ocr: the PP-OCR models the app ships, and the photos they are tested over.
     systemProperty("ocrModelsDir", rootDir.resolve("androidApp/src/main/assets/ocr").absolutePath)
     systemProperty("ocrPhotosDir", rootDir.resolve("maestro/assets/ocr").absolutePath)
+    // The SQLite JDBC driver loads its native library; JDK 25 warns unless native access is enabled (fix-build-warnings).
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 // speed-up-tests-with-db-fixtures: regenerates maestro/assets/fixtures/*.db by running the real repository code

@@ -9,10 +9,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -52,7 +52,7 @@ internal fun KindSelector(kind: LogKind, modifier: Modifier = Modifier, onSelect
             enabled = enabled,
             label = { Text("Kind") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && enabled) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("log_kind_selector"),
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).testTag("log_kind_selector"),
         )
         DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             for (option in LogKind.entries) {
@@ -86,7 +86,7 @@ internal fun VehicleSelector(vehicles: List<VehicleChoice>, selected: VehicleCho
             label = { Text("Vehicle") },
             leadingIcon = { VehicleChoiceIcon(selected) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("log_vehicle_selector"),
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).testTag("log_vehicle_selector"),
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for (vehicle in vehicles) {
@@ -200,7 +200,7 @@ internal fun FuelTypeSelector(selected: FuelType, allowed: Set<FuelType>, onSele
             readOnly = true,
             label = { Text("Fuel type") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable).testTag("fuel_type_selector"),
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).testTag("fuel_type_selector"),
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             for (option in FuelType.entries) {

@@ -39,7 +39,10 @@ class MainActivity : ComponentActivity() {
         (application as DrivingLogApplication).resumeCount.intValue++
     }
 
+    // ActivityResultBridge needs the classic result call: registerForActivityResult must happen before the activity
+    // reaches STARTED, too early for the auth flow that launches the test account picker (see ActivityResultBridge).
     @Deprecated("Deprecated in Java, but this is the only API a classic startActivityForResult call can respond to.")
+    @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         ActivityResultBridge.onActivityResult(resultCode, data)

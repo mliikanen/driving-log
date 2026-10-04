@@ -19,7 +19,8 @@ import org.fuusio.kide.presentation.PresentationProcessor
 import org.fuusio.kide.presentation.async
 import org.fuusio.kide.presentation.reduce
 
-class EventDetailsProcessor @AssistedInject constructor(
+@AssistedInject
+class EventDetailsProcessor(
     @Assisted private val vehicleId: String,
     @Assisted private val eventId: String,
     private val repository: VehicleRepository,

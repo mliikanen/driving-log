@@ -136,12 +136,15 @@ appId: com.mikonoma.drivinglog
 - assertVisible: Add a note...
 - assertNotVisible:
     id: log_note_remove
-# Add it again and save; its row shows the note icon on the details screen and in the full log.
+# Add it again, closing the editor with the system back this time (it attaches the note like the toolbar action),
+# and save; its row shows the note icon on the details screen and in the full log. The first back only hides the
+# keyboard.
 - tapOn:
     id: log_note
 - inputText: borrowed to Sam
-- tapOn:
-    id: back
+- hideKeyboard
+- pressKey: back
+- assertVisible: borrowed to Sam
 - tapOn:
     id: odo_field
 - inputText: "10"

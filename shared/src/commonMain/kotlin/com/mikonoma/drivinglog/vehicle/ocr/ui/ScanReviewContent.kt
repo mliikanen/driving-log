@@ -32,13 +32,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import coil3.compose.AsyncImage
 import com.mikonoma.drivinglog.ui.BackButton
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
@@ -72,7 +74,7 @@ fun ScanProgressContent() {
 @Composable
 fun ScanReviewContent(review: ScanReview, photoUri: String?, callbacks: ScanCallbacks) {
     val cancel = callbacks.onCancel
-    BackHandler(onBack = cancel)
+    NavigationBackHandler(state = rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = cancel)
     val picker = rememberPhotoPicker(callbacks.onPhotoPicked)
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
