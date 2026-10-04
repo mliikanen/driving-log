@@ -63,3 +63,7 @@
       checked-in copy whenever the license requires its text to accompany copies, with a new scenario. Verify: every
       MIT or Apache entry in `THIRD_PARTY_NOTICES.md` links to a checked-in copy, and `openspec validate --all
       --strict` passes.
+- [x] 4.4 The note glyph (Copilot's third review on PR #7, in its summary): the Phosphor entry didn't name
+      `note-fill.svg`, which `EventIcons.Note` draws for a log row with a note. It's named now. Verify: each of the 13
+      SVGs in `docs/icons/phosphor/` is named in the entry, and each Phosphor glyph the `ui/*Icons.kt` files draw is one
+      of them.
