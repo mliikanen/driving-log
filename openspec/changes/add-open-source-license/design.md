@@ -125,6 +125,5 @@ made while the license was in effect keep it.
 
 ## Open Questions
 
-- Are all photos in `maestro/assets/` (the car photos, the dashboard and fuel pump photos) the author's own, taken
-  by them? If one isn't, task 2.2 lists it with its own terms in `THIRD_PARTY_NOTICES.md` or replaces it. Either way
-  the specs and the task list stay the same.
+- ~~Are all photos in `maestro/assets/` the author's own?~~ Answered during apply (2026-10-04): yes, all of them
+  (task 2.2).
