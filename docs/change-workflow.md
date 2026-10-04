@@ -111,12 +111,14 @@ to the testers (`docs/distribution.md`).
 ## Cleaning up after merge
 
 Remove a worktree or branch once it has no further use, so the `change/*` branches keep showing only what's in
-flight. GitHub doesn't delete merged branches in this repository, so:
+flight. GitHub deletes a PR's branch when the PR is merged (the repository's "Automatically delete head branches"
+setting), so what's left is local:
 
-- **After the PR is merged**, remove the change's worktree, its local branch and its branch on GitHub:
-  `git worktree remove ../driving-log-<name>`, `git branch -D change/<name>` and
-  `git push origin --delete change/<name>`. Use `-D`: a squash merge leaves the branch's own commits off `main`, so
-  `-d` refuses even though the PR is merged. The same goes for `chore/*` branches.
+- **After the PR is merged**, remove the change's worktree and its local branch, and prune the deleted remote branch:
+  `git worktree remove ../driving-log-<name>`, `git branch -D change/<name>` and `git fetch --prune`. Use `-D`: a
+  squash merge leaves the branch's own commits off `main`, so `-d` refuses even though the PR is merged. The same
+  goes for `chore/*` branches. A branch merged before the setting was turned on is deleted by hand:
+  `git push origin --delete <branch>`.
 - **First check the worktree has nothing unsaved**: `git -C ../driving-log-<name> status --short` must be empty.
   `git worktree remove` refuses if not. Gitignored local files copied in for the build (`local.properties`,
   `androidApp/src/production/google-services.json`) are fine to drop.
@@ -125,7 +127,8 @@ flight. GitHub doesn't delete merged branches in this repository, so:
 - **Delete nothing with unmerged commits** unless you're sure it's abandoned. Check the PR's state
   (`gh pr list --state all`) rather than `git branch --merged`, which doesn't recognize squash merges.
 
-With the herd, it deletes merged change branches itself, and its planner skills remove the worktrees they created.
+With the herd, its planner skills remove the worktrees they created, and the orchestrator prunes merged branches from
+its mirror.
 
 ## Onboarding status
 
