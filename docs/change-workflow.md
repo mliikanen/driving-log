@@ -4,7 +4,8 @@
 `main` gets a change only as one merge: code and archive together. So `main`'s `openspec/changes/` holds only
 `archive/`, and `openspec/specs/` describes only what is built. This holds today, while changes are still applied
 interactively, and it is also how the herd (the planned unattended pipeline) finds work once Driving Log is onboarded
-to it. How the herd itself works is documented only in the herd repository (`../herd/docs/design.md`).
+to it. How the herd itself works is documented only in the herd repository: [using the herd][herd-guide] and
+[its design][herd-design].
 
 ## Proposing
 
@@ -38,22 +39,14 @@ On the change's branch, in this order:
 
 ## With the herd
 
-1. **You mark the proposal ready** (below). From then on the herd owns it.
-2. **The herd** implements `tasks.md` item by item on the branch, has each task reviewed, runs the gate, reviews the
-   whole change, and updates the draft PR.
-3. **You run final approval** (Maestro, below) on the branch and record the result. The herd then marks the PR ready
-   for review, and GitHub's review (Copilot, or a person) runs its cycles as above; feedback goes back to the herd as
-   new tasks.
-4. **The herd** archives the change as the last commit, once review is done. **You merge it.**
-
-The herd stops and waits for you (`needs-human`) whenever it can't continue on its own. Run `herd` to open its
-herdr session: the status pane lists what's waiting on you first, with the reason, and every change still being
-drafted.
+Once Driving Log is onboarded, the herd implements, reviews and archives ready changes on their branches; you
+propose, run final approval and merge. What that looks like from your side (marking ready, revising a ready change,
+`needs-human` stops, watching the herd) is in the herd repository's guide, [Using the herd][herd-guide]. This
+section covers only what's specific to Driving Log.
 
 ### Before marking a proposal ready
 
-The herd's `herd-ready` skill (installed by `herd init`) checks the generic rules: the change validates, each
-`tasks.md` item is one reviewable commit, sections are in dependency order, and so on. On top of those, for this
+`/herd-ready` checks the herd's generic rules ([the guide][herd-ready-rules] lists them). On top of those, for this
 project:
 
 - **Android only.** Nothing in the change may need a Mac, Xcode, a physical device or the `production` flavor's
@@ -66,22 +59,6 @@ project:
   codeQuality` and `openspec validate --all --strict`). Every task must leave it green.
 - **Anything the agents need from outside the repo** (test photos, sample receipts) is committed with the
   proposal, as `maestro/assets/` already does, so the herd doesn't have to stop and ask for it.
-
-### Marking ready
-
-`/herd-ready` checks the proposal, then sets `ready: true` in the change's `.openspec.yaml` on its branch, commits
-and pushes. A change whose `depends_on` changes aren't merged yet waits for them.
-
-After that, don't `/opsx:apply` it yourself. To revise a ready proposal, set `ready: false` on the branch (the herd
-stops after the step it's on), make your changes, and set it back. If you push while the herd is working, its own
-next push is rejected and that step is redone from your commit: nothing you push is lost.
-
-### When the herd asks for you
-
-A `needs-human` stop names its reason: a task rejected too many times, scope growing past the cap, a merge
-conflict with `main`, something the pipeline can't do, or a file it needs. Fix it on the branch (edit `tasks.md`,
-resolve the conflict, commit the requested file, revise the proposal) and mark the stop resolved. `/herd-resolve`
-walks you through it. The herd picks the change back up on its next pass.
 
 ### Final approval: Maestro
 
@@ -135,7 +112,7 @@ its mirror.
 
 ## Onboarding status
 
-Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log specifics:
+Onboarding follows the herd repo's ["Onboarding a project"][herd-onboarding] steps. Driving Log specifics:
 - The proposals that were on `main` were moved to `change/<name>` branches (one commit removed them from `main`; each
   branch holds only its own proposal).
 - `.herd/project.yaml` is drafted (its comments explain the values); `herd init` validates it once the herd
@@ -146,3 +123,8 @@ Onboarding follows the herd repo's "Onboarding a project" steps. Driving Log spe
 - `.herd/toolchain.Dockerfile` doesn't exist yet.
 - Publishing to Firebase on merge is this project's release automation, separate from the herd
   (`docs/app-distribution.md`).
+
+[herd-guide]: https://github.com/mliikanen/herd/blob/main/docs/using-the-herd.md
+[herd-ready-rules]: https://github.com/mliikanen/herd/blob/main/docs/using-the-herd.md#before-marking-a-proposal-ready
+[herd-design]: https://github.com/mliikanen/herd/blob/main/docs/design.md
+[herd-onboarding]: https://github.com/mliikanen/herd/blob/main/docs/design.md#onboarding-a-project
