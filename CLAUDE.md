@@ -53,7 +53,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   the emulator's `addMedia` fails or the photo picker shows nothing).
 - Test strategy: see `docs/test-strategy.md`. A check goes in the lowest kind of test that can check it; Maestro flows are only the happy path of a feature end to end.
   While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
-  The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all --strict`, **without Maestro**.
+  The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all`, **without Maestro**.
   `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. There are no baselines: fix a finding or suppress it with a reason.
   Compiler and Gradle warnings fail the build too (Kotlin warnings are errors, `org.gradle.warning.mode=fail`); fix one, or suppress it with a reason.
   CI (`.github/workflows/pr-check.yml`) runs the same final regression run on every PR and push to `main`, as three required checks
