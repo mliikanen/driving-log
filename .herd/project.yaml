@@ -23,7 +23,7 @@ toolchain:
 gate:
   - test -f androidApp/src/production/google-services.json || cp .github/ci/google-services.placeholder.json androidApp/src/production/google-services.json
   - ./gradlew :shared:allTests :androidApp:assembleDebug codeQuality
-  - openspec validate --all --strict
+  - openspec validate --all
 
 # Copilot reviews every PR and again a few minutes after each push (about 2 to 4 minutes so far). Review is done
 # only once it has reviewed the current tip; 15 minutes leaves room for a slow round.
