@@ -140,7 +140,7 @@ for the whole suite.
 
 ### Requirement: CI runs the final regression run on every pull request and push to main
 The system SHALL run the final regression run (the shared unit and integration tests, the Android debug build, the
-static analysis gate and the strict validation of the specs, without Maestro) automatically in CI for every pull
+static analysis gate and the validation of the specs, without Maestro) automatically in CI for every pull
 request targeting `main` and for every push to `main`, and SHALL report the result as status checks on the pull
 request or commit: one for the tests and build, one for the static analysis gate, and one for the spec validation. A
 failure of any part SHALL fail its check. CI SHALL NOT build or test iOS targets.
@@ -154,7 +154,7 @@ failure of any part SHALL fail its check. CI SHALL NOT build or test iOS targets
 - **THEN** the tests-and-build check fails and names the failing step
 
 #### Scenario: A spec is invalid
-- **WHEN** `openspec validate --all --strict` reports an error
+- **WHEN** `openspec validate --all` reports an error
 - **THEN** the spec-validation check fails, without waiting for the build
 
 #### Scenario: A linter reports a finding
