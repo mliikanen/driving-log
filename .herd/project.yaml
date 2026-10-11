@@ -19,14 +19,23 @@ gate:
   - ./gradlew :shared:allTests :androidApp:assembleDebug codeQuality
   - openspec validate --all --strict
 
-# Maestro can't run in the workers (Android emulators in containers are too fragile), so it's the human's final check.
-final_approval:
-  kind: human
-  instructions: |
-    Build and install the fake flavor (./gradlew :androidApp:assembleFakeDebug, then adb install -r
-    androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk) and run the Maestro manifests of the
-    areas this change touches: maestro/run.sh <area>... (CLAUDE.md lists the areas). Record pass, or the failing
-    flow and what happened, with /herd-resolve.
+# Copilot reviews every PR and again a few minutes after each push (about 2 to 4 minutes so far). Review is done
+# only once it has reviewed the current tip; 15 minutes leaves room for a slow round.
+#
+# Maestro runs as your check in PR review, for now: there's no e2e block (and so no final_approval, which
+# defaults to none) until a harness for running the flows on an emulator in a worker exists. Then add the block and
+# final_approval: { kind: container }, and keep this check for what only a real device can judge.
+pr_review:
+  wait_for: [copilot-pull-request-reviewer]
+  timeout: 15m
+  human_check:
+    reviewers: [mliikanen]
+    instructions: |
+      Check out this PR's branch (gh pr checkout <number>), then build and install the fake flavor
+      (./gradlew :androidApp:assembleFakeDebug, then adb install -r
+      androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk) and run the Maestro manifests of the
+      areas this change touches: maestro/run.sh <area>... (CLAUDE.md lists the areas). Approve if they pass; if a
+      flow fails, run /herd-resolve, which submits a Request changes review with the failing flow and what happened.
 
 # v1 is Android only.
 missing_capabilities:
@@ -37,12 +46,6 @@ missing_capabilities:
 # pr_review_rounds bounds the GitHub review rounds; tasks added during review count toward it, not added_tasks.
 # PR #7 (add-open-source-license) took five Copilot rounds to come clean.
 caps: { review_rounds: 3, added_tasks: 3, gate_fixes: 3, pr_review_rounds: 5 }
-
-# Copilot reviews every PR and again a few minutes after each push (about 2 to 4 minutes so far). Review is done
-# only once it has reviewed the current tip; 15 minutes leaves room for a slow round.
-pr_review:
-  wait_for: [copilot-pull-request-reviewer]
-  timeout: 15m
 
 # No prompt additions: CLAUDE.md, docs/test-strategy.md and openspec/config.yaml carry the conventions. Add
 # .herd/implementer.md / reviewer.md only for something agents get wrong repeatedly that doesn't belong in CLAUDE.md.

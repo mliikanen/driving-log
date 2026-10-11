@@ -39,9 +39,9 @@ On the change's branch, in this order:
 
 ## With the herd
 
-Once Driving Log is onboarded, the herd implements, reviews and archives ready changes on their branches; you
-propose, run final approval and merge. What that looks like from your side (marking ready, revising a ready change,
-`needs-human` stops, watching the herd) is in the herd repository's guide, [Using the herd][herd-guide]. This
+Once Driving Log is onboarded, the herd implements, reviews and archives ready changes on their branches; you propose,
+run the Maestro check in PR review and merge. What that looks like from your side (marking ready, revising a ready
+change, `needs-human` stops, watching the herd) is in the herd repository's guide, [Using the herd][herd-guide]. This
 section covers only what's specific to Driving Log.
 
 ### Before marking a proposal ready
@@ -52,32 +52,40 @@ project:
 - **Android only.** Nothing in the change may need a Mac, Xcode, a physical device or the `production` flavor's
   real Firebase/Google Sign-In; those are the manifest's `missing_capabilities`, and a task needing one stops the
   change at `needs-human`. Keep iOS work in its own change and apply it interactively.
-- **Maestro tasks write or update flows; they don't run them.** Running Maestro is your final approval. A task
+- **Maestro tasks write or update flows; they don't run them.** Running Maestro is your check in PR review. A task
   like "run the vehicles manifest" can't be done by the herd. Phrase it as a check the gate can run, or leave it
-  to final approval.
+  to your check.
 - **The gate is `CLAUDE.md`'s final regression run** (`./gradlew :shared:allTests :androidApp:assembleDebug
   codeQuality` and `openspec validate --all --strict`). Every task must leave it green.
 - **Anything the agents need from outside the repo** (test photos, sample receipts) is committed with the
   proposal, as `maestro/assets/` already does, so the herd doesn't have to stop and ask for it.
 
-### Final approval: Maestro
+### Your check in PR review: Maestro
 
-The herd can't run Maestro, because Android emulators in containers are too fragile, so running it is your final
-check. Instructions for the change's branch (also shown in the PR and the status pane, from `.herd/project.yaml`):
+The herd doesn't run Maestro yet (there's no harness for an emulator in a worker), so running it is your check, as a
+reviewer of the PR (`pr_review.human_check` in `.herd/project.yaml`). When the herd marks the PR ready, it puts these
+instructions in the PR body and the status pane and requests your review:
 
-1. Build and install the `fake` flavor: `./gradlew :androidApp:assembleFakeDebug`, then
-   `adb install -r androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk`.
+1. Check out the change's branch, then build and install the `fake` flavor: `./gradlew :androidApp:assembleFakeDebug`,
+   then `adb install -r androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk`.
 2. Run the manifests of the areas the change touches: `maestro/run.sh <area>...` (areas in `CLAUDE.md`).
-3. Record pass, or the failing flow and what happened, with `/herd-resolve`. A failure goes back to the herd as new
-   tasks; the draft PR just gets more commits.
+3. **Approve** the PR if they pass. If a flow fails, run `/herd-resolve` and let it submit a **Request changes** review
+   with the failing flow and what happened: it first has you rerun the flow and, for a flow the change didn't touch,
+   try it on the commit the change is based on, so a regression becomes new tasks and a flow that's broken on `main`
+   too stops for you instead. The details are in [Using the herd][herd-guide].
+
+The change isn't archived until you approve. If the change's content changes after your approval but before the
+archive, the herd asks you again; the archive commit itself doesn't, and a content change after the archive stops at
+`needs-human` instead.
 
 ## Merging
 
-You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR, and every
-push to `main`, runs three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug
-build), `code-quality` (`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth,
-informational one, `release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit
-the description.
+You merge the PR once its checks pass. With the herd, that's not when it marks the PR ready for review, which comes
+before your Maestro check and the archive: wait until the herd's status pane shows the change as *ready-to-merge*
+(archived, checks passing, reviews settled; see [Using the herd][herd-guide]). Every PR, and every push to `main`, runs
+three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build), `code-quality`
+(`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth, informational one,
+`release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit the description.
 
 The ruleset on `main` (`main-is-pr-only`, exported in `.github/rulesets/main.json`) blocks the merge until all three
 pass on the PR's latest commit, with the branch up to date with `main`. `main` takes changes only through PRs, from
