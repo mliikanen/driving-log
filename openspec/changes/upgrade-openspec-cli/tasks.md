@@ -14,5 +14,7 @@
 
 ## 3. Regression run
 
-- [ ] 3.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all` with
+- [x] 3.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all` with
       1.14.1, without Maestro (no app behavior or screen changes). Verify: both pass.
+      Done: in the worker container (toolchain image, egress enforced) the Gradle run passed, and `openspec validate
+      --all` with 1.14.1 passed 18 of 18.

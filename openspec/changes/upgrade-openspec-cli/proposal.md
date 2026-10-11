@@ -21,8 +21,8 @@ spec for no change in behavior. The developer chose to upgrade and validate with
 
 Out of scope:
 
-- Shortening the long requirements. Warnings stay visible in the validation output; splitting them can be its own
-  change if wanted.
+- Shortening the long requirements and bringing `--strict` back: issue #13. Until then the warnings stay visible in
+  the validation output.
 - Other dependency updates. A separate pull request bumps the build's dependencies.
 - The herd's evaluation replays archived changes with OpenSpec 1.13.2 and each base's own gate, which is unaffected.
 
