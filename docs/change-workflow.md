@@ -80,11 +80,12 @@ archive, the herd asks you again; the archive commit itself doesn't, and a conte
 
 ## Merging
 
-You merge the PR once its checks pass (and, with the herd, once it marks the PR ready for review). Every PR, and every
-push to `main`, runs three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug
-build), `code-quality` (`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth,
-informational one, `release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit
-the description.
+You merge the PR once its checks pass. With the herd, that's not when it marks the PR ready for review, which comes
+before your Maestro check and the archive: wait until the herd's status pane shows the change as *ready-to-merge*
+(archived, checks passing, reviews settled; see [Using the herd][herd-guide]). Every PR, and every push to `main`, runs
+three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build), `code-quality`
+(`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all --strict`). A fourth, informational one,
+`release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit the description.
 
 The ruleset on `main` (`main-is-pr-only`, exported in `.github/rulesets/main.json`) blocks the merge until all three
 pass on the PR's latest commit, with the branch up to date with `main`. `main` takes changes only through PRs, from
