@@ -74,7 +74,9 @@ instructions in the PR body and the status pane and requests your review:
    try it on the commit the change is based on, so a regression becomes new tasks and a flow that's broken on `main`
    too stops for you instead. The details are in [Using the herd][herd-guide].
 
-The change isn't archived until you approve, and a new content push after your approval means the herd asks again.
+The change isn't archived until you approve. If the change's content changes after your approval but before the
+archive, the herd asks you again; the archive commit itself doesn't, and a content change after the archive stops at
+`needs-human` instead.
 
 ## Merging
 

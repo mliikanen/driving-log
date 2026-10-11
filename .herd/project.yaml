@@ -31,7 +31,8 @@ pr_review:
   human_check:
     reviewers: [mliikanen]
     instructions: |
-      Build and install the fake flavor (./gradlew :androidApp:assembleFakeDebug, then adb install -r
+      Check out this PR's branch (gh pr checkout <number>), then build and install the fake flavor
+      (./gradlew :androidApp:assembleFakeDebug, then adb install -r
       androidApp/build/outputs/apk/fake/debug/androidApp-fake-debug.apk) and run the Maestro manifests of the
       areas this change touches: maestro/run.sh <area>... (CLAUDE.md lists the areas). Approve if they pass; if a
       flow fails, run /herd-resolve, which submits a Request changes review with the failing flow and what happened.
