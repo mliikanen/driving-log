@@ -6,16 +6,22 @@ workflow: openspec
 branch_prefix: change/
 
 toolchain:
-  # Debian-based, JDK + the Android SDK platform and build-tools the Gradle build asks for. Nothing else:
+  # Ubuntu-based, JDK 25 + the Android SDK platform and build-tools the Gradle build asks for. Nothing else:
   # git and the openspec CLI come with the herd's role layer.
   dockerfile: .herd/toolchain.Dockerfile
-  # A shared Gradle cache per role instead of a fresh GRADLE_USER_HOME per clone, which would re-download
-  # every dependency per unit of work. Revisit if it ever causes a non-reproducible build.
-  caches: [/home/agent/.gradle]
-  egress: [repo.maven.apache.org, maven.google.com, dl.google.com, plugins.gradle.org, services.gradle.org]
+  # Kept between units instead of re-downloaded by each: the Gradle home (wrapper, dependencies, build cache;
+  # about 2 GB) and the Kotlin/Native toolchain that the iOS targets pull in even on Linux (~/.konan, about 800 MB).
+  # Revisit if one ever causes a non-reproducible build.
+  caches: [/home/agent/.gradle, /home/agent/.konan]
+  # Measured in a worker-like run. The Gradle wrapper download redirects from services.gradle.org to GitHub's
+  # release assets, and the plugin portal serves from plugins-artifacts.gradle.org.
+  egress: [repo.maven.apache.org, maven.google.com, dl.google.com, plugins.gradle.org, plugins-artifacts.gradle.org,
+           repo.gradle.org, services.gradle.org, github.com, release-assets.githubusercontent.com]
 
-# CLAUDE.md's final regression run, without Maestro.
+# CLAUDE.md's final regression run, without Maestro. assembleDebug builds the production flavor too, which needs a
+# google-services.json: the placeholder CI uses (no secrets) unless one is already there.
 gate:
+  - test -f androidApp/src/production/google-services.json || cp .github/ci/google-services.placeholder.json androidApp/src/production/google-services.json
   - ./gradlew :shared:allTests :androidApp:assembleDebug codeQuality
   - openspec validate --all --strict
 

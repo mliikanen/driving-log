@@ -128,7 +128,8 @@ Onboarding follows the herd repo's ["Onboarding a project"][herd-onboarding] ste
 - CI is set up (`add-ci-workflows`): the workflows (`pr-check.yml`, `release-notes.yml`, `release.yml`), the rulesets
   on `main`, and the one-time setup in `docs/distribution.md` (the `firebase-deployment` environment limited to
   `main`, its secrets, and Workload Identity Federation for the upload).
-- `.herd/toolchain.Dockerfile` doesn't exist yet.
+- `.herd/toolchain.Dockerfile` exists, and the gate passes in it under worker conditions (read-only root filesystem,
+  egress only through the allow-list); `herd doctor` re-checks it once the herd exists.
 - Publishing to Firebase on merge is this project's release automation, separate from the herd
   (`docs/app-distribution.md`).
 
