@@ -2,8 +2,8 @@
 
 - [x] 1.1 Replace `openspec validate --all --strict` with `openspec validate --all` in `CLAUDE.md`, the tasks rule in
       `openspec/config.yaml`, `docs/test-strategy.md`, `docs/change-workflow.md`, `.herd/project.yaml` and the
-      spec-validation step of `.github/workflows/pr-check.yml`. Verify: outside `openspec/changes/archive/`, no file
-      names `validate --all --strict`.
+      spec-validation step of `.github/workflows/pr-check.yml`. Verify: none of these six files names
+      `validate --all --strict`. (The `test-strategy` spec keeps it until the archive syncs this change's delta.)
 
 ## 2. OpenSpec 1.14.1 and Node 24 in CI
 
