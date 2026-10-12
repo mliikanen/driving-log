@@ -25,10 +25,11 @@ app_paths=(
   build.gradle.kts        # the root build: compiler options, plugin versions
   settings.gradle.kts
   gradle.properties
-  ':(exclude,glob)shared/src/*Test/**'      # commonTest, androidHostTest, iosTest: tests are not in the APK
-  ':(exclude)shared/src/iosMain'            # iOS only
-  ':(exclude,glob)androidApp/src/test*/**'  # the app's tests (testFake)
-  ':(exclude)androidApp/src/fake'           # the fake flavor, for Maestro; testers get the production flavor
+  ':(exclude,glob)shared/src/*Test/**'             # commonTest, androidHostTest, iosTest: tests are not in the APK
+  ':(exclude)shared/src/iosMain'                   # iOS only
+  ':(exclude,glob)androidApp/src/test*/**'         # the app's unit tests (testFake, …)
+  ':(exclude,glob)androidApp/src/androidTest*/**'  # its instrumentation tests (androidTest, androidTestProduction, …)
+  ':(exclude)androidApp/src/fake'                  # the fake flavor, for Maestro; testers get the production flavor
 )
 
 git diff --quiet "$from" "$to" -- "${app_paths[@]}"

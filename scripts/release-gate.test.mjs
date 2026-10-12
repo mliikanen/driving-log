@@ -81,6 +81,8 @@ for (const path of [
   'shared/src/iosTest/PlatformTest.kt',
   'androidApp/src/fake/FakeAuth.kt',
   'androidApp/src/testFake/FakeAuthTest.kt',
+  'androidApp/src/androidTest/kotlin/MainActivityTest.kt',
+  'androidApp/src/androidTestProduction/kotlin/SignInTest.kt',
   'docs/README.md',
   'openspec/specs/widgets/spec.md',
   '.github/workflows/pr-check.yml',
