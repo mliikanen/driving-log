@@ -138,7 +138,9 @@ change. This one only makes sure the note already lives on the entry.
 `event_capture` is unchanged. The accepted scan already says which field it filled: its accepted detection's `kind`
 is `FUEL_AMOUNT` for the fuel amount and `ODOMETER`/`TRIP` for the mileage (the processor fills the field by that
 same kind). `addRefueling` inserts the capture under the refueling event for a fuel-amount scan and under the
-mileage event otherwise, so neither the processor nor the repository signature changes. Still one scan per form (the latest accepted). Keeping one scan per target
+mileage event otherwise, so neither the processor nor the repository signature changes. A mileage scan on a
+refueling saved without mileage (the field was cleared after the scan) has no event to go with and is dropped, its
+pending photo discarded once the save succeeds. Still one scan per form (the latest accepted). Keeping one scan per target
 would be a reasonable follow-up, but it changes `odometer-ocr-capture`'s "a second scan replaces the first" and is
 out of scope.
 

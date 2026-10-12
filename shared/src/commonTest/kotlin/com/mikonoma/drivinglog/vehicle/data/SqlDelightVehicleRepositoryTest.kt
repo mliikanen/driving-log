@@ -606,6 +606,31 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
+    fun aMileageScanIsNotKeptWhenTheRefuelingIsSavedWithoutMileage() = runTest {
+        // The mileage was scanned, then cleared before saving: the scan filled nothing that is saved, so it belongs to no
+        // event — not to the refueling, whose number it never was — and its pending photo is dropped.
+        val id = addFamilyCar()
+        val pendingId = captureStore.addPending()
+
+        val eventId = repositoryWithCaptures.addRefueling(
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            mileage = null,
+            capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(pendingId, scan()),
+        )
+
+        assertNull(repositoryWithCaptures.captureOf(eventId))
+        assertTrue(repositoryWithCaptures.capturePhotoIds().isEmpty())
+        assertTrue(captureStore.photos.isEmpty())
+        assertTrue(pendingId !in captureStore.pending)
+        assertEquals(listOf(eventId), repositoryWithCaptures.observeEntry(id, eventId).first()!!.events.map { it.id })
+    }
+
+    @Test
     fun aRefuelingSavedWithNoScanKeepsNone() = runTest {
         val id = addFamilyCar()
 

@@ -8,7 +8,8 @@ photo, its recognized text and its classification, not only the accepted one) on
 SHALL store them under the resulting event only once the log event form is saved. When the form saves more than one
 event (a refueling with mileage, `vehicle-log`'s "The log stores one fact per event, grouped into entries"), the
 scan SHALL be stored under the event whose number it filled: a fuel-amount scan under the "Refueling" event, a
-mileage scan under the "Distance" or "Odometer reading" event. For a reading tapped in the live scanner, the photo SHALL be the camera frame the reading was detected in, and the detection result that frame's.
+mileage scan under the "Distance" or "Odometer reading" event. A mileage scan whose mileage was cleared before the
+refueling was saved filled nothing that is saved, and SHALL NOT be stored. For a reading tapped in the live scanner, the photo SHALL be the camera frame the reading was detected in, and the detection result that frame's.
 Leaving the form without saving, after accepting a scan, SHALL discard the kept photo and detections along with the
 rest of the unsaved entry. Scanning again before saving SHALL keep only the latest accepted scan. Neither the photo nor
 the detections SHALL appear in any user-facing screen; they exist only to review a misdetection after the fact. Once
@@ -26,6 +27,10 @@ SHALL NOT remove them.
 #### Scenario: A mileage scan is linked to the mileage event
 - **WHEN** the user types a fuel amount, accepts a scanned odometer reading for the mileage and saves the refueling
 - **THEN** the photo and its detections are linked to the entry's "Distance" or "Odometer reading" event, not to the "Refueling" event
+
+#### Scenario: A cleared mileage scan is not kept
+- **WHEN** the user accepts a scanned odometer reading for a refueling's mileage, clears the mileage field, types a fuel amount and saves
+- **THEN** the refueling is saved with no mileage, and neither the photo nor its detections are stored
 
 #### Scenario: A live reading keeps its frame
 - **WHEN** the user taps a reading in the live scanner and saves the entry

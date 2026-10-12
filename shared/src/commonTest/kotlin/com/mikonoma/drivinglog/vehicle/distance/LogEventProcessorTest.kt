@@ -1792,6 +1792,28 @@ class LogEventProcessorTest {
     }
 
     @Test
+    fun aRefuelingWhoseScannedMileageIsClearedIsSavedWithoutMileage() = runTest {
+        // The scan stays accepted on the form, but the save carries no mileage: the repository then keeps no scan
+        // (SqlDelightVehicleRepositoryTest.aMileageScanIsNotKeptWhenTheRefuelingIsSavedWithoutMileage).
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.typeFuelAmount(4, 2, 3)
+        processor.scan()
+        processor.accept("123.4")
+        processor.dispatch(LogEventIntent.OdometerCleared)
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val call = repository.refuelingCalls.single()
+        assertNull(call.mileage)
+        assertTrue(assertNotNull(call.capture).result.accepted.kind != com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT)
+    }
+
+    @Test
     fun aRefuelingTypedByHandSavesNoScan() = runTest {
         seedVehicle()
         val processor = processor()

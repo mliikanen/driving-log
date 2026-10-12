@@ -31,6 +31,10 @@ green. Before touching tests, read `docs/test-strategy.md`; before the migration
 
 - [x] 5.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all`, without Maestro. Verify: both succeed.
 
+## 6. Review fixes
+
+- [x] 6.1 A refueling saved without mileage keeps no mileage scan (Copilot review): `addRefueling` drops an odometer or trip scan when no mileage event is created, and discards its pending photo after the save; `odometer-ocr-capture` gains "A cleared mileage scan is not kept". Verify: `SqlDelightVehicleRepositoryTest.aMileageScanIsNotKeptWhenTheRefuelingIsSavedWithoutMileage` and `LogEventProcessorTest.aRefuelingWhoseScannedMileageIsClearedIsSavedWithoutMileage` pass.
+
 ## Workflow follow-up
 
 - Reviewer's check: `maestro/run.sh distance` on the `fake` flavor (`docs/change-workflow.md`).

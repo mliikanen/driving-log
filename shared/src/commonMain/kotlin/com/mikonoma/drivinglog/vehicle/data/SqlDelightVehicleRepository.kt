@@ -250,11 +250,17 @@ class SqlDelightVehicleRepository(
             val entryId = eventId
             val mileageEventId = mileage?.let { newId() }
             val zone = occurredAt.zone
-            val photoIds = photos.map { promotedEventPhoto(it) }
-            val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
             // The scan goes with the event whose number it filled (atomic-log-events): a fuel-amount scan with the refueling,
-            // an odometer or trip scan with the mileage event (when there is none, it can only have been a fuel amount).
-            val captureEventId = if (capture?.result?.accepted?.kind == ReadingKind.FUEL_AMOUNT) eventId else mileageEventId ?: eventId
+            // an odometer or trip scan with the mileage event. A mileage scan whose mileage was cleared before saving filled
+            // nothing that is saved, so it is not kept at all (its pending photo is discarded once the refueling is saved).
+            val captureEventId = when {
+                capture == null -> null
+                capture.result.accepted.kind == ReadingKind.FUEL_AMOUNT -> eventId
+                else -> mileageEventId
+            }
+            val keptCapture = capture?.takeIf { captureEventId != null }
+            val photoIds = photos.map { promotedEventPhoto(it) }
+            val promotedCapture = keptCapture?.let { promotedCapture(it) to it.result.toJson() }
             undoOnFailure(
                 undo = {
                     for (photoId in photoIds) eventPictures.delete(photoId)
@@ -288,13 +294,16 @@ class SqlDelightVehicleRepository(
                         filled_up = if (filledUp) 1L else 0L,
                     )
                     insertEntryPhotos(entryId, photoIds)
-                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(captureEventId, photoId, detections) }
+                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(checkNotNull(captureEventId), photoId, detections) }
                     if (mileage != null) vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
                     appState.upsertAppState(LAST_FUEL_UNIT_KEY, unit.code)
                     appState.upsertAppState(LAST_FUEL_TYPE_KEY, fuelType.code)
                 }
             }
+            // Saved: a scan not kept is dropped like one left behind by leaving the form. A failure here only leaves a
+            // pending file for the sweep.
+            if (capture != null && keptCapture == null) runCatching { captures?.discardPending(capture.pendingId) }
             eventId
         }
     }
