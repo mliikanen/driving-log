@@ -79,8 +79,8 @@ they're plain lambda captures instead of script-class fields.
 This is a requirement, not a convenience default — the distribution script does not accept freely hand-typed notes
 as its normal path. `scripts/distribute.sh` finds the most recent `dist-v<versionName>` tag (or, on the first-ever
 distribution, uses the whole history), and lists the OpenSpec changes newly archived since then as the draft, which
-the developer reviews and edits before uploading. A change archived by a commit that changed nothing in the app
-(`scripts/ci/app-changed.sh`) is left out of the draft; running the script still publishes, since a person chose to. **The one exception**: if nothing was archived since the last
+the developer reviews and edits before uploading. A change archived by a commit a CI run recorded as skipped (a
+`dist-skip-v*` tag) is left out of the draft; running the script still publishes, since a person chose to. **The one exception**: if nothing was archived since the last
 distribution, there's nothing to generate, and the developer types notes by hand instead.
 
 Considered and rejected: a hand-curated `RELEASE_NOTES.md` "Unreleased" section updated by the archive skill.
@@ -115,15 +115,18 @@ Every merge to `main` publishes to the testers, with no developer machine involv
 - **No change to the app, nothing published** (`release-only-app-changes`). A release needs something that ends up in
   the APK to have changed since the last `dist-v*` tag: `shared/` and `androidApp/` (not their tests, `shared`'s iOS
   sources or the `fake` flavor), `gradle/` (dependency versions, the wrapper) and the root build files. The list is
-  `scripts/ci/app-changed.sh`, the one place that decides it. A merge of docs, specs, tests, Maestro flows, scripts or
-  CI publishes nothing and creates no tag, whatever it archives, and the run's summary says "no change to the app".
+  `scripts/ci/app-changed.sh`, the one place that decides it. Each run records its decision for every merge since the
+  last release that has none yet: a merge of docs, specs, tests, Maestro flows, scripts or CI gets a
+  `dist-skip-v<count>-<sha>` tag (`scripts/ci/release-skips.sh`), pushed with the run. When every merge since the last
+  release is such a skip, the run publishes nothing, whatever they archive, and its summary lists the skips.
 - **Nothing to say, nothing published.** Likewise when the app changed but there are no notes (no change archived
   since the last tag and no `## Release notes` section, a dependency bump say). A commit that is already tagged isn't
   published again.
-- **Release notes.** Everything since the last distribution that changed the app: each PR merged since then whose
-  own commit changed an app path contributes its `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
-  and every other change archived by a commit that changed the app is listed by name (`scripts/release-notes.sh`, the
-  same generation the local script drafts from). A docs or tooling PR merged in between adds nothing to the notes. So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
+- **Release notes.** Everything since the last distribution except the recorded skips: each PR merged since then whose
+  merge commit has no `dist-skip-v*` tag contributes its `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
+  and every other change archived by a commit without a skip tag is listed by name (`scripts/release-notes.sh`, the
+  same generation the local script drafts from). Only an explicit skip leaves notes out: an app merge whose release
+  didn't happen (a failed upload, a replaced run) has no skip tag, so its notes go out with the next release. So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
   merging: that is the review the local script does in `$EDITOR`.
 - **Secrets** live in the `firebase-deployment` GitHub environment, which only `main` can enter (no pull request, even
   one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,

@@ -41,27 +41,34 @@ for the default (easy to forget, and wrong by default); paths need no author dis
 build-script or dependency change that turns out not to affect the APK publishes a build, which is today's behavior
 anyway.
 
-### 2. The release asks about the whole range; the notes ask per commit
+### 2. Skips are recorded once, and the notes read the record
 
-`release.yml`: after the already-tagged check, `scripts/ci/app-changed.sh <last dist tag> HEAD` (or the whole history
-when there is no tag yet). No app change → publish nothing, no tag, summary "Nothing to release: no change to the app
-since <tag>". The notes check comes after, unchanged: an app change with no notes (a dependency bump with no section and
-no archived change) still publishes nothing, as today.
+`scripts/ci/release-skips.sh <last dist tag> <target>` walks the first-parent commits since the last release, oldest
+first, skipping any that already carry a `dist-skip-v*` tag, and judges each with `app-changed.sh <commit>^1 <commit>`.
+One that changed no app path gets a lightweight `dist-skip-v<count>-<short sha>` tag (the same shape as `dist-v*`);
+the release run pushes them. The run publishes nothing when every commit since the last release carries a skip tag.
 
-Notes: `choose-release-notes.sh` skips a merged pull request whose `merge_commit_sha` changed no app path (neither its
-section nor the changes it archived count, so they don't fall through to the name list either). `release-notes.sh`
-skips an archived change whose archiving commit (the commit that added its directory under `archive/`) changed no app
-path. A known edge: a change whose code and archive landed in separate merges (#20, then #21) is listed by neither if
-the archive merge changed no app path, but its code merge still triggers the release, and its pull request's section
-(if any) is used.
+The notes never judge paths themselves: `choose-release-notes.sh` drops a merged pull request whose merge commit has a
+skip tag (its section and the changes it archived), and `release-notes.sh` drops a change archived by a commit with a
+skip tag. Everything else is collected. So the rule is explicit: only a recorded skip leaves notes out. An app merge
+whose release didn't happen (a failed upload, a run GitHub replaced in the queue) has no skip tag and no `dist-v*` tag,
+so its notes go out with the next release; a merge never judged at all is collected too, rather than dropped.
+
+*Alternative (the first implementation):* re-judge each commit by path whenever notes are built. Rejected in review:
+the skip would be implicit and could change with the path list, instead of being a decision the release made and
+recorded. *Alternative:* a per-PR declaration. Rejected: the developer chose decisions recorded by the release run.
+
+A change whose code and archive landed in separate merges (#20, then #21) is still listed: its archive merge is a skip,
+but its code merge isn't, and its pull request's section, if any, is used; only the generated name is lost, as the
+archive merge's name.
 
 ### 3. The preview asks what the release will ask
 
-`release-notes-preview.sh` runs on GitHub's merge of the pull request into `main` (HEAD), and asks the release's
-question: `app-changed.sh <last dist tag> HEAD`. No app change → "Nothing to release: no change to the app since …,
-this pull request included", and merging publishes nothing. Otherwise the notes, filtered the same way: the open pull
-request is judged by `HEAD^1..HEAD`, exactly what merging it changes, so a docs pull request merged while an app change
-waits on `main` shows the release that will go out, without itself in the notes. *Alternative:* judge only
+`release-notes-preview.sh` runs on GitHub's merge of the pull request into `main` (HEAD) and makes the release's
+decisions there: `release-skips.sh <last dist tag> HEAD` as local tags, deleted on exit (only the release run pushes
+skips). All skips → "Nothing to release: no change to the app since …, this pull request included". Otherwise the
+notes, read from those tags exactly as the release will, so a docs pull request merged while an app change waits on
+`main` shows the release that will go out, without itself in the notes. *Alternative:* judge only
 `HEAD^1..HEAD`. Rejected after implementing it: with an unreleased app change already on `main`, it would say "nothing
 to release" for a merge that does publish.
 

@@ -3,9 +3,9 @@
 # nothing when there is nothing to release.
 #
 # The notes cover everything since the last distribution (the newest dist-v* tag reachable from <commit>):
-# - every pull request merged into main since then that changed the app (scripts/ci/app-changed.sh, on its merge commit)
-#   contributes the text of its `## Release notes` section (up to the next `## ` heading), when it has one; one that
-#   changed only docs, specs, tests or tooling contributes nothing (release-only-app-changes);
+# - every pull request merged into main since then contributes the text of its `## Release notes` section (up to the
+#   next `## ` heading), when it has one, except one whose merge commit the release recorded as skipped (a
+#   `dist-skip-v*` tag, scripts/ci/release-skips.sh: it changed nothing in the app) (release-only-app-changes);
 # - every change archived since then that no such pull request archived is listed by name, as scripts/release-notes.sh
 #   lists them. A pull request without a section, or a commit that came without one, contributes this way.
 # So a release that replaced a pending one (GitHub keeps one pending run) still carries both pull requests' notes.
@@ -78,12 +78,10 @@ sections=""
 covered=""
 while read -r number sha; do
   [ -n "$number" ] || continue
-  # A pull request that changed nothing in the app (docs, specs, tests, tooling) gives testers nothing to read about:
-  # neither its section nor its archived changes (which scripts/release-notes.sh leaves out too) go in the notes.
-  app=0
-  scripts/ci/app-changed.sh "$sha^1" "$sha" || app=$?
-  [ "$app" -eq 1 ] && continue
-  [ "$app" -eq 0 ] || { echo "choose-release-notes: could not tell whether $sha (#$number) changed the app" >&2; exit 2; }
+  # A pull request the release recorded as skipped (a `dist-skip-v*` tag on its merge commit: it changed nothing in the
+  # app; scripts/ci/release-skips.sh) gives testers nothing to read about: neither its section nor its archived changes
+  # (which scripts/release-notes.sh leaves out too) go in the notes. Every other one does.
+  [ -z "$(git tag --points-at "$sha" -l 'dist-skip-v*')" ] || continue
   text="$(gh api "repos/$repo/pulls/$number" --jq '.body // ""' | section_of)"
   if [ -n "$(printf '%s' "$text" | tr -d '[:space:]')" ]; then
     sections="${sections:+$sections$'\n\n'}$text"

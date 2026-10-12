@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Prints the release notes generated from the OpenSpec archive: the names of the changes archived since the last
-# distribution, one per line (empty when nothing was archived). A change archived by a commit that changed nothing in
-# the app (docs, specs, tests, tooling; scripts/ci/app-changed.sh) is left out: testers have nothing to see from it
-# (release-only-app-changes). The last distribution is the newest `dist-v*` tag
+# distribution, one per line (empty when nothing was archived). A change archived by a commit the release recorded as
+# skipped (a `dist-skip-v*` tag: it changed nothing in the app; scripts/ci/release-skips.sh) is left out; every other one
+# is listed, a change from a merge that should have been released but wasn't included (release-only-app-changes). The last distribution is the newest `dist-v*` tag
 # reachable from <commit> (default HEAD); without one, every archived change is listed. Used by scripts/distribute.sh and
 # by CI (add-ci-workflows); see docs/app-distribution.md.
 #
@@ -31,16 +31,8 @@ archived="$(awk '
   match($0, /^openspec\/changes\/archive\/[^\/]+\//) { name = substr($0, 26, RLENGTH - 26); print name, sha }
 ' <<< "$added" | sort -u)"
 
-# A change is listed when a commit that archived it also changed the app; a commit with no parent is compared with
-# nothing before it.
+# Listed unless the commit that archived it carries a recorded skip.
 while read -r name sha; do
   [ -n "$name" ] || continue
-  parent="$(git rev-parse --verify --quiet "$sha^1" || true)"
-  status=0
-  scripts/ci/app-changed.sh "$parent" "$sha" || status=$?
-  case "$status" in
-    0) echo "$name" ;;
-    1) ;;
-    *) echo "release-notes: could not tell whether $sha changed the app" >&2; exit 2 ;;
-  esac
+  [ -n "$(git tag --points-at "$sha" -l 'dist-skip-v*')" ] || echo "$name"
 done <<< "$archived" | sort -u

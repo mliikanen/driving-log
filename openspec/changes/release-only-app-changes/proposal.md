@@ -14,14 +14,16 @@ build of an unchanged app with a note that means nothing to them (`dist-v202-33e
   last `dist-v*` tag: `shared/` and `androidApp/` (their test source sets, `shared`'s iOS sources and the `fake` flavor
   excepted), `gradle/` (dependency versions, the wrapper) and the root build files. Otherwise it publishes nothing,
   creates no tag, and the run's summary says there was no change to the app since the last distribution.
-- **Release notes leave out what didn't change the app.** A merged pull request whose own commit changed no app path
-  contributes neither its `## Release notes` section nor the names of the changes it archived; the same goes for a
-  change archived by a direct push to `main` that changed no app path. So when a real release follows a docs or tooling
-  merge, its notes don't list the tooling change.
+- **Skips are explicit and recorded.** The release run judges every merge since the last release that has no decision
+  yet, and tags each one that changed nothing in the app `dist-skip-v<count>-<sha>` (pushed). It publishes nothing
+  when every merge since the last release is such a skip.
+- **Release notes leave out exactly the recorded skips.** A merged pull request or an archived change whose commit
+  carries a skip tag contributes nothing; everything else is collected, so an app merge that should have been released
+  but wasn't (a failed upload, a replaced run) has its notes in the next release that is made.
 - **The pull request preview shows the same decision.** The `release-notes` check says "Nothing to release: this merge
   changes no app code" for such a pull request, and otherwise shows the notes as today.
-- **One definition of "the app".** A single script, `scripts/ci/app-changed.sh`, holds the list of app paths and
-  answers whether a commit, or a range, touched them; the release, the notes and the preview all ask it.
+- **One definition of "the app".** A single script, `scripts/ci/app-changed.sh`, holds the list of app paths;
+  `scripts/ci/release-skips.sh` asks it once per merge and records the answer, and the notes read the record.
 
 Out of scope:
 

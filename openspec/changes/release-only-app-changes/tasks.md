@@ -23,6 +23,11 @@ the preview on this change's own pull request.
 
 - [x] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh`, without Maestro. Verify: both succeed.
 
+## 5. Explicit skips (review)
+
+- [x] 5.1 Record skips instead of re-judging paths (design Decision 2): `scripts/ci/release-skips.sh` tags each unjudged merge since the last release that changed no app path `dist-skip-v<count>-<sha>`; `release.yml` pushes them and publishes nothing when every merge since the last release is a skip; `choose-release-notes.sh` and `release-notes.sh` leave out exactly the skip-tagged merges; the preview makes the same decisions with local tags it removes. Verify: the tests for recorded skips (an app merge is not skipped, a decision is not made again, only merges since the last release are judged) and for the notes (a skip is left out, a never-judged merge is collected, an unreleased app merge is collected into the next release) pass; the preview on GitHub's merge of #23 still says "Nothing to release" and leaves no tag behind.
+- [x] 5.2 Docs: `docs/app-distribution.md` and `docs/distribution.md` describe the recorded skips and that only they leave notes out. Verify: both name `dist-skip-v*` and `scripts/ci/release-skips.sh`.
+
 ## Workflow follow-up
 
 - After merging: the Release run for the merge says "Nothing to release: no change to the app since …" and creates no tag. Close issue #22.

@@ -1,6 +1,7 @@
 // Tests of the release gate (release-only-app-changes, issue #22): scripts/ci/app-changed.sh, which decides whether a
-// range changes the app, and scripts/release-notes.sh, which leaves out changes archived without an app change. Each
-// runs in a throwaway git repository with the scripts copied in. Run with: node --test 'scripts/*.test.mjs'
+// range changes the app; scripts/ci/release-skips.sh, which records the merges that didn't as dist-skip-v* tags; and
+// scripts/release-notes.sh, which leaves out exactly the changes archived by a recorded skip. Each runs in a throwaway
+// git repository with the scripts copied in. Run with: node --test 'scripts/*.test.mjs'
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, chmodSync } from 'node:fs';
@@ -14,7 +15,7 @@ const scripts = dirname(fileURLToPath(import.meta.url));
 /** A throwaway repository with the release scripts and a first commit holding a little of everything. */
 function repo() {
   const root = mkdtempSync(join(tmpdir(), 'release-gate-'));
-  for (const script of ['release-notes.sh', 'ci/app-changed.sh']) {
+  for (const script of ['release-notes.sh', 'ci/app-changed.sh', 'ci/release-skips.sh']) {
     mkdirSync(dirname(join(root, 'scripts', script)), { recursive: true });
     copyFileSync(join(scripts, script), join(root, 'scripts', script));
     chmodSync(join(root, 'scripts', script), 0o755);
@@ -114,35 +115,81 @@ test('a commit that does not exist is an error, not "unchanged"', () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-// ---- release-notes.sh: archived changes, only when their archiving commit changed the app
+// ---- release-skips.sh: the recorded decisions
+
+const tags = (root) => git(root, 'tag', '-l', 'dist-skip-v*').split('\n').filter(Boolean);
+const skipped = (root, sha) => git(root, 'tag', '--points-at', sha, '-l', 'dist-skip-v*') !== '';
+
+test('a merge that changed no app path is recorded as a skip; one that did is not', () => {
+  const root = repo();
+  git(root, 'tag', 'dist-v1-base');
+  const docs = commit(root, 'docs', { 'docs/README.md': 'more docs' });
+  const app = commit(root, 'app', { 'shared/src/commonMain/App.kt': 'more app' });
+  const { status, stdout } = sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
+  assert.equal(status, 0);
+  assert.equal(stdout.trim(), tags(root)[0]);
+  assert.equal(skipped(root, docs), true);
+  assert.equal(skipped(root, app), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('a recorded decision is not made again', () => {
+  const root = repo();
+  git(root, 'tag', 'dist-v1-base');
+  commit(root, 'docs', { 'docs/README.md': 'more docs' });
+  sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
+  const second = sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
+  assert.equal(second.stdout.trim(), '');
+  assert.equal(tags(root).length, 1);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('only merges since the last distribution are judged', () => {
+  const root = repo();
+  commit(root, 'old docs', { 'docs/README.md': 'old docs' });
+  git(root, 'tag', 'dist-v2-old');
+  commit(root, 'new docs', { 'docs/README.md': 'new docs' });
+  sh(root, 'ci/release-skips.sh', 'dist-v2-old', 'HEAD');
+  assert.equal(tags(root).length, 1);
+  rmSync(root, { recursive: true, force: true });
+});
+
+// ---- release-notes.sh: every archived change but those archived by a recorded skip
 
 const archive = (name) => ({ [`openspec/changes/archive/${name}/proposal.md`]: '# Proposal' });
 
-test('a change archived together with app code is listed', () => {
+test('a change archived by a recorded skip is left out; the rest are listed', () => {
   const root = repo();
-  commit(root, 'feature', { ...archive('2026-10-12-add-widgets'), 'shared/src/commonMain/Widgets.kt': 'widgets' });
+  git(root, 'tag', 'dist-v1-base');
+  commit(root, 'tooling', { ...archive('2026-10-12-tooling'), 'docs/README.md': 'tooling docs' });
+  commit(root, 'feature', { ...archive('2026-10-12-feature'), 'shared/src/commonMain/Widgets.kt': 'widgets' });
+  sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
   const { status, stdout } = sh(root, 'release-notes.sh', 'HEAD');
   rmSync(root, { recursive: true, force: true });
   assert.equal(status, 0);
-  assert.equal(stdout.trim(), '2026-10-12-add-widgets');
+  assert.equal(stdout.trim(), '2026-10-12-feature');
 });
 
-test('a change archived without app code is left out', () => {
+test('a change from a merge never judged is collected, not silently dropped', () => {
+  // No release run recorded anything for it (its run failed, say): only an explicit skip leaves notes out.
   const root = repo();
-  commit(root, 'tooling', { ...archive('2026-10-12-ratchet-docs'), 'docs/README.md': 'tooling docs' });
-  const { status, stdout } = sh(root, 'release-notes.sh', 'HEAD');
-  rmSync(root, { recursive: true, force: true });
-  assert.equal(status, 0);
-  assert.equal(stdout.trim(), '');
-});
-
-test('only changes archived since the last distribution count, and only the ones that changed the app', () => {
-  const root = repo();
-  commit(root, 'old feature', { ...archive('2026-10-01-old'), 'shared/src/commonMain/Old.kt': 'old' });
-  git(root, 'tag', 'dist-v3-old');
-  commit(root, 'tooling', archive('2026-10-12-tooling'));
-  commit(root, 'feature', { ...archive('2026-10-12-feature'), 'androidApp/src/main/Feature.kt': 'feature' });
+  git(root, 'tag', 'dist-v1-base');
+  commit(root, 'tooling', { ...archive('2026-10-12-tooling'), 'docs/README.md': 'tooling docs' });
   const { stdout } = sh(root, 'release-notes.sh', 'HEAD');
   rmSync(root, { recursive: true, force: true });
-  assert.equal(stdout.trim(), '2026-10-12-feature');
+  assert.equal(stdout.trim(), '2026-10-12-tooling');
+});
+
+test('an app merge that was not released is collected into the next release', () => {
+  // dist-v1 released; "missed" changed the app but its release failed (no tag); a docs merge was skipped; "next"
+  // is released: its notes carry "missed" too, and not the skipped docs merge.
+  const root = repo();
+  git(root, 'tag', 'dist-v1-base');
+  commit(root, 'missed', { ...archive('2026-10-11-missed'), 'androidApp/src/main/Missed.kt': 'missed' });
+  commit(root, 'tooling', { ...archive('2026-10-11-tooling'), 'scripts/tool.sh': 'tool' });
+  commit(root, 'next', { ...archive('2026-10-12-next'), 'shared/src/commonMain/Next.kt': 'next' });
+  sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
+  const { stdout } = sh(root, 'release-notes.sh', 'HEAD');
+  rmSync(root, { recursive: true, force: true });
+  assert.deepEqual(stdout.trim().split('\n'), ['2026-10-11-missed', '2026-10-12-next']);
 });
