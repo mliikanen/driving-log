@@ -51,14 +51,20 @@ that photo. An event with no photo SHALL show no photo section.
 - **THEN** the screen shows no photo section
 
 ### Requirement: The details screen shows a "Refueling" event's fuel details
-The system SHALL show, on the details screen of a "Refueling" event, its fuel amount (in the unit it was entered
-in), its fuel type, whether it was a full fill-up, and, when it carries one, its mileage reading — shown the same
-way a "Distance" or "Odometer reading" event's own reading or distance is shown (`event-details`, "A logged event's
-details can be viewed"). A "Refueling" event saved with no mileage SHALL show no mileage line.
+The system SHALL show, on the details screen of a refueling's entry, its fuel amount (in the unit it was entered
+in), its fuel type, whether it was a full fill-up, and, when the entry holds a "Distance" or "Odometer reading"
+event as well, that event's figure as its mileage line — shown the same way a "Distance" or "Odometer reading"
+event's own reading or distance is shown (`event-details`, "A logged event's details can be viewed"). The screen
+SHALL be the same whether it was opened from the entry's "Refueling" row or from its mileage row. A refueling saved
+with no mileage SHALL show no mileage line.
 
 #### Scenario: A refueling's details
 - **WHEN** the user opens the details screen of a "Refueling" event of 42.3 L, Diesel, filled up, with a trip-distance mileage of 30 km
 - **THEN** the screen shows "42.3 L," "Diesel," that it was a full fill-up, and "+30 km" as its mileage
+
+#### Scenario: Opened from the mileage row
+- **WHEN** the user taps the "Distance" row of a refueling logged with a trip-distance mileage of 30 km
+- **THEN** the screen shows the refueling's fuel amount, fuel type and fill-up state, and "+30 km" as its mileage, exactly as when opened from its "Refueling" row
 
 #### Scenario: No mileage line without one
 - **WHEN** the user opens the details screen of a "Refueling" event saved with no mileage
@@ -73,7 +79,9 @@ its photo strip (the same element `distance-logging`'s "Photos can be added to t
 describes, seeded with the event's current photos, up to the same 5-photo cap, each removable with the same
 confirmation). The edit screen SHALL offer an explicit "Save" action that stores the note text and the resulting set
 of photos together, and leaving the edit screen without saving SHALL leave the event's note and photos exactly as
-they were. For a "Refueling" event, Edit's scope is unchanged by this: its fuel amount, fuel type, "filled up" state
+they were. The note and photos edited are those of the event's entry (`vehicle-log`, "Events of one entry share one
+note and one set of photos"): saving changes them for every event of the entry, whichever row the details screen
+was opened from. For a "Refueling" event, Edit's scope is unchanged by this: its fuel amount, fuel type, "filled up" state
 and mileage (or the absence of one) are fixed once saved and are never offered on the edit screen — only its note
 and photos can be changed, the same as for a "Distance" or "Odometer reading" event.
 
@@ -112,3 +120,7 @@ and photos can be changed, the same as for a "Distance" or "Odometer reading" ev
 #### Scenario: Editing a refueling never changes its fuel data
 - **WHEN** the user taps "Edit" on a "Refueling" event, changes only its note, and taps "Save"
 - **THEN** the details screen shows the changed note, and the event's fuel amount, fuel type, "filled up" state and mileage are exactly as they were before
+
+#### Scenario: Editing from the mileage row changes the shared note
+- **WHEN** a refueling was logged with a trip-distance mileage, and the user opens the details from its "Distance" row, taps "Edit," changes the note and taps "Save"
+- **THEN** both the "Refueling" row and the "Distance" row show the note icon, and the details screen opened from either shows the changed note
