@@ -19,6 +19,12 @@ change touches no app code, so no manifest covers it.
 
 - [x] 3.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh`, without Maestro. Verify: both succeed.
 
+## 4. Review fixes
+
+- [x] 4.1 The ratchet fails loudly instead of skipping a spec it cannot read (Copilot): only a missing spec file is skipped; any `openspec show` failure exits 2. Verify: the test "a main spec OpenSpec cannot read fails the check rather than being skipped" passes.
+- [x] 4.2 The main specs are compared with the base, so an archived change cannot bring in a new or longer requirement over 500 characters (Copilot; design Decision 2b); CI's `spec-validation` checks out full history; `docs/test-strategy.md` says so. Verify: the four "archived change" tests and "without a base … fails" pass, and the check run on #17's merge against its parent reports the seven requirements it grew.
+- [x] 4.3 `scripts/validate-specs.sh` stops when it cannot enter the project root (Copilot). Verify: the test "a project root that does not exist fails the validation" passes.
+
 ## Workflow follow-up
 
 - After merging: `add-vehicle-hiding` splits its two new requirements over 500 characters before its next push passes.

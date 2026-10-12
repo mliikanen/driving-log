@@ -86,9 +86,16 @@ the script validates in three steps, and fails if any fails:
   new requirement over 500 characters or an unknown `.openspec.yaml` key included.
 - **The main specs, leniently** (`openspec validate --specs`): errors fail it; the existing long-requirement warnings
   are shown and pass.
-- **No long requirement grows** (`scripts/check-requirement-length.mjs`): OpenSpec does not length-check a MODIFIED
-  requirement, so this fails a change whose modified requirement is over 500 characters and longer than in the main
-  spec. Unchanged or shorter text passes: adding a scenario to a long requirement does not force splitting it.
+- **No long requirement is new or grows** (`scripts/check-requirement-length.mjs`), checked twice:
+  - in an active change: OpenSpec does not length-check a MODIFIED requirement, so this fails one that is over 500
+    characters and longer than in the main spec;
+  - in the main specs against the base (`main`): once a change is archived its deltas are in the main specs and the
+    change is no longer active, so this fails any main-spec requirement over 500 characters that is new or longer than
+    on `main`. A renamed long requirement counts as new. The base is the merge base with `origin/main` (fetch first),
+    the previous commit on `main` itself, or `SPEC_BASE` when set; CI checks out full history for it.
+
+  Unchanged or shorter text passes: adding a scenario to a long requirement does not force splitting it, but adding
+  words to one does. A change that rewords a long requirement splits it (or shortens it) in the same change.
 
 So a long requirement can only get shorter. Issue #13 splits the existing ones; its last change replaces the script's
 steps with `openspec validate --all --strict` and deletes the length check.

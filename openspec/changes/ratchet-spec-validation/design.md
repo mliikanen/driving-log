@@ -56,6 +56,16 @@ is already an OpenSpec error, so the script skips it rather than reporting it tw
 a copy would drift. *Alternative:* a Gradle task. Rejected: the spec-validation job deliberately needs only Node and
 the CLI, so it reports in under a minute.
 
+### 2b. The main specs are also compared with the base (review finding)
+
+The delta comparison alone is bypassed by the workflow itself: `/opsx:archive` is the last commit before merging, so
+on the commit that merges, the change is no longer active and its text is already in the main specs, which are
+validated leniently. The ratchet therefore also compares every main-spec requirement over 500 characters with the
+base's main spec (`git archive <base> openspec/specs`, read with the same `openspec show --json`): it must exist there,
+no shorter. The base is `SPEC_BASE`, else the merge base with `origin/main`, else (on `main` itself) `HEAD^1`; without
+one the check fails rather than passes. CI's `spec-validation` job checks out full history. Checked on the merge of
+#17: `atomic-log-events` would have failed on seven requirements it made longer.
+
 ### 3. `scripts/validate-specs.sh` is the only entry point
 
 ```sh
@@ -74,6 +84,8 @@ with `openspec validate --all --strict` and deletes the `.mjs`.
   requirements. The others either have no spec deltas or none over the limit; they'll find out on their next CI run.
 - [Main-spec warnings stay invisible as failures until #13 is done] → They are still printed, and the ratchet stops
   them growing. #13 brings full `--strict` back.
+- [Every change that rewords a long requirement now has to split it] → Intended: the backlog shrinks as features touch
+  it, alongside #13's batches. Adding a scenario without changing the text still passes.
 - [`openspec show` JSON shape changes in a later OpenSpec] → The script fails loudly when an expected field is missing
   rather than passing silently, and the CLI version is pinned in CI and bumped deliberately.
 
