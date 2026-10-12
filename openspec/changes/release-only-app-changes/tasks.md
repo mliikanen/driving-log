@@ -13,15 +13,15 @@ the preview on this change's own pull request.
 
 - [x] 2.1 `release.yml`: after the already-tagged check, publish nothing (no tag, summary "Nothing to release: no change to the app since …") when `app-changed.sh` says the range since the last `dist-v*` tag changed no app path (design Decision 2). Verify: the YAML is valid and the step reads as described; the preview (2.3) exercises the same script.
 - [x] 2.2 Notes filtering (design Decision 2): `choose-release-notes.sh` skips a merged pull request whose merge commit changed no app path; `release-notes.sh` skips an archived change whose archiving commit changed no app path. Add tests for `release-notes.sh` to the test file: an archived change whose commit also changed app code is listed, one archived alone is not. Verify: the tests pass, and `scripts/release-notes.sh` on `main` prints nothing since `dist-v207-bf6a4d0` (the one change archived since, `ratchet-spec-validation`, changed no app path).
-- [ ] 2.3 `release-notes-preview.sh` (design Decision 3): "Nothing to release: this merge changes no app code" when `app-changed.sh HEAD^1 HEAD` says so. Verify: this change's own pull request's `release-notes` check shows that message.
+- [x] 2.3 `release-notes-preview.sh` (design Decision 3): "Nothing to release: this merge changes no app code" when `app-changed.sh HEAD^1 HEAD` says so. Verify: this change's own pull request's `release-notes` check shows that message (reproduced locally: the script on GitHub's merge of #23 into `main` prints "Nothing to release: no change to the app since dist-v208-b9f51f7, this pull request included"; the check-run API doesn't expose job summaries).
 
 ## 3. Docs
 
-- [ ] 3.1 `docs/app-distribution.md` ("Publishing from CI": the app-change rule and where the path list lives; "Release notes": what is left out) and `docs/distribution.md` ("Cutting a release": a merge that changes no app code publishes nothing). Verify: both describe the rule as implemented, and name `scripts/ci/app-changed.sh`.
+- [x] 3.1 `docs/app-distribution.md` ("Publishing from CI": the app-change rule and where the path list lives; "Release notes": what is left out) and `docs/distribution.md` ("Cutting a release": a merge that changes no app code publishes nothing). Verify: both describe the rule as implemented, and name `scripts/ci/app-changed.sh`.
 
 ## 4. Final regression run
 
-- [ ] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh`, without Maestro. Verify: both succeed.
+- [x] 4.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh`, without Maestro. Verify: both succeed.
 
 ## Workflow follow-up
 

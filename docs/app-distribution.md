@@ -79,7 +79,8 @@ they're plain lambda captures instead of script-class fields.
 This is a requirement, not a convenience default — the distribution script does not accept freely hand-typed notes
 as its normal path. `scripts/distribute.sh` finds the most recent `dist-v<versionName>` tag (or, on the first-ever
 distribution, uses the whole history), and lists the OpenSpec changes newly archived since then as the draft, which
-the developer reviews and edits before uploading. **The one exception**: if nothing was archived since the last
+the developer reviews and edits before uploading. A change archived by a commit that changed nothing in the app
+(`scripts/ci/app-changed.sh`) is left out of the draft; running the script still publishes, since a person chose to. **The one exception**: if nothing was archived since the last
 distribution, there's nothing to generate, and the developer types notes by hand instead.
 
 Considered and rejected: a hand-curated `RELEASE_NOTES.md` "Unreleased" section updated by the archive skill.
@@ -111,13 +112,18 @@ Every merge to `main` publishes to the testers, with no developer machine involv
   `main` (each merge), and by hand (*Run workflow*). Either way it publishes **the newest commit on `main` whose PR
   check passed**, so checks finishing out of order, or one release replacing a waiting one, never leave a newer
   commit unpublished. One release runs at a time, and no run publishes a commit older than one already distributed.
-- **Nothing to say, nothing published.** When no change was archived since the last `dist-v*` tag and the merged PR
-  has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag, and the run's
-  summary says so. A commit that is already tagged isn't published again.
-- **Release notes.** Everything since the last distribution: each PR merged since then contributes its
-  `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
-  and every other archived change is listed by name (`scripts/release-notes.sh`, the same generation the local script
-  drafts from). So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
+- **No change to the app, nothing published** (`release-only-app-changes`). A release needs something that ends up in
+  the APK to have changed since the last `dist-v*` tag: `shared/` and `androidApp/` (not their tests, `shared`'s iOS
+  sources or the `fake` flavor), `gradle/` (dependency versions, the wrapper) and the root build files. The list is
+  `scripts/ci/app-changed.sh`, the one place that decides it. A merge of docs, specs, tests, Maestro flows, scripts or
+  CI publishes nothing and creates no tag, whatever it archives, and the run's summary says "no change to the app".
+- **Nothing to say, nothing published.** Likewise when the app changed but there are no notes (no change archived
+  since the last tag and no `## Release notes` section, a dependency bump say). A commit that is already tagged isn't
+  published again.
+- **Release notes.** Everything since the last distribution that changed the app: each PR merged since then whose
+  own commit changed an app path contributes its `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
+  and every other change archived by a commit that changed the app is listed by name (`scripts/release-notes.sh`, the
+  same generation the local script drafts from). A docs or tooling PR merged in between adds nothing to the notes. So a release that replaced a waiting one still carries both PRs' notes. The PR's `release-notes` check shows that text in its job summary, so it's reviewed before
   merging: that is the review the local script does in `$EDITOR`.
 - **Secrets** live in the `firebase-deployment` GitHub environment, which only `main` can enter (no pull request, even
   one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,
