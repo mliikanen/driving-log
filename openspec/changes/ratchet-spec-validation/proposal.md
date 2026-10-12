@@ -17,6 +17,9 @@ says it will get one, so the project has to stop the growth itself before issue 
 - **A long requirement can only get shorter.** OpenSpec does not length-check a MODIFIED requirement. A new script
   fails the validation when a change's MODIFIED requirement is over 500 characters and longer than the same
   requirement in the main spec. Unchanged text (a change that only adds a scenario) still passes.
+- **The rules live in the docs, not in a spec.** `docs/test-strategy.md` says what the validation checks and why, and
+  the scripts' tests hold the exact cases. How long a requirement may be is about how the project is built, which
+  `CLAUDE.md` puts in `docs/`, not `openspec/specs/`.
 - **One command runs the whole validation:** `scripts/validate-specs.sh`, used by CI's `spec-validation` job, the
   herd's gate, and everywhere the final regression run is written down (`CLAUDE.md`, the tasks rule in
   `openspec/config.yaml`, `docs/test-strategy.md`, `docs/change-workflow.md`). When #13 is done, its last change
@@ -31,14 +34,10 @@ Out of scope:
 
 ## Capabilities
 
-### New Capabilities
-
-None.
-
-### Modified Capabilities
-
-- `test-strategy`: what the spec validation checks (strict for changes, the length ratchet, lenient main specs until
-  #13 is done), and the CI requirement's spec-validation scenario.
+None: `skip_specs: true`. The app's behavior does not change, and the validation rules are tooling, documented in
+`docs/test-strategy.md`. One existing scenario goes slightly out of date: `test-strategy`'s "A spec is invalid" names
+`openspec validate --all`, while CI will run `scripts/validate-specs.sh`, which still fails on every error that
+scenario covers. #13's last batch brings `openspec validate --all --strict` back, which makes it literal again.
 
 ## Impact
 
