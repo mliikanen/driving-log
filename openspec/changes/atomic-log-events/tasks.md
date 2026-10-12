@@ -34,4 +34,4 @@ green. Before touching tests, read `docs/test-strategy.md`; before the migration
 ## Workflow follow-up
 
 - Reviewer's check: `maestro/run.sh distance` on the `fake` flavor (`docs/change-workflow.md`).
-- After review: `/opsx:archive` as the last commit, then merge. Close or rewrite `generalize-vehicle-event-model`.
+- After review: `/opsx:archive` as the last commit, then merge.

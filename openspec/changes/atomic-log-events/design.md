@@ -243,8 +243,8 @@ migration. The Maestro fixtures are regenerated (`./gradlew :shared:generateMaes
 
 ## Relation to in-flight changes
 
-- `generalize-vehicle-event-model` (stub): answered in the other direction (Decision 1). Close or rewrite it once
-  this is accepted.
+- `generalize-vehicle-event-model` (stub): answered in the other direction (Decision 1); the stub has been
+  discarded.
 - `add-trip-logging` (stub): a trip remains a record of its own, a span, not an event or a container. Whether
   membership is derived from the span or stored as a reference is its open question 2. If it is a reference, it goes
   on `log_entry`, so a refueling and its mileage join a trip together. Either way, a trip's distance is the sum of

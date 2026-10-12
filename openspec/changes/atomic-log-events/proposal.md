@@ -91,9 +91,9 @@ facts (still only an entry's note and photos can be edited).
 - **UI**: `EventRowContent` (refueling rows lose nothing, a mileage row is an ordinary Distance/Odometer reading
   row, an odometer reading's label and Edit action follow its entry's source), `EventDetailsProcessor`/`EventDetailsScreen` read the entry.
 - **Maestro**: the `distance` manifest's refueling steps in `log-distance.yaml` assert the second row.
-- **In-flight changes**: this settles the open question of `generalize-vehicle-event-model` in the opposite
-  direction (atomic events grouped by entry, rather than a container event with facets); that stub should be
-  closed or rewritten once this is accepted. `sweep-event-pictures` is unaffected in substance (its query reads
+- **In-flight changes**: this settles the open question of the `generalize-vehicle-event-model` stub in the
+  opposite direction (atomic events grouped by entry, rather than a container event with facets); that stub has been
+  discarded. `sweep-event-pictures` is unaffected in substance (its query reads
   `event_picture.id`). `add-trip-logging` already proposes a trip as a record of its own (a span with a start and an
   end), not as a container event. Whether membership is derived from the span (an entry dated between start and end
   belongs to it) or stored as a reference is its own open question 2; either way the unit of membership is the
