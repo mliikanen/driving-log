@@ -79,5 +79,6 @@ Only when no existing fixture fits (see "Reuse" above):
 open while its file is replaced), `adb shell pm clear` (a known-empty starting point, the same guarantee
 `clearState: true` gives a UI-driven flow), then `adb push` to a staging path and `run-as ... cp` into the app's
 private storage (a plain `adb push` cannot write there directly) — the database file and every picture fixture
-file. Nothing is cleaned up after a fixture-seeded flow finishes; its resulting state (whatever the flow's own
+file. Only then does the flow launch the app (with `clearState: false`, so what was just placed stays). Nothing is
+cleaned up after a fixture-seeded flow finishes; its resulting state (whatever the flow's own
 steps changed) is left on the device for inspection, the same as any other flow today.

@@ -112,8 +112,8 @@ Every merge to `main` publishes to the testers, with no developer machine involv
   check passed**, so checks finishing out of order, or one release replacing a waiting one, never leave a newer
   commit unpublished. One release runs at a time, and no run publishes a commit older than one already distributed.
 - **Nothing to say, nothing published.** When no change was archived since the last `dist-v*` tag and the merged PR
-  has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag. A commit that
-  is already tagged isn't published again.
+  has no `## Release notes` section (a docs or tooling merge), it publishes nothing and creates no tag, and the run's
+  summary says so. A commit that is already tagged isn't published again.
 - **Release notes.** Everything since the last distribution: each PR merged since then contributes its
   `## Release notes` section when it has one (the herd's reviewer writes it; a person can edit it before merging),
   and every other archived change is listed by name (`scripts/release-notes.sh`, the same generation the local script
@@ -123,7 +123,8 @@ Every merge to `main` publishes to the testers, with no developer machine involv
   one that edits a workflow, can read them): the real `google-services.json`, the release keystore and its password,
   base64-encoded where they're files. The job writes them to the same paths the build reads locally
   (`androidApp/src/production/`, `~/.android-keystores/`), so the Gradle build is the same as on a laptop. The
-  keystore is the one standing credential this adds, added with explicit sign-off.
+  keystore is the one standing credential this adds, added with explicit sign-off. When one of them, or the upload
+  identity below, isn't configured, the run fails before building anything, names what is missing, and creates no tag.
 - **Upload identity.** A dedicated service account whose only role is Firebase App Distribution Admin, impersonated
   through Workload Identity Federation by this repository's `firebase-deployment` runs only. Its provider and email
   are environment *variables* (`WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`), not secrets.
