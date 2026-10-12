@@ -100,7 +100,7 @@ class KnownOdometerTest {
     fun eventsAtTheSameInstantInDifferentZonesCountInTheOrderOfTheList() {
         val helsinki = ZonedMoment.of(at(2_000), TimeZone.of("Europe/Helsinki"))
         val newYork = ZonedMoment.of(at(2_000), TimeZone.of("America/New_York"))
-        val baseline = VehicleEvent.InitialOdometer("b", newYork, Distance(50_000_000))
+        val baseline = VehicleEvent.OdometerReading("b", newYork, Distance(50_000_000), EntrySource.VEHICLE_ADDED)
         val entry = VehicleEvent.DistanceEntry("e", helsinki, Distance(30_000))
 
         // The entry after the baseline in the list counts; the same entry before it is replaced by it.
@@ -138,31 +138,55 @@ class KnownOdometerTest {
         assertEquals(Distance(0), knownOdometerAt(log, at(1_000)))
     }
 
-    // Refueling (add-refueling-logging): its optional mileage participates exactly like a Distance entry's or an
-    // odometer anchor's own, and a refueling with no mileage does not participate at all.
+    // Refueling (add-refueling-logging, atomic-log-events): a refueling's mileage is an event of its own in the refueling's
+    // entry, which counts exactly like a Distance entry or an odometer reading; the refueling itself never counts.
 
     @Test
-    fun aRefuelingWithTripDistanceMileageAddsUpLikeADistanceEntry() {
-        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Added(Distance(30_000))))
+    fun aRefuelingEntryWithADistanceAddsUpLikeADistanceEntry() {
+        val log = listOf(initial, distanceEvent("r-mileage", 2_000, 30_000, entryId = "r"), refuelingEvent("r", 2_000, 42_300))
         assertEquals(Distance(45_230_000), currentOdometer(log))
     }
 
     @Test
-    fun aRefuelingWithNewOdometerMileageSetsTheOdometerLikeAnAnchor() {
-        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Anchor(Distance(50_000_000))))
+    fun aRefuelingEntryWithAnOdometerReadingSetsTheOdometer() {
+        val log = listOf(initial, anchorEvent("r-mileage", 2_000, 50_000_000, entryId = "r"), refuelingEvent("r", 2_000, 42_300))
         assertEquals(Distance(50_000_000), currentOdometer(log))
     }
 
     @Test
-    fun aRefuelingWithNoMileageDoesNotChangeTheOdometer() {
+    fun aRefuelingWithNoMileageEventDoesNotChangeTheOdometer() {
         val log = listOf(initial, refuelingEvent("r", 2_000, 42_300))
         assertEquals(Distance(45_200_000), currentOdometer(log))
     }
 
     @Test
     fun aRefuelingsMileageFollowsTheChosenTimeLikeADistanceEntrys() {
-        val log = listOf(initial, refuelingEvent("r", 2_000, 42_300, mileage = RefuelingMileage.Added(Distance(30_000))))
+        val log = listOf(initial, distanceEvent("r-mileage", 2_000, 30_000, entryId = "r"), refuelingEvent("r", 2_000, 42_300))
         assertEquals(Distance(45_200_000), knownOdometerAt(log, at(1_500)))
         assertEquals(Distance(45_230_000), knownOdometerAt(log, at(2_000)))
+    }
+
+    @Test
+    fun aTripThenAConfirmedLowerReadingInTheSameMinuteLeavesTheReading() {
+        // Entry order, not kind, decides between entries at the same instant (atomic-log-events, design Decision 5): the
+        // reading logged after the trip replaces the running total, as the lower-odometer confirmation promised.
+        val log = listOf(initial, distanceEvent("d", 2_000, 30_000), anchorEvent("a", 2_000, 44_000_000)).inLogOrder()
+        assertEquals(Distance(44_000_000), currentOdometer(log))
+    }
+
+    @Test
+    fun aTripInTheMinuteTheVehicleWasAddedCountsAfterTheInitialOdometer() {
+        val log = listOf(initial, distanceEvent("d", 1_000, 30_000)).inLogOrder()
+        assertEquals(Distance(45_230_000), currentOdometer(log))
+    }
+
+    @Test
+    fun theInitialOdometerAndALaterReadingAreBothBaselines() {
+        assertEquals(true, initial.isInitial)
+        val later = anchorEvent("a", 3_000, 45_300_000)
+        assertEquals(false, later.isInitial)
+        val log = listOf(initial, later)
+        assertEquals(Distance(45_200_000), knownOdometerAt(log, at(2_000)))
+        assertEquals(Distance(45_300_000), currentOdometer(log))
     }
 }

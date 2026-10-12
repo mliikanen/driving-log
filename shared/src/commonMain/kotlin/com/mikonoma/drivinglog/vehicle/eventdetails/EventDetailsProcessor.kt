@@ -1,8 +1,8 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
 import com.mikonoma.drivinglog.util.undoOnFailure
+import com.mikonoma.drivinglog.vehicle.domain.LogEntry
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
-import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleRepository
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraftEditor
 import com.mikonoma.drivinglog.vehicle.picture.ImageCodec
@@ -36,30 +36,33 @@ class EventDetailsProcessor(
     private val photoEditor = EventPhotoDraftEditor(eventPictures, codec)
 
     init {
-        // Both the vehicle (for its unit) and the event (by id) are re-observed live; either disappearing is
-        // "not found" — the event is the one this screen exists for, and its unit cannot be formatted without
+        // Both the vehicle (for its unit) and the event's entry are re-observed live; either disappearing is
+        // "not found" — the entry is the one this screen exists for, and its unit cannot be formatted without
         // the vehicle either.
-        val details = combine(repository.observeVehicle(vehicleId), repository.observeEvent(vehicleId, eventId)) { vehicle, event ->
-            vehicle to event
+        val details = combine(repository.observeVehicle(vehicleId), repository.observeEntry(vehicleId, eventId)) { vehicle, entry ->
+            vehicle to entry
         }
-        observe("event", details) { (vehicle, event) ->
-            if (vehicle == null || event == null) {
+        observe("event", details) { (vehicle, entry) ->
+            if (vehicle == null || entry == null) {
                 reduce { copy(isLoading = false, notFound = true) }
             } else {
-                val thumbnails = thumbnailsOf(event)
+                val thumbnails = thumbnailsOf(entry)
                 reduce {
-                    copy(isLoading = false, notFound = false, event = event, unit = vehicle.vehicle.odometerUnit, photoThumbnailUris = thumbnails)
+                    copy(isLoading = false, notFound = false, entry = entry, unit = vehicle.vehicle.odometerUnit, photoThumbnailUris = thumbnails)
                 }
             }
         }
     }
 
-    private suspend fun thumbnailsOf(event: VehicleEvent): List<Pair<String, String>> =
-        event.photoIds.mapNotNull { id -> eventPictures.uri(id, PictureSize.SMALL)?.let { id to it } }
+    private suspend fun thumbnailsOf(entry: LogEntry): List<Pair<String, String>> =
+        entry.photoIds.mapNotNull { id -> eventPictures.uri(id, PictureSize.SMALL)?.let { id to it } }
 
     override suspend fun map(intent: EventDetailsIntent): Action<EventDetailsState, EventDetailsEffect>? = when (intent) {
-        EventDetailsIntent.EditClicked -> reduce {
-            copy(edit = EventEditState(noteDraft = event?.note.orEmpty(), keptPhotos = photoThumbnailUris))
+        // Not for the entry saved when the vehicle was added, which never carries a note or photos.
+        EventDetailsIntent.EditClicked -> if (state.entry?.isEditable != true) {
+            null
+        } else {
+            reduce { copy(edit = EventEditState(noteDraft = entry?.note.orEmpty(), keptPhotos = photoThumbnailUris)) }
         }
 
         EventDetailsIntent.EditNoteOpened -> reduce { copy(edit = edit?.copy(noteEditorText = edit.noteDraft)) }
@@ -122,11 +125,12 @@ class EventDetailsProcessor(
         }
     }
 
-    /** Commits the edit session's note and final photo set together: only the note if it changed, only the photos
-     * that were actually added or removed this session — an unrelated field never gets touched. */
+    /** Commits the edit session's note and final photo set together, to the entry every one of its events shares: only
+     * the note if it changed, only the photos that were actually added or removed this session — an unrelated field never
+     * gets touched. */
     private fun editSaved(): Action<EventDetailsState, EventDetailsEffect>? {
         val edit = state.edit ?: return null
-        val originalEvent = state.event ?: return null
+        val originalEntry = state.entry ?: return null
         return async("edit-save") {
             reduce { copy(edit = edit.copy(isSaving = true)) }
             undoOnFailure(
@@ -136,19 +140,19 @@ class EventDetailsProcessor(
                 },
             ) {
                 val note = edit.noteDraft.ifBlank { null }
-                if (note != originalEvent.note) repository.updateEventNote(vehicleId, eventId, note)
+                if (note != originalEntry.note) repository.updateEventNote(vehicleId, eventId, note)
                 val keptIds = edit.keptPhotos.map { it.first }
-                val removedIds = originalEvent.photoIds.filter { it !in keptIds }
+                val removedIds = originalEntry.photoIds.filter { it !in keptIds }
                 for (id in removedIds) repository.removeEventPhoto(vehicleId, eventId, id)
                 for (pendingId in edit.newPhotos.pendingIds) repository.addEventPhoto(vehicleId, eventId, PendingPicture(pendingId))
             }
             // The live `observe("event", ...)` observer picks up the change too, but asynchronously (it needs its
-            // own round of photo URI lookups): closing the screen only after re-reading the event and its photos
+            // own round of photo URI lookups): closing the screen only after re-reading the entry and its photos
             // here too means the details screen never shows a stale photo list even for the one frame that would
             // otherwise pass before that observer catches up.
-            val freshEvent = repository.observeEvent(vehicleId, eventId).first()
-            val freshThumbnails = freshEvent?.let { thumbnailsOf(it) }.orEmpty()
-            reduce { copy(edit = null, event = freshEvent ?: event, photoThumbnailUris = freshThumbnails) }
+            val freshEntry = repository.observeEntry(vehicleId, eventId).first()
+            val freshThumbnails = freshEntry?.let { thumbnailsOf(it) }.orEmpty()
+            reduce { copy(edit = null, entry = freshEntry ?: entry, photoThumbnailUris = freshThumbnails) }
         }
     }
 

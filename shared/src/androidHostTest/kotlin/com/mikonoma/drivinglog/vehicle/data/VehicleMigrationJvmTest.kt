@@ -126,6 +126,20 @@ private val VERSION_11_SCHEMA = VERSION_10_SCHEMA + listOf(
     "ALTER TABLE vehicle_event ADD COLUMN filled_up INTEGER",
 )
 
+/** The schema as it was in version 12: version 11 plus the vehicle's own fuel type (vehicle-fuel-type). */
+private val VERSION_12_SCHEMA = VERSION_11_SCHEMA + listOf(
+    "ALTER TABLE vehicle ADD COLUMN vehicle_fuel_type TEXT NOT NULL DEFAULT 'PETROL'",
+)
+
+/** The version every test migrates to: the current schema. */
+private const val CURRENT_VERSION = 13L
+
+private val EVENT_COLUMNS = listOf(
+    "id", "vehicle_id", "entry_id", "type", "occurred_at", "odometer_meters", "created_at",
+    "distance_meters", "logged_odometer_meters", "occurred_zone", "occurred_offset_seconds",
+    "fuel_amount_milliliters", "fuel_unit", "fuel_type", "filled_up",
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleMigrationJvmTest {
 
@@ -169,14 +183,14 @@ class VehicleMigrationJvmTest {
     fun migratingKeepsTheExistingVehicleAndEvent() = runTest {
         val driver = versionOneDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 1, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 1, CURRENT_VERSION)
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
         assertEquals("Family car", vehicle.name)
         assertEquals("ABC-123", vehicle.licensePlate)
         assertEquals(OdometerUnit.KILOMETERS_TENTHS, vehicle.odometerUnit)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_300), event.reading)
         assertEquals(Instant.fromEpochMilliseconds(1_785_067_200_000), event.occurredAt.instant)
     }
@@ -185,7 +199,7 @@ class VehicleMigrationJvmTest {
     fun aMigratedEventHasNoZoneAndItsNewColumnsAreNull() = runTest {
         val driver = versionOneDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 1, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 1, CURRENT_VERSION)
 
         val event = repository(driver).observeLog("v1").first().single()
         assertNull(event.occurredAt.zone)
@@ -204,7 +218,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun theCurrentOdometerOfAMigratedVehicleIsStillItsReading() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 1, CURRENT_VERSION)
 
         assertEquals(Distance(45_200_300), repository(driver).observeVehicle("v1").first()?.currentOdometer)
     }
@@ -212,7 +226,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun aDistanceEntryWithAZoneCanBeAddedAfterMigrating() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 1, CURRENT_VERSION)
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("America/New_York"))
 
@@ -226,7 +240,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun aMigratedVehicleCanAlsoGetANewVehicleWithTheDeviceZone() = runTest {
         val driver = versionOneDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 1, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 1, CURRENT_VERSION)
         val repository = repository(driver)
 
         val id = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance(1_609_344))
@@ -236,7 +250,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedDatabaseHasTheSameTablesAsAFreshOne() {
-        val migrated = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) }
+        val migrated = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -244,18 +258,12 @@ class VehicleMigrationJvmTest {
     }
 
     @Test
-    fun aFreshDatabaseIsVersionTwelveWithTheNewColumns() {
+    fun aFreshDatabaseIsVersionThirteenWithTheNewColumns() {
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        assertEquals(12L, DrivingLogDatabase.Schema.version)
-        assertEquals(
-            listOf(
-                "id", "vehicle_id", "type", "occurred_at", "odometer_meters", "created_at",
-                "distance_meters", "logged_odometer_meters", "occurred_zone", "occurred_offset_seconds", "note",
-                "fuel_amount_milliliters", "fuel_unit", "fuel_type", "filled_up",
-            ),
-            columns(fresh, "vehicle_event"),
-        )
+        assertEquals(CURRENT_VERSION, DrivingLogDatabase.Schema.version)
+        assertEquals(EVENT_COLUMNS, columns(fresh, "vehicle_event"))
+        assertEquals(listOf("id", "source", "note", "created_at"), columns(fresh, "log_entry"))
         assertEquals(
             listOf(
                 "id", "name", "license_plate", "odometer_unit", "created_at", "updated_at", "log_distance_tenths",
@@ -263,7 +271,7 @@ class VehicleMigrationJvmTest {
             ),
             columns(fresh, "vehicle"),
         )
-        assertEquals(listOf("id", "event_id", "position", "created_at"), columns(fresh, "event_picture"))
+        assertEquals(listOf("id", "entry_id", "position", "created_at"), columns(fresh, "event_picture"))
         assertEquals(listOf("event_id", "photo_id", "detections"), columns(fresh, "event_capture"))
     }
 
@@ -287,7 +295,7 @@ class VehicleMigrationJvmTest {
     fun migratingFromVersionTwoKeepsTheVehicleAndItsZonedEvent() = runTest {
         val driver = versionTwoDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 2, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 2, CURRENT_VERSION)
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -299,8 +307,8 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedVehicleHasNoRememberedTenthsChoiceFromEitherOlderVersion() = runTest {
-        val fromOne = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) }
-        val fromTwo = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 12) }
+        val fromOne = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) }
+        val fromTwo = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, CURRENT_VERSION) }
 
         assertNull(repository(fromOne).observeVehicles().first().single().logDistanceTenths)
         assertNull(repository(fromTwo).observeVehicles().first().single().logDistanceTenths)
@@ -309,7 +317,7 @@ class VehicleMigrationJvmTest {
     @Test
     fun theTenthsChoiceCanBeRememberedAfterMigratingFromVersionTwo() = runTest {
         val driver = versionTwoDatabase()
-        DrivingLogDatabase.Schema.migrate(driver, 2, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 2, CURRENT_VERSION)
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki"))
 
@@ -320,7 +328,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionTwoDatabaseMigratedToSixHasTheSameTablesAsAFreshOne() {
-        val migrated = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 12) }
+        val migrated = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -347,7 +355,7 @@ class VehicleMigrationJvmTest {
     fun migratingFromVersionThreeKeepsTheVehicleItsTenthsChoiceAndItsEvent() = runTest {
         val driver = versionThreeDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 3, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 3, CURRENT_VERSION)
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -358,9 +366,9 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedVehicleHasNoPictureFromEveryOlderVersion() = runTest {
-        val fromOne = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) }
-        val fromTwo = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 12) }
-        val fromThree = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, 12) }
+        val fromOne = versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) }
+        val fromTwo = versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, CURRENT_VERSION) }
+        val fromThree = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, CURRENT_VERSION) }
 
         for (driver in listOf(fromOne, fromTwo, fromThree)) {
             val details = repository(driver).observeVehicle("v1").first()!!
@@ -371,7 +379,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedVehicleCanGetAPictureIdAndTheOdometerIsStillItsReading() = runTest {
-        val driver = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, 12) }
+        val driver = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehiclePicture("pic-1", 2000, "v1")
 
         val repository = repository(driver)
@@ -382,7 +390,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionThreeDatabaseMigratedToSixHasTheSameTablesAsAFreshOne() {
-        val migrated = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, 12) }
+        val migrated = versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -409,7 +417,7 @@ class VehicleMigrationJvmTest {
     fun migratingFromVersionFourKeepsTheVehicleItsPictureAndItsEvent() = runTest {
         val driver = versionFourDatabase()
 
-        DrivingLogDatabase.Schema.migrate(driver, 4, 12)
+        DrivingLogDatabase.Schema.migrate(driver, 4, CURRENT_VERSION)
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -422,10 +430,10 @@ class VehicleMigrationJvmTest {
     @Test
     fun aMigratedVehicleIsACarFromEveryOlderVersion() = runTest {
         val drivers = listOf(
-            versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) },
-            versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 12) },
-            versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, 12) },
-            versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) },
+            versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) },
+            versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, CURRENT_VERSION) },
+            versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, CURRENT_VERSION) },
+            versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) },
         )
 
         for (driver in drivers) {
@@ -436,7 +444,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedVehicleCanGetATypeAndItsOdometerIsStillItsReading() = runTest {
-        val driver = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) }
+        val driver = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehicleType("VAN", 2000, "v1")
 
         val repository = repository(driver)
@@ -446,7 +454,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aStoredCodeThisAppDoesNotKnowReadsAsOtherAfterMigrating() = runTest {
-        val driver = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) }
+        val driver = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehicleType("HOVERCRAFT", 2000, "v1")
 
         assertEquals(VehicleType.OTHER, repository(driver).observeVehicles().first().single().type)
@@ -456,7 +464,7 @@ class VehicleMigrationJvmTest {
     fun theDatabaseRejectsAVehicleWithoutAType() {
         for (driver in listOf(
             memoryDriver().also { DrivingLogDatabase.Schema.create(it) },
-            versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) },
+            versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) },
         )) {
             assertFails {
                 driver.execute(
@@ -485,7 +493,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionFourDatabaseMigratedToSevenHasTheSameTablesAsAFreshOne() {
-        val migrated = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) }
+        val migrated = versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -526,7 +534,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionSixKeepsTheVehicleItsColorAndItsEventAndAddsAnEmptyAppStateTable() = runTest {
-        val driver = versionSixDatabase().also { DrivingLogDatabase.Schema.migrate(it, 6, 12) }
+        val driver = versionSixDatabase().also { DrivingLogDatabase.Schema.migrate(it, 6, CURRENT_VERSION) }
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -544,7 +552,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionSixDatabaseMigratedToEightHasTheSameTablesAsAFreshOneIncludingAppState() {
-        val migrated = versionSixDatabase().also { DrivingLogDatabase.Schema.migrate(it, 6, 12) }
+        val migrated = versionSixDatabase().also { DrivingLogDatabase.Schema.migrate(it, 6, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
@@ -570,16 +578,16 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionSevenKeepsTheVehicleItsColorAndItsEventAndAddsAnEmptyNoteColumn() = runTest {
-        val driver = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, 12) }
+        val driver = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, CURRENT_VERSION) }
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
         assertEquals("Family car", vehicle.name)
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.Rgb(0xE53935), vehicle.color)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
         assertNull(
-            driver.executeQuery(null, "SELECT note FROM vehicle_event WHERE id = 'e1'", { cursor ->
+            driver.executeQuery(null, "SELECT note FROM log_entry WHERE id = 'e1'", { cursor ->
                 cursor.next()
                 QueryResult.Value(cursor.getString(0))
             }, 0).value,
@@ -588,25 +596,18 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionSevenDatabaseMigratedToEightHasTheSameTablesAsAFreshOneIncludingTheNoteColumn() {
-        val migrated = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, 12) }
+        val migrated = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
         assertEquals(columns(fresh, "vehicle_event"), columns(migrated, "vehicle_event"))
         assertEquals(columns(fresh, "app_state"), columns(migrated, "app_state"))
-        assertEquals(
-            listOf(
-                "id", "vehicle_id", "type", "occurred_at", "odometer_meters", "created_at", "distance_meters",
-                "logged_odometer_meters", "occurred_zone", "occurred_offset_seconds", "note",
-                "fuel_amount_milliliters", "fuel_unit", "fuel_type", "filled_up",
-            ),
-            columns(migrated, "vehicle_event"),
-        )
+        assertEquals(EVENT_COLUMNS, columns(migrated, "vehicle_event"))
     }
 
     @Test
     fun aDistanceEntryWithANoteCanBeAddedAfterMigratingFromVersionSeven() = runTest {
-        val driver = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, 12) }
+        val driver = versionSevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 7, CURRENT_VERSION) }
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki"))
 
@@ -634,30 +635,30 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionEightKeepsTheVehicleItsNoteAndAddsTheEventPictureTable() = runTest {
-        val driver = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, 12) }
+        val driver = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, CURRENT_VERSION) }
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
         assertEquals("Family car", vehicle.name)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
         assertEquals(emptyList(), event.photoIds)
     }
 
     @Test
     fun aVersionEightDatabaseMigratedToNineHasTheSameTablesAsAFreshOneIncludingEventPicture() {
-        val migrated = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, 12) }
+        val migrated = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
         assertEquals(columns(fresh, "vehicle_event"), columns(migrated, "vehicle_event"))
         assertEquals(columns(fresh, "app_state"), columns(migrated, "app_state"))
-        assertEquals(listOf("id", "event_id", "position", "created_at"), columns(migrated, "event_picture"))
+        assertEquals(listOf("id", "entry_id", "position", "created_at"), columns(migrated, "event_picture"))
     }
 
     @Test
     fun aDistanceEntryWithAPhotoCanBeAddedAfterMigratingFromVersionEight() = runTest {
-        val driver = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, 12) }
+        val driver = versionEightDatabase().also { DrivingLogDatabase.Schema.migrate(it, 8, CURRENT_VERSION) }
         val pictureStore = com.mikonoma.drivinglog.vehicle.picture.FakePictureStore()
         val repository = SqlDelightVehicleRepository(
             database = DrivingLogDatabase(driver),
@@ -695,21 +696,21 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionNineKeepsTheEventAndItsPhotoRowAndAddsTheCaptureTable() = runTest {
-        val driver = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, 12) }
+        val driver = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, CURRENT_VERSION) }
 
         val repository = repository(driver)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
-        assertEquals(listOf("p1"), DrivingLogDatabase(driver).eventPictureQueries.selectPhotoIdsForEvent("e1").executeAsList())
+        assertEquals(listOf("p1"), DrivingLogDatabase(driver).eventPictureQueries.selectPhotoIdsForEntry("e1").executeAsList())
         assertNull(repository.captureOf("e1"))
     }
 
     @Test
     fun aVersionNineDatabaseMigratedToTenHasTheSameTablesAsAFreshOne() {
-        val migrated = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, 12) }
+        val migrated = versionNineDatabase().also { DrivingLogDatabase.Schema.migrate(it, 9, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        for (table in listOf("vehicle", "vehicle_event", "app_state", "event_picture", "event_capture")) {
+        for (table in listOf("vehicle", "vehicle_event", "log_entry", "app_state", "event_picture", "event_capture")) {
             assertEquals(columns(fresh, table), columns(migrated, table), table)
         }
     }
@@ -732,26 +733,26 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionTenKeepsTheVehicleAndItsEvent() = runTest {
-        val driver = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, 12) }
+        val driver = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, CURRENT_VERSION) }
 
         val repository = repository(driver)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
     }
 
     @Test
     fun aVersionTenDatabaseMigratedToElevenHasTheSameTablesAsAFreshOne() {
-        val migrated = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, 12) }
+        val migrated = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        for (table in listOf("vehicle", "vehicle_event", "app_state", "event_picture", "event_capture")) {
+        for (table in listOf("vehicle", "vehicle_event", "log_entry", "app_state", "event_picture", "event_capture")) {
             assertEquals(columns(fresh, table), columns(migrated, table), table)
         }
     }
 
     @Test
     fun aRefuelingCanBeAddedAfterMigratingFromVersionTen() = runTest {
-        val driver = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, 12) }
+        val driver = versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, CURRENT_VERSION) }
         val repository = repository(driver)
         val moment = ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki"))
 
@@ -786,21 +787,21 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun migratingFromVersionElevenKeepsTheVehicleAndItsEvent() = runTest {
-        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) }
+        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) }
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
         assertEquals("Family car", vehicle.name)
-        val event = repository.observeLog("v1").first().single() as VehicleEvent.InitialOdometer
+        val event = repository.observeLog("v1").first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
     }
 
     @Test
     fun aMigratedVehicleIsPetrolFromEveryOlderVersion() = runTest {
         val drivers = listOf(
-            versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) },
-            versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, 12) },
-            versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) },
+            versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) },
+            versionTenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 10, CURRENT_VERSION) },
+            versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) },
         )
 
         for (driver in drivers) {
@@ -811,7 +812,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aMigratedVehicleCanGetAFuelTypeAndItsOdometerIsStillItsReading() = runTest {
-        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) }
+        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehicleFuelType("DIESEL", 2000, "v1")
 
         val repository = repository(driver)
@@ -821,7 +822,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aStoredFuelTypeCodeThisAppDoesNotKnowReadsAsOtherAfterMigrating() = runTest {
-        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) }
+        val driver = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehicleFuelType("ELECTRIC", 2000, "v1")
 
         assertEquals(VehicleFuelType.OTHER, repository(driver).observeVehicles().first().single().fuelType)
@@ -831,7 +832,7 @@ class VehicleMigrationJvmTest {
     fun theDatabaseRejectsAVehicleWithoutAFuelType() {
         for (driver in listOf(
             memoryDriver().also { DrivingLogDatabase.Schema.create(it) },
-            versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) },
+            versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) },
         )) {
             assertFails {
                 driver.execute(
@@ -860,25 +861,25 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionElevenDatabaseMigratedToTwelveHasTheSameTablesAsAFreshOne() {
-        val migrated = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, 12) }
+        val migrated = versionElevenDatabase().also { DrivingLogDatabase.Schema.migrate(it, 11, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
-        for (table in listOf("vehicle", "vehicle_event", "app_state", "event_picture", "event_capture")) {
+        for (table in listOf("vehicle", "vehicle_event", "log_entry", "app_state", "event_picture", "event_capture")) {
             assertEquals(columns(fresh, table), columns(migrated, table), table)
         }
     }
 
     private fun migratedFromEveryOlderVersion(): List<SqlDriver> = listOf(
-        versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, 12) },
-        versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, 12) },
-        versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, 12) },
-        versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, 12) },
-        versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) },
+        versionOneDatabase().also { DrivingLogDatabase.Schema.migrate(it, 1, CURRENT_VERSION) },
+        versionTwoDatabase().also { DrivingLogDatabase.Schema.migrate(it, 2, CURRENT_VERSION) },
+        versionThreeDatabase().also { DrivingLogDatabase.Schema.migrate(it, 3, CURRENT_VERSION) },
+        versionFourDatabase().also { DrivingLogDatabase.Schema.migrate(it, 4, CURRENT_VERSION) },
+        versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) },
     )
 
     @Test
     fun migratingFromVersionFiveKeepsTheVehicleItsTypeItsPictureAndItsEvent() = runTest {
-        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) }
+        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) }
 
         val repository = repository(driver)
         val vehicle = repository.observeVehicles().first().single()
@@ -900,14 +901,14 @@ class VehicleMigrationJvmTest {
     @Test
     fun aMigratedVehicleIsNotGivenAColorFromItsPicture() = runTest {
         // The version-5 vehicle has a picture; there is no backfill, so it has the default until the user acts.
-        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) }
+        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) }
 
         assertEquals(VehicleColors.default, repository(driver).observeVehicles().first().single().color)
     }
 
     @Test
     fun aMigratedVehicleCanGetAColorAndItsOdometerIsStillItsReading() = runTest {
-        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) }
+        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) }
         DrivingLogDatabase(driver).vehicleQueries.updateVehicleColor("E53935", 2000, "v1")
 
         val repository = repository(driver)
@@ -917,7 +918,7 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aStoredValueThatIsNotAColorReadsAsTheDefault() = runTest {
-        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) }
+        val driver = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) }
 
         for (bad in listOf("", "red", "#E53935", "E5393", "E539355", "GGGGGG")) {
             DrivingLogDatabase(driver).vehicleQueries.updateVehicleColor(bad, 2000, "v1")
@@ -930,7 +931,7 @@ class VehicleMigrationJvmTest {
     fun theDatabaseRejectsAVehicleWithoutAColor() {
         for (driver in listOf(
             memoryDriver().also { DrivingLogDatabase.Schema.create(it) },
-            versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) },
+            versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) },
         )) {
             assertFails {
                 driver.execute(
@@ -962,7 +963,7 @@ class VehicleMigrationJvmTest {
         // A migration cannot call Kotlin, so the default is a literal in the SQL; it must be the constant, in a fresh and in a migrated database.
         for (driver in listOf(
             memoryDriver().also { DrivingLogDatabase.Schema.create(it) },
-            versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) },
+            versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) },
         )) {
             val default = driver.executeQuery(
                 identifier = null,
@@ -979,10 +980,193 @@ class VehicleMigrationJvmTest {
 
     @Test
     fun aVersionFiveDatabaseMigratedToSevenHasTheSameTablesAsAFreshOne() {
-        val migrated = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, 12) }
+        val migrated = versionFiveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 5, CURRENT_VERSION) }
         val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
 
         assertEquals(columns(fresh, "vehicle"), columns(migrated, "vehicle"))
         assertEquals(columns(fresh, "vehicle_event"), columns(migrated, "vehicle_event"))
     }
+
+    // ---- Version 12 to 13: the log as atomic events grouped into entries (atomic-log-events)
+
+    /**
+     * A database as the previous build left it: the version-12 schema with a vehicle, its initial odometer, an odometer
+     * anchor, a distance entry with a note and a photo, and three refuelings (with a trip distance, with a new odometer
+     * count, with no mileage), the first with a note, a photo and a scan, all in the order they were added.
+     */
+    private fun versionTwelveDatabase(): SqlDriver {
+        val driver = memoryDriver()
+        VERSION_12_SCHEMA.forEach { driver.execute(null, it.trimIndent(), 0) }
+        driver.execute(null, "INSERT INTO vehicle VALUES ('v1', 'Family car', 'ABC-123', 'KILOMETERS', 1000, 1000, 1, NULL, 'CAR', 'E53935', 'DIESEL')", 0)
+        val columns = "id, vehicle_id, type, occurred_at, odometer_meters, created_at, distance_meters, logged_odometer_meters, " +
+            "occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up"
+        for (values in listOf(
+            "'initial', 'v1', 'INITIAL_ODOMETER', 1000000, 45200000, 1000000, NULL, NULL, 'Europe/Helsinki', 10800, NULL, NULL, NULL, NULL, NULL",
+            "'anchor', 'v1', 'ODOMETER_ANCHOR', 500000, 44000000, 1100000, NULL, NULL, 'Europe/Helsinki', 10800, 'reset', NULL, NULL, NULL, NULL",
+            "'trip', 'v1', 'DISTANCE', 2000000, NULL, 2000000, 30000, 45230000, 'Europe/Helsinki', 10800, 'to the cottage', NULL, NULL, NULL, NULL",
+            "'fill-trip', 'v1', 'REFUELING', 3000000, NULL, 3000000, 20000, NULL, 'America/New_York', -14400, 'cheap gas today', 42300, 'LITERS', 'DIESEL', 1",
+            "'fill-odo', 'v1', 'REFUELING', 4000000, 45400000, 4000000, NULL, NULL, 'Europe/Helsinki', 10800, NULL, 30000, 'GALLONS', 'DIESEL', 0",
+            "'fill-none', 'v1', 'REFUELING', 5000000, NULL, 5000000, NULL, NULL, NULL, NULL, NULL, 10000, 'LITERS', 'DIESEL', 1",
+        )) {
+            driver.execute(null, "INSERT INTO vehicle_event ($columns) VALUES ($values)", 0)
+        }
+        driver.execute(null, "INSERT INTO event_picture VALUES ('p-trip', 'trip', 0, 2000000)", 0)
+        driver.execute(null, "INSERT INTO event_picture VALUES ('p-fill', 'fill-trip', 0, 3000000)", 0)
+        driver.execute(null, "INSERT INTO event_capture VALUES ('fill-trip', 'scan-1', '{}')", 0)
+        return driver
+    }
+
+    @Test
+    fun aRefuelingWithATripDistanceIsSplitIntoARefuelingAndADistanceOfOneEntry() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+
+        val entry = repository(driver).observeEntry("v1", "fill-trip").first()!!
+        assertEquals("fill-trip", entry.id)
+        val distance = entry.events[0] as VehicleEvent.DistanceEntry
+        val refueling = entry.events[1] as VehicleEvent.Refueling
+        assertEquals("fill-trip-mileage", distance.id)
+        assertEquals(Distance(20_000), distance.distance)
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
+        // The same instant and zone for both.
+        assertEquals(refueling.occurredAt, distance.occurredAt)
+        assertEquals(EventZone("America/New_York", -4 * 3600), distance.occurredAt.zone)
+    }
+
+    @Test
+    fun aRefuelingWithANewOdometerIsSplitIntoARefuelingAndAnOdometerReadingOfOneEntry() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+
+        val entry = repository(driver).observeEntry("v1", "fill-odo").first()!!
+        val reading = entry.events[0] as VehicleEvent.OdometerReading
+        assertEquals(Distance(45_400_000), reading.reading)
+        assertEquals(false, reading.isInitial)
+        val refueling = entry.events[1] as VehicleEvent.Refueling
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.GALLONS, refueling.unit)
+        assertEquals(false, refueling.filledUp)
+    }
+
+    @Test
+    fun aRefuelingWithNoMileageStaysOneEvent() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+
+        assertEquals(listOf("fill-none"), repository(driver).observeEntry("v1", "fill-none").first()!!.events.map { it.id })
+    }
+
+    @Test
+    fun theCurrentOdometerIsUnchangedByTheMigration() = runTest {
+        // Before: the anchor (44 000 km, earliest), the initial odometer (45 200 km), +30 km, +20 km, then 45 400 km set.
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val repository = repository(driver)
+
+        assertEquals(Distance(45_400_000), repository.observeVehicle("v1").first()!!.currentOdometer)
+        assertEquals(
+            Distance(45_400_000),
+            com.mikonoma.drivinglog.vehicle.domain.currentOdometer(repository.observeLog("v1").first().reversed()),
+        )
+    }
+
+    @Test
+    fun theOdometerKnownBetweenTheEventsIsUnchanged() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val log = repository(driver).observeLog("v1").first().reversed()
+
+        // After the refueling's trip distance: 45 200 + 30 + 20 km.
+        assertEquals(
+            Distance(45_250_000),
+            com.mikonoma.drivinglog.vehicle.domain.knownOdometerAt(log, Instant.fromEpochMilliseconds(3_500_000)),
+        )
+    }
+
+    @Test
+    fun theInitialOdometerAndAnAnchorBecomeOdometerReadingsWithTheirSources() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val repository = repository(driver)
+
+        val initial = repository.observeEntry("v1", "initial").first()!!
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.EntrySource.VEHICLE_ADDED, initial.source)
+        assertEquals(true, (initial.primary as VehicleEvent.OdometerReading).isInitial)
+        assertEquals(false, initial.isEditable)
+        val anchor = repository.observeEntry("v1", "anchor").first()!!
+        assertEquals(com.mikonoma.drivinglog.vehicle.domain.EntrySource.LOG_FORM, anchor.source)
+        assertEquals(false, (anchor.primary as VehicleEvent.OdometerReading).isInitial)
+        assertEquals("reset", anchor.note)
+    }
+
+    @Test
+    fun notesAndPhotosMoveToTheEntryAndAreSharedByASplitRefuelingsEvents() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val log = repository(driver).observeLog("v1").first()
+
+        val trip = log.single { it.id == "trip" }
+        assertEquals("to the cottage", trip.note)
+        assertEquals(listOf("p-trip"), trip.photoIds)
+        for (id in listOf("fill-trip", "fill-trip-mileage")) {
+            val event = log.single { it.id == id }
+            assertEquals("cheap gas today", event.note, id)
+            assertEquals(listOf("p-fill"), event.photoIds, id)
+        }
+    }
+
+    @Test
+    fun aScanStaysWithTheEventItWasStoredUnder() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+
+        val rows = driver.executeQuery<List<Pair<String?, String?>>>(null, "SELECT event_id, photo_id FROM event_capture", { cursor ->
+            val found = mutableListOf<Pair<String?, String?>>()
+            while (cursor.next().value) found += cursor.getString(0) to cursor.getString(1)
+            QueryResult.Value(found)
+        }, 0).value
+        assertEquals(listOf("fill-trip" to "scan-1"), rows)
+    }
+
+    @Test
+    fun theMigratedLogListsASplitRefuelingAboveItsMileageAndKeepsEveryOtherEvent() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+
+        assertEquals(
+            listOf("fill-none", "fill-odo", "fill-odo-mileage", "fill-trip", "fill-trip-mileage", "trip", "initial", "anchor"),
+            repository(driver).observeLog("v1").first().map { it.id },
+        )
+    }
+
+    @Test
+    fun aVersionTwelveDatabaseMigratedToThirteenHasTheSameTablesAsAFreshOne() {
+        val migrated = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val fresh = memoryDriver().also { DrivingLogDatabase.Schema.create(it) }
+
+        for (table in listOf("vehicle", "vehicle_event", "log_entry", "app_state", "event_picture", "event_capture")) {
+            assertEquals(columns(fresh, table), columns(migrated, table), table)
+        }
+        assertEquals(indexes(fresh), indexes(migrated))
+    }
+
+    @Test
+    fun aRefuelingWithMileageCanBeAddedAfterMigrating() = runTest {
+        val driver = versionTwelveDatabase().also { DrivingLogDatabase.Schema.migrate(it, 12, CURRENT_VERSION) }
+        val repository = repository(driver)
+
+        val id = repository.addRefueling(
+            "v1",
+            ZonedMoment.of(Instant.parse("2026-09-20T13:00:00Z"), TimeZone.of("Europe/Helsinki")),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(40_000),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(100_000)),
+        )
+
+        assertEquals(2, repository.observeEntry("v1", id).first()!!.events.size)
+        assertEquals(Distance(45_500_000), repository.observeVehicle("v1").first()!!.currentOdometer)
+    }
+
+    private fun indexes(driver: SqlDriver): List<String> = driver.executeQuery(
+        identifier = null,
+        sql = "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        mapper = { cursor ->
+            val names = mutableListOf<String>()
+            while (cursor.next().value) names += cursor.getString(0)!!
+            QueryResult.Value(names)
+        },
+        parameters = 0,
+    ).value
 }

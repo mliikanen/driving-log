@@ -1,0 +1,109 @@
+-- Version 12 to 13: the log as atomic events grouped into entries (atomic-log-events).
+--
+-- * Every existing event gets an entry of its own, with the event's id, inserted in the events' old row order so the entry
+--   order (log_entry's rowid) is the order they were added in. The entry takes over the event's note; an INITIAL_ODOMETER's
+--   entry is VEHICLE_ADDED, every other one LOG_FORM.
+-- * INITIAL_ODOMETER and ODOMETER_ANCHOR become ODOMETER_READING.
+-- * A REFUELING that carried mileage is split: it keeps only its fuel, and its entry gains the DISTANCE (distance_meters
+--   and logged_odometer_meters) or ODOMETER_READING (odometer_meters) the mileage stood for, at the same instant and zone,
+--   with the id '<refueling id>-mileage'. The current odometer is unchanged: the mileage counts the same way it did.
+-- * Photos move to the entry: event_picture.event_id becomes entry_id, with the same values (an entry has its event's id).
+-- * event_capture is unchanged: it is keyed by event id, and every existing event keeps its id.
+--
+-- Android 13's SQLite (3.32) has no ALTER TABLE ... DROP COLUMN, so vehicle_event and event_picture are rebuilt. event_picture
+-- goes first, so nothing references the old vehicle_event when it is dropped (foreign keys are not enforced by the app, but a
+-- database that enforces them migrates too).
+
+CREATE TABLE log_entry (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    source      TEXT    NOT NULL,
+    note        TEXT,
+    created_at  INTEGER NOT NULL
+);
+
+INSERT INTO log_entry (id, source, note, created_at)
+SELECT id, CASE type WHEN 'INITIAL_ODOMETER' THEN 'VEHICLE_ADDED' ELSE 'LOG_FORM' END, note, created_at
+FROM vehicle_event
+ORDER BY rowid;
+
+CREATE TABLE event_picture_new (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    entry_id    TEXT    NOT NULL REFERENCES log_entry(id),
+    position    INTEGER NOT NULL,
+    created_at  INTEGER NOT NULL
+);
+
+INSERT INTO event_picture_new (id, entry_id, position, created_at)
+SELECT id, event_id, position, created_at
+FROM event_picture
+ORDER BY rowid;
+
+DROP TABLE event_picture;
+
+ALTER TABLE event_picture_new RENAME TO event_picture;
+
+CREATE INDEX event_picture_by_entry ON event_picture (entry_id, position);
+
+CREATE TABLE vehicle_event_new (
+    id              TEXT    NOT NULL PRIMARY KEY,
+    vehicle_id      TEXT    NOT NULL REFERENCES vehicle(id),
+    entry_id        TEXT    NOT NULL REFERENCES log_entry(id),
+    type            TEXT    NOT NULL,
+    occurred_at     INTEGER NOT NULL,
+    odometer_meters INTEGER,
+    created_at      INTEGER NOT NULL,
+    distance_meters INTEGER,
+    logged_odometer_meters INTEGER,
+    occurred_zone   TEXT,
+    occurred_offset_seconds INTEGER,
+    fuel_amount_milliliters INTEGER,
+    fuel_unit       TEXT,
+    fuel_type       TEXT,
+    filled_up       INTEGER
+);
+
+-- Every existing event, in its entry of the same id; a refueling without its mileage columns.
+INSERT INTO vehicle_event_new (
+    id, vehicle_id, entry_id, type, occurred_at, odometer_meters, created_at, distance_meters, logged_odometer_meters,
+    occurred_zone, occurred_offset_seconds, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
+)
+SELECT
+    id, vehicle_id, id,
+    CASE type WHEN 'INITIAL_ODOMETER' THEN 'ODOMETER_READING' WHEN 'ODOMETER_ANCHOR' THEN 'ODOMETER_READING' ELSE type END,
+    occurred_at,
+    CASE WHEN type = 'REFUELING' THEN NULL ELSE odometer_meters END,
+    created_at,
+    CASE WHEN type = 'REFUELING' THEN NULL ELSE distance_meters END,
+    CASE WHEN type = 'REFUELING' THEN NULL ELSE logged_odometer_meters END,
+    occurred_zone, occurred_offset_seconds, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
+FROM vehicle_event
+ORDER BY rowid;
+
+-- A refueling's trip-distance mileage, as a DISTANCE of its entry.
+INSERT INTO vehicle_event_new (
+    id, vehicle_id, entry_id, type, occurred_at, created_at, distance_meters, logged_odometer_meters,
+    occurred_zone, occurred_offset_seconds
+)
+SELECT id || '-mileage', vehicle_id, id, 'DISTANCE', occurred_at, created_at, distance_meters, logged_odometer_meters,
+       occurred_zone, occurred_offset_seconds
+FROM vehicle_event
+WHERE type = 'REFUELING' AND distance_meters IS NOT NULL
+ORDER BY rowid;
+
+-- A refueling's new-odometer mileage, as an ODOMETER_READING of its entry.
+INSERT INTO vehicle_event_new (
+    id, vehicle_id, entry_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds
+)
+SELECT id || '-mileage', vehicle_id, id, 'ODOMETER_READING', occurred_at, odometer_meters, created_at,
+       occurred_zone, occurred_offset_seconds
+FROM vehicle_event
+WHERE type = 'REFUELING' AND odometer_meters IS NOT NULL AND distance_meters IS NULL
+ORDER BY rowid;
+
+DROP TABLE vehicle_event;
+
+ALTER TABLE vehicle_event_new RENAME TO vehicle_event;
+
+CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
+
+CREATE INDEX vehicle_event_by_entry ON vehicle_event (entry_id);

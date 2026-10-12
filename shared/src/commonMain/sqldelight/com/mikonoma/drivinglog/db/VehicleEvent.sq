@@ -1,23 +1,23 @@
+-- One fact in a vehicle's log (atomic-log-events): an odometer reading, a distance or a refueling. Every event belongs to one
+-- log_entry, which holds the note and photos shared by all of its events.
 CREATE TABLE vehicle_event (
     id              TEXT    NOT NULL PRIMARY KEY,
     vehicle_id      TEXT    NOT NULL REFERENCES vehicle(id),
-    -- INITIAL_ODOMETER sets the odometer; DISTANCE adds a distance to it; REFUELING optionally does either.
+    entry_id        TEXT    NOT NULL REFERENCES log_entry(id),
+    -- ODOMETER_READING sets the odometer; DISTANCE adds a distance to it; REFUELING adds fuel and never touches the odometer.
     type            TEXT    NOT NULL,
-    -- The instant, in epoch milliseconds. All ordering and derivation use it.
+    -- The instant, in epoch milliseconds. All ordering and derivation use it. Every event of one entry has the same instant.
     occurred_at     INTEGER NOT NULL,
-    -- The reading this event sets. Null unless the event sets the odometer (INITIAL_ODOMETER, ODOMETER_ANCHOR, or a
-    -- REFUELING logged by "New odometer"; add-refueling-logging).
+    -- ODOMETER_READING only: the reading it sets.
     odometer_meters INTEGER,
     created_at      INTEGER NOT NULL,
-    -- DISTANCE, or a REFUELING logged by "Trip distance" (add-refueling-logging): the distance, in whole meters, added to the odometer.
+    -- DISTANCE only: the distance, in whole meters, added to the odometer.
     distance_meters INTEGER,
-    -- Logged by odometer (DISTANCE or REFUELING): the count the user typed. Provenance for the log row only, never used to derive an odometer.
+    -- DISTANCE logged by odometer: the count the user typed. Provenance for the log row only, never used to derive an odometer.
     logged_odometer_meters INTEGER,
     -- The IANA time zone the moment was entered in and its UTC offset then. Null for events from before zones were stored.
     occurred_zone   TEXT,
     occurred_offset_seconds INTEGER,
-    -- A note the user typed while logging the event (DISTANCE, ODOMETER_ANCHOR or REFUELING only; add-event-notes). Null when none was added.
-    note            TEXT,
     -- REFUELING only (add-refueling-logging): the fuel amount, in whole milliliters.
     fuel_amount_milliliters INTEGER,
     -- REFUELING only: the unit (FuelUnit code) the amount was entered in; shown in that unit always, never converted.
@@ -30,59 +30,54 @@ CREATE TABLE vehicle_event (
 
 CREATE INDEX vehicle_event_by_vehicle ON vehicle_event (vehicle_id, occurred_at DESC);
 
--- The log is append-only, except for the one narrow exception below (add-event-editing): there is deliberately no
--- delete query for events, and updateEventNote is the only update query, touching only the note column.
-insertEvent:
-INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds, note)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+CREATE INDEX vehicle_event_by_entry ON vehicle_event (entry_id);
+
+-- The log is append-only, except for the one narrow exception of an entry's note and photos (LogEntry.sq, EventPicture.sq):
+-- there is deliberately no delete or update query for events.
+insertOdometerReading:
+INSERT INTO vehicle_event (id, vehicle_id, entry_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds)
+VALUES (?, ?, ?, 'ODOMETER_READING', ?, ?, ?, ?, ?);
 
 insertDistanceEntry:
-INSERT INTO vehicle_event (id, vehicle_id, type, occurred_at, created_at, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note)
-VALUES (?, ?, 'DISTANCE', ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO vehicle_event (id, vehicle_id, entry_id, type, occurred_at, created_at, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds)
+VALUES (?, ?, ?, 'DISTANCE', ?, ?, ?, ?, ?, ?);
 
--- A refueling (add-refueling-logging): odometer_meters/distance_meters/logged_odometer_meters are the same
--- optional-mileage columns a "Distance" entry or an odometer anchor already use — null in every column means no
--- mileage was given.
 insertRefueling:
 INSERT INTO vehicle_event (
-    id, vehicle_id, type, occurred_at, created_at, odometer_meters, distance_meters, logged_odometer_meters,
-    occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
+    id, vehicle_id, entry_id, type, occurred_at, created_at, occurred_zone, occurred_offset_seconds,
+    fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
 )
-VALUES (?, ?, 'REFUELING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, 'REFUELING', ?, ?, ?, ?, ?, ?, ?, ?);
 
--- Newest first by instant; events with the same instant: the one added last comes first.
+-- Newest first: the reverse of log order (vehicle-log, "Events at the same time are ordered by entry, then by kind"): by
+-- instant, then by entry in the order the entries were added (log_entry's rowid), then by kind within an entry
+-- (ODOMETER_READING, DISTANCE, REFUELING oldest first). Each row carries its entry's source and note.
 selectRecentEvents:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
-FROM vehicle_event
-WHERE vehicle_id = ?
-ORDER BY occurred_at DESC, rowid DESC
+SELECT e.id, e.entry_id, l.source, e.type, e.occurred_at, e.odometer_meters, e.distance_meters, e.logged_odometer_meters,
+       e.occurred_zone, e.occurred_offset_seconds, l.note, e.fuel_amount_milliliters, e.fuel_unit, e.fuel_type, e.filled_up
+FROM vehicle_event e
+JOIN log_entry l ON l.id = e.entry_id
+WHERE e.vehicle_id = ?
+ORDER BY e.occurred_at DESC, l.rowid DESC,
+         CASE e.type WHEN 'ODOMETER_READING' THEN 0 WHEN 'DISTANCE' THEN 1 ELSE 2 END DESC
 LIMIT ?;
 
 selectLog:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
-FROM vehicle_event
-WHERE vehicle_id = ?
-ORDER BY occurred_at DESC, rowid DESC;
+SELECT e.id, e.entry_id, l.source, e.type, e.occurred_at, e.odometer_meters, e.distance_meters, e.logged_odometer_meters,
+       e.occurred_zone, e.occurred_offset_seconds, l.note, e.fuel_amount_milliliters, e.fuel_unit, e.fuel_type, e.filled_up
+FROM vehicle_event e
+JOIN log_entry l ON l.id = e.entry_id
+WHERE e.vehicle_id = ?
+ORDER BY e.occurred_at DESC, l.rowid DESC,
+         CASE e.type WHEN 'ODOMETER_READING' THEN 0 WHEN 'DISTANCE' THEN 1 ELSE 2 END DESC;
 
--- One event by id, for the details screen (add-event-details-view). Re-run whenever it might have changed, since
--- nothing here caches it: the details screen is meant to stay live.
-selectEventById:
-SELECT id, vehicle_id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone, occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up
-FROM vehicle_event
-WHERE vehicle_id = ? AND id = ?;
-
--- The one, narrowly-scoped exception to "append-only" (add-event-editing): changes only the note of one event,
--- never any other column of it or any other event.
-updateEventNote:
-UPDATE vehicle_event
-SET note = ?
-WHERE vehicle_id = ? AND id = ?;
-
--- A no-op write (add-event-pictures): SQLDelight's reactive queries above (selectEventById, selectLog,
--- selectRecentEvents) only re-run when vehicle_event itself changes — they never read event_picture, a separate
--- table, so attaching or removing a photo through EventPicture.sq's queries alone would never make an already-open
--- details screen, recent-events list or full log notice the change live. Running this alongside those queries, in
--- the same transaction, makes SQLDelight's table-change tracking treat a photo change as a vehicle_event change too,
--- without touching any real column.
-touchEvent:
-UPDATE vehicle_event SET id = id WHERE id = ?;
+-- Every event of the entry one event belongs to, in log order (oldest first), for the details screen
+-- (add-event-details-view, atomic-log-events). Re-run whenever it might have changed, since nothing here caches it: the
+-- details screen is meant to stay live.
+selectEntryOfEvent:
+SELECT e.id, e.entry_id, l.source, e.type, e.occurred_at, e.odometer_meters, e.distance_meters, e.logged_odometer_meters,
+       e.occurred_zone, e.occurred_offset_seconds, l.note, e.fuel_amount_milliliters, e.fuel_unit, e.fuel_type, e.filled_up
+FROM vehicle_event e
+JOIN log_entry l ON l.id = e.entry_id
+WHERE e.entry_id = (SELECT entry_id FROM vehicle_event WHERE vehicle_id = ? AND id = ?)
+ORDER BY e.occurred_at, CASE e.type WHEN 'ODOMETER_READING' THEN 0 WHEN 'DISTANCE' THEN 1 ELSE 2 END;

@@ -63,7 +63,7 @@ class VehicleStorageJvmTest {
         assertEquals("Family car", vehicle.name)
         assertEquals("ABC-123", vehicle.licensePlate)
         assertEquals(OdometerUnit.KILOMETERS_TENTHS, vehicle.odometerUnit)
-        val event = reopened.observeLog(id).first().single() as VehicleEvent.InitialOdometer
+        val event = reopened.observeLog(id).first().single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_300), event.reading)
         second.close()
     }
@@ -92,7 +92,8 @@ class VehicleStorageJvmTest {
                 repository(driver).addVehicle("Van", "X1", VehicleType.CAR, VehicleColors.default, entry.unit, checkNotNull(entry.toDistance()))
             }
             return rows(driver, "SELECT id, name, license_plate, odometer_unit, created_at, updated_at FROM vehicle", 6) +
-                rows(driver, "SELECT id, vehicle_id, type, occurred_at, odometer_meters, created_at FROM vehicle_event", 6)
+                rows(driver, "SELECT id, vehicle_id, type, occurred_at, odometer_meters, created_at FROM vehicle_event", 6) +
+                rows(driver, "SELECT id, source, note, created_at FROM log_entry", 4)
         } finally {
             driver.close()
         }
@@ -111,11 +112,13 @@ class VehicleStorageJvmTest {
         val rows = storedRowsUnder("fi-FI")
         val vehicle = rows[0]
         val event = rows[1]
+        val entry = rows[2]
 
         assertEquals("KILOMETERS_TENTHS", vehicle[3])
         assertEquals("1700000000000", vehicle[4])
-        assertEquals("INITIAL_ODOMETER", event[2])
+        assertEquals("ODOMETER_READING", event[2])
         assertEquals("123500", event[4]) // 123.5 km typed as 1, 2, 3, 5, stored as whole meters
+        assertEquals("VEHICLE_ADDED", entry[1])
         val text = rows.flatten().filterNotNull().joinToString(" ")
         assertTrue(',' !in text.replace("Van", "").replace("X1", ""), "no formatted numbers: $text")
     }

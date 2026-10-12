@@ -13,15 +13,15 @@ data class EventRowContent(
     val label: String,
     /** When it happened, in the zone it was entered in (the zone name follows when it is not the device's zone). */
     val moment: String,
-    /** An initial odometer's or an anchor's reading, or a distance entry's distance with a plus sign. */
+    /** An odometer reading's reading, a distance entry's distance with a plus sign, or a refueling's fuel amount. */
     val trailing: String,
     /** A distance entry logged by odometer: the count that was typed. */
     val loggedOdometer: String?,
     /** True for a distance entry: its [trailing] figure is a distance, which the theme draws in the distance accent color. */
     val isDistance: Boolean = false,
-    /** True when the event has a non-empty note (`add-event-notes`); the row shows an icon, never the note's text. */
+    /** True when the event's entry has a non-empty note (`add-event-notes`), on every row of the entry; the row shows an icon, never the note's text. */
     val hasNote: Boolean = false,
-    /** True when the event has one or more photos (`add-event-pictures`); the row shows an icon, never a thumbnail. */
+    /** True when the event's entry has one or more photos (`add-event-pictures`), on every row of the entry; the row shows an icon, never a thumbnail. */
     val hasPhotos: Boolean = false,
 )
 
@@ -32,14 +32,7 @@ fun eventRowContent(
     deviceZone: TimeZone,
     timeFormat: TimeFormat = TimeFormat(),
 ): EventRowContent = when (event) {
-    is VehicleEvent.InitialOdometer -> EventRowContent(
-        label = event.label,
-        moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
-        trailing = formatOdometer(event.reading, unit, symbols),
-        loggedOdometer = null,
-    )
-
-    is VehicleEvent.OdometerAnchor -> EventRowContent(
+    is VehicleEvent.OdometerReading -> EventRowContent(
         label = event.label,
         moment = formatMoment(event.occurredAt, deviceZone, timeFormat),
         trailing = formatOdometer(event.reading, unit, symbols),

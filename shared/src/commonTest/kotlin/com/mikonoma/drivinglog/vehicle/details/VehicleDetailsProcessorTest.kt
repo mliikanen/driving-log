@@ -3,11 +3,16 @@ package com.mikonoma.drivinglog.vehicle.details
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
 import com.mikonoma.drivinglog.vehicle.domain.VehicleColors
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.domain.VehicleType
+import com.mikonoma.drivinglog.vehicle.domain.Volume
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PictureSize
@@ -24,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleDetailsProcessorTest {
@@ -276,5 +282,54 @@ class VehicleDetailsProcessorTest {
     @Test
     fun theDetailsHaveTheDefaultColorUntilTheVehicleHasLoaded() {
         assertEquals(VehicleColors.default, VehicleDetailsState().color)
+    }
+
+    // ---- One row per event of an entry (atomic-log-events)
+
+    /** A refueling logged with a trip-distance mileage (atomic-log-events): its entry holds a refueling and a distance. */
+    private suspend fun logRefuelingWithMileage(at: Long): String = repository.addRefueling(
+        "v1",
+        ZonedMoment(Instant.fromEpochMilliseconds(at)),
+        Volume(42_300),
+        FuelUnit.LITERS,
+        FuelType.DIESEL,
+        filledUp = true,
+        mileage = RefuelingMileage.Added(Distance(30_000)),
+    )
+
+    @Test
+    fun aRefuelingWithMileageShowsItsRefuelingRowAboveItsDistanceRow() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", listOf(initialEvent("i", 100, 45_200_000)))
+
+        val refuelingId = logRefuelingWithMileage(200)
+
+        val recent = processor().state.recentEvents
+        assertEquals(listOf(refuelingId, "$refuelingId-mileage", "i"), recent.map { it.id })
+        assertTrue(recent[0] is VehicleEvent.Refueling)
+        assertTrue(recent[1] is VehicleEvent.DistanceEntry)
+        assertEquals(Distance(45_230_000), processor().state.currentOdometer)
+    }
+
+    @Test
+    fun bothRowsOfARefuelingCountTowardTheFiveRecentEvents() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", (4 downTo 1).map { distanceEvent("e$it", 100L + it, 1_000) } + initialEvent("i", 100, 45_200_000))
+
+        val refuelingId = logRefuelingWithMileage(200)
+
+        assertEquals(listOf(refuelingId, "$refuelingId-mileage", "e4", "e3", "e2"), processor().state.recentEvents.map { it.id })
+    }
+
+    @Test
+    fun eitherRowOfARefuelingNavigatesToTheEventTapped() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        val refuelingId = logRefuelingWithMileage(200)
+        val processor = processor()
+
+        processor.test {
+            dispatch(VehicleDetailsIntent.EventClicked("$refuelingId-mileage"))
+            expectSideEffect(VehicleDetailsEffect.ShowEventDetails("v1", "$refuelingId-mileage"))
+        }
     }
 }

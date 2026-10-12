@@ -13,8 +13,10 @@ val OdometerUnit.label: String
 
 val VehicleEvent.label: String
     get() = when (this) {
-        is VehicleEvent.InitialOdometer -> "Initial odometer"
-        is VehicleEvent.OdometerAnchor -> "Odometer reading"
+        // One kind of event (atomic-log-events): the initial odometer is the reading saved when the vehicle was added.
+        is VehicleEvent.OdometerReading -> if (isInitial) "Initial odometer" else "Odometer reading"
+
         is VehicleEvent.DistanceEntry -> "Distance"
+
         is VehicleEvent.Refueling -> "Refueling"
     }
