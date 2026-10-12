@@ -3,8 +3,9 @@
 # nothing when there is nothing to release.
 #
 # The notes cover everything since the last distribution (the newest dist-v* tag reachable from <commit>):
-# - every pull request merged into main since then contributes the text of its `## Release notes` section (up to the
-#   next `## ` heading), when it has one;
+# - every pull request merged into main since then that changed the app (scripts/ci/app-changed.sh, on its merge commit)
+#   contributes the text of its `## Release notes` section (up to the next `## ` heading), when it has one; one that
+#   changed only docs, specs, tests or tooling contributes nothing (release-only-app-changes);
 # - every change archived since then that no such pull request archived is listed by name, as scripts/release-notes.sh
 #   lists them. A pull request without a section, or a commit that came without one, contributes this way.
 # So a release that replaced a pending one (GitHub keeps one pending run) still carries both pull requests' notes.
@@ -62,24 +63,33 @@ while :; do
     --jq '.[] | "\(.updated_at) \(.merged_at // "-") \(.merge_commit_sha // "-") \(.number)"')"
   [ -z "$batch" ] && break
   while read -r updated merged_at sha number; do
-    if [ "$merged_at" != "-" ] && grep -qx "$sha" <<< "$in_range"; then merged="$merged"$'\n'"$merged_at $number"; fi
+    if [ "$merged_at" != "-" ] && grep -qx "$sha" <<< "$in_range"; then merged="$merged"$'\n'"$merged_at $number $sha"; fi
   done <<< "$batch"
   oldest="$(tail -1 <<< "$batch" | cut -d' ' -f1)"
   if [ -n "$cutoff" ] && [[ "$oldest" < "$cutoff" ]]; then break; fi
   page=$((page + 1))
 done
-prs="$(printf '%s\n' "$merged" | sed '/^$/d' | sort -k1,1 | awk '!seen[$2]++ { print $2 }')"
-[ -n "$extra_pr" ] && prs="$(printf '%s\n%s\n' "$prs" "$extra_pr" | sed '/^$/d')"
+# "<number> <commit>" per pull request: its squash-merge commit on main; for the open one (--pr), <commit> is GitHub's merge
+# of it into main, so <commit>^1..<commit> is what it changes either way.
+prs="$(printf '%s\n' "$merged" | sed '/^$/d' | sort -k1,1 | awk '!seen[$2]++ { print $2, $3 }')"
+[ -n "$extra_pr" ] && prs="$(printf '%s\n%s\n' "$prs" "$extra_pr $(git rev-parse "$commit")" | sed '/^$/d')"
 
 sections=""
 covered=""
-for number in $prs; do
+while read -r number sha; do
+  [ -n "$number" ] || continue
+  # A pull request that changed nothing in the app (docs, specs, tests, tooling) gives testers nothing to read about:
+  # neither its section nor its archived changes (which scripts/release-notes.sh leaves out too) go in the notes.
+  app=0
+  scripts/ci/app-changed.sh "$sha^1" "$sha" || app=$?
+  [ "$app" -eq 1 ] && continue
+  [ "$app" -eq 0 ] || { echo "choose-release-notes: could not tell whether $sha (#$number) changed the app" >&2; exit 2; }
   text="$(gh api "repos/$repo/pulls/$number" --jq '.body // ""' | section_of)"
   if [ -n "$(printf '%s' "$text" | tr -d '[:space:]')" ]; then
     sections="${sections:+$sections$'\n\n'}$text"
     covered="$covered"$'\n'"$(archived_by "$number")"
   fi
-done
+done <<< "$prs"
 
 # Archived changes not already described by a pull request's own section. An empty pattern list excludes nothing.
 # The generated list is read first, so its failure fails the script; only the filter may find nothing left.

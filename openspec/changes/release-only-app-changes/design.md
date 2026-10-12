@@ -55,11 +55,15 @@ path. A known edge: a change whose code and archive landed in separate merges (#
 the archive merge changed no app path, but its code merge still triggers the release, and its pull request's section
 (if any) is used.
 
-### 3. The preview asks about the merge
+### 3. The preview asks what the release will ask
 
-`release-notes-preview.sh` runs on GitHub's merge of the pull request into `main`: `app-changed.sh HEAD^1 HEAD` is
-exactly what merging changes. No app change → "Nothing to release: this merge changes no app code (`scripts/ci/app-changed.sh`)."
-Otherwise the notes, filtered the same way, with the open pull request judged by `HEAD^1..HEAD`.
+`release-notes-preview.sh` runs on GitHub's merge of the pull request into `main` (HEAD), and asks the release's
+question: `app-changed.sh <last dist tag> HEAD`. No app change → "Nothing to release: no change to the app since …,
+this pull request included", and merging publishes nothing. Otherwise the notes, filtered the same way: the open pull
+request is judged by `HEAD^1..HEAD`, exactly what merging it changes, so a docs pull request merged while an app change
+waits on `main` shows the release that will go out, without itself in the notes. *Alternative:* judge only
+`HEAD^1..HEAD`. Rejected after implementing it: with an unreleased app change already on `main`, it would say "nothing
+to release" for a merge that does publish.
 
 ## Risks / Trade-offs
 

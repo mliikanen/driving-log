@@ -71,7 +71,20 @@ jobs:
             echo "publish=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Every pull request merged since the last distribution: its `## Release notes` section, or what it archived.
+          # Nothing in the APK changed since the last distribution (docs, specs, tests, tooling only): testers would get the
+          # same app again, so nothing is published (release-only-app-changes; the paths are in scripts/ci/app-changed.sh).
+          last_tag="$(git tag -l 'dist-v*' --merged HEAD --sort=-v:refname | sed -n 1p)"
+          app_changed=0
+          scripts/ci/app-changed.sh "$last_tag" HEAD || app_changed=$?
+          if [ "$app_changed" -eq 1 ]; then
+            echo "Nothing to release: no change to the app since ${last_tag:-the first commit} (scripts/ci/app-changed.sh)." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "$app_changed" -ne 0 ]; then
+            exit "$app_changed"
+          fi
+          # Every pull request merged since the last distribution that changed the app: its `## Release notes` section,
+          # or what it archived.
           scripts/ci/choose-release-notes.sh HEAD > "$RUNNER_TEMP/release-notes.txt"
           if [ ! -s "$RUNNER_TEMP/release-notes.txt" ]; then
             echo "Nothing to release: no change archived since the last distribution, and no release notes in a merged pull request." >> "$GITHUB_STEP_SUMMARY"
