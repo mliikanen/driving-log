@@ -79,7 +79,7 @@ with `openspec validate --all --strict` and deletes the `.mjs`.
 
 ### 4. No spec delta (`skip_specs: true`)
 
-The rules are tooling, so they are written in `docs/test-strategy.md` and tested by `node --test scripts/`, not
+The rules are tooling, so they are written in `docs/test-strategy.md` and tested by `node --test 'scripts/*.test.mjs'`, not
 specified in `openspec/specs/`. *Alternative:* add them to the `test-strategy` capability, which already specifies CI.
 Rejected: a spec about how specs are validated is a layer of meta nobody reads as app behavior, and `CLAUDE.md` puts
 how the project is built in `docs/`. The out-of-date scenario this leaves is noted in the proposal.

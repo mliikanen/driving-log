@@ -21,7 +21,7 @@ from `main` in a worktree (`git worktree add ../driving-log-<name> -b change/<na
 (`git branch -a --list '*change/*'`): check them before proposing, and record a needed one in `.openspec.yaml`
 as `depends_on: [<change>]`.
 
-Useful CLI: `openspec list` (on a change's branch), `openspec show <change>`, `openspec validate --all`.
+Useful CLI: `openspec list` (on a change's branch), `openspec show <change>`, and `scripts/validate-specs.sh` to validate (`docs/test-strategy.md`).
 Project context and artifact rules live in `openspec/config.yaml`.
 
 ## Layout
@@ -53,7 +53,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   the emulator's `addMedia` fails or the photo picker shows nothing).
 - Test strategy: see `docs/test-strategy.md`. A check goes in the lowest kind of test that can check it; Maestro flows are only the happy path of a feature end to end.
   While working on a change, run only the Maestro manifests of the functionality the change touches (only flows that changed or that exercise the screens changed).
-  The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all`, **without Maestro**.
+  The final regression run of a change is `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh`, **without Maestro**.
   `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. There are no baselines: fix a finding or suppress it with a reason.
   Compiler and Gradle warnings fail the build too (Kotlin warnings are errors, `org.gradle.warning.mode=fail`); fix one, or suppress it with a reason.
   CI (`.github/workflows/pr-check.yml`) runs the same final regression run on every PR and push to `main`, as three required checks

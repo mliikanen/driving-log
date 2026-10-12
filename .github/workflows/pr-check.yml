@@ -46,8 +46,12 @@ jobs:
       # The version the project's specs are validated with locally; bump it here deliberately.
       - name: Install the OpenSpec CLI
         run: npm install -g @fission-ai/openspec@1.14.1
+      # The spec validation's own tests (scripts/check-requirement-length.test.mjs), then the validation itself:
+      # strict for changes, lenient for the main specs, and no long requirement growing (scripts/validate-specs.sh).
+      - name: Spec validation tests
+        run: node --test 'scripts/*.test.mjs'
       - name: Spec validation
-        run: openspec validate --all
+        run: scripts/validate-specs.sh
 
   code-quality:
     name: code-quality
