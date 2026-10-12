@@ -93,13 +93,17 @@ function grownInChanges(root) {
 function baseCommit(root) {
   if (process.env.SPEC_BASE) return run('git', ['rev-parse', '--verify', `${process.env.SPEC_BASE}^{commit}`], root).trim();
   const head = run('git', ['rev-parse', 'HEAD'], root).trim();
-  let mergeBase;
+  let main;
   try {
-    mergeBase = run('git', ['merge-base', 'HEAD', 'origin/main'], root).trim();
+    main = run('git', ['rev-parse', '--verify', 'origin/main^{commit}'], root).trim();
   } catch {
     throw new Error('no origin/main to compare the main specs with: fetch it, or set SPEC_BASE to the base commit');
   }
-  return mergeBase === head ? run('git', ['rev-parse', 'HEAD^1'], root).trim() : mergeBase;
+  // On main's tip itself (a push to main), what this commit brought is relative to its first parent. Anywhere else,
+  // relative to the merge base: for a branch, where it left main; for a checkout behind main, HEAD itself (nothing new),
+  // so an already-accepted commit is not judged again.
+  if (head === main) return run('git', ['rev-parse', 'HEAD^1'], root).trim();
+  return run('git', ['merge-base', 'HEAD', main], root).trim();
 }
 
 /** Check 2: the main specs against the base's main specs. */

@@ -62,8 +62,9 @@ The delta comparison alone is bypassed by the workflow itself: `/opsx:archive` i
 on the commit that merges, the change is no longer active and its text is already in the main specs, which are
 validated leniently. The ratchet therefore also compares every main-spec requirement over 500 characters with the
 base's main spec (`git archive <base> openspec/specs`, read with the same `openspec show --json`): it must exist there,
-no shorter. The base is `SPEC_BASE`, else the merge base with `origin/main`, else (on `main` itself) `HEAD^1`; without
-one the check fails rather than passes. CI's `spec-validation` job checks out full history. Checked on the merge of
+no shorter. The base is `SPEC_BASE`; else, when HEAD is `origin/main`'s tip (a push to `main`), `HEAD^1`; else the
+merge base with `origin/main`, which for a checkout behind `main` is HEAD itself, so an accepted commit is not judged
+again. Without `origin/main` the check fails rather than passes. CI's `spec-validation` job checks out full history. Checked on the merge of
 #17: `atomic-log-events` would have failed on seven requirements it made longer.
 
 ### 3. `scripts/validate-specs.sh` is the only entry point

@@ -25,6 +25,8 @@ change touches no app code, so no manifest covers it.
 - [x] 4.2 The main specs are compared with the base, so an archived change cannot bring in a new or longer requirement over 500 characters (Copilot; design Decision 2b); CI's `spec-validation` checks out full history; `docs/test-strategy.md` says so. Verify: the four "archived change" tests and "without a base … fails" pass, and the check run on #17's merge against its parent reports the seven requirements it grew.
 - [x] 4.3 `scripts/validate-specs.sh` stops when it cannot enter the project root (Copilot). Verify: the test "a project root that does not exist fails the validation" passes.
 
+- [x] 4.4 A checkout behind `main` is compared with the merge base (HEAD itself), not with its own parent, which would re-judge an accepted commit; `HEAD^1` only on `origin/main`'s tip (Copilot). Verify: the tests "on main's tip, the commit is checked against its first parent" and "a checkout behind main does not judge an already-accepted commit again" pass, and a checkout of #17's merge passes without `SPEC_BASE`.
+
 ## Workflow follow-up
 
 - After merging: `add-vehicle-hiding` splits its two new requirements over 500 characters before its next push passes.

@@ -91,8 +91,9 @@ the script validates in three steps, and fails if any fails:
     characters and longer than in the main spec;
   - in the main specs against the base (`main`): once a change is archived its deltas are in the main specs and the
     change is no longer active, so this fails any main-spec requirement over 500 characters that is new or longer than
-    on `main`. A renamed long requirement counts as new. The base is the merge base with `origin/main` (fetch first),
-    the previous commit on `main` itself, or `SPEC_BASE` when set; CI checks out full history for it.
+    on `main`. A renamed long requirement counts as new. The base is `SPEC_BASE` when set; on `origin/main`'s tip (a
+    push to `main`), its previous commit; anywhere else, the merge base with `origin/main` (fetch first), so a checkout
+    behind `main` has nothing new to judge. CI checks out full history for it.
 
   Unchanged or shorter text passes: adding a scenario to a long requirement does not force splitting it, but adding
   words to one does. A change that rewords a long requirement splits it (or shortens it) in the same change.

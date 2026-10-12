@@ -187,3 +187,32 @@ test('a main spec OpenSpec cannot read fails the check rather than being skipped
   assert.equal(status, 2);
   assert.match(output, /check-requirement-length:/);
 });
+
+// ---- Which base: main's tip, a branch, or a checkout behind main
+
+/**
+ * Three commits on one line: A (the base, "Shows widgets" at 600 characters), B (grows it to 650, as an archived
+ * change did) and C (an unrelated later commit). origin/main points at [mainAt]; HEAD is checked out at [headAt].
+ */
+function history(mainAt, headAt) {
+  const root = tree({ mainLength: 600, archived: [requirement('Shows widgets', 650)] });
+  const b = git(root, 'rev-parse', 'HEAD');
+  writeFileSync(join(root, 'notes.txt'), 'later\n');
+  git(root, 'add', '-A');
+  git(root, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'later');
+  const commits = { b, c: git(root, 'rev-parse', 'HEAD') };
+  git(root, 'update-ref', 'refs/remotes/origin/main', commits[mainAt]);
+  git(root, 'checkout', '-q', '--detach', commits[headAt]);
+  bases.delete(root); // no SPEC_BASE: the script works the base out from origin/main
+  return root;
+}
+
+test("on main's tip, the commit is checked against its first parent", () => {
+  const { status, output } = ratchet(history('b', 'b'));
+  assert.equal(status, 1);
+  assert.match(output, /longer than its 600/);
+});
+
+test('a checkout behind main does not judge an already-accepted commit again', () => {
+  assert.equal(ratchet(history('c', 'b')).status, 0);
+});
