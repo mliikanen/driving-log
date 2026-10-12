@@ -138,6 +138,15 @@ jobs:
           tag="dist-v$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
           git tag "$tag"
           git push origin "$tag"
+          # The skip tags this release covers are never read again (notes only look since the last release): delete them,
+          # so only the skips since the last release exist. Release tags are kept. The build is already out, so a failed
+          # deletion only warns; the next release deletes them again.
+          pruned="$(scripts/ci/prune-release-skips.sh "$tag")"
+          if [ -n "$pruned" ]; then
+            # shellcheck disable=SC2046 # one ref per word
+            git push origin $(sed 's#^#:refs/tags/#' <<< "$pruned") \
+              || echo "::warning::Could not delete the skip tags this release covers: $(tr '\n' ' ' <<< "$pruned")"
+          fi
           {
             echo "Published $tag with these notes:"
             echo

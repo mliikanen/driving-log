@@ -15,7 +15,7 @@ const scripts = dirname(fileURLToPath(import.meta.url));
 /** A throwaway repository with the release scripts and a first commit holding a little of everything. */
 function repo() {
   const root = mkdtempSync(join(tmpdir(), 'release-gate-'));
-  for (const script of ['release-notes.sh', 'ci/app-changed.sh', 'ci/release-skips.sh']) {
+  for (const script of ['release-notes.sh', 'ci/app-changed.sh', 'ci/release-skips.sh', 'ci/prune-release-skips.sh']) {
     mkdirSync(dirname(join(root, 'scripts', script)), { recursive: true });
     copyFileSync(join(scripts, script), join(root, 'scripts', script));
     chmodSync(join(root, 'scripts', script), 0o755);
@@ -194,4 +194,42 @@ test('an app merge that was not released is collected into the next release', ()
   const { stdout } = sh(root, 'release-notes.sh', 'HEAD');
   rmSync(root, { recursive: true, force: true });
   assert.deepEqual(stdout.trim().split('\n'), ['2026-10-11-missed', '2026-10-12-next']);
+});
+
+// ---- prune-release-skips.sh: a release deletes the skips it covers, and keeps every release tag
+
+test('a release deletes the skip tags it covers, keeps later ones and every release tag', () => {
+  const root = repo();
+  git(root, 'tag', 'dist-v1-base');
+  commit(root, 'docs', { 'docs/README.md': 'more docs' });
+  commit(root, 'app', { 'shared/src/commonMain/App.kt': 'more app' });
+  sh(root, 'ci/release-skips.sh', 'dist-v1-base', 'HEAD');
+  const covered = tags(root);
+  git(root, 'tag', 'dist-v2-release');
+  commit(root, 'later docs', { 'docs/README.md': 'later docs' });
+  sh(root, 'ci/release-skips.sh', 'dist-v2-release', 'HEAD');
+  const later = tags(root).filter((t) => !covered.includes(t));
+
+  const { status, stdout } = sh(root, 'ci/prune-release-skips.sh', 'dist-v2-release');
+  assert.equal(status, 0);
+  assert.deepEqual(stdout.trim().split('\n'), covered);
+  assert.deepEqual(tags(root), later);
+  assert.deepEqual(git(root, 'tag', '-l', 'dist-v*').split('\n'), ['dist-v1-base', 'dist-v2-release']);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('pruning with nothing to prune changes nothing', () => {
+  const root = repo();
+  git(root, 'tag', 'dist-v1-base');
+  const { status, stdout } = sh(root, 'ci/prune-release-skips.sh', 'dist-v1-base');
+  assert.equal(status, 0);
+  assert.equal(stdout.trim(), '');
+  assert.equal(git(root, 'tag', '-l', 'dist-v*'), 'dist-v1-base');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('pruning for a release that does not exist is an error', () => {
+  const root = repo();
+  assert.equal(sh(root, 'ci/prune-release-skips.sh', 'dist-v9-missing').status, 2);
+  rmSync(root, { recursive: true, force: true });
 });

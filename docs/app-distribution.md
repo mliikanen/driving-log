@@ -118,7 +118,9 @@ Every merge to `main` publishes to the testers, with no developer machine involv
   `scripts/ci/app-changed.sh`, the one place that decides it. Each run records its decision for every merge since the
   last release that has none yet: a merge of docs, specs, tests, Maestro flows, scripts or CI gets a
   `dist-skip-v<count>-<sha>` tag (`scripts/ci/release-skips.sh`), pushed with the run. When every merge since the last
-  release is such a skip, the run publishes nothing, whatever they archive, and its summary lists the skips.
+  release is such a skip, the run publishes nothing, whatever they archive, and its summary lists the skips. A release
+  deletes the skip tags it covers (`scripts/ci/prune-release-skips.sh`): only the skips since the last release exist,
+  and every `dist-v*` release tag is kept.
 - **Nothing to say, nothing published.** Likewise when the app changed but there are no notes (no change archived
   since the last tag and no `## Release notes` section, a dependency bump say). A commit that is already tagged isn't
   published again.

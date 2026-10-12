@@ -58,6 +58,11 @@ so its notes go out with the next release; a merge never judged at all is collec
 the skip would be implicit and could change with the path list, instead of being a decision the release made and
 recorded. *Alternative:* a per-PR declaration. Rejected: the developer chose decisions recorded by the release run.
 
+Pruning: once a release covers a skip, the skip tag is never read again (notes only look since the last release), so
+the release run deletes every `dist-skip-v*` tag its new `dist-v*` tag contains (`scripts/ci/prune-release-skips.sh`,
+listing only that pattern, so release tags are never touched). At most the skips since the last release exist. The
+build is already out when it prunes, so a failed deletion only warns; the next release deletes them again.
+
 A change whose code and archive landed in separate merges (#20, then #21) is still listed: its archive merge is a skip,
 but its code merge isn't, and its pull request's section, if any, is used; only the generated name is lost, as the
 archive merge's name.
