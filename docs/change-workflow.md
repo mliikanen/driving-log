@@ -59,7 +59,7 @@ project:
   like "run the vehicles manifest" can't be done by the herd. Phrase it as a check the gate can run, or leave it
   to your check.
 - **The gate is `CLAUDE.md`'s final regression run** (`./gradlew :shared:allTests :androidApp:assembleDebug
-  codeQuality` and `openspec validate --all`). Every task must leave it green.
+  codeQuality` and `scripts/validate-specs.sh`). Every task must leave it green.
 - **Anything the agents need from outside the repo** (test photos, sample receipts) is committed with the
   proposal, as `maestro/assets/` already does, so the herd doesn't have to stop and ask for it.
 
@@ -87,10 +87,11 @@ You merge the PR once its checks pass. With the herd, that's not when it marks t
 before your Maestro check and the archive: wait until the herd's status pane shows the change as *ready-to-merge*
 (archived, checks passing, reviews settled; see [Using the herd][herd-guide]). Every PR, and every push to `main`, runs
 three required checks (`.github/workflows/pr-check.yml`): `tests-and-build` (shared tests, debug build), `code-quality`
-(`./gradlew codeQuality`) and `spec-validation` (`openspec validate --all`). Each fails on a failure of any of its
-parts and names the failing step or finding; `spec-validation` needs no build, so it reports within a minute without
-waiting for the others. CI builds and tests the Android targets only, never iOS. A fourth, informational one,
-`release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit the description.
+(`./gradlew codeQuality`) and `spec-validation` (`scripts/validate-specs.sh`, after its own tests). Each fails on a
+failure of any of its parts and names the failing step or finding; `spec-validation` needs no build, so it reports
+within a minute without waiting for the others. CI builds and tests the Android targets only, never iOS. A fourth,
+informational one, `release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit
+the description.
 
 The ruleset on `main` (`main-is-pr-only`, exported in `.github/rulesets/main.json`) blocks the merge until all three
 pass on the PR's latest commit, with the branch up to date with `main`. `main` takes changes only through PRs, from

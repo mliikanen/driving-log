@@ -70,7 +70,34 @@ and builds whatever it needs through the UI (`add-firebase-auth`).
 | When | What |
 |---|---|
 | While working on a change | The unit tests that concern the code (`./gradlew :shared:allTests` when in doubt), and **the manifests of the functionality the change touches** (a change to the vehicle picture runs `picture`; one to the add and edit forms runs `vehicles`, and so on). Only flows that were changed, or that exercise the screens changed. |
-| The final regression run of a change (before `/opsx:archive`) | `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `openspec validate --all`. `codeQuality` is the static analysis gate (ktlint, detekt, Android lint; see [`docs/code-quality.md`](code-quality.md)). **Maestro is not part of it.** |
+| The final regression run of a change (before `/opsx:archive`) | `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh` (see [Spec validation](#spec-validation)). `codeQuality` is the static analysis gate (ktlint, detekt, Android lint; see [`docs/code-quality.md`](code-quality.md)). **Maestro is not part of it.** |
 | A major refactoring (navigation, storage or theme across every screen, the build, the Maestro suite itself) | Everything, including `maestro/run.sh --all` and the device-state groups. The developer says when a change is a major refactoring; it is not decided by the change's author. |
 
 A change's tasks therefore name the manifests to run, and do not ask for the whole suite unless the change is a major refactoring.
+
+## Spec validation
+
+`scripts/validate-specs.sh` is the spec validation, in the final regression run and in CI's `spec-validation` job (which
+runs its tests first: `node --test 'scripts/*.test.mjs'`). OpenSpec warns about any requirement over 500 characters, and
+86 of the main specs' requirements were over it when this was set up. OpenSpec has no baseline for existing warnings, so
+the script validates in three steps, and fails if any fails:
+
+- **Changes, strictly** (`openspec validate --changes --strict`): any error or warning in an active change fails it, a
+  new requirement over 500 characters or an unknown `.openspec.yaml` key included.
+- **The main specs, leniently** (`openspec validate --specs`): errors fail it; the existing long-requirement warnings
+  are shown and pass.
+- **No long requirement is new or grows** (`scripts/check-requirement-length.mjs`), checked twice:
+  - in an active change: OpenSpec does not length-check a MODIFIED requirement, so this fails one that is over 500
+    characters and longer than in the main spec;
+  - in the main specs against the base (`main`): once a change is archived its deltas are in the main specs and the
+    change is no longer active, so this fails any main-spec requirement over 500 characters that is new or longer than
+    on `main`. A renamed long requirement counts as new. The base is `SPEC_BASE` when set; on `origin/main`'s tip (a
+    push to `main`), its previous commit; anywhere else, the merge base with `origin/main` (fetch first), so a checkout
+    behind `main` has nothing new to judge. CI checks out full history for it.
+
+  Unchanged or shorter text passes: adding a scenario to a long requirement does not force splitting it, but adding
+  words to one does. A change that rewords a long requirement splits it (or shortens it) in the same change.
+
+So a long requirement can only get shorter. Issue #13 splits the existing ones; its last change replaces the script's
+steps with `openspec validate --all --strict` and deletes the length check.
+

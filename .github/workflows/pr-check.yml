@@ -40,14 +40,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The length check compares the main specs with main (scripts/check-requirement-length.mjs).
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
       # The version the project's specs are validated with locally; bump it here deliberately.
       - name: Install the OpenSpec CLI
         run: npm install -g @fission-ai/openspec@1.14.1
+      # The spec validation's own tests (scripts/check-requirement-length.test.mjs), then the validation itself:
+      # strict for changes, lenient for the main specs, and no long requirement growing (scripts/validate-specs.sh).
+      - name: Spec validation tests
+        run: node --test 'scripts/*.test.mjs'
       - name: Spec validation
-        run: openspec validate --all
+        run: scripts/validate-specs.sh
 
   code-quality:
     name: code-quality
