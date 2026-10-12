@@ -11,17 +11,17 @@ interface VehicleRepository {
     /** The vehicle with its current odometer, or null when it does not exist. */
     fun observeVehicle(id: String): Flow<VehicleDetails?>
 
-    /** At most [limit] events of the vehicle, newest first by instant (ties: the one added last comes first). */
+    /** At most [limit] events of the vehicle, newest first: log order ([inLogOrder]) reversed. */
     fun observeRecentEvents(vehicleId: String, limit: Int): Flow<List<VehicleEvent>>
 
-    /** Every event of the vehicle, newest first by instant (ties: the one added last comes first). */
+    /** Every event of the vehicle, newest first: log order ([inLogOrder]) reversed. */
     fun observeLog(vehicleId: String): Flow<List<VehicleEvent>>
 
     /**
-     * One event by id, re-observed live (add-event-details-view): emits again whenever the event changes. Null
-     * when no such event exists for that vehicle (including once an event can be removed, though nothing can yet).
+     * The entry the event [eventId] belongs to, with all of its events, re-observed live (`atomic-log-events`): emits
+     * again whenever the entry, its note or its photos change. Null when no such event exists for that vehicle.
      */
-    fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?>
+    fun observeEntry(vehicleId: String, eventId: String): Flow<LogEntry?>
 
     /**
      * The id of the vehicle last logged for: whichever of [addDistanceEntry], [addOdometerAnchor] or [addRefueling]
@@ -41,9 +41,10 @@ interface VehicleRepository {
     fun observeLastFuelType(): Flow<FuelType?>
 
     /**
-     * Saves the vehicle, its initial odometer event and its [picture] (when it has one) together, or none of them: a failed save
-     * leaves no picture files behind. [capture] is the accepted scan the initial odometer came from (`scan-initial-odometer`), or null
-     * when it was typed: stored with the initial odometer event in the same transaction. Returns the new vehicle id.
+     * Saves the vehicle, its initial odometer (an odometer reading in an entry of its own, [EntrySource.VEHICLE_ADDED]) and its
+     * [picture] (when it has one) together, or none of them: a failed save leaves no picture files behind. [capture] is the
+     * accepted scan the initial odometer came from (`scan-initial-odometer`), or null when it was typed: stored with the initial
+     * odometer in the same transaction. Returns the new vehicle id.
      */
     suspend fun addVehicle(
         name: String,
@@ -63,7 +64,7 @@ interface VehicleRepository {
     ): String
 
     /**
-     * Adds one distance entry to the log at [occurredAt] (in the zone it was entered in). [distance] must be above zero.
+     * Adds one entry holding one distance event to the log at [occurredAt] (in the zone it was entered in). [distance] must be above zero.
      * [loggedOdometer] is the count the user typed when logging by odometer, for the log row only. [tenthsIncluded] is the tenths
      * choice used for the entry: it is remembered for the vehicle in the same transaction, so both are saved or neither.
      * [note] is the pending note typed on the log event form (`add-event-notes`), or null when none was added.
@@ -84,7 +85,7 @@ interface VehicleRepository {
     ): String
 
     /**
-     * Adds an odometer anchor at [occurredAt]: an odometer-setting event for a new odometer count logged where no odometer is
+     * Adds an entry holding one odometer reading at [occurredAt]: a new odometer count logged where no odometer is
      * known, or one lower than the known odometer, confirmed by the user (`confirm-lower-odometer`). [tenthsIncluded] is
      * remembered for the vehicle in the same transaction, as for [addDistanceEntry]. [note] is the
      * pending note typed on the log event form (`add-event-notes`), or null when none was added. [photos] are the pending
@@ -102,13 +103,14 @@ interface VehicleRepository {
     ): String
 
     /**
-     * Adds a refueling to the log at [occurredAt] (`add-refueling-logging`). [amount] and [unit] are stored
-     * together, [unit] never converted. [mileage] is the optional "Trip distance"/"New odometer" reading — null
-     * when the refueling carries none, in which case the vehicle's odometer is untouched by it. When given, it is
-     * validated and saved exactly like [addDistanceEntry]/[addOdometerAnchor]'s own reading, including
-     * [tenthsIncluded] being remembered for the vehicle in the same transaction (ignored when [mileage] is null,
-     * since there is then no unit choice to remember). [note], [photos] and [capture] are attached the same way as
-     * for [addDistanceEntry]. Returns the new event id.
+     * Adds a refueling to the log at [occurredAt] (`add-refueling-logging`): one entry holding a refueling event and,
+     * when [mileage] is given, the event that mileage is (`atomic-log-events`) — a distance event for
+     * [RefuelingMileage.Added], an odometer reading for [RefuelingMileage.Anchor] — at the same moment, all saved
+     * together or not at all. [amount] and [unit] are stored together, [unit] never converted. With no [mileage] the
+     * vehicle's odometer is untouched. [tenthsIncluded] is remembered for the vehicle in the same transaction, unless
+     * [mileage] is null (there is then no unit choice to remember). [note] and [photos] are stored once, on the entry.
+     * [capture] is stored under the event whose number it filled: the refueling for a fuel-amount scan, the mileage
+     * event for an odometer or trip scan. Returns the refueling event's id.
      */
     suspend fun addRefueling(
         vehicleId: String,
@@ -144,20 +146,21 @@ interface VehicleRepository {
     )
 
     /**
-     * Changes only the note of one event (add-event-editing), the log's one, narrowly-scoped exception to being
-     * append-only. Null clears it. No other field of the event, and no other event, is touched.
+     * Changes only the note of the entry [eventId] belongs to (add-event-editing, `atomic-log-events`), shared by every
+     * event of that entry: the log's one, narrowly-scoped exception to being append-only. Null clears it. No other field,
+     * and no other entry, is touched.
      */
     suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?)
 
     /**
-     * Adds one photo to an already-saved event's photo strip (`add-event-pictures`, the details screen's "Edit"
+     * Adds one photo to the photo strip of the entry an already-saved event belongs to (`add-event-pictures`, the details screen's "Edit"
      * action), appended after whatever photos it already has. Promotes [photo] from pending to a permanent id.
      * Returns the new photo's id.
      */
     suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String
 
     /**
-     * Removes one photo, by its id, from an already-saved event (`add-event-pictures`, the details screen's "Edit"
+     * Removes one photo, by its id, from the entry an already-saved event belongs to (`add-event-pictures`, the details screen's "Edit"
      * action, after the removal is confirmed). Deletes the photo's files. Not finding it is not an error.
      */
     suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String)

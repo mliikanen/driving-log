@@ -1769,6 +1769,26 @@ class LogEventProcessorTest {
 
         val capture = assertNotNull(repository.refuelingCalls.single().capture)
         assertEquals("123.4", capture.result.accepted.value)
+        assertTrue(capture.result.accepted.kind != com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT)
+    }
+
+    @Test
+    fun aRefuelingsScanSaysWhichFieldItFilledForTheRepositoryToKeepItWithThatEvent() = runTest {
+        // atomic-log-events: the repository keeps a refueling's scan with the event whose number it filled, told apart by
+        // the accepted detection's kind — a fuel amount for the refueling event, an odometer or trip reading for its mileage.
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.scanFuelAmount()
+        processor.accept("12.34")
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        val capture = assertNotNull(repository.refuelingCalls.single().capture)
+        assertEquals(com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT, capture.result.accepted.kind)
     }
 
     @Test

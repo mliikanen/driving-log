@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.eventdetails
 
+import com.mikonoma.drivinglog.vehicle.domain.LogEntry
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.picture.EventPhotoDraft
@@ -9,10 +10,10 @@ import org.fuusio.kide.presentation.ViewIntent
 import org.fuusio.kide.presentation.ViewState
 
 /**
- * The screen re-observes [event] live from the repository, by id, so it reflects a later change without the user
- * having to navigate away and back. [event] carries everything the screen shows, including its note
- * (`VehicleEvent.note`, always null for an [com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.InitialOdometer])
- * and its photos (`VehicleEvent.photoIds`, `add-event-pictures`); [unit] formats its figure.
+ * The screen re-observes [entry] live from the repository, by the id of the event whose row was tapped, so it reflects a
+ * later change without the user having to navigate away and back. It shows the whole entry (`atomic-log-events`),
+ * whichever of its events' rows was tapped: [event] (a refueling, or the entry's only event) as its kind and figure, a
+ * refueling's [mileage], and the entry's note and photos (`add-event-pictures`); [unit] formats its figures.
  *
  * [edit] is non-null while the "Edit" screen (`add-event-editing`, extended by `add-event-pictures`) is open, and
  * [viewingPhotoId] while a thumbnail's full-size viewer is open.
@@ -20,7 +21,7 @@ import org.fuusio.kide.presentation.ViewState
 data class EventDetailsState(
     val isLoading: Boolean = true,
     val notFound: Boolean = false,
-    val event: VehicleEvent? = null,
+    val entry: LogEntry? = null,
     val unit: OdometerUnit = OdometerUnit.KILOMETERS,
     /** [event]'s photos' thumbnail URIs (the small version), paired with each photo's id, in attach order. */
     val photoThumbnailUris: List<Pair<String, String>> = emptyList(),
@@ -29,7 +30,13 @@ data class EventDetailsState(
     val viewingPhotoId: String? = null,
     /** The full-size viewer's URI for [viewingPhotoId], loaded once it opens; null while it loads or none is open. */
     val viewingPhotoUri: String? = null,
-) : ViewState
+) : ViewState {
+    /** The event shown as the entry's kind and figure: its refueling when it has one, else its only event. */
+    val event: VehicleEvent? get() = entry?.primary
+
+    /** A refueling's mileage event (a distance or an odometer reading of the same entry), or null. */
+    val mileage: VehicleEvent? get() = entry?.mileage
+}
 
 /**
  * The "Edit" screen's own state (`add-event-editing`, extended by `add-event-pictures`): the note element (tap it to
@@ -63,7 +70,7 @@ data class EventEditState(
 }
 
 sealed interface EventDetailsIntent : ViewIntent {
-    /** Opens the "Edit" screen, seeded with the event's current note and photos. */
+    /** Opens the "Edit" screen, seeded with the entry's current note and photos. */
     data object EditClicked : EventDetailsIntent
 
     /** Opens the note element's full-screen editor, seeded from [EventEditState.noteDraft]. */

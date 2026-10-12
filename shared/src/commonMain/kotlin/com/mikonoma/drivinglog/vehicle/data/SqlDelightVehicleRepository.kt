@@ -4,7 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
-import com.mikonoma.drivinglog.db.SelectEventById
+import com.mikonoma.drivinglog.db.SelectEntryOfEvent
 import com.mikonoma.drivinglog.db.SelectLog
 import com.mikonoma.drivinglog.db.SelectRecentEvents
 import com.mikonoma.drivinglog.db.SelectVehicleDetails
@@ -12,9 +12,11 @@ import com.mikonoma.drivinglog.db.SelectVehicles
 import com.mikonoma.drivinglog.util.undoOnFailure
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EntrySource
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.FuelType
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
+import com.mikonoma.drivinglog.vehicle.domain.LogEntry
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
@@ -33,6 +35,7 @@ import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.truncatedToMinute
 import com.mikonoma.drivinglog.vehicle.ocr.CaptureStore
+import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
 import com.mikonoma.drivinglog.vehicle.ocr.ScanResult
 import com.mikonoma.drivinglog.vehicle.picture.PictureStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -60,6 +63,7 @@ class SqlDelightVehicleRepository(
 
     private val vehicles get() = database.vehicleQueries
     private val events get() = database.vehicleEventQueries
+    private val entries get() = database.logEntryQueries
     private val appState get() = database.appStateQueries
     private val eventPhotos get() = database.eventPictureQueries
     private val eventCaptures get() = database.eventCaptureQueries
@@ -76,10 +80,21 @@ class SqlDelightVehicleRepository(
     override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.selectLog(vehicleId).asFlow().mapToList(dispatcher)
         .map { rows -> rows.mapNotNull { it.toDomain() } }
 
-    override fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?> =
-        events.selectEventById(vehicleId, eventId).asFlow().mapToOneOrNull(dispatcher).map { it?.toDomain() }
+    override fun observeEntry(vehicleId: String, eventId: String): Flow<LogEntry?> =
+        events.selectEntryOfEvent(vehicleId, eventId).asFlow().mapToList(dispatcher).map { rows ->
+            val first = rows.firstOrNull() ?: return@map null
+            val entryEvents = rows.mapNotNull { it.toDomain() }
+            if (entryEvents.isEmpty()) return@map null
+            LogEntry(
+                id = first.entry_id,
+                source = EntrySource.fromCode(first.source),
+                events = entryEvents,
+                note = first.note,
+                photoIds = photoIdsOf(first.entry_id),
+            )
+        }
 
-    private suspend fun photoIdsOf(eventId: String): List<String> = withContext(dispatcher) { eventPhotos.selectPhotoIdsForEvent(eventId).executeAsList() }
+    private suspend fun photoIdsOf(entryId: String): List<String> = withContext(dispatcher) { eventPhotos.selectPhotoIdsForEntry(entryId).executeAsList() }
 
     override fun observeLastLoggedVehicleId(): Flow<String?> = appState.selectAppState(LAST_LOGGED_VEHICLE_ID_KEY).asFlow().mapToOneOrNull(dispatcher)
 
@@ -108,6 +123,8 @@ class SqlDelightVehicleRepository(
         val zone = ZonedMoment.of(occurredAt, deviceTimeZone.current()).zone
         val vehicleId = newId()
         val eventId = newId()
+        // An entry has the id of its event (of its refueling, for a refueling's entry), as the migration gives every old one.
+        val entryId = eventId
         val pictureId = picture?.let { promoted(it) }
         val promotedCapture = undoOnFailure(
             undo = {
@@ -123,20 +140,20 @@ class SqlDelightVehicleRepository(
                 promotedCapture?.let { captures?.delete(it.first) }
             },
         ) {
-            // One transaction: the vehicle, its initial event and the scan it came from (scan-initial-odometer) are all saved, or none.
+            // One transaction: the vehicle, its initial odometer and the scan it came from (scan-initial-odometer) are all saved, or none.
             database.transaction {
                 vehicles.insertVehicle(vehicleId, name, licensePlate, unit.code, now, now, pictureId, type.code, color.hex, fuelType.code)
-                // The initial odometer event never carries a note (add-event-notes): it is created by this flow, not the log event form.
-                events.insertEvent(
-                    eventId,
-                    vehicleId,
-                    INITIAL_ODOMETER,
-                    occurredAt.toEpochMilliseconds(),
-                    initialOdometer.meters,
-                    now,
-                    zone?.id,
-                    zone?.offsetSeconds?.toLong(),
-                    null,
+                // The initial odometer's entry never carries a note (add-event-notes): it is created by this flow, not the log event form.
+                entries.insertLogEntry(entryId, EntrySource.VEHICLE_ADDED.code, null, now)
+                events.insertOdometerReading(
+                    id = eventId,
+                    vehicle_id = vehicleId,
+                    entry_id = entryId,
+                    occurred_at = occurredAt.toEpochMilliseconds(),
+                    odometer_meters = initialOdometer.meters,
+                    created_at = now,
+                    occurred_zone = zone?.id,
+                    occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
                 )
                 promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
             }
@@ -157,7 +174,7 @@ class SqlDelightVehicleRepository(
         require(distance.meters > 0) { "A distance entry must be above zero" }
         return withContext(dispatcher) {
             val eventId = newId()
-            val zone = occurredAt.zone
+            val entryId = eventId
             val photoIds = photos.map { promotedEventPhoto(it) }
             val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
             undoOnFailure(
@@ -166,20 +183,12 @@ class SqlDelightVehicleRepository(
                     promotedCapture?.let { captures?.delete(it.first) }
                 },
             ) {
-                // One transaction: the entry, the remembered tenths choice and the attached photos are all saved, or none.
+                // One transaction: the entry, its event, the remembered tenths choice and the attached photos are all saved, or none.
                 database.transaction {
-                    events.insertDistanceEntry(
-                        id = eventId,
-                        vehicle_id = vehicleId,
-                        occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
-                        created_at = clock.now().toEpochMilliseconds(),
-                        distance_meters = distance.meters,
-                        logged_odometer_meters = loggedOdometer?.meters,
-                        occurred_zone = zone?.id,
-                        occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
-                        note = note,
-                    )
-                    insertEventPhotos(eventId, photoIds)
+                    val now = clock.now().toEpochMilliseconds()
+                    entries.insertLogEntry(entryId, EntrySource.LOG_FORM.code, note, now)
+                    insertDistance(eventId, vehicleId, entryId, occurredAt, now, distance, loggedOdometer)
+                    insertEntryPhotos(entryId, photoIds)
                     promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
                     vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
@@ -199,7 +208,7 @@ class SqlDelightVehicleRepository(
         capture: PendingCapture?,
     ): String = withContext(dispatcher) {
         val eventId = newId()
-        val zone = occurredAt.zone
+        val entryId = eventId
         val photoIds = photos.map { promotedEventPhoto(it) }
         val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
         undoOnFailure(
@@ -208,13 +217,12 @@ class SqlDelightVehicleRepository(
                 promotedCapture?.let { captures?.delete(it.first) }
             },
         ) {
-            // One transaction: the anchor, the remembered tenths choice and the attached photos are all saved, or none.
+            // One transaction: the entry, its odometer reading, the remembered tenths choice and the attached photos are all saved, or none.
             database.transaction {
-                events.insertEvent(
-                    eventId, vehicleId, ODOMETER_ANCHOR, occurredAt.instant.truncatedToMinute().toEpochMilliseconds(), reading.meters,
-                    clock.now().toEpochMilliseconds(), zone?.id, zone?.offsetSeconds?.toLong(), note,
-                )
-                insertEventPhotos(eventId, photoIds)
+                val now = clock.now().toEpochMilliseconds()
+                entries.insertLogEntry(entryId, EntrySource.LOG_FORM.code, note, now)
+                insertOdometerReading(eventId, vehicleId, entryId, occurredAt, now, reading)
+                insertEntryPhotos(entryId, photoIds)
                 promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
                 vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                 appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
@@ -239,36 +247,48 @@ class SqlDelightVehicleRepository(
         require(amount.milliliters > 0) { "A refueling's fuel amount must be above zero" }
         return withContext(dispatcher) {
             val eventId = newId()
+            val entryId = eventId
+            val mileageEventId = mileage?.let { newId() }
             val zone = occurredAt.zone
             val photoIds = photos.map { promotedEventPhoto(it) }
             val promotedCapture = capture?.let { promotedCapture(it) to it.result.toJson() }
+            // The scan goes with the event whose number it filled (atomic-log-events): a fuel-amount scan with the refueling,
+            // an odometer or trip scan with the mileage event (when there is none, it can only have been a fuel amount).
+            val captureEventId = if (capture?.result?.accepted?.kind == ReadingKind.FUEL_AMOUNT) eventId else mileageEventId ?: eventId
             undoOnFailure(
                 undo = {
                     for (photoId in photoIds) eventPictures.delete(photoId)
                     promotedCapture?.let { captures?.delete(it.first) }
                 },
             ) {
-                // One transaction: the refueling, its optional mileage's remembered tenths choice, the remembered fuel
-                // unit/type and the attached photos are all saved, or none.
+                // One transaction: the entry, the refueling, its mileage event, the mileage's remembered tenths choice, the
+                // remembered fuel unit/type and the attached photos are all saved, or none.
                 database.transaction {
+                    val now = clock.now().toEpochMilliseconds()
+                    entries.insertLogEntry(entryId, EntrySource.LOG_FORM.code, note, now)
+                    when (mileage) {
+                        is RefuelingMileage.Added ->
+                            insertDistance(checkNotNull(mileageEventId), vehicleId, entryId, occurredAt, now, mileage.distance, mileage.loggedOdometer)
+
+                        is RefuelingMileage.Anchor -> insertOdometerReading(checkNotNull(mileageEventId), vehicleId, entryId, occurredAt, now, mileage.reading)
+
+                        null -> Unit
+                    }
                     events.insertRefueling(
                         id = eventId,
                         vehicle_id = vehicleId,
+                        entry_id = entryId,
                         occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
-                        created_at = clock.now().toEpochMilliseconds(),
-                        odometer_meters = (mileage as? RefuelingMileage.Anchor)?.reading?.meters,
-                        distance_meters = (mileage as? RefuelingMileage.Added)?.distance?.meters,
-                        logged_odometer_meters = (mileage as? RefuelingMileage.Added)?.loggedOdometer?.meters,
+                        created_at = now,
                         occurred_zone = zone?.id,
                         occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
-                        note = note,
                         fuel_amount_milliliters = amount.milliliters,
                         fuel_unit = unit.code,
                         fuel_type = fuelType.code,
                         filled_up = if (filledUp) 1L else 0L,
                     )
-                    insertEventPhotos(eventId, photoIds)
-                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(eventId, photoId, detections) }
+                    insertEntryPhotos(entryId, photoIds)
+                    promotedCapture?.let { (photoId, detections) -> eventCaptures.insertEventCapture(captureEventId, photoId, detections) }
                     if (mileage != null) vehicles.updateLogDistanceTenths(if (tenthsIncluded) 1L else 0L, vehicleId)
                     appState.upsertAppState(LAST_LOGGED_VEHICLE_ID_KEY, vehicleId)
                     appState.upsertAppState(LAST_FUEL_UNIT_KEY, unit.code)
@@ -316,22 +336,24 @@ class SqlDelightVehicleRepository(
 
     override suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?) {
         withContext(dispatcher) {
-            events.updateEventNote(note, vehicleId, eventId)
+            val entryId = entryIdOf(vehicleId, eventId) ?: return@withContext
+            entries.updateEntryNote(note, entryId)
         }
     }
 
     override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String = withContext(dispatcher) {
+        val entryId = checkNotNull(entryIdOf(vehicleId, eventId)) { "No event $eventId for the vehicle $vehicleId" }
         val photoId = promotedEventPhoto(photo)
         undoOnFailure(
             undo = {
                 eventPictures.delete(photoId)
             },
         ) {
-            // touchEvent: see its own doc comment — event_picture alone does not make a live-observed event
+            // touchEntry: see its own doc comment — event_picture alone does not make a live-observed entry
             // (details screen, recent events, full log) notice this change.
             database.transaction {
-                insertEventPhotos(eventId, listOf(photoId))
-                events.touchEvent(eventId)
+                insertEntryPhotos(entryId, listOf(photoId))
+                entries.touchEntry(entryId)
             }
         }
         photoId
@@ -339,17 +361,21 @@ class SqlDelightVehicleRepository(
 
     override suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String) {
         withContext(dispatcher) {
-            // Only delete the files when that photo actually belonged to that event: a mismatched pair must not
-            // delete a picture another event still references.
-            if (pictureId in eventPhotos.selectPhotoIdsForEvent(eventId).executeAsList()) {
+            val entryId = entryIdOf(vehicleId, eventId) ?: return@withContext
+            // Only delete the files when that photo actually belonged to that entry: a mismatched pair must not
+            // delete a picture another entry still references.
+            if (pictureId in eventPhotos.selectPhotoIdsForEntry(entryId).executeAsList()) {
                 database.transaction {
-                    eventPhotos.deleteEventPicture(eventId, pictureId)
-                    events.touchEvent(eventId)
+                    eventPhotos.deleteEventPicture(entryId, pictureId)
+                    entries.touchEntry(entryId)
                 }
                 eventPictures.delete(pictureId)
             }
         }
     }
+
+    /** The entry [eventId] belongs to, or null when the vehicle has no such event. */
+    private fun entryIdOf(vehicleId: String, eventId: String): String? = entries.selectEntryIdOfEvent(vehicleId, eventId).executeAsOneOrNull()
 
     /** Moves a pending vehicle picture into use. The pending files are gone or incomplete when the save cannot go on. */
     private suspend fun promoted(picture: PendingPicture): String =
@@ -371,20 +397,58 @@ class SqlDelightVehicleRepository(
 
     override suspend fun capturePhotoIds(): Set<String> = withContext(dispatcher) { eventCaptures.selectCapturePhotoIds().executeAsList().toSet() }
 
-    /** Inserts one `event_picture` row per already-promoted [photoIds], appended after whatever the event already has. */
-    private fun insertEventPhotos(eventId: String, photoIds: List<String>) {
+    /** Inserts one `event_picture` row per already-promoted [photoIds], appended after whatever the entry already has. */
+    private fun insertEntryPhotos(entryId: String, photoIds: List<String>) {
         if (photoIds.isEmpty()) return
-        val startPosition = eventPhotos.selectNextPosition(eventId).executeAsOne()
+        val startPosition = eventPhotos.selectNextPosition(entryId).executeAsOne()
         val now = clock.now().toEpochMilliseconds()
         photoIds.forEachIndexed { index, photoId ->
-            eventPhotos.insertEventPicture(photoId, eventId, startPosition + index, now)
+            eventPhotos.insertEventPicture(photoId, entryId, startPosition + index, now)
         }
     }
 
+    /** Inserts a distance event of [entryId]: a "Distance" entry, or a refueling's trip-distance mileage. */
+    private fun insertDistance(
+        eventId: String,
+        vehicleId: String,
+        entryId: String,
+        occurredAt: ZonedMoment,
+        createdAt: Long,
+        distance: Distance,
+        loggedOdometer: Distance?,
+    ) {
+        val zone = occurredAt.zone
+        events.insertDistanceEntry(
+            id = eventId,
+            vehicle_id = vehicleId,
+            entry_id = entryId,
+            occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
+            created_at = createdAt,
+            distance_meters = distance.meters,
+            logged_odometer_meters = loggedOdometer?.meters,
+            occurred_zone = zone?.id,
+            occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+        )
+    }
+
+    /** Inserts an odometer reading of [entryId] logged on the log event form: a new odometer count, or a refueling's. */
+    private fun insertOdometerReading(eventId: String, vehicleId: String, entryId: String, occurredAt: ZonedMoment, createdAt: Long, reading: Distance) {
+        val zone = occurredAt.zone
+        events.insertOdometerReading(
+            id = eventId,
+            vehicle_id = vehicleId,
+            entry_id = entryId,
+            occurred_at = occurredAt.instant.truncatedToMinute().toEpochMilliseconds(),
+            odometer_meters = reading.meters,
+            created_at = createdAt,
+            occurred_zone = zone?.id,
+            occurred_offset_seconds = zone?.offsetSeconds?.toLong(),
+        )
+    }
+
     private companion object {
-        const val INITIAL_ODOMETER = "INITIAL_ODOMETER"
+        const val ODOMETER_READING = "ODOMETER_READING"
         const val DISTANCE = "DISTANCE"
-        const val ODOMETER_ANCHOR = "ODOMETER_ANCHOR"
         const val REFUELING = "REFUELING"
 
         /** The key `app_state` remembers the vehicle last logged for under. */
@@ -426,23 +490,25 @@ class SqlDelightVehicleRepository(
     )
 
     private suspend fun SelectRecentEvents.toDomain(): VehicleEvent? = eventOf(
-        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+        id, entry_id, source, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
         occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
     )
 
     private suspend fun SelectLog.toDomain(): VehicleEvent? = eventOf(
-        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+        id, entry_id, source, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
         occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
     )
 
-    private suspend fun SelectEventById.toDomain(): VehicleEvent? = eventOf(
-        id, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
+    private suspend fun SelectEntryOfEvent.toDomain(): VehicleEvent? = eventOf(
+        id, entry_id, source, type, occurred_at, odometer_meters, distance_meters, logged_odometer_meters, occurred_zone,
         occurred_offset_seconds, note, fuel_amount_milliliters, fuel_unit, fuel_type, filled_up,
     )
 
-    /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. */
+    /** Unknown types (from a newer app version, say) are skipped instead of crashing the screen. [note] and the photos are the entry's. */
     private suspend fun eventOf(
         id: String,
+        entryId: String,
+        sourceCode: String,
         type: String,
         occurredAt: Long,
         odometerMeters: Long?,
@@ -451,29 +517,23 @@ class SqlDelightVehicleRepository(
         zoneId: String?,
         offsetSeconds: Long?,
         note: String?,
-        fuelAmountMilliliters: Long? = null,
-        fuelUnitCode: String? = null,
-        fuelTypeCode: String? = null,
-        filledUp: Long? = null,
+        fuelAmountMilliliters: Long?,
+        fuelUnitCode: String?,
+        fuelTypeCode: String?,
+        filledUp: Long?,
     ): VehicleEvent? {
         // Events from before time zones were stored have neither column and are shown in the device's zone.
         val zone = if (zoneId != null && offsetSeconds != null) EventZone(zoneId, offsetSeconds.toInt()) else null
         val moment = ZonedMoment(Instant.fromEpochMilliseconds(occurredAt), zone)
         return when (type) {
-            // The initial odometer event never has a note or a photo (add-event-notes, add-event-pictures): both
-            // columns read null/empty for it, and are ignored here.
-            INITIAL_ODOMETER -> VehicleEvent.InitialOdometer(
+            ODOMETER_READING -> VehicleEvent.OdometerReading(
                 id = id,
                 occurredAt = moment,
-                reading = Distance(requireNotNull(odometerMeters) { "Initial odometer event without a reading" }),
-            )
-
-            ODOMETER_ANCHOR -> VehicleEvent.OdometerAnchor(
-                id = id,
-                occurredAt = moment,
-                reading = Distance(requireNotNull(odometerMeters) { "Odometer anchor event without a reading" }),
+                reading = Distance(requireNotNull(odometerMeters) { "Odometer reading without a reading" }),
+                source = EntrySource.fromCode(sourceCode),
                 note = note,
-                photoIds = photoIdsOf(id),
+                photoIds = photoIdsOf(entryId),
+                entryId = entryId,
             )
 
             DISTANCE -> VehicleEvent.DistanceEntry(
@@ -482,12 +542,10 @@ class SqlDelightVehicleRepository(
                 distance = Distance(requireNotNull(distanceMeters) { "Distance event without a distance" }),
                 loggedOdometer = loggedOdometerMeters?.let { Distance(it) },
                 note = note,
-                photoIds = photoIdsOf(id),
+                photoIds = photoIdsOf(entryId),
+                entryId = entryId,
             )
 
-            // A refueling's mileage (add-refueling-logging) reuses the same odometer/distance columns an odometer
-            // anchor/distance entry already do: odometer_meters set means it was logged by "New odometer",
-            // distance_meters set means "Trip distance", and neither set means no mileage was given.
             REFUELING -> VehicleEvent.Refueling(
                 id = id,
                 occurredAt = moment,
@@ -495,13 +553,9 @@ class SqlDelightVehicleRepository(
                 unit = FuelUnit.fromCode(requireNotNull(fuelUnitCode) { "Refueling event without a fuel unit" }),
                 fuelType = FuelType.fromCode(fuelTypeCode) ?: FuelType.OTHER,
                 filledUp = requireNotNull(filledUp) { "Refueling event without a filled-up flag" } != 0L,
-                mileage = when {
-                    odometerMeters != null -> RefuelingMileage.Anchor(Distance(odometerMeters))
-                    distanceMeters != null -> RefuelingMileage.Added(Distance(distanceMeters), loggedOdometerMeters?.let { Distance(it) })
-                    else -> null
-                },
                 note = note,
-                photoIds = photoIdsOf(id),
+                photoIds = photoIdsOf(entryId),
+                entryId = entryId,
             )
 
             else -> null

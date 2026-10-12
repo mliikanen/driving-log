@@ -61,11 +61,11 @@ SELECT id, name, license_plate, odometer_unit, created_at, log_distance_tenths, 
 FROM vehicle
 ORDER BY created_at, rowid;
 
--- The current odometer is derived from the log: the latest event that sets the odometer (ordered by instant, then insertion),
--- plus the distance of every DISTANCE event after it, or a REFUELING event's own distance when it was logged with a
--- trip-distance mileage (add-refueling-logging; a REFUELING with no mileage has a null distance_meters and adds
--- nothing, same as one with an odometer_meters-setting mileage is already covered by the baseline subquery below).
--- Distance entries dated before that event do not count.
+-- The current odometer is derived from the log (atomic-log-events): the latest ODOMETER_READING in log order (by instant,
+-- then by entry in the order the entries were added, log_entry's rowid), plus the distance of every DISTANCE event after it
+-- in that order. A REFUELING never counts: a refueling logged with mileage counts through its entry's own DISTANCE or
+-- ODOMETER_READING. Distance entries dated before that reading do not count. A DISTANCE in the reading's own entry would
+-- come after it (kind order), although no entry holds both.
 selectVehicleDetails:
 SELECT
     v.id,
@@ -82,13 +82,18 @@ SELECT
         SELECT CAST(b.odometer_meters + COALESCE((
             SELECT SUM(d.distance_meters)
             FROM vehicle_event d
+            JOIN log_entry de ON de.id = d.entry_id
             WHERE d.vehicle_id = v.id
-              AND (d.type = 'DISTANCE' OR (d.type = 'REFUELING' AND d.distance_meters IS NOT NULL))
-              AND (d.occurred_at > b.occurred_at OR (d.occurred_at = b.occurred_at AND d.rowid > b.rowid))
+              AND d.type = 'DISTANCE'
+              AND (
+                  d.occurred_at > b.occurred_at
+                  OR (d.occurred_at = b.occurred_at AND (de.rowid > be.rowid OR d.entry_id = b.entry_id))
+              )
         ), 0) AS INTEGER)
         FROM vehicle_event b
-        WHERE b.vehicle_id = v.id AND b.odometer_meters IS NOT NULL
-        ORDER BY b.occurred_at DESC, b.rowid DESC
+        JOIN log_entry be ON be.id = b.entry_id
+        WHERE b.vehicle_id = v.id AND b.type = 'ODOMETER_READING' AND b.odometer_meters IS NOT NULL
+        ORDER BY b.occurred_at DESC, be.rowid DESC
         LIMIT 1
     ) AS current_odometer_meters
 FROM vehicle v

@@ -1,18 +1,26 @@
 package com.mikonoma.drivinglog.vehicle.log
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
+import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.FuelType
+import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
+import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
+import com.mikonoma.drivinglog.vehicle.domain.Volume
+import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.initialEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VehicleLogProcessorTest {
@@ -64,5 +72,28 @@ class VehicleLogProcessorTest {
 
         assertEquals(false, state.isLoading)
         assertTrue(state.notFound)
+    }
+
+    // ---- One row per event of an entry (atomic-log-events)
+
+    /** A refueling logged with a trip-distance mileage (atomic-log-events): its entry holds a refueling and a distance. */
+    private suspend fun logRefuelingWithMileage(at: Long): String = repository.addRefueling(
+        "v1",
+        ZonedMoment(Instant.fromEpochMilliseconds(at)),
+        Volume(42_300),
+        FuelUnit.LITERS,
+        FuelType.DIESEL,
+        filledUp = true,
+        mileage = RefuelingMileage.Added(Distance(30_000)),
+    )
+
+    @Test
+    fun aRefuelingWithMileageIsListedAsItsRefuelingAboveItsDistance() = runTest {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", listOf(initialEvent("i", 100, 45_200_000)))
+
+        val refuelingId = logRefuelingWithMileage(200)
+
+        assertEquals(listOf(refuelingId, "$refuelingId-mileage", "i"), VehicleLogProcessor("v1", repository).state.events.map { it.id })
     }
 }

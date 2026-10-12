@@ -2,8 +2,10 @@ package com.mikonoma.drivinglog.vehicle
 
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EntrySource
 import com.mikonoma.drivinglog.vehicle.domain.FuelType
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
+import com.mikonoma.drivinglog.vehicle.domain.LogEntry
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingCapture
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
@@ -21,6 +23,7 @@ import com.mikonoma.drivinglog.vehicle.domain.VehicleType
 import com.mikonoma.drivinglog.vehicle.domain.Volume
 import com.mikonoma.drivinglog.vehicle.domain.ZonedMoment
 import com.mikonoma.drivinglog.vehicle.domain.currentOdometer
+import com.mikonoma.drivinglog.vehicle.domain.inLogOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -93,9 +96,14 @@ data class UpdateCall(
 
 data class UpdateNoteCall(val vehicleId: String, val eventId: String, val note: String?)
 
-/** An in-memory repository for processor tests. Events are kept newest first, as the real one returns them. */
+/**
+ * An in-memory repository for processor tests. Events are kept in the order they were added and returned newest first in
+ * log order ([inLogOrder] reversed), as the real one returns them.
+ */
 class FakeVehicleRepository : VehicleRepository {
     private val vehicles = MutableStateFlow<List<Vehicle>>(emptyList())
+
+    /** Each vehicle's events in the order they were added. */
     private val events = MutableStateFlow<Map<String, List<VehicleEvent>>>(emptyMap())
     private val lastLoggedVehicleId = MutableStateFlow<String?>(null)
     private val lastFuelUnit = MutableStateFlow<FuelUnit?>(null)
@@ -129,9 +137,23 @@ class FakeVehicleRepository : VehicleRepository {
         vehicles.value += Vehicle(id, name, plate, unit, Instant.fromEpochMilliseconds(createdAtMillis), logDistanceTenths, pictureId, type, color, fuelType)
     }
 
-    /** Replaces the vehicle's events; [newestFirst] must already be in newest-first order. */
+    /**
+     * Replaces the vehicle's events; [newestFirst] must already be in newest-first order: events at the same instant are taken
+     * to have been added in the reverse of the order given, so the log lists them exactly as given.
+     */
     fun seedEvents(vehicleId: String, newestFirst: List<VehicleEvent>) {
-        events.value += vehicleId to newestFirst
+        events.value += vehicleId to newestFirst.asReversed()
+    }
+
+    private fun appendEvents(vehicleId: String, added: List<VehicleEvent>) {
+        events.value += vehicleId to (events.value[vehicleId].orEmpty() + added)
+    }
+
+    /** Applies [change] to every event of the entry [eventId] belongs to: its note and photos are the entry's. */
+    private fun changeEntryOf(vehicleId: String, eventId: String, change: (VehicleEvent) -> VehicleEvent) {
+        val added = events.value[vehicleId].orEmpty()
+        val entryId = added.firstOrNull { it.id == eventId }?.entryId ?: return
+        events.value += vehicleId to added.map { if (it.entryId == entryId) change(it) else it }
     }
 
     /** Changes a seeded vehicle's type, as another screen saving it would. */
@@ -153,7 +175,7 @@ class FakeVehicleRepository : VehicleRepository {
         vehicles.value = vehicles.value.map { if (it.id == id) it.copy(pictureId = pictureId) else it }
     }
 
-    fun observeVehicleOdometer(vehicleId: String): Distance? = currentOdometer(eventsOf(vehicleId).asReversed())
+    fun observeVehicleOdometer(vehicleId: String): Distance? = currentOdometer(logOf(vehicleId))
 
     /** Sets the remembered vehicle directly, as a database seeded from an earlier run would have it (no entry saved in this test). */
     fun seedLastLoggedVehicleId(id: String?) {
@@ -168,23 +190,32 @@ class FakeVehicleRepository : VehicleRepository {
         lastFuelType.value = type
     }
 
-    fun eventsOf(vehicleId: String): List<VehicleEvent> = events.value[vehicleId].orEmpty()
+    /** The vehicle's events newest first, as [observeLog] returns them. */
+    fun eventsOf(vehicleId: String): List<VehicleEvent> = logOf(vehicleId).asReversed()
+
+    /** The vehicle's events in log order, oldest first. */
+    private fun logOf(vehicleId: String, all: Map<String, List<VehicleEvent>> = events.value): List<VehicleEvent> = all[vehicleId].orEmpty().inLogOrder()
 
     override fun observeVehicles(): Flow<List<Vehicle>> = vehicles
 
     override fun observeVehicle(id: String): Flow<VehicleDetails?> = vehicles.map { list ->
         list.firstOrNull { it.id == id }?.let { vehicle ->
-            // Events are kept newest first; the current odometer is derived from them oldest first, like the real one.
-            VehicleDetails(vehicle, currentOdometer(events.value[id].orEmpty().asReversed()))
+            // The current odometer is derived from the events in log order, like the real one.
+            VehicleDetails(vehicle, currentOdometer(logOf(id)))
         }
     }
 
-    override fun observeRecentEvents(vehicleId: String, limit: Int): Flow<List<VehicleEvent>> = events.map { it[vehicleId].orEmpty().take(limit) }
+    override fun observeRecentEvents(vehicleId: String, limit: Int): Flow<List<VehicleEvent>> = events.map { logOf(vehicleId, it).asReversed().take(limit) }
 
-    override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.map { it[vehicleId].orEmpty() }
+    override fun observeLog(vehicleId: String): Flow<List<VehicleEvent>> = events.map { logOf(vehicleId, it).asReversed() }
 
-    override fun observeEvent(vehicleId: String, eventId: String): Flow<VehicleEvent?> =
-        events.map { it[vehicleId].orEmpty().firstOrNull { event -> event.id == eventId } }
+    override fun observeEntry(vehicleId: String, eventId: String): Flow<LogEntry?> = events.map { all ->
+        val log = logOf(vehicleId, all)
+        val entryId = log.firstOrNull { it.id == eventId }?.entryId ?: return@map null
+        val entryEvents = log.filter { it.entryId == entryId }
+        val first = entryEvents.first()
+        LogEntry(entryId, first.source, entryEvents, first.note, first.photoIds)
+    }
 
     override fun observeLastLoggedVehicleId(): Flow<String?> = lastLoggedVehicleId
 
@@ -207,7 +238,17 @@ class FakeVehicleRepository : VehicleRepository {
         addCalls += AddCall(name, licensePlate, type, unit, initialOdometer, picture, color, capture, fuelType)
         val id = "v${++counter}"
         seedVehicle(id, name, licensePlate, unit, type = type, color = color, fuelType = fuelType)
-        seedEvents(id, listOf(VehicleEvent.InitialOdometer("e$counter", ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())), initialOdometer)))
+        seedEvents(
+            id,
+            listOf(
+                VehicleEvent.OdometerReading(
+                    "e$counter",
+                    ZonedMoment(Instant.fromEpochMilliseconds(counter.toLong())),
+                    initialOdometer,
+                    EntrySource.VEHICLE_ADDED,
+                ),
+            ),
+        )
         return id
     }
 
@@ -227,10 +268,7 @@ class FakeVehicleRepository : VehicleRepository {
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "d${++counter}"
-        // Keep the log newest first by instant, the way the real repository returns it.
-        val entry = VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer, note, photos.map(::fakePhotoId))
-        val updated = (listOf(entry) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant }
-        seedEvents(vehicleId, updated)
+        appendEvents(vehicleId, listOf(VehicleEvent.DistanceEntry(id, occurredAt, distance, loggedOdometer, note, photos.map(::fakePhotoId))))
         return id
     }
 
@@ -248,8 +286,7 @@ class FakeVehicleRepository : VehicleRepository {
         vehicles.value = vehicles.value.map { if (it.id == vehicleId) it.copy(logDistanceTenths = tenthsIncluded) else it }
         lastLoggedVehicleId.value = vehicleId
         val id = "a${++counter}"
-        val anchor = VehicleEvent.OdometerAnchor(id, occurredAt, reading, note, photos.map(::fakePhotoId))
-        seedEvents(vehicleId, (listOf(anchor) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
+        appendEvents(vehicleId, listOf(VehicleEvent.OdometerReading(id, occurredAt, reading, EntrySource.LOG_FORM, note, photos.map(::fakePhotoId))))
         return id
     }
 
@@ -272,9 +309,33 @@ class FakeVehicleRepository : VehicleRepository {
         lastLoggedVehicleId.value = vehicleId
         lastFuelUnit.value = unit
         lastFuelType.value = fuelType
+        // One entry (atomic-log-events): the refueling and, with mileage, the event that mileage is, sharing the note and photos.
         val id = "r${++counter}"
-        val refueling = VehicleEvent.Refueling(id, occurredAt, amount, unit, fuelType, filledUp, mileage, note, photos.map(::fakePhotoId))
-        seedEvents(vehicleId, (listOf(refueling) + eventsOf(vehicleId)).sortedByDescending { it.occurredAt.instant })
+        val photoIds = photos.map(::fakePhotoId)
+        val mileageEvent = when (mileage) {
+            is RefuelingMileage.Added -> VehicleEvent.DistanceEntry(
+                "$id-mileage",
+                occurredAt,
+                mileage.distance,
+                mileage.loggedOdometer,
+                note,
+                photoIds,
+                entryId = id,
+            )
+
+            is RefuelingMileage.Anchor -> VehicleEvent.OdometerReading(
+                "$id-mileage",
+                occurredAt,
+                mileage.reading,
+                EntrySource.LOG_FORM,
+                note,
+                photoIds,
+                entryId = id,
+            )
+
+            null -> null
+        }
+        appendEvents(vehicleId, listOfNotNull(mileageEvent, VehicleEvent.Refueling(id, occurredAt, amount, unit, fuelType, filledUp, note, photoIds)))
         return id
     }
 
@@ -301,66 +362,43 @@ class FakeVehicleRepository : VehicleRepository {
 
     override suspend fun updateEventNote(vehicleId: String, eventId: String, note: String?) {
         updateNoteCalls += UpdateNoteCall(vehicleId, eventId, note)
-        val updated = eventsOf(vehicleId).map { event ->
-            if (event.id != eventId) {
-                event
-            } else {
-                when (event) {
-                    is VehicleEvent.DistanceEntry -> event.copy(note = note)
-                    is VehicleEvent.OdometerAnchor -> event.copy(note = note)
-                    is VehicleEvent.Refueling -> event.copy(note = note)
-                    is VehicleEvent.InitialOdometer -> event // never carries a note; nothing to change
-                }
-            }
-        }
-        seedEvents(vehicleId, updated)
+        changeEntryOf(vehicleId, eventId) { it.withNoteAndPhotos(note = note) }
     }
 
     override suspend fun addEventPhoto(vehicleId: String, eventId: String, photo: PendingPicture): String {
         addEventPhotoCalls += AddEventPhotoCall(vehicleId, eventId, photo)
         val photoId = fakePhotoId(photo)
-        val updated = eventsOf(vehicleId).map { event ->
-            if (event.id != eventId) {
-                event
-            } else {
-                when (event) {
-                    is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds + photoId)
-                    is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds + photoId)
-                    is VehicleEvent.Refueling -> event.copy(photoIds = event.photoIds + photoId)
-                    is VehicleEvent.InitialOdometer -> event // never carries a photo; nothing to change
-                }
-            }
-        }
-        seedEvents(vehicleId, updated)
+        changeEntryOf(vehicleId, eventId) { it.withNoteAndPhotos(photoIds = it.photoIds + photoId) }
         return photoId
     }
 
     override suspend fun removeEventPhoto(vehicleId: String, eventId: String, pictureId: String) {
         removeEventPhotoCalls += RemoveEventPhotoCall(vehicleId, eventId, pictureId)
-        val updated = eventsOf(vehicleId).map { event ->
-            if (event.id != eventId) {
-                event
-            } else {
-                when (event) {
-                    is VehicleEvent.DistanceEntry -> event.copy(photoIds = event.photoIds - pictureId)
-                    is VehicleEvent.OdometerAnchor -> event.copy(photoIds = event.photoIds - pictureId)
-                    is VehicleEvent.Refueling -> event.copy(photoIds = event.photoIds - pictureId)
-                    is VehicleEvent.InitialOdometer -> event
-                }
-            }
-        }
-        seedEvents(vehicleId, updated)
+        changeEntryOf(vehicleId, eventId) { it.withNoteAndPhotos(photoIds = it.photoIds - pictureId) }
+    }
+
+    private fun VehicleEvent.withNoteAndPhotos(note: String? = this.note, photoIds: List<String> = this.photoIds): VehicleEvent = when (this) {
+        is VehicleEvent.DistanceEntry -> copy(note = note, photoIds = photoIds)
+        is VehicleEvent.OdometerReading -> copy(note = note, photoIds = photoIds)
+        is VehicleEvent.Refueling -> copy(note = note, photoIds = photoIds)
     }
 }
 
 fun initialEvent(id: String, atMillis: Long, meters: Long) =
-    VehicleEvent.InitialOdometer(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters))
+    VehicleEvent.OdometerReading(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters), EntrySource.VEHICLE_ADDED)
 
-fun distanceEvent(id: String, atMillis: Long, meters: Long, loggedOdometer: Long? = null) =
-    VehicleEvent.DistanceEntry(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters), loggedOdometer?.let { Distance(it) })
+fun distanceEvent(id: String, atMillis: Long, meters: Long, loggedOdometer: Long? = null, entryId: String = id) = VehicleEvent.DistanceEntry(
+    id,
+    ZonedMoment(Instant.fromEpochMilliseconds(atMillis)),
+    Distance(meters),
+    loggedOdometer?.let {
+        Distance(it)
+    },
+    entryId = entryId,
+)
 
-fun anchorEvent(id: String, atMillis: Long, meters: Long) =
-    VehicleEvent.OdometerAnchor(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters))
+fun anchorEvent(id: String, atMillis: Long, meters: Long, entryId: String = id) =
+    VehicleEvent.OdometerReading(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Distance(meters), entryId = entryId)
 
 fun refuelingEvent(
     id: String,
@@ -369,5 +407,5 @@ fun refuelingEvent(
     unit: FuelUnit = FuelUnit.LITERS,
     fuelType: FuelType = FuelType.REGULAR_PETROL,
     filledUp: Boolean = true,
-    mileage: RefuelingMileage? = null,
-) = VehicleEvent.Refueling(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Volume(milliliters), unit, fuelType, filledUp, mileage)
+    entryId: String = id,
+) = VehicleEvent.Refueling(id, ZonedMoment(Instant.fromEpochMilliseconds(atMillis)), Volume(milliliters), unit, fuelType, filledUp, entryId = entryId)

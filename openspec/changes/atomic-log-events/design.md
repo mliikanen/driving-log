@@ -106,6 +106,9 @@ CREATE TABLE log_entry (
   event of an entry. That duplication is cheap and confined to one write path.
 - `vehicle_id` stays on the event, for the same reason. The entry does not need one.
 - An entry's **creation order** is `log_entry`'s rowid, which replaces `vehicle_event.rowid` as the tie-breaker.
+- A new entry takes the id of its event (of its refueling, for a refueling's entry), the same rule the migration
+  gives every existing entry; only a refueling's mileage event draws an id of its own. Entry and event ids live in
+  separate tables, so sharing a value is safe.
 - The initial odometer also gets an entry (`source = VEHICLE_ADDED`, note always null), so every event has
   exactly one entry. No nullable `entry_id` and no special cases.
 - `source` is an open set of codes, so a future source (a trip's start or end, say) is a new code, not a new event
@@ -132,9 +135,10 @@ change. This one only makes sure the note already lives on the entry.
 
 ### 4. A scan stays keyed by event, and goes to the event whose number it filled
 
-`event_capture` is unchanged. On save, the processor already knows the accepted scan's target (`ScanTarget`: the
-fuel amount or the mileage). `addRefueling` takes the capture together with its target and inserts it under the
-refueling event or the mileage event. Still one scan per form (the latest accepted). Keeping one scan per target
+`event_capture` is unchanged. The accepted scan already says which field it filled: its accepted detection's `kind`
+is `FUEL_AMOUNT` for the fuel amount and `ODOMETER`/`TRIP` for the mileage (the processor fills the field by that
+same kind). `addRefueling` inserts the capture under the refueling event for a fuel-amount scan and under the
+mileage event otherwise, so neither the processor nor the repository signature changes. Still one scan per form (the latest accepted). Keeping one scan per target
 would be a reasonable follow-up, but it changes `odometer-ocr-capture`'s "a second scan replaces the first" and is
 out of scope.
 
@@ -176,7 +180,8 @@ input type. In one transaction:
 2. insert the mileage event, if any: `DISTANCE` for `Added`, `ODOMETER_READING` for `Anchor`, through the same
    queries `addDistanceEntry`/`addOdometerAnchor` use;
 3. insert the `REFUELING` event (fuel columns only);
-4. insert the photos under the entry, and the capture under the event its target names;
+4. insert the photos under the entry, and the capture under the event its accepted detection's kind names
+   (Decision 4);
 5. update the remembered preferences, as today.
 
 The insert order inside the transaction does not matter for ordering (Decision 5). `addDistanceEntry`,

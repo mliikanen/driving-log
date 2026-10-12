@@ -2,6 +2,7 @@ package com.mikonoma.drivinglog.vehicle.eventdetails
 
 import com.mikonoma.drivinglog.vehicle.FakeVehicleRepository
 import com.mikonoma.drivinglog.vehicle.UpdateNoteCall
+import com.mikonoma.drivinglog.vehicle.anchorEvent
 import com.mikonoma.drivinglog.vehicle.distanceEvent
 import com.mikonoma.drivinglog.vehicle.domain.Distance
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -101,7 +102,7 @@ class EventDetailsProcessorTest {
         repository.seedVehicle("v1", "Family car")
         repository.seedEvents(
             "v1",
-            listOf(VehicleEvent.OdometerAnchor("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(45_200_000), note = "note")),
+            listOf(VehicleEvent.OdometerReading("e2", ZonedMoment(Instant.fromEpochMilliseconds(200)), Distance(45_200_000), note = "note")),
         )
 
         val state = processor(eventId = "e2").state
@@ -414,46 +415,103 @@ class EventDetailsProcessorTest {
         assertTrue(refueling.filledUp)
     }
 
-    private fun refuelingWithMileage(mileage: com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage?): EventDetailsProcessor {
+    /**
+     * A refueling's entry (atomic-log-events): the refueling "e2" and, with a [mileage], that mileage as its own event
+     * "e2-mileage" of the same entry, opened from the event [openedFrom].
+     */
+    private fun refuelingWithMileage(mileage: VehicleEvent?, openedFrom: String = "e2", note: String? = null): EventDetailsProcessor {
         repository.seedVehicle("v1", "Family car")
-        repository.seedEvents(
-            "v1",
-            listOf(
-                com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling(
-                    "e2",
-                    ZonedMoment(Instant.fromEpochMilliseconds(200)),
-                    com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
-                    com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
-                    com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
-                    filledUp = true,
-                    mileage = mileage,
-                ),
-            ),
+        val refueling = VehicleEvent.Refueling(
+            "e2",
+            ZonedMoment(Instant.fromEpochMilliseconds(200)),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            note = note,
         )
-        return processor(eventId = "e2")
+        // The note is the entry's, so every event of the entry carries it.
+        val mileageWithNote = when (mileage) {
+            is VehicleEvent.DistanceEntry -> mileage.copy(note = note)
+            is VehicleEvent.OdometerReading -> mileage.copy(note = note)
+            else -> mileage
+        }
+        repository.seedEvents("v1", listOfNotNull(refueling, mileageWithNote))
+        return processor(eventId = openedFrom)
     }
+
+    private val tripMileage = distanceEvent("e2-mileage", 200, 30_000, entryId = "e2")
 
     @Test
     fun theDetailsScreenShowsARefuelingsTripDistanceMileage() {
-        val mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000))
-        val state = refuelingWithMileage(mileage).state
+        val state = refuelingWithMileage(tripMileage).state
 
-        assertEquals(mileage, (state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+        assertEquals("e2", state.event?.id)
+        assertEquals(tripMileage, state.mileage)
     }
 
     @Test
     fun theDetailsScreenShowsARefuelingsNewOdometerMileage() {
-        val mileage = com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(50_000_000))
+        val mileage = anchorEvent("e2-mileage", 200, 50_000_000, entryId = "e2")
         val state = refuelingWithMileage(mileage).state
 
-        assertEquals(mileage, (state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+        assertEquals(mileage, state.mileage)
     }
 
     @Test
     fun theDetailsScreenShowsNoMileageWhenTheRefuelingHasNone() {
         val state = refuelingWithMileage(null).state
 
-        assertNull((state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling).mileage)
+        assertTrue(state.event is VehicleEvent.Refueling)
+        assertNull(state.mileage)
+    }
+
+    @Test
+    fun openingARefuelingFromItsMileageRowShowsTheSameEntry() {
+        val fromRefueling = refuelingWithMileage(tripMileage, openedFrom = "e2").state
+        val fromMileage = processor(eventId = "e2-mileage").state
+
+        assertEquals(fromRefueling.entry, fromMileage.entry)
+        assertEquals("e2", fromMileage.event?.id)
+        assertEquals(tripMileage, fromMileage.mileage)
+    }
+
+    @Test
+    fun editingTheNoteFromTheMileageRowChangesTheNoteBothEventsShare() {
+        val processor = refuelingWithMileage(tripMileage, openedFrom = "e2-mileage", note = "old note")
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditNoteOpened)
+        processor.dispatch(EventDetailsIntent.EditNoteTextEdited("cheap gas today"))
+        processor.dispatch(EventDetailsIntent.EditNoteAttached)
+
+        processor.dispatch(EventDetailsIntent.EditSaved)
+
+        assertEquals("cheap gas today", processor.state.entry?.note)
+        assertEquals(listOf("cheap gas today", "cheap gas today"), repository.eventsOf("v1").map { it.note })
+    }
+
+    @Test
+    fun editIsNotOfferedForTheInitialOdometer() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", listOf(initialEvent("e1", 100, 45_200_000)))
+        val processor = processor(eventId = "e1")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertEquals(false, processor.state.entry?.isEditable)
+        assertNull(processor.state.edit)
+    }
+
+    @Test
+    fun editIsOfferedForALaterOdometerReading() {
+        repository.seedVehicle("v1", "Family car")
+        repository.seedEvents("v1", listOf(anchorEvent("e2", 200, 44_000_000), initialEvent("e1", 100, 45_200_000)))
+        val processor = processor(eventId = "e2")
+
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertEquals(true, processor.state.entry?.isEditable)
+        assertTrue(processor.state.edit != null)
     }
 
     @Test

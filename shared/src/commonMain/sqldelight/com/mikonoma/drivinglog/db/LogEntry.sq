@@ -1,0 +1,36 @@
+-- Everything one action saved (atomic-log-events): adding a vehicle, or saving the log event form. Holds the note shared by
+-- all of its events (vehicle_event.entry_id) and, through event_picture.entry_id, their photos. Its rowid is the order the
+-- entries were added in, which orders events at the same instant (vehicle-log, "Events at the same time are ordered by
+-- entry, then by kind").
+CREATE TABLE log_entry (
+    id          TEXT    NOT NULL PRIMARY KEY,
+    -- Where the entry was saved from: VEHICLE_ADDED (the add-vehicle form) or LOG_FORM (the log event form). The
+    -- ODOMETER_READING of a VEHICLE_ADDED entry is the vehicle's initial odometer.
+    source      TEXT    NOT NULL,
+    -- The note typed when the entry was logged, shared by all of its events (add-event-notes). Null when none was added;
+    -- always null for a VEHICLE_ADDED entry.
+    note        TEXT,
+    created_at  INTEGER NOT NULL
+);
+
+insertLogEntry:
+INSERT INTO log_entry (id, source, note, created_at)
+VALUES (?, ?, ?, ?);
+
+-- The entry an event belongs to.
+selectEntryIdOfEvent:
+SELECT entry_id FROM vehicle_event WHERE vehicle_id = ? AND id = ?;
+
+-- The one, narrowly-scoped exception to "append-only" (add-event-editing): changes only the note of one entry, never any
+-- other column of it, any of its events or any other entry.
+updateEntryNote:
+UPDATE log_entry
+SET note = ?
+WHERE id = ?;
+
+-- A no-op write (add-event-pictures): the log queries (VehicleEvent.sq) read log_entry but never event_picture, so attaching
+-- or removing a photo through EventPicture.sq's queries alone would never make an already-open details screen, recent-events
+-- list or full log notice the change live. Running this alongside those queries, in the same transaction, makes SQLDelight's
+-- table-change tracking treat a photo change as a log_entry change too, without touching any real column.
+touchEntry:
+UPDATE log_entry SET id = id WHERE id = ?;

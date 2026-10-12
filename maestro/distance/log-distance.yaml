@@ -529,3 +529,34 @@ appId: com.mikonoma.drivinglog
 - assertVisible:
     id: current_odometer
     text: 44,100.0 km
+# The refueling's trip distance is an event of its own in the refueling's entry (atomic-log-events): the recent events
+# show the "Refueling" row and, directly below it, its "Distance" row. Either row opens the same details, the
+# refueling with its mileage.
+- scrollUntilVisible:
+    element:
+      text: "+20.0 km"
+      below:
+        text: "30.00 L"
+- assertVisible:
+    text: "+20.0 km"
+    below:
+      text: "30.00 L"
+- tapOn:
+    text: "+20.0 km"
+    below:
+      text: "30.00 L"
+- assertVisible:
+    id: event_details_title
+    text: Refueling
+- assertVisible:
+    id: event_details_figure
+    text: "30.00 L"
+- assertVisible:
+    id: event_details_mileage
+    text: "+20.0 km"
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: current_odometer
+    timeout: 10000

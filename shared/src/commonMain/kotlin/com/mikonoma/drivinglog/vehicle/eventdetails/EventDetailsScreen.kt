@@ -52,7 +52,6 @@ import com.mikonoma.drivinglog.vehicle.distance.PhotoStripField
 import com.mikonoma.drivinglog.vehicle.distance.RemovePhotoDialog
 import com.mikonoma.drivinglog.vehicle.domain.DeviceTimeZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
-import com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage
 import com.mikonoma.drivinglog.vehicle.domain.VehicleEvent
 import com.mikonoma.drivinglog.vehicle.format.EventRowContent
 import com.mikonoma.drivinglog.vehicle.format.eventRowContent
@@ -85,9 +84,9 @@ fun EventDetailsContent(
     val event = state.event
     // Reuses the row's own formatting (EventRowContent) so the details screen never drifts from what the row shows.
     val content = event?.let { eventRowContent(it, state.unit, symbols, deviceTimeZone.current(), deviceLocale.timeFormat()) }
-    // Only Distance, Odometer reading and Refueling events can carry a note or photos (add-event-notes,
-    // add-event-pictures, add-refueling-logging); Initial odometer never can.
-    val canEdit = event is VehicleEvent.DistanceEntry || event is VehicleEvent.OdometerAnchor || event is VehicleEvent.Refueling
+    // Every entry's note and photos can be edited but the one saved when the vehicle was added (add-event-notes,
+    // add-event-pictures, atomic-log-events), which never carries either.
+    val canEdit = state.entry?.isEditable == true
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -166,10 +165,9 @@ private fun EventDetailsBody(
         }
         // A refueling's own fields (add-refueling-logging): fuel type, fill-up state and, when
         // it has one, its mileage — none of this is part of EventRowContent's generic figure.
-        (event as? VehicleEvent.Refueling)?.let { RefuelingDetails(it, state.unit, symbols) }
-        // Only Distance and Odometer reading events can carry a note (add-event-notes); an
-        // Initial odometer event's note is always null, so this section simply does not render
-        // for it, with no extra branching needed here.
+        (event as? VehicleEvent.Refueling)?.let { RefuelingDetails(it, state.mileage, state.unit, symbols) }
+        // The entry's note (add-event-notes); the initial odometer's entry never has one, so this
+        // section simply does not render for it, with no extra branching needed here.
         event.note?.let { note ->
             Text("Note", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp))
             Text(note, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("event_details_note"))
@@ -182,8 +180,9 @@ private fun EventDetailsBody(
     }
 }
 
+/** A refueling's own fields, and its [mileage]: the distance or odometer reading of the same entry (`atomic-log-events`). */
 @Composable
-private fun RefuelingDetails(refueling: VehicleEvent.Refueling, unit: OdometerUnit, symbols: NumberSymbols) {
+private fun RefuelingDetails(refueling: VehicleEvent.Refueling, mileage: VehicleEvent?, unit: OdometerUnit, symbols: NumberSymbols) {
     Text("Fuel type", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
     Text(
         refueling.fuelType.label,
@@ -195,13 +194,14 @@ private fun RefuelingDetails(refueling: VehicleEvent.Refueling, unit: OdometerUn
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.testTag("event_details_filled_up"),
     )
-    refueling.mileage?.let { mileage ->
-        val mileageText = when (mileage) {
-            is RefuelingMileage.Added -> "+" + formatOdometer(mileage.distance, unit, symbols)
-            is RefuelingMileage.Anchor -> formatOdometer(mileage.reading, unit, symbols)
-        }
+    val mileageText = when (mileage) {
+        is VehicleEvent.DistanceEntry -> "+" + formatOdometer(mileage.distance, unit, symbols)
+        is VehicleEvent.OdometerReading -> formatOdometer(mileage.reading, unit, symbols)
+        is VehicleEvent.Refueling, null -> null
+    }
+    mileageText?.let { text ->
         Text("Mileage", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 12.dp))
-        Text(mileageText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("event_details_mileage"))
+        Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("event_details_mileage"))
     }
 }
 

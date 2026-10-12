@@ -3,28 +3,22 @@ package com.mikonoma.drivinglog.vehicle.domain
 import kotlin.time.Instant
 
 /**
- * The odometer known at [at]: the reading of the latest odometer-setting event (the initial odometer or an odometer anchor) at or before [at], plus the distance of every
- * distance entry after it up to and including [at]. Null when no odometer-setting event is at or before [at].
+ * The odometer known at [at]: the reading of the latest odometer reading (the initial odometer or a later one) at or before [at], plus the distance of every
+ * distance entry after it up to and including [at]. Null when no odometer reading is at or before [at]. A refueling takes no part: a
+ * refueling logged with mileage counts only through its entry's own odometer reading or distance entry (`atomic-log-events`).
  *
- * [eventsOldestFirst] must be ordered by instant and, for the same instant, by when the events were added. Events at the same
- * instant therefore count in the order they were added, and an entry dated before the latest odometer-setting event never
- * counts, because that event replaces the running total.
+ * [eventsOldestFirst] must be in log order ([inLogOrder]): by instant, then by entry in the order the entries were added, then by kind
+ * within an entry. Entries at the same instant therefore count in the order they were added, and an entry dated before the latest
+ * odometer reading never counts, because that reading replaces the running total.
  */
 fun knownOdometerAt(eventsOldestFirst: List<VehicleEvent>, at: Instant): Distance? {
     var meters: Long? = null
     for (event in eventsOldestFirst) {
         if (event.occurredAt.instant > at) break
-        val reading = event.odometer
-        when {
-            // Any event that sets the odometer is a baseline: the initial odometer, an odometer anchor, or a
-            // refueling logged by "New odometer" (its `odometer` already resolves to that reading).
-            reading != null -> meters = reading.meters
-
-            event is VehicleEvent.DistanceEntry -> meters = meters?.plus(event.distance.meters)
-
-            // A refueling logged by "Trip distance" (add-refueling-logging) adds to the total the same way.
-            event is VehicleEvent.Refueling && event.mileage is RefuelingMileage.Added ->
-                meters = meters?.plus(event.mileage.distance.meters)
+        when (event) {
+            is VehicleEvent.OdometerReading -> meters = event.reading.meters
+            is VehicleEvent.DistanceEntry -> meters = meters?.plus(event.distance.meters)
+            is VehicleEvent.Refueling -> Unit
         }
     }
     return meters?.let { Distance(it) }

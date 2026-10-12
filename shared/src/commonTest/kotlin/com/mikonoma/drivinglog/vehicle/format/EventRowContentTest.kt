@@ -3,6 +3,7 @@ package com.mikonoma.drivinglog.vehicle.format
 import com.mikonoma.drivinglog.locale.NumberSymbols
 import com.mikonoma.drivinglog.locale.TimeFormat
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EntrySource
 import com.mikonoma.drivinglog.vehicle.domain.FuelType
 import com.mikonoma.drivinglog.vehicle.domain.FuelUnit
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
@@ -29,7 +30,7 @@ class EventRowContentTest {
 
     @Test
     fun anInitialOdometerShowsItsReadingInTheVehiclesUnit() {
-        val row = row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_300)), OdometerUnit.KILOMETERS_TENTHS)
+        val row = row(VehicleEvent.OdometerReading("i", at, Distance(45_200_300), EntrySource.VEHICLE_ADDED), OdometerUnit.KILOMETERS_TENTHS)
 
         assertEquals("Initial odometer", row.label)
         assertEquals("2026-09-20 15:30", row.moment)
@@ -90,7 +91,7 @@ class EventRowContentTest {
 
     @Test
     fun anAnchorRowIsLabelledOdometerReadingAndShowsItsReadingWithoutAPlusSign() {
-        val row = row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000)))
+        val row = row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000)))
 
         assertEquals("Odometer reading", row.label)
         assertEquals("44,000 km", row.trailing)
@@ -101,8 +102,8 @@ class EventRowContentTest {
     fun onlyADistanceEntryIsDrawnAsADistance() {
         assertEquals(true, row(distance(30_000)).isDistance)
         assertEquals(true, row(distance(30_000, logged = 45_230_000)).isDistance)
-        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).isDistance)
-        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).isDistance)
+        assertEquals(false, row(VehicleEvent.OdometerReading("i", at, Distance(45_200_000), EntrySource.VEHICLE_ADDED)).isDistance)
+        assertEquals(false, row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000))).isDistance)
     }
 
     // ---- The note icon (add-event-notes)
@@ -119,17 +120,17 @@ class EventRowContentTest {
 
     @Test
     fun anAnchorWithANoteHasNoteTrue() {
-        assertEquals(true, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000), note = "reset by mistake")).hasNote)
+        assertEquals(true, row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000), note = "reset by mistake")).hasNote)
     }
 
     @Test
     fun anAnchorWithoutANoteHasNoteFalse() {
-        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).hasNote)
+        assertEquals(false, row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000))).hasNote)
     }
 
     @Test
     fun anInitialOdometerNeverHasANote() {
-        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasNote)
+        assertEquals(false, row(VehicleEvent.OdometerReading("i", at, Distance(45_200_000), EntrySource.VEHICLE_ADDED)).hasNote)
     }
 
     // ---- The photo icon (add-event-pictures)
@@ -164,17 +165,17 @@ class EventRowContentTest {
 
     @Test
     fun anAnchorWithPhotosHasPhotosTrue() {
-        assertEquals(true, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000), photoIds = listOf("p1"))).hasPhotos)
+        assertEquals(true, row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000), photoIds = listOf("p1"))).hasPhotos)
     }
 
     @Test
     fun anAnchorWithoutPhotosHasPhotosFalse() {
-        assertEquals(false, row(VehicleEvent.OdometerAnchor("a", at, Distance(44_000_000))).hasPhotos)
+        assertEquals(false, row(VehicleEvent.OdometerReading("a", at, Distance(44_000_000))).hasPhotos)
     }
 
     @Test
     fun anInitialOdometerNeverHasPhotos() {
-        assertEquals(false, row(VehicleEvent.InitialOdometer("i", at, Distance(45_200_000))).hasPhotos)
+        assertEquals(false, row(VehicleEvent.OdometerReading("i", at, Distance(45_200_000), EntrySource.VEHICLE_ADDED)).hasPhotos)
     }
 
     // ---- Refueling (add-refueling-logging)
@@ -220,5 +221,45 @@ class EventRowContentTest {
         val row = row(refueling(42_300))
         assertEquals(false, row.hasNote)
         assertEquals(false, row.hasPhotos)
+    }
+
+    // ---- One row per event of an entry (atomic-log-events)
+
+    @Test
+    fun bothRowsOfARefuelingWithMileageShowTheEntrysNoteAndPhotos() {
+        val refueling = VehicleEvent.Refueling(
+            "r",
+            at,
+            Volume(42_300),
+            FuelUnit.LITERS,
+            FuelType.DIESEL,
+            filledUp = true,
+            note = "cheap gas today",
+            photoIds = listOf("p1"),
+        )
+        val mileage = VehicleEvent.DistanceEntry("r-mileage", at, Distance(30_000), note = "cheap gas today", photoIds = listOf("p1"), entryId = "r")
+
+        val refuelingRow = row(refueling)
+        val mileageRow = row(mileage)
+
+        assertEquals("Refueling", refuelingRow.label)
+        assertEquals("42.30 L", refuelingRow.trailing)
+        assertEquals(false, refuelingRow.isDistance)
+        assertEquals("Distance", mileageRow.label)
+        assertEquals("+30 km", mileageRow.trailing)
+        assertEquals(true, mileageRow.isDistance)
+        assertEquals(refuelingRow.moment, mileageRow.moment)
+        for (row in listOf(refuelingRow, mileageRow)) {
+            assertEquals(true, row.hasNote)
+            assertEquals(true, row.hasPhotos)
+        }
+    }
+
+    @Test
+    fun aRefuelingsOdometerReadingRowIsAnOrdinaryOdometerReadingRow() {
+        val row = row(VehicleEvent.OdometerReading("r-mileage", at, Distance(45_300_000), entryId = "r"))
+
+        assertEquals("Odometer reading", row.label)
+        assertEquals("45,300 km", row.trailing)
     }
 }

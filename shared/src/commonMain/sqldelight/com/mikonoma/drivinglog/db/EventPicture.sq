@@ -1,25 +1,25 @@
--- A photo attached to a "Distance" or "Odometer reading" event (add-event-pictures). Up to 5 per event.
+-- A photo attached to an entry (add-event-pictures, atomic-log-events), shared by every event of that entry. Up to 5 per entry.
 CREATE TABLE event_picture (
     id          TEXT    NOT NULL PRIMARY KEY,
-    event_id    TEXT    NOT NULL REFERENCES vehicle_event(id),
+    entry_id    TEXT    NOT NULL REFERENCES log_entry(id),
     -- 0-based order the photos were attached in; how they are shown in the strip and the details screen.
     position    INTEGER NOT NULL,
     created_at  INTEGER NOT NULL
 );
 
-CREATE INDEX event_picture_by_event ON event_picture (event_id, position);
+CREATE INDEX event_picture_by_entry ON event_picture (entry_id, position);
 
 insertEventPicture:
-INSERT INTO event_picture (id, event_id, position, created_at)
+INSERT INTO event_picture (id, entry_id, position, created_at)
 VALUES (?, ?, ?, ?);
 
--- In attach order, for one event.
-selectPhotoIdsForEvent:
-SELECT id FROM event_picture WHERE event_id = ? ORDER BY position;
+-- In attach order, for one entry.
+selectPhotoIdsForEntry:
+SELECT id FROM event_picture WHERE entry_id = ? ORDER BY position;
 
--- The next photo's position when appending to an already-saved event (the "Edit" screen's "Add photo").
+-- The next photo's position when appending to an already-saved entry (the "Edit" screen's "Add photo").
 selectNextPosition:
-SELECT IFNULL(MAX(position), -1) + 1 FROM event_picture WHERE event_id = ?;
+SELECT IFNULL(MAX(position), -1) + 1 FROM event_picture WHERE entry_id = ?;
 
 deleteEventPicture:
-DELETE FROM event_picture WHERE event_id = ? AND id = ?;
+DELETE FROM event_picture WHERE entry_id = ? AND id = ?;

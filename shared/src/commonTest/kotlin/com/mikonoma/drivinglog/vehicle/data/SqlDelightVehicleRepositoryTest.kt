@@ -4,6 +4,7 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import com.mikonoma.drivinglog.db.DrivingLogDatabase
 import com.mikonoma.drivinglog.vehicle.domain.Distance
+import com.mikonoma.drivinglog.vehicle.domain.EntrySource
 import com.mikonoma.drivinglog.vehicle.domain.EventZone
 import com.mikonoma.drivinglog.vehicle.domain.OdometerUnit
 import com.mikonoma.drivinglog.vehicle.domain.PendingPicture
@@ -67,8 +68,32 @@ class SqlDelightVehicleRepositoryTest {
     @AfterTest
     fun close() = driver.close()
 
-    private fun insertEvent(id: String, vehicleId: String, type: String, at: Long, meters: Long?) =
-        database.vehicleEventQueries.insertEvent(id, vehicleId, type, at, meters, at, null, null, null)
+    /**
+     * A raw event with an odometer column, in an entry of its own with the event's id, as no repository method writes it: a
+     * type of "INITIAL_ODOMETER" is the initial odometer (an ODOMETER_READING of a VEHICLE_ADDED entry); any other type is
+     * stored as given, so a type from a newer app version can be stored too.
+     */
+    private fun insertEvent(id: String, vehicleId: String, type: String, at: Long, meters: Long?, zone: String? = null, offsetSeconds: Long? = null) {
+        val initial = type == "INITIAL_ODOMETER"
+        database.logEntryQueries.insertLogEntry(id, if (initial) "VEHICLE_ADDED" else "LOG_FORM", null, at)
+        driver.execute(
+            identifier = null,
+            sql =
+            "INSERT INTO vehicle_event (id, vehicle_id, entry_id, type, occurred_at, odometer_meters, created_at, occurred_zone, occurred_offset_seconds) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            parameters = 9,
+        ) {
+            bindString(0, id)
+            bindString(1, vehicleId)
+            bindString(2, id)
+            bindString(3, if (initial) "ODOMETER_READING" else type)
+            bindLong(4, at)
+            bindLong(5, meters)
+            bindLong(6, at)
+            bindString(7, zone)
+            bindLong(8, offsetSeconds)
+        }
+    }
 
     private suspend fun addFamilyCar(unit: OdometerUnit = OdometerUnit.KILOMETERS, meters: Long = 45_200_000) =
         repository.addVehicle("Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, unit, Distance(meters))
@@ -83,7 +108,7 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals("ABC-123", vehicle.licensePlate)
 
         val log = repository.observeLog(id).first()
-        val event = log.single() as VehicleEvent.InitialOdometer
+        val event = log.single() as VehicleEvent.OdometerReading
         assertEquals(Distance(45_200_000), event.reading)
         assertEquals(clock.current, event.occurredAt.instant)
     }
@@ -133,7 +158,7 @@ class SqlDelightVehicleRepositoryTest {
     fun defaultOdometerOfZeroIsLogged() = runTest {
         val id = repository.addVehicle("Van", null, VehicleType.CAR, VehicleColors.default, OdometerUnit.MILES, Distance.ZERO)
         assertEquals(Distance.ZERO, repository.observeVehicle(id).first()?.currentOdometer)
-        assertEquals(Distance.ZERO, (repository.observeLog(id).first().single() as VehicleEvent.InitialOdometer).reading)
+        assertEquals(Distance.ZERO, (repository.observeLog(id).first().single() as VehicleEvent.OdometerReading).reading)
     }
 
     @Test
@@ -173,7 +198,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aNewerEventWithoutAReadingDoesNotHideTheOdometer() = runTest {
         val id = addFamilyCar()
-        insertEvent("note", id, "INITIAL_ODOMETER", clock.current.toEpochMilliseconds() + 10, null)
+        insertEvent("note", id, "SOME_FUTURE_KIND", clock.current.toEpochMilliseconds() + 10, null)
         // Rows with no reading are only a storage possibility for future event types; the derived odometer skips them.
         assertEquals(Distance(45_200_000), repository.observeVehicle(id).first()?.currentOdometer)
     }
@@ -312,8 +337,8 @@ class SqlDelightVehicleRepositoryTest {
     }
 
     @Test
-    fun theSchemaIsVersionTwelve() {
-        assertEquals(12L, DrivingLogDatabase.Schema.version)
+    fun theSchemaIsVersionThirteen() {
+        assertEquals(13L, DrivingLogDatabase.Schema.version)
     }
 
     @Test
@@ -524,6 +549,7 @@ class SqlDelightVehicleRepositoryTest {
     @Test
     fun aScannedRefuelingsMileageIsSavedWithItsScan() = runTest {
         // fix-refueling-scan-capture: addRefueling must pass a scan through like addDistanceEntry/addOdometerAnchor do.
+        // An odometer scan filled the mileage, so it is kept with the mileage's own event (atomic-log-events).
         val id = addFamilyCar()
         val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), scan())
 
@@ -538,7 +564,45 @@ class SqlDelightVehicleRepositoryTest {
             capture = capture,
         )
 
-        assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
+        val mileage = repositoryWithCaptures.observeEntry(id, eventId).first()!!.mileage!!
+        assertEquals("71140", assertNotNull(repositoryWithCaptures.captureOf(mileage.id)).result.accepted.value)
+        assertNull(repositoryWithCaptures.captureOf(eventId))
+    }
+
+    @Test
+    fun aScannedFuelAmountIsSavedWithTheRefuelingEventNotItsMileage() = runTest {
+        val id = addFamilyCar()
+        val fuelScan = com.mikonoma.drivinglog.vehicle.ocr.ScanResult(
+            1280,
+            720,
+            listOf(
+                com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                    "42.30L",
+                    "42.30",
+                    com.mikonoma.drivinglog.vehicle.ocr.TextBox(100, 100, 200, 140),
+                    com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT,
+                    com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+                    "L",
+                ),
+            ),
+            acceptedIndex = 0,
+        )
+        val capture = com.mikonoma.drivinglog.vehicle.domain.PendingCapture(captureStore.addPending(), fuelScan)
+
+        val eventId = repositoryWithCaptures.addRefueling(
+            id,
+            ZonedMoment.of(clock.current, TimeZone.UTC),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            mileage = RefuelingMileage.Added(Distance(30_000)),
+            capture = capture,
+        )
+
+        val mileage = repositoryWithCaptures.observeEntry(id, eventId).first()!!.mileage!!
+        assertEquals("42.30", assertNotNull(repositoryWithCaptures.captureOf(eventId)).result.accepted.value)
+        assertNull(repositoryWithCaptures.captureOf(mileage.id))
     }
 
     @Test
@@ -604,7 +668,7 @@ class SqlDelightVehicleRepositoryTest {
             capture = capture,
         )
 
-        val initial = repositoryWithCaptures.observeLog(id).first().single() as VehicleEvent.InitialOdometer
+        val initial = repositoryWithCaptures.observeLog(id).first().single() as VehicleEvent.OdometerReading
         val stored = assertNotNull(repositoryWithCaptures.captureOf(initial.id))
         assertEquals("71140", stored.result.accepted.value)
         assertTrue(stored.photoId in captureStore.photos)
@@ -838,10 +902,7 @@ class SqlDelightVehicleRepositoryTest {
         val id = vehicleAtNoon()
         addEntry(id, at(1.hours, newYork), Distance(30_000), null)
         // A second baseline for the same instant, entered in Helsinki, added after the entry.
-        database.vehicleEventQueries.insertEvent(
-            "second-baseline", id, "INITIAL_ODOMETER", (noon + 1.hours).toEpochMilliseconds(), 50_000_000,
-            (noon + 1.hours).toEpochMilliseconds(), "Europe/Helsinki", 3 * 3600L, null,
-        )
+        insertEvent("second-baseline", id, "INITIAL_ODOMETER", (noon + 1.hours).toEpochMilliseconds(), 50_000_000, "Europe/Helsinki", 3 * 3600L)
         assertCurrentOdometer(id, 50_000_000)
 
         // An entry at that instant in yet another zone, added after the baseline, counts.
@@ -921,7 +982,7 @@ class SqlDelightVehicleRepositoryTest {
         val id = vehicleAtNoon()
         val eventId = repository.addOdometerAnchor(id, at((-24).hours, newYork), Distance(44_000_000), tenthsIncluded = false)
 
-        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerReading
         assertEquals(Distance(44_000_000), anchor.reading)
         assertEquals(noon - 24.hours, anchor.occurredAt.instant)
         assertEquals("America/New_York", anchor.occurredAt.zone?.id)
@@ -933,7 +994,7 @@ class SqlDelightVehicleRepositoryTest {
 
         val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false, note = "reset by mistake")
 
-        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerReading
         assertEquals("reset by mistake", anchor.note)
     }
 
@@ -943,7 +1004,7 @@ class SqlDelightVehicleRepositoryTest {
 
         val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
 
-        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerReading
         assertNull(anchor.note)
     }
 
@@ -954,7 +1015,7 @@ class SqlDelightVehicleRepositoryTest {
 
         val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false, photos = listOf(photo))
 
-        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerReading
         assertEquals(1, anchor.photoIds.size)
     }
 
@@ -964,7 +1025,7 @@ class SqlDelightVehicleRepositoryTest {
 
         val eventId = repository.addOdometerAnchor(id, at((-24).hours), Distance(44_000_000), tenthsIncluded = false)
 
-        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerAnchor
+        val anchor = repository.observeLog(id).first().last { it.id == eventId } as VehicleEvent.OdometerReading
         assertTrue(anchor.photoIds.isEmpty())
     }
 
@@ -1090,7 +1151,7 @@ class SqlDelightVehicleRepositoryTest {
         assertCurrentOdometer(id, 50_010_000)
         val newestFirst = repository.observeLog(id).first()
         assertTrue(newestFirst[0] is VehicleEvent.DistanceEntry)
-        assertTrue(newestFirst[1] is VehicleEvent.OdometerAnchor)
+        assertTrue(newestFirst[1] is VehicleEvent.OdometerReading)
         assertTrue(newestFirst[2] is VehicleEvent.DistanceEntry)
     }
 
@@ -1767,7 +1828,7 @@ class SqlDelightVehicleRepositoryTest {
 
         repository.updateVehicle(id, "Family car", "ABC-123", VehicleType.CAR, VehicleColors.default, fuelType = VehicleFuelType.DIESEL)
 
-        val refueling = repository.observeEvent(id, refuelingId).first() as VehicleEvent.Refueling
+        val refueling = repository.observeEntry(id, refuelingId).first()!!.primary as VehicleEvent.Refueling
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.REGULAR_PETROL, refueling.fuelType)
     }
 
@@ -1794,56 +1855,56 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(listOf("other"), repository.observeVehicles().first().map { it.id })
     }
 
-    // ---- One event by id, re-observed live (add-event-details-view)
+    // ---- One event's entry by event id, re-observed live (add-event-details-view, atomic-log-events)
 
     @Test
-    fun observeEventReturnsTheMatchingEvent() = runTest {
+    fun observeEntryReturnsTheMatchingEvent() = runTest {
         val id = addFamilyCar()
         val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false, "borrowed to Sam")
 
-        val event = repository.observeEvent(id, entryId).first() as VehicleEvent.DistanceEntry
+        val event = repository.observeEntry(id, entryId).first()!!.primary as VehicleEvent.DistanceEntry
         assertEquals(entryId, event.id)
         assertEquals(Distance(30_000), event.distance)
         assertEquals("borrowed to Sam", event.note)
     }
 
     @Test
-    fun observeEventReturnsNullForAnUnknownId() = runTest {
+    fun observeEntryReturnsNullForAnUnknownId() = runTest {
         val id = addFamilyCar()
 
-        assertNull(repository.observeEvent(id, "no-such-event").first())
+        assertNull(repository.observeEntry(id, "no-such-event").first())
     }
 
     @Test
-    fun observeEventReturnsNullForAnEventOfAnotherVehicle() = runTest {
+    fun observeEntryReturnsNullForAnEventOfAnotherVehicle() = runTest {
         val id = addFamilyCar()
         val otherId = repository.addVehicle("Van", null, VehicleType.VAN, VehicleColors.default, OdometerUnit.KILOMETERS, Distance(1))
         val otherEntryId = repository.addDistanceEntry(otherId, ZonedMoment(clock.current), Distance(1_000), null, false)
 
-        assertNull(repository.observeEvent(id, otherEntryId).first())
+        assertNull(repository.observeEntry(id, otherEntryId).first())
     }
 
     @Test
-    fun observeEventIsQueryBackedNotASnapshot() = runTest {
+    fun observeEntryIsQueryBackedNotASnapshot() = runTest {
         // A fresh read after the matching row starts existing sees it — the flow is backed by the query, not a
         // value captured once and cached. (add-event-editing below now also exercises this with a real update.)
         val id = addFamilyCar()
-        assertNull(repository.observeEvent(id, "id-3").first())
+        assertNull(repository.observeEntry(id, "id-3").first())
 
         val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
 
         assertEquals("id-3", entryId)
-        assertEquals(entryId, (repository.observeEvent(id, entryId).first() as VehicleEvent.DistanceEntry).id)
+        assertEquals(entryId, (repository.observeEntry(id, entryId).first()!!.primary as VehicleEvent.DistanceEntry).id)
     }
 
     @Test
-    fun observeEventSeesANoteUpdateLive() = runTest {
+    fun observeEntrySeesANoteUpdateLive() = runTest {
         val id = addFamilyCar()
         val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
 
         repository.updateEventNote(id, entryId, "borrowed to Sam")
 
-        assertEquals("borrowed to Sam", repository.observeEvent(id, entryId).first()?.note)
+        assertEquals("borrowed to Sam", repository.observeEntry(id, entryId).first()?.note)
     }
 
     @Test
@@ -1855,7 +1916,7 @@ class SqlDelightVehicleRepositoryTest {
         val id = addFamilyCar()
         val entryId = repository.addDistanceEntry(id, ZonedMoment(clock.current), Distance(30_000), null, false)
         val seen = mutableListOf<List<String>>()
-        val job = launch { repository.observeEvent(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
+        val job = launch { repository.observeEntry(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
         advanceUntilIdle()
 
         repository.addEventPhoto(id, entryId, PendingPicture(pictureStore.addPending()))
@@ -1876,9 +1937,9 @@ class SqlDelightVehicleRepositoryTest {
             false,
             photos = listOf(PendingPicture(pictureStore.addPending())),
         )
-        val photoId = repository.observeEvent(id, entryId).first()!!.photoIds.single()
+        val photoId = repository.observeEntry(id, entryId).first()!!.photoIds.single()
         val seen = mutableListOf<List<String>>()
-        val job = launch { repository.observeEvent(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
+        val job = launch { repository.observeEntry(id, entryId).collect { seen += it?.photoIds.orEmpty() } }
         advanceUntilIdle()
 
         repository.removeEventPhoto(id, entryId, photoId)
@@ -1958,7 +2019,7 @@ class SqlDelightVehicleRepositoryTest {
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS, refueling.unit)
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL, refueling.fuelType)
         assertTrue(refueling.filledUp)
-        assertNull(refueling.mileage)
+        assertEquals(listOf(refueling), repository.observeEntry(id, eventId).first()!!.events)
         assertCurrentOdometer(id, 45_200_000)
     }
 
@@ -2111,8 +2172,8 @@ class SqlDelightVehicleRepositoryTest {
         )
 
         assertCurrentOdometer(id, 44_000_000)
-        val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
-        assertEquals(com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Anchor(Distance(44_000_000)), refueling.mileage)
+        val mileage = repository.observeEntry(id, eventId).first()!!.mileage as VehicleEvent.OdometerReading
+        assertEquals(Distance(44_000_000), mileage.reading)
     }
 
     @Test
@@ -2133,6 +2194,184 @@ class SqlDelightVehicleRepositoryTest {
         val refueling = repository.observeLog(id).first().single { it.id == eventId } as VehicleEvent.Refueling
         assertEquals("changed my note", refueling.note)
         assertEquals(com.mikonoma.drivinglog.vehicle.domain.Volume(42_300), refueling.amount)
-        assertEquals(com.mikonoma.drivinglog.vehicle.domain.RefuelingMileage.Added(Distance(30_000)), refueling.mileage)
+        val mileage = repository.observeEntry(id, eventId).first()!!.mileage as VehicleEvent.DistanceEntry
+        assertEquals(Distance(30_000), mileage.distance)
     }
+
+    // ---- The log as atomic events grouped into entries (atomic-log-events)
+
+    private suspend fun addRefuelingAtNoon(id: String, mileage: RefuelingMileage?, note: String? = null, photos: List<PendingPicture> = emptyList()): String =
+        repository.addRefueling(
+            id,
+            at(1.hours),
+            com.mikonoma.drivinglog.vehicle.domain.Volume(42_300),
+            com.mikonoma.drivinglog.vehicle.domain.FuelUnit.LITERS,
+            com.mikonoma.drivinglog.vehicle.domain.FuelType.DIESEL,
+            filledUp = true,
+            mileage = mileage,
+            note = note,
+            photos = photos,
+        )
+
+    @Test
+    fun aRefuelingWithATripDistanceIsARefuelingAndADistanceOfOneEntry() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000), loggedOdometer = Distance(45_230_000)))
+
+        val entry = repository.observeEntry(id, eventId).first()!!
+        assertEquals(EntrySource.LOG_FORM, entry.source)
+        assertEquals(2, entry.events.size)
+        val distance = entry.events[0] as VehicleEvent.DistanceEntry
+        val refueling = entry.events[1] as VehicleEvent.Refueling
+        assertEquals(Distance(30_000), distance.distance)
+        assertEquals(Distance(45_230_000), distance.loggedOdometer)
+        assertEquals(eventId, refueling.id)
+        assertEquals(refueling.occurredAt, distance.occurredAt)
+        assertEquals(setOf(entry.id), entry.events.map { it.entryId }.toSet())
+        assertCurrentOdometer(id, 45_230_000)
+    }
+
+    @Test
+    fun aRefuelingWithANewOdometerWhereNoneIsKnownIsARefuelingAndAnOdometerReadingOfOneEntry() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Anchor(Distance(45_300_000)))
+
+        val entry = repository.observeEntry(id, eventId).first()!!
+        val reading = entry.events[0] as VehicleEvent.OdometerReading
+        assertEquals(Distance(45_300_000), reading.reading)
+        assertFalse(reading.isInitial)
+        assertTrue(entry.events[1] is VehicleEvent.Refueling)
+        assertCurrentOdometer(id, 45_300_000)
+    }
+
+    @Test
+    fun aRefuelingWithNoMileageIsOneEventOfItsOwnEntry() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = addRefuelingAtNoon(id, null)
+
+        assertEquals(listOf(eventId), repository.observeEntry(id, eventId).first()!!.events.map { it.id })
+        assertCurrentOdometer(id, 45_200_000)
+    }
+
+    @Test
+    fun aRefuelingsNoteAndPhotosAreStoredOnceAndSharedByBothEvents() = runTest {
+        val id = vehicleAtNoon()
+        val photos = listOf(PendingPicture(pictureStore.addPending()), PendingPicture(pictureStore.addPending()))
+
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000)), note = "cheap gas today", photos = photos)
+
+        val log = repository.observeLog(id).first().filter { it.entryId == eventId }
+        assertEquals(2, log.size)
+        assertEquals(listOf("cheap gas today", "cheap gas today"), log.map { it.note })
+        assertEquals(log[0].photoIds, log[1].photoIds)
+        assertEquals(2, log[0].photoIds.size)
+        assertEquals(2L, countOf("SELECT COUNT(*) FROM event_picture"))
+    }
+
+    @Test
+    fun editingTheNoteFromTheMileageEventChangesItForBothEvents() = runTest {
+        val id = vehicleAtNoon()
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000)), note = "old note")
+        val mileageId = repository.observeEntry(id, eventId).first()!!.mileage!!.id
+
+        repository.updateEventNote(id, mileageId, "new note")
+
+        assertEquals(listOf("new note", "new note"), repository.observeLog(id).first().filter { it.entryId == eventId }.map { it.note })
+    }
+
+    @Test
+    fun aPhotoAddedFromTheMileageEventIsSharedByBothEvents() = runTest {
+        val id = vehicleAtNoon()
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000)))
+        val mileageId = repository.observeEntry(id, eventId).first()!!.mileage!!.id
+
+        val photoId = repository.addEventPhoto(id, mileageId, PendingPicture(pictureStore.addPending()))
+
+        assertEquals(listOf(listOf(photoId), listOf(photoId)), repository.observeLog(id).first().filter { it.entryId == eventId }.map { it.photoIds })
+        repository.removeEventPhoto(id, eventId, photoId)
+        assertEquals(listOf(emptyList(), emptyList()), repository.observeLog(id).first().filter { it.entryId == eventId }.map { it.photoIds })
+    }
+
+    @Test
+    fun aFailedRefuelingWithMileageStoresNeitherEventNorItsEntry() = runTest {
+        val id = vehicleAtNoon()
+        // The refueling and its entry get "id-3"; the mileage event's id ("id-4") is already taken, so its insert fails
+        // after the entry's.
+        insertEvent("id-4", id, "INITIAL_ODOMETER", 1, 0)
+        val eventsBefore = countOf("SELECT COUNT(*) FROM vehicle_event")
+        val entriesBefore = countOf("SELECT COUNT(*) FROM log_entry")
+
+        assertFails {
+            addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000)), note = "lost", photos = listOf(PendingPicture(pictureStore.addPending())))
+        }
+
+        assertEquals(eventsBefore, countOf("SELECT COUNT(*) FROM vehicle_event"))
+        assertEquals(entriesBefore, countOf("SELECT COUNT(*) FROM log_entry"))
+        assertEquals(0L, countOf("SELECT COUNT(*) FROM event_picture"))
+    }
+
+    @Test
+    fun aRefuelingsRowSitsDirectlyAboveItsOwnMileageRow() = runTest {
+        val id = vehicleAtNoon()
+
+        val eventId = addRefuelingAtNoon(id, RefuelingMileage.Added(Distance(30_000)))
+
+        val newestFirst = repository.observeLog(id).first()
+        assertEquals(eventId, newestFirst[0].id)
+        assertTrue(newestFirst[1] is VehicleEvent.DistanceEntry && newestFirst[1].entryId == eventId)
+        assertEquals(newestFirst.take(2), repository.observeRecentEvents(id, 2).first())
+    }
+
+    @Test
+    fun separateEntriesAtTheSameTimeKeepTheOrderTheyWereAddedInWhateverTheirKind() = runTest {
+        val id = vehicleAtNoon()
+        val refuelingId = addRefuelingAtNoon(id, null)
+        val distanceId = addEntry(id, at(1.hours), Distance(30_000), null)
+
+        assertEquals(listOf(distanceId, refuelingId), repository.observeLog(id).first().take(2).map { it.id })
+    }
+
+    @Test
+    fun aTripThenALowerReadingInTheSameMinuteLeavesTheReadingAsTheCurrentOdometer() = runTest {
+        val id = vehicleAtNoon()
+        addEntry(id, at(1.hours), Distance(30_000), null)
+        repository.addOdometerAnchor(id, at(1.hours), Distance(44_000_000), tenthsIncluded = false)
+
+        assertCurrentOdometer(id, 44_000_000)
+    }
+
+    @Test
+    fun theInitialOdometerIsAnOdometerReadingOfAVehicleAddedEntry() = runTest {
+        val id = addFamilyCar()
+
+        val initial = repository.observeLog(id).first().single() as VehicleEvent.OdometerReading
+        assertTrue(initial.isInitial)
+        val entry = repository.observeEntry(id, initial.id).first()!!
+        assertEquals(EntrySource.VEHICLE_ADDED, entry.source)
+        assertFalse(entry.isEditable)
+    }
+
+    @Test
+    fun aLaterOdometerReadingIsNotTheInitialOdometer() = runTest {
+        val id = vehicleAtNoon()
+
+        val anchorId = repository.addOdometerAnchor(id, at((-1).hours), Distance(44_000_000), tenthsIncluded = false)
+
+        val anchor = repository.observeLog(id).first().single { it.id == anchorId } as VehicleEvent.OdometerReading
+        assertFalse(anchor.isInitial)
+        assertEquals(EntrySource.LOG_FORM, anchor.source)
+    }
+
+    private fun countOf(sql: String): Long = driver.executeQuery(
+        identifier = null,
+        sql = sql,
+        mapper = { cursor ->
+            cursor.next()
+            QueryResult.Value(cursor.getLong(0)!!)
+        },
+        parameters = 0,
+    ).value
 }
