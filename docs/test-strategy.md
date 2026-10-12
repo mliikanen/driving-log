@@ -53,7 +53,8 @@ maestro/run.sh picture theme clock     # the device-state groups (they change or
 `run.sh` first removes the test photos earlier runs left on the emulator (each upload adds another copy, and after a few dozen the emulator's `addMedia` starts to fail): see `maestro/reset-media.sh`.
 The manifests are Maestro configuration files over the one `maestro/` workspace (Maestro allows media only from inside the workspace), and tags are not used, since Maestro cannot combine them with `flowsOrder`.
 
-`run.sh` also enables the device's "Show taps" setting once per invocation (not restored afterward), so a failing flow's recording shows exactly where each tap landed.
+`run.sh` also enables the device's "Show taps" setting once per invocation, before the first manifest's flows (not restored afterward), so a failing flow's recording shows exactly where each tap landed.
+Without `adb` it skips both this and the photo cleanup, says so, and runs the flows anyway.
 
 A flow whose subject is how already-stored data renders (not the UI path that builds it) may instead start from a
 fixture database seeded directly onto the device, rather than building that state through the UI — see

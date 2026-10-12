@@ -104,6 +104,9 @@ context: |
   - Business logic lives in commonMain; platform code (location, storage
     drivers, permissions) goes behind `expect`/`actual` or interfaces
   - Specs describe observable behavior, not implementation
+  - Specs describe the app's behavior. How the project is built, tested, checked and released (CI, linting, test
+    tooling, signing, distribution) is documented in `docs/`, not specified in `openspec/specs/`: a change to it uses
+    `skip_specs: true` and updates the doc.
   - Every place a user enters an odometer reading uses the shared `OdometerField` composable and `OdometerEntry` model,
     so entry behavior is identical everywhere (empty start, right-edge fill, kept leading zero, backspace order, locale
     separators). A screen's processor forwards the field's text to `OdometerEntry.applyEdit` and never re-implements a
