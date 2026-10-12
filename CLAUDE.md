@@ -59,4 +59,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   CI (`.github/workflows/pr-check.yml`) runs the same final regression run on every PR and push to `main`, as three required checks
   (`tests-and-build`, `code-quality`, `spec-validation`); with the ruleset on `main` (`.github/rulesets/main.json`), a PR
   can't merge until all three pass. `release-notes` (`release-notes.yml`) previews what merging would publish. Merging to `main` publishes to the testers (`docs/distribution.md`).
+  **A PR that changes what testers get always has a `## Release notes` section in its description**, written when it is marked ready for review:
+  short bullets in plain language about what a tester will notice (what changed on screen, what to try, what an update does to their data), not how
+  it was built. Without one, the notes fall back to the names of the archived changes, which mean nothing to a tester. A docs or tooling PR has none.
   The whole Maestro suite is for major refactorings, which the developer names.

@@ -27,7 +27,10 @@ On the change's branch, in this order:
 
 1. `/opsx:apply`, then the final regression run. The PR stays a **draft** while tasks are open.
 2. **Mark the PR ready for review** once every task is done and the regression run passes. That's the signal that
-   review starts.
+   review starts. Before marking it ready, give the PR description a **`## Release notes` section**: plain-language
+   bullets for testers about what they will notice, not how it was built. It is what merging publishes
+   (`docs/distribution.md`); without it the notes are only the archived changes' names. The `release-notes` check's job
+   summary shows the result.
 3. **Review cycles**: Copilot's review and/or a person's. Fix what's raised on the branch, reply to each comment and
    resolve its thread, and repeat until nothing is open, including the "Previously missed" notes in Copilot's review
    summary, which have no thread. A fix that changes behavior updates the change's spec deltas, design and tasks too.
