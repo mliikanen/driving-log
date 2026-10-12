@@ -40,8 +40,7 @@ An **entry** (`log_entry`) is one save: adding a vehicle, or saving the log even
 
 | Event | Fact | Attributes (not separate facts) |
 |---|---|---|
-| `INITIAL_ODOMETER` | odometer set when the vehicle is added | reading |
-| `ODOMETER_ANCHOR` ("Odometer reading") | odometer set later | reading |
+| `ODOMETER_READING` | the odometer read a count at a moment (sets the odometer) | reading |
 | `DISTANCE` | distance added | distance; `logged_odometer_meters` (the count it was computed from: provenance of this distance, never used to derive an odometer) |
 | `REFUELING` | fuel added | amount, unit, fuel type, filled up |
 
@@ -51,9 +50,21 @@ What is **not** an event:
 - **Remembered vehicle, fuel unit, fuel type and tenths choice**: preferences in `app_state`/`vehicle`, outside the
   log.
 
-`INITIAL_ODOMETER` and `ODOMETER_ANCHOR` record the same fact, "the odometer read X at T". They stay two types
-because the specs give them different rules: exactly one initial per vehicle, no note, photos or Edit, and a
-different label. Merging them into one type with an "initial" flag is possible later and changes nothing here.
+**The initial odometer and an odometer anchor are merged into `ODOMETER_READING`.** Both record the same fact,
+"the odometer read X at T", and `knownOdometerAt` already treats them alike: the latest one is the baseline.
+Everything that told them apart is about where the entry came from, not about the fact:
+
+| Today's difference | Now expressed by |
+|---|---|
+| Exactly one per vehicle, saved with the vehicle | the entry's `source = VEHICLE_ADDED` (only `addVehicle` writes it) |
+| No note, no photos, no Edit | the entry's source: the add-vehicle form has no note or photos, and Edit is not offered for a `VEHICLE_ADDED` entry |
+| Label "Initial odometer" vs "Odometer reading" | derived from the entry's source when the row is formatted |
+| A scan accepted on the add-vehicle form is kept with it | unchanged: the scan is stored under the event whose number it filled (Decision 4) |
+| A distance in the same minute as adding the vehicle counts | entry order (Decision 5), not the type |
+
+*Alternative: keep two types* (the first draft of this design). It costs nothing now, but the rule "one type per
+fact" would have its first exception on day one, and every consumer that only cares whether the odometer was set
+would still match two types.
 
 A `DISTANCE` logged by odometer is still one event. The user's input was a count, but the stored fact is the
 distance, and the count is kept only to show it on the row. Splitting it into an odometer reading plus a distance
@@ -73,13 +84,17 @@ and notes and photos would have no single home. Rejected.
 ```sql
 CREATE TABLE log_entry (
     id          TEXT    NOT NULL PRIMARY KEY,
+    -- Where the entry was saved from: VEHICLE_ADDED (the add-vehicle form) or LOG_FORM (the log event form).
+    -- The ODOMETER_READING of a VEHICLE_ADDED entry is the vehicle's initial odometer.
+    source      TEXT    NOT NULL,
     -- The note typed when the entry was logged, shared by all of its events. Null when none.
     note        TEXT,
     created_at  INTEGER NOT NULL
 );
 
--- vehicle_event: + entry_id NOT NULL REFERENCES log_entry(id); - note.
--- The mileage columns stay; after this change only DISTANCE/ODOMETER_ANCHOR/INITIAL_ODOMETER fill them,
+-- vehicle_event: + entry_id NOT NULL REFERENCES log_entry(id); - note;
+-- type: ODOMETER_READING | DISTANCE | REFUELING (INITIAL_ODOMETER and ODOMETER_ANCHOR are gone).
+-- The mileage columns stay; after this change only DISTANCE/ODOMETER_READING fill them,
 -- and only REFUELING fills the fuel columns.
 
 -- event_picture: event_id -> entry_id REFERENCES log_entry(id).
@@ -91,8 +106,10 @@ CREATE TABLE log_entry (
   event of an entry. That duplication is cheap and confined to one write path.
 - `vehicle_id` stays on the event, for the same reason. The entry does not need one.
 - An entry's **creation order** is `log_entry`'s rowid, which replaces `vehicle_event.rowid` as the tie-breaker.
-- An `INITIAL_ODOMETER` also gets an entry (note always null), so every event has exactly one entry. No nullable
-  `entry_id` and no special cases.
+- The initial odometer also gets an entry (`source = VEHICLE_ADDED`, note always null), so every event has
+  exactly one entry. No nullable `entry_id` and no special cases.
+- `source` is an open set of codes, so a future source (a trip's start or end, say) is a new code, not a new event
+  type.
 - The insert queries for each event type stop taking `note`. A new `insertLogEntry`, and `updateEntryNote`
   replaces `updateEventNote`. `touchEvent` becomes `touchEntry`: it updates every event of the entry, so the live
   queries of any row of the entry re-run.
@@ -126,7 +143,7 @@ out of scope.
 ```
 ORDER BY occurred_at, log_entry.rowid, kind_rank      -- oldest first (derivation)
 ORDER BY occurred_at DESC, log_entry.rowid DESC, kind_rank DESC   -- newest first (lists)
-kind_rank: INITIAL_ODOMETER 0, ODOMETER_ANCHOR 1, DISTANCE 2, REFUELING 3
+kind_rank: ODOMETER_READING 0, DISTANCE 1, REFUELING 2
 ```
 
 `kind_rank` is a `CASE` expression in the queries, not a stored column. A `VehicleEvent.Kind.rank` mirrors it in
@@ -156,14 +173,16 @@ branch goes away: a refueling is now neither odometer-setting nor a distance.
 `addRefueling(…, mileage: RefuelingMileage?, …)` keeps its signature. `RefuelingMileage` survives only as this
 input type. In one transaction:
 1. insert the `log_entry` (with the note);
-2. insert the mileage event, if any: `DISTANCE` for `Added`, `ODOMETER_ANCHOR` for `Anchor`, through the same
+2. insert the mileage event, if any: `DISTANCE` for `Added`, `ODOMETER_READING` for `Anchor`, through the same
    queries `addDistanceEntry`/`addOdometerAnchor` use;
 3. insert the `REFUELING` event (fuel columns only);
 4. insert the photos under the entry, and the capture under the event its target names;
 5. update the remembered preferences, as today.
 
 The insert order inside the transaction does not matter for ordering (Decision 5). `addDistanceEntry`,
-`addOdometerAnchor` and `addVehicle` each write one entry and one event.
+`addOdometerAnchor` (`LOG_FORM`) and `addVehicle` (`VEHICLE_ADDED`) each write one entry and one event.
+In the domain, `VehicleEvent.InitialOdometer` and `OdometerAnchor` become one `OdometerReading` case, and each event
+carries its entry's `source`, so "is this the initial odometer" is `source == VEHICLE_ADDED`.
 
 `observeEntry(vehicleId, eventId): Flow<LogEntry?>` returns `LogEntry(id, events, note, photoIds)` for the
 details and edit screens. `EventDetailsProcessor` finds the refueling (if any) and the mileage event among
@@ -172,7 +191,7 @@ details and edit screens. `EventDetailsProcessor` finds the refueling (if any) a
 ### 7. Rows
 
 `EventRowContent` needs no new shape. A mileage event of a refueling is an ordinary `DistanceEntry` or
-`OdometerAnchor` row, with the same label, figure, accent color and typed-count line. No visual grouping is added:
+`OdometerReading` row, with the same label, figure, accent color and typed-count line. No visual grouping is added:
 the shared time and adjacency make the pair clear. Tying the rows together (a bracket, a shared background) was
 considered and left for later if the list proves hard to read.
 
@@ -198,13 +217,14 @@ considered and left for later if the list proves hard to read.
 ## Migration Plan
 
 `12.sqm` (schema 12 → 13), inside SQLDelight's migration transaction:
-1. `CREATE TABLE log_entry`, then `INSERT INTO log_entry SELECT id, note, created_at FROM vehicle_event ORDER BY
-   rowid`. Every existing event gets an entry **with the event's own id**, so entry order equals the old row order
+1. `CREATE TABLE log_entry`, then `INSERT INTO log_entry SELECT id, CASE type WHEN 'INITIAL_ODOMETER' THEN
+   'VEHICLE_ADDED' ELSE 'LOG_FORM' END, note, created_at FROM vehicle_event ORDER BY rowid`. Every existing event gets an entry **with the event's own id**, so entry order equals the old row order
    and `event_picture.event_id` values are already valid entry ids.
 2. Rebuild `vehicle_event` as `vehicle_event_new` (with `entry_id`, without `note`):
-   - every row: `entry_id = id`, with the mileage columns cleared on `REFUELING` rows;
+   - every row: `entry_id = id`, with the mileage columns cleared on `REFUELING` rows, and `INITIAL_ODOMETER` and
+     `ODOMETER_ANCHOR` both rewritten to `ODOMETER_READING`;
    - for each `REFUELING` row with `distance_meters` set: an extra `DISTANCE` row (`distance_meters`,
-     `logged_odometer_meters`), and with `odometer_meters` set an extra `ODOMETER_ANCHOR` row. Each copies
+     `logged_odometer_meters`), and with `odometer_meters` set an extra `ODOMETER_READING` row. Each copies
      `vehicle_id`, `occurred_at`, zone, offset and `created_at`, with `entry_id` = the refueling's id and
      `id = refueling id || '-mileage'`. Event ids are opaque strings, and this one is deterministic, so the
      migration is testable without random ids;
@@ -213,7 +233,7 @@ considered and left for later if the list proves hard to read.
 4. `event_capture`: no change. Keys are event ids, and the refueling keeps its id.
 
 The current odometer is unchanged because a refueling's former `Added` mileage is now a `DISTANCE` event and its
-`Anchor` mileage an `ODOMETER_ANCHOR`, at the same instant, in the same entry order. `knownOdometerAt` read them
+`Anchor` mileage an `ODOMETER_READING`, at the same instant, in the same entry order. `knownOdometerAt` read them
 the same way before.
 
 A destructive migration (dropping the log) was acceptable per the request but is not needed. Rollback is a
@@ -229,7 +249,7 @@ migration. The Maestro fixtures are regenerated (`./gradlew :shared:generateMaes
   membership is derived from the span or stored as a reference is its open question 2. If it is a reference, it goes
   on `log_entry`, so a refueling and its mileage join a trip together. Either way, a trip's distance is the sum of
   its entries' `DISTANCE` events. Its open question 4 (an odometer at start and end) can use ordinary entries holding
-  an `ODOMETER_ANCHOR`/`DISTANCE` event.
+  an `ODOMETER_READING`/`DISTANCE` event (with a source of their own, if the trip wants to tell them apart).
 - `sweep-event-pictures`: unaffected (reads `event_picture.id`).
 - `add-fuel-type-ocr`: a fuel-type scan, if it gets one of its own, would go to the `REFUELING` event (Decision 4).
 

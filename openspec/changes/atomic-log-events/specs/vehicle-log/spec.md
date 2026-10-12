@@ -3,8 +3,8 @@
 ## ADDED Requirements
 
 ### Requirement: The log stores one fact per event, grouped into entries
-The system SHALL store a vehicle's log as atomic events, each holding one fact: an "Initial odometer" or "Odometer
-reading" sets the odometer, a "Distance" adds a distance, a "Refueling" adds fuel. Everything saved by one action
+The system SHALL store a vehicle's log as atomic events, each holding one fact: an odometer reading sets the odometer,
+a "Distance" adds a distance, a "Refueling" adds fuel. Everything saved by one action
 (adding a vehicle, saving the log event form) SHALL be one entry, holding one or more events, all at the entry's
 date, time and time zone, saved together or not at all. No event SHALL hold a second fact.
 
@@ -22,10 +22,29 @@ date, time and time zone, saved together or not at all. No event SHALL hold a se
 - **THEN** the "Refueling" event holds only the fuel amount, unit, fuel type and fill-up state, and the count is held
   by the entry's own "Distance" or "Odometer reading" event
 
+### Requirement: The initial odometer is the odometer reading saved when the vehicle is added
+The system SHALL store the initial odometer and every later odometer reading as the same kind of event, and SHALL
+record with each entry where it was saved from: adding the vehicle, or the log event form. The odometer reading of
+the entry saved when the vehicle is added SHALL be the vehicle's "Initial odometer": labelled so, without a note,
+photos or an "Edit" action. Every other odometer reading SHALL be an "Odometer reading." Both SHALL set the
+odometer the same way.
+
+#### Scenario: The initial odometer keeps its label
+- **WHEN** the user adds a vehicle with an odometer of 45200 km
+- **THEN** the log shows an "Initial odometer" event of 45200 km, and its details screen shows no note section and no "Edit" action
+
+#### Scenario: A later reading is an odometer reading
+- **WHEN** the user logs a new odometer count of 44000 km a week before the initial odometer
+- **THEN** the log shows it as an "Odometer reading," with the note element, photos and "Edit" action an odometer reading offers
+
+#### Scenario: Both set the odometer alike
+- **WHEN** a vehicle's log holds an initial odometer of 45200 km and, later, an odometer reading of 45300 km
+- **THEN** the vehicle's current odometer is 45300 km, and the odometer known between them is 45200 km
+
 ### Requirement: Events at the same time are ordered by entry, then by kind
 The system SHALL order events by their date and time. Events at the same date and time SHALL be ordered by the
 entry they belong to, in the order the entries were added, and the events of one entry SHALL follow a fixed order
-by kind: "Initial odometer," "Odometer reading," "Distance," "Refueling." Lists that show the newest first SHALL
+by kind: odometer reading (initial or not), "Distance," "Refueling." Lists that show the newest first SHALL
 show this order reversed. The order SHALL be the same every time the log is shown and SHALL be the order in which
 the log is derived from.
 
@@ -44,8 +63,8 @@ the log is derived from.
 ### Requirement: Events of one entry share one note and one set of photos
 The system SHALL store an entry's note and photos once, with the entry, not with any one of its events and not
 copied onto each of them. Every event of the entry SHALL show that note and those photos wherever an event's note or
-photos are shown, and a change to them SHALL be seen from every event of the entry. An "Initial odometer" entry
-SHALL carry neither.
+photos are shown, and a change to them SHALL be seen from every event of the entry. The entry saved when the
+vehicle is added SHALL carry neither.
 
 #### Scenario: Both events of a refueling show its note
 - **WHEN** the user logs a refueling with a trip-distance mileage and the note "cheap gas today"
@@ -74,6 +93,10 @@ zone. Every vehicle's current odometer, every note, every photo and every kept s
 #### Scenario: Notes and photos are kept
 - **WHEN** the app is updated with a log holding a refueling with a mileage, a note and a photo
 - **THEN** the note and the photo are shown from both of its rows after the update
+
+#### Scenario: The initial odometer stays the initial odometer
+- **WHEN** the app is updated with a log holding a vehicle's initial odometer of 45200 km and an odometer reading of 44000 km
+- **THEN** the first is still shown as "Initial odometer" with no "Edit" action, and the second as "Odometer reading," with the same values
 
 #### Scenario: Other events are unchanged
 - **WHEN** the app is updated with a log holding distance entries, odometer readings and refuelings with no mileage
