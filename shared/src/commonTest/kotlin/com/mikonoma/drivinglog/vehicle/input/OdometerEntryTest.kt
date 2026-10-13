@@ -312,4 +312,34 @@ class OdometerEntryTest {
     fun toDistanceUsesTheUnit() {
         assertEquals(45_200_300, tenths().pressAll(4, 5, 2, 0, 0, 3).toDistance()?.meters)
     }
+
+    // ---- split-long-requirements-c: the scenarios of the odometer field requirements split out of vehicles
+
+    @Test
+    fun aThousandsSeparatorAppearsWhileTyping() {
+        // vehicles, "The odometer field shows its value right-aligned in the device locale".
+        val typed = listOf(1, 2, 3, 4).runningFold(whole()) { e, d -> e.press(d) }.drop(1)
+        assertEquals(listOf("1", "12", "123", "1,234"), typed.map { it.shown() })
+    }
+
+    @Test
+    fun clearAfterATypedZeroEmptiesTheField() {
+        // vehicles, "Backspace and clear in the odometer field".
+        assertNull(whole().press(0).clear().steps)
+    }
+
+    @Test
+    fun twoZerosAndADigitInAWholeNumberUnit() {
+        // vehicles, "A first typed zero in the odometer field".
+        assertEquals(listOf("0", "0", "7"), listOf(0, 0, 7).runningFold(whole()) { e, d -> e.press(d) }.drop(1).map { it.shown() })
+        val typed = whole().pressAll(0, 0, 7)
+        assertEquals("0", typed.backspace().shown())
+        assertEquals("", typed.backspace().backspace().shown())
+    }
+
+    @Test
+    fun pastingMoreThanSevenDigitsKeepsTheFirstSeven() {
+        // vehicles, "The odometer field accepts only up to seven whole digits".
+        assertEquals("1,234,567", whole().applyEdit("123456789").shown())
+    }
 }

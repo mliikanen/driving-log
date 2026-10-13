@@ -10,9 +10,8 @@ its current odometer.
 ### Requirement: Log an event from the vehicle details screen
 The system SHALL offer a "Log event" action on the vehicle details screen that opens a form for one distance entry.
 Saving a valid entry SHALL return to the details screen, where the entry appears in the recent events and the current
-odometer includes it. Leaving the form without saving SHALL add nothing. The form's dismiss action, in the top-left of
-its top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving
-the form always discards whatever was entered.
+odometer includes it. Leaving the form without saving SHALL add nothing. The form's dismiss action, top-left in its
+top app bar, SHALL be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow.
 
 #### Scenario: Open the form
 - **WHEN** the user taps "Log event" on a vehicle's details screen
@@ -31,12 +30,11 @@ the form always discards whatever was entered.
 - **THEN** the top-left action of the form's top app bar is a close "X", not a back arrow
 
 ### Requirement: A distance is logged as a trip distance or as a new odometer count
-The system SHALL let the user choose, on the log event form, between "Trip distance" and "New odometer". "Trip distance"
-SHALL be preselected. With "Trip distance" the number entered is the distance travelled. With "New odometer" the number
-entered is the odometer count now, and the distance logged is that count minus the previous known odometer at the entry's
-date and time (or, when no odometer is known at that time, an odometer anchor is saved instead). Each way SHALL keep its own typed number when the user switches between them. Accepting a candidate from the form's "Scan a reading" action
-(`odometer-ocr-capture`, "Accepting a candidate sets the field and the way") SHALL set the active field's number and
-SHALL switch the way to match the candidate's classification, the same as if the user had switched by hand and typed it.
+The system SHALL let the user choose, on the log event form, between "Trip distance", preselected, and "New odometer".
+With "Trip distance" the number entered is the distance travelled. With "New odometer" it is the odometer count now,
+and the distance logged is that count minus the previous known odometer at the entry's date and time (or, with no
+odometer known then, an odometer anchor is saved instead). Each way SHALL keep its own typed number when the user
+switches between them.
 
 #### Scenario: Log by trip distance
 - **WHEN** a vehicle's current odometer is 45200 km and the user logs a trip distance of 30 km and saves
@@ -63,11 +61,11 @@ SHALL switch the way to match the candidate's classification, the same as if the
 - **THEN** the form switches to "Trip distance" and the field shows the accepted value
 
 ### Requirement: The previous known odometer
-The system SHALL define the previous known odometer at a date and time as the reading of the latest odometer-setting
-event of the vehicle at or before that time, plus the distances of all distance entries after that event up to and
-including that time. Events at the same time SHALL count in the order they were added. When the user chooses "New
-odometer", the form SHALL show the previous known odometer for the chosen date and time and the distance that would be
-logged, and SHALL update them as the number or the date and time change.
+The system SHALL define the previous known odometer at a date and time as the reading of the vehicle's latest
+odometer-setting event at or before it, plus the distances of all distance entries after that event up to and
+including that time; events at the same time SHALL count in the order they were added. With "New odometer" chosen, the
+form SHALL show the previous known odometer for the chosen moment and the distance that would be logged, updated as
+the number or the moment changes.
 
 #### Scenario: Known odometer includes earlier entries
 - **WHEN** a vehicle has an initial odometer of 45200 km and a distance entry of 30 km logged after it, and the user chooses "New odometer" for a time after both
@@ -82,12 +80,11 @@ logged, and SHALL update them as the number or the date and time change.
 - **THEN** the form shows a previous known odometer of 45230 km
 
 ### Requirement: The new odometer must be higher than the previous known odometer
-When a previous known odometer exists at the entry's date and time, the system SHALL refuse a new odometer count
-that equals it, showing an error on the odometer field that names it, and SHALL NOT save the entry. A count that is
-lower than it is not refused outright: see "A lower new odometer count that would replace the vehicle's current
-odometer is saved only after confirmation" when the entry is for now, or for any moment at or after the vehicle's
-latest logged event; see "A lower new odometer count added to history is saved without confirmation" when the entry
-is backdated to a moment before the vehicle's latest logged event.
+When a previous known odometer exists at the entry's date and time, the system SHALL refuse a new odometer count equal
+to it, showing an error on the odometer field that names it, and SHALL NOT save the entry. A lower count is not
+refused outright: it needs confirmation when the entry is for now or for any moment at or after the vehicle's latest
+logged event, and is saved without it when backdated before that event (the two requirements on a lower new odometer
+count).
 
 #### Scenario: Lower count
 - **WHEN** the vehicle's current odometer is 45230 km and the user logs a new odometer count of 45100 for now (or any moment at or after the vehicle's latest logged event) and saves
@@ -102,16 +99,11 @@ is backdated to a moment before the vehicle's latest logged event.
 - **THEN** the system shows an error naming 45,230 km, stays on the form and adds nothing
 
 ### Requirement: A lower new odometer count that would replace the vehicle's current odometer is saved only after confirmation
-When the user logs a new odometer count for now, or for any moment at or after the vehicle's latest logged event
-(so the count would become the vehicle's new current odometer), and it is lower than the vehicle's current odometer
-(strictly lower — an equal count is still refused outright, see "The new odometer must be higher than the previous
-known odometer") and saves, the system SHALL show a confirmation dialog naming both the typed count and the current
-odometer it would replace, and SHALL NOT save anything until the user confirms. Confirming SHALL save the typed count
-as an odometer anchor (`vehicle-log`, "Odometer anchor events"), the same way a new odometer count is saved when none
-was known before (`distance-logging`, "A new odometer count without a known odometer is saved as an odometer
-anchor") — it becomes the vehicle's current odometer going forward, exactly like any other anchor, with no
-constraint that it be higher than what it replaces. Dismissing or cancelling the dialog SHALL save nothing and SHALL
-leave the form exactly as it was, with the typed count still there.
+When the user logs a new odometer count for now, or for any moment at or after the vehicle's latest logged event, that
+is strictly lower than the vehicle's current odometer (an equal count is refused), and saves, the system SHALL show a
+confirmation dialog naming both the typed count and the current odometer it would replace, and SHALL NOT save anything
+until the user confirms. Cancelling or dismissing it SHALL save nothing and leave the form exactly as it was, the
+typed count still there.
 
 #### Scenario: Confirming saves it as an anchor
 - **WHEN** the vehicle's current odometer is 45230 km, the user logs a new odometer count of 44000 for now, saves, and confirms the dialog
@@ -130,27 +122,21 @@ leave the form exactly as it was, with the typed count still there.
 - **THEN** the vehicle's current odometer is 44,030 km
 
 ### Requirement: A lower new odometer count added to history is saved without confirmation
-When the user logs a new odometer count for a date and time before the vehicle's latest logged event, and that count
-is lower than the odometer known at that earlier moment, the system SHALL save it outright as an odometer anchor at
-that moment (`vehicle-log`, "Odometer anchor events"), without asking for confirmation. This is not a correction to
-what the vehicle's odometer currently reads, so it needs none — the same as inserting any other backdated anchor,
-higher or lower, already needs none: later events, if any, are recalculated forward from it exactly as they already
-are for a higher backdated anchor (`vehicle-log`, "A later anchor replaces the running total"); this change does not
-alter that. The equal case is unaffected — see "The new odometer must be higher than the previous known odometer."
+When the user logs a new odometer count for a moment before the vehicle's latest logged event, lower than the odometer
+known at that moment, the system SHALL save it outright as an odometer anchor at that moment (`vehicle-log`, "Odometer
+anchor events"), without asking for confirmation: like any backdated anchor, it doesn't correct what the odometer
+reads now. Later events SHALL be recalculated forward from it, as for a higher backdated anchor. An equal count is
+still refused.
 
 #### Scenario: A backdated lower count is saved without confirmation
 - **WHEN** the vehicle's latest logged event is later than the moment the user is logging for, the odometer known at that earlier moment is 45230 km, and the user types 45100 and saves
 - **THEN** the system saves an odometer anchor of 45,100 km at that moment without showing a confirmation dialog
 
 ### Requirement: A trip distance must be entered and above zero
-The system SHALL require a number in the active field of a "Distance" entry: while it is empty, the form's Save
-action SHALL be disabled and SHALL NOT be tappable. A trip distance SHALL be more than zero: once the field is
-non-empty, the system SHALL show an error on the field and SHALL NOT save the entry when a typed trip distance is
-zero. The field's label ("Trip distance" or "New odometer", whichever is active) SHALL carry a trailing "*", and the
-form SHALL show a line near its Save action explaining the convention: "* indicates a required field". This
-requirement governs the "Distance" kind's own field only; a refueling's optional mileage section does not gate Save
-the same way, and its label carries no such asterisk (`refueling-logging`, "The fuel amount must be entered and
-above zero" states the field that does gate Save for a refueling, and its own label is what carries the "*").
+The system SHALL require a number in the active field of a "Distance" entry: while it is empty, the form's Save action
+SHALL be disabled (not tappable). A trip distance SHALL be more than zero: for a typed zero, the system SHALL show an
+error on the field and SHALL NOT save the entry. This governs the "Distance" kind's own field only; a refueling's
+optional mileage section does not gate Save (`refueling-logging`, "The fuel amount must be entered and above zero").
 
 #### Scenario: Empty field
 - **WHEN** the user has chosen "Distance" and the active field has nothing typed
@@ -169,16 +155,11 @@ above zero" states the field that does gate Save for a refueling, and its own la
 - **THEN** the active field's label ("Trip distance" or "New odometer") carries a trailing "*", and a line near the Save action reads "* indicates a required field"
 
 ### Requirement: The unit of an entry is selectable
-The system SHALL let the user choose the unit of the entry on the form: kilometers or miles, and separately whether tenths are
-included. The form SHALL preselect the unit family of the vehicle's odometer unit ("Kilometers" and "Kilometers with 100 m"
-are kilometers, "Miles" and "Miles with tenths" are miles) and the tenths choice remembered for the vehicle, or, when none
-was remembered yet, the tenths of the vehicle's odometer unit (the two tenths units include tenths).
-Both fields of the form SHALL be entered in the chosen unit, using the same microwave-style number field as the initial
-odometer, so whole-number entries and entries with one decimal are both possible whatever the vehicle's unit. Changing the
-unit SHALL keep the digits typed, as it does when adding a vehicle. An entry logged in another unit than the vehicle's SHALL
-be converted, and SHALL be shown in the vehicle's unit everywhere. The system SHALL remember the tenths choice per vehicle:
-saving an entry SHALL keep the tenths choice used for that vehicle, and the next form for that vehicle SHALL preselect it.
-The choice of kilometers or miles is not remembered and starts as the vehicle's.
+The system SHALL let the user choose the entry's unit on the form: kilometers or miles, and separately whether tenths
+are included. It SHALL preselect the family of the vehicle's odometer unit ("Kilometers" and "Kilometers with 100 m"
+are kilometers; "Miles" and "Miles with tenths" are miles). Both fields SHALL be entered in the chosen unit with the
+initial odometer's microwave-style field, so whole and one-decimal entries are possible in any unit. Changing the unit
+SHALL keep the digits typed.
 
 #### Scenario: Defaults follow the vehicle
 - **WHEN** the user opens the form for a vehicle with the unit "Miles with tenths"
@@ -225,15 +206,11 @@ The choice of kilometers or miles is not remembered and starts as the vehicle's.
 - **THEN** the field still shows the digits 123, now in miles
 
 ### Requirement: The date, time and time zone of an entry
-The system SHALL show the date, time and time zone of the entry on the form, with pickers to change each. The moment SHALL
-default to the moment the form was opened, not the moment the entry is saved, and the time zone to the device's current time
-zone. The user SHALL be able to choose any time zone from the list of available time zones, which SHALL be searchable by name.
-The date and time picked are the wall-clock time in the chosen zone: changing the zone keeps the date and time shown and changes
-which instant they mean. The user SHALL be able to choose a moment in the past. The system SHALL refuse a moment later than the
-time of saving, showing an error and adding nothing. The entry SHALL be stored with the zone it was entered in, as the
-`vehicle-log` capability specifies. The date SHALL be shown with the day of the week of the selected date, named in the device's
-language, and the time SHALL be shown and picked in 12-hour form (with the device's AM and PM markers) or 24-hour form according
-to the system setting.
+The system SHALL show the entry's date, time and time zone on the form, each with a picker. The moment SHALL default
+to when the form was opened, not when it is saved, and the zone to the device's current zone. The user SHALL be able
+to choose any available time zone from a list searchable by name. The date and time picked are the wall-clock time in
+the chosen zone: changing the zone keeps them and changes the instant they mean. The entry SHALL be stored with its
+zone (`vehicle-log`).
 
 #### Scenario: Default is when the form was opened, in the device's zone
 - **WHEN** the device time zone is Europe/Helsinki and the user opens the form at 10:15 and saves at 10:20
@@ -291,14 +268,10 @@ previous known odometer at a later time, unless an odometer anchor precedes it (
 - **THEN** the log contains the entry at that earlier time and the vehicle's current odometer is still 45200 km
 
 ### Requirement: A new odometer count without a known odometer is saved as an odometer anchor
-When the user chooses "New odometer" and no odometer is known at the entry's date and time, the system SHALL save the typed
-count as an odometer anchor event, and SHALL NOT save a distance event. An odometer anchor is an odometer-setting event: it
-sets the odometer to the typed count at the entry's time, and it takes part in the previous known odometer and the current
-odometer like the initial odometer event does (the latest odometer-setting event wins, and distances after it add to it). The
-form SHALL say that no odometer is known at that time and that the count will be saved as a new odometer starting point, SHALL
-show no distance, and SHALL allow saving once a count is typed. The count SHALL be entered and unit-converted like any other,
-the future check SHALL apply, and a count of zero SHALL be accepted. While the field is empty, the form's Save action SHALL be
-disabled, as it is for a trip distance. The tenths choice used SHALL be remembered like for a distance entry.
+When the user chooses "New odometer" and no odometer is known at the entry's date and time, the system SHALL save the
+typed count as an odometer anchor event and SHALL NOT save a distance event. An anchor is an odometer-setting event:
+it sets the odometer to the count at the entry's time and takes part in the previous known and the current odometer
+like the initial odometer does (the latest odometer-setting event wins, and distances after it add to it).
 
 #### Scenario: New odometer before the initial odometer
 - **WHEN** a vehicle was added with an initial odometer of 45200 km, and the user chooses "New odometer", a time a week before the initial odometer event, types 44000 and saves
@@ -353,7 +326,10 @@ SHALL provide the whole form without a network connection.
 **Platform note:** the behavior is the same on iOS; it is verified on Android now and on iOS once the Xcode project exists.
 
 ### Requirement: A distance can be logged from the Home screen
-The system SHALL make the Home screen's Log event action (an icon with no visible text, named "Log event" for a screen reader; `app-shell`, "Home screen offers the main actions") open the log event form when the user has at least one vehicle. With no vehicle the action SHALL stay a disabled Material 3 component, exactly as the other not-yet-available Home screen actions are (`app-shell`, "Home screen offers the main actions"), and SHALL NOT react to a tap. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
+The system SHALL make the Home screen's Log event action (an icon with no visible text, named "Log event" for a screen
+reader; `app-shell`) open the log event form when the user has at least one vehicle. With no vehicle the action SHALL
+stay a disabled Material 3 component, like the other not-yet-available Home screen actions, and SHALL NOT react to a
+tap. Saving a valid entry SHALL return to the Home screen; leaving the form without saving SHALL add nothing.
 
 #### Scenario: Open the form from the Home screen
 - **WHEN** the user has a vehicle and taps the Home screen's Log event action
@@ -372,8 +348,11 @@ The system SHALL make the Home screen's Log event action (an icon with no visibl
 - **THEN** the Home screen is displayed and no entry is added
 
 ### Requirement: The vehicle is chosen with a selector when logging starts from the Home screen
-When the log event form is opened from the Home screen, the system SHALL show a vehicle selector at the top of the form: a dropdown that shows the chosen vehicle (its picture or icon and its name) and lists every vehicle the user has, in the order of the vehicle list. Choosing a vehicle SHALL make the form
-about that vehicle: the previous known odometer, the checks of a new odometer count and the log the entry will join are that vehicle's, and the unit starts as that vehicle's (its unit family and its remembered choice of tenths). The digits already typed, the way (trip distance or new odometer), the date, the time, the time zone and any pending note SHALL be kept when the vehicle is changed, and the typed digits are converted to the new unit as when the unit is changed by hand. The chosen vehicle SHALL survive a rotation of the device and the restart of the process. When the form is opened from a vehicle's details screen the selector SHALL NOT be shown and the vehicle SHALL be that vehicle.
+When the log event form is opened from the Home screen, the system SHALL show a vehicle selector at its top: a
+dropdown showing the chosen vehicle (its picture or icon, and its name) and listing every vehicle in the vehicle
+list's order. Choosing a vehicle SHALL make the form about it: the previous known odometer, the checks of a new count
+and the log the entry joins are that vehicle's. Opened from a vehicle's details screen, the form SHALL show no
+selector and SHALL be about that vehicle.
 
 #### Scenario: The selector lists the vehicles
 - **WHEN** the user has vehicles named "van", "Bike" and "Family car" and opens the form from the Home screen and opens the selector
@@ -400,9 +379,10 @@ about that vehicle: the previous known odometer, the checks of a new odometer co
 - **THEN** the note is still pending for the entry, now about the newly chosen vehicle
 
 ### Requirement: The vehicle last logged for is remembered apart from the log
-The system SHALL remember which vehicle the user last saved an entry for, and SHALL start the selector on it. The memory SHALL be stored separately from the events (in the application's own storage, written in the same transaction as the entry that causes it) and SHALL NOT be worked out from the events' data: an entry
-dated earlier than the entries of other vehicles still makes its vehicle the remembered one, because it was the last one logged. An entry saved from a vehicle's details screen also sets it. When nothing is remembered (a new install, an update from a version without the memory) or the remembered vehicle does not exist, the selector SHALL start on the first vehicle in the order of the vehicle list. The
-memory SHALL survive closing the app, work without a network, and SHALL NOT be filled from the log when it is first created.
+The system SHALL remember which vehicle the user last saved an entry for, from the Home screen or a vehicle's details
+screen, and SHALL start the selector on it. The memory SHALL be stored apart from the events (in the application's own
+storage, written in the same transaction as the entry that sets it) and SHALL NOT be worked out from the events' data:
+an entry dated before other vehicles' entries still makes its vehicle the remembered one.
 
 #### Scenario: The selector starts on the last vehicle logged for
 - **WHEN** the user saves an entry for "Bike" and later opens the form from the Home screen
@@ -433,17 +413,11 @@ memory SHALL survive closing the app, work without a network, and SHALL NOT be f
 - **THEN** the remembered vehicle is what it was
 
 ### Requirement: The kind of event is chosen
-The system SHALL show a "Kind" selector at the top of the log event form: a dropdown, in the same style as the
-vehicle selector, listing the kinds of event the form can log — "Distance" and "Refueling" (`refueling-logging`,
-"Refueling can be logged from the log event form"). "Distance" SHALL be preselected. The selector SHALL be an
-enabled, tappable Material 3 component whenever it lists more than one kind — as it always does now that
-"Refueling" exists — and SHALL instead be a disabled Material 3 component (shown in Material's disabled colors,
-exactly as the Home screen's not-yet-available actions are) and SHALL NOT react to a tap whenever it would list only
-one kind, the same rule that kept it disabled before "Refueling" existed. Choosing a kind SHALL show that kind's
-fields on the form below it. When the form is opened from the Home screen the Kind selector SHALL share one row
-with the vehicle selector, the two of equal width and height, the Kind selector first (on the left). When the form
-is opened from a vehicle's details screen (where there is no vehicle selector) the Kind selector SHALL take the row
-alone.
+The system SHALL show a "Kind" selector at the top of the log event form: a dropdown in the vehicle selector's style
+listing the kinds the form can log, "Distance" and "Refueling" (`refueling-logging`), with "Distance" preselected. It
+SHALL be an enabled Material 3 component whenever it lists more than one kind, and a disabled one (in Material's
+disabled colors) that SHALL NOT react to a tap whenever it would list only one. Choosing a kind SHALL show that kind's
+fields below it.
 
 #### Scenario: The kind selector is shown on both routes, disabled
 - **WHEN** the form offers only one kind of event (not the case today, since "Distance" and "Refueling" are both always offered)
@@ -472,13 +446,9 @@ alone.
 
 ### Requirement: A note can be added to the log event form
 The system SHALL show a note element on the log event form, below the trip distance or new odometer field and above
-the Save action, styled as a Material 3 outlined text field — matching the look of the form's other tap-to-choose
-fields (the Kind and Vehicle selectors) — with a "Note" label. Before a note is pending for the entry, the element
-SHALL show the field styled as empty, with "Add a note..." shown where the field's content goes. Once a note is
-pending, the element SHALL show its text there instead, at most two rendered lines (whether the break is a wrap or a
-line feed the user typed), end-ellipsized. Tapping the element SHALL open a full-screen note editor. The note element
-SHALL NOT become an editable text field on tap: no text cursor, no software keyboard, and no in-place editing SHALL
-appear, and it SHALL NOT show the "Discard" action either; every edit goes through the full-screen editor.
+Save, as a Material 3 outlined text field labelled "Note", in the style of the form's Kind and Vehicle selectors. With
+no note pending it SHALL look empty, with "Add a note..." as its content; with a note pending, its text, at most two
+rendered lines (wrapped or typed breaks), end-ellipsized. Tapping it SHALL open a full-screen note editor.
 
 #### Scenario: No note yet
 - **WHEN** the user opens the log event form and has typed nothing in the note editor
@@ -505,12 +475,11 @@ appear, and it SHALL NOT show the "Discard" action either; every edit goes throu
 - **THEN** no text cursor or software keyboard appears on the log event form, and the full-screen note editor opens instead
 
 ### Requirement: The full-screen note editor
-The system SHALL open a full-screen editor with a single multi-line text field, seeded with whatever note is
-currently pending for the entry (empty when none is pending). Back navigation — the editor's own back action, the
-system back gesture or button — SHALL attach the field's current text to the entry as its pending note and return to
-the log event form; text that is empty or only whitespace SHALL attach as no note (clearing any note that was
-pending before the editor opened). The editor SHALL also offer an explicit "Discard" action that returns to the log
-event form without attaching anything, leaving the note that was pending before the editor opened exactly as it was.
+The system SHALL open a full-screen editor with one multi-line text field, seeded with the note pending for the entry
+(empty when none). Back navigation (the editor's back action, or the system back gesture or button) SHALL attach the
+field's text to the entry as its pending note and return to the form; empty or whitespace-only text SHALL attach as no
+note, clearing any pending one. An explicit "Discard" action SHALL return without attaching anything, leaving the
+earlier pending note as it was.
 
 #### Scenario: Editor starts with the pending note
 - **WHEN** the user opens the editor while a note is already pending for the entry
@@ -569,13 +538,10 @@ rest of the unsaved entry, as it already does for every other field on the form.
 
 ### Requirement: Photos can be added to the log event form
 The system SHALL show a photo element on the log event form, below the note element, for a "Distance" or "Odometer
-reading" (new odometer count) entry — the "Initial odometer" event never offers one, the same restriction it already
-has for a note. The element SHALL show a strip of thumbnails for the photos currently attached (0 to 5) and, while
-fewer than 5 are attached, an "Add photo" action. Tapping "Add photo" SHALL show the system's own chooser of image
-sources (`vehicle-picture`, "The photo comes from an app the user chooses through the system"), and the chosen photo
-SHALL be added to the strip **without a crop step**: unlike a vehicle's picture, an event photo is looked at for its
-content, and cropping it to a square risks cutting off what it was meant to capture. Once 5 are attached, "Add
-photo" SHALL NOT be shown until one is removed.
+reading" (new odometer count) entry; the "Initial odometer" event never offers one, as it never offers a note. It
+SHALL show thumbnails of the photos attached (0 to 5) and, while fewer than 5 are attached, an "Add photo" action that
+shows the system's chooser of image sources (`vehicle-picture`). With 5 attached, "Add photo" SHALL NOT be shown until
+one is removed.
 
 #### Scenario: No photos yet
 - **WHEN** the user opens the log event form and has not attached any photo
@@ -631,3 +597,134 @@ is open.
 #### Scenario: Photos survive a rotation
 - **WHEN** the user has attached photos and rotates the device before saving
 - **THEN** the form still shows those photos attached
+
+### Requirement: Accepting a scanned reading switches the way
+Accepting a candidate from the log event form's "Scan a reading" action (`odometer-ocr-capture`, "Accepting a candidate
+sets the field and the way") SHALL set the active field's number and SHALL switch the way to match the candidate's
+classification, the same as if the user had switched by hand and typed it.
+
+#### Scenario: A scanned reading replaces the typed number
+- **WHEN** the form is on "New odometer" with 45250 typed, and the user accepts a scanned candidate of 45260
+  classified as an odometer reading
+- **THEN** the form stays on "New odometer" and the field shows 45260
+
+### Requirement: A confirmed lower count is saved as an odometer anchor
+Confirming a lower new odometer count SHALL save it as an odometer anchor (`vehicle-log`, "Odometer anchor events"),
+the same way a count is saved when no odometer was known before: it becomes the vehicle's current odometer going
+forward, like any other anchor, with no constraint that it be higher than what it replaces.
+
+#### Scenario: A confirmed lower count adds no distance
+- **WHEN** the vehicle's current odometer is 45230 km, and the user logs a new odometer count of 44000 for now, saves
+  and confirms
+- **THEN** the log gains an odometer anchor of 44,000 km and no "Distance" event
+
+### Requirement: The required field of a distance entry is marked
+On a "Distance" entry, the active field's label ("Trip distance" or "New odometer") SHALL carry a trailing "*", and the
+form SHALL show a line near its Save action explaining the convention: "* indicates a required field". A refueling's
+optional mileage section's labels SHALL NOT carry it; the fuel amount's label does (`refueling-logging`).
+
+#### Scenario: The mark follows the active field
+- **WHEN** the user switches a "Distance" entry from "Trip distance" to "New odometer"
+- **THEN** the "New odometer" label carries the trailing "*"
+
+### Requirement: The tenths choice is remembered per vehicle
+The log event form SHALL preselect the tenths choice remembered for the vehicle or, when none was remembered yet, the
+tenths of the vehicle's odometer unit (the two tenths units include tenths). Saving an entry SHALL remember the tenths
+choice used for that vehicle. The choice of kilometers or miles is not remembered and starts as the vehicle's.
+
+#### Scenario: Saving in miles remembers only the tenths
+- **WHEN** the user logs a distance in miles with tenths included for a vehicle with the unit "Kilometers", saves, and
+  later opens the form for that vehicle again
+- **THEN** kilometers is selected and tenths are included
+
+### Requirement: An entry in another unit is converted
+An entry logged in another unit than the vehicle's SHALL be converted, and SHALL be shown in the vehicle's unit
+everywhere.
+
+#### Scenario: Miles for a whole-kilometer vehicle
+- **WHEN** the user logs a trip distance of 10 miles for a vehicle with the unit "Kilometers"
+- **THEN** the entry is shown as "+16 km"
+
+### Requirement: An entry's moment can be in the past but not in the future
+The user SHALL be able to choose a moment in the past for an entry. The system SHALL refuse a moment later than the
+time of saving, showing an error and adding nothing.
+
+#### Scenario: A moment last year
+- **WHEN** the user picks a date a year ago and saves a valid entry
+- **THEN** the entry is saved at that date
+
+### Requirement: The entry's date shows its weekday and its time follows the system's clock
+The date of the entry SHALL be shown with the day of the week of the selected date, named in the device's language,
+and its time SHALL be shown and picked in 12-hour form (with the device's AM and PM markers) or in 24-hour form,
+following the system setting.
+
+#### Scenario: Just after midnight in 12-hour form
+- **WHEN** the system uses the 12-hour format and the form shows the time 00:15
+- **THEN** the time is shown as "12:15 AM"
+
+### Requirement: The form explains a new odometer starting point
+When "New odometer" is chosen and no odometer is known at the entry's time, the form SHALL say that no odometer is
+known at that time and that the count will be saved as a new odometer starting point, SHALL show no distance, and SHALL
+allow saving once a count is typed. While the field is empty, the form's Save action SHALL be disabled, as for a trip
+distance.
+
+#### Scenario: The explanation goes away at a known time
+- **WHEN** the form explains a new odometer starting point, and the user changes the time to one after the initial
+  odometer
+- **THEN** the form shows the previous known odometer and the distance instead
+
+### Requirement: An odometer starting point is entered like any count
+The count of a new odometer starting point SHALL be entered and unit-converted like any other count, the future check
+SHALL apply to it, a count of zero SHALL be accepted, and the tenths choice used SHALL be remembered as for a distance
+entry.
+
+#### Scenario: A starting point of zero
+- **WHEN** no odometer is known at the entry's time, and the user chooses "New odometer", types 0 and saves
+- **THEN** the log contains an odometer anchor of 0 at that time
+
+### Requirement: Changing the vehicle keeps what was entered
+Changing the vehicle in the log event form's selector SHALL start the unit as the new vehicle's (its unit family and
+its remembered choice of tenths), and SHALL keep the typed digits, converted to the new unit as when the unit is
+changed by hand, the way, the date, the time, the time zone and any pending note. The chosen vehicle SHALL survive a
+rotation of the device and a restart of the process.
+
+#### Scenario: The date and time survive a vehicle change
+- **WHEN** the user has picked yesterday at 08:30 and then chooses another vehicle in the selector
+- **THEN** the form still shows yesterday at 08:30
+
+### Requirement: The selector starts on the first vehicle when none is remembered
+When no vehicle is remembered (a new install, an update from a version without the memory) or the remembered vehicle
+does not exist, the selector SHALL start on the first vehicle in the vehicle list's order. The memory SHALL survive
+closing the app, SHALL work without a network, and SHALL NOT be filled from the log when it is first created.
+
+#### Scenario: An update does not fill the memory from the log
+- **WHEN** the app is updated from a version without the memory, with vehicles "Bike" and "van" and the latest entry
+  logged for "van"
+- **THEN** the selector starts on "Bike", the first vehicle in the list's order
+
+### Requirement: The Kind selector shares a row with the vehicle selector
+When the log event form is opened from the Home screen, the Kind selector and the vehicle selector SHALL share one row,
+of equal width and height, the Kind selector first (on the left). Opened from a vehicle's details screen, where there
+is no vehicle selector, the Kind selector SHALL take the row alone.
+
+#### Scenario: The row survives a rotation
+- **WHEN** the form is opened from the Home screen and the device is rotated
+- **THEN** the Kind and vehicle selectors are still side by side, each half the row's width and the same height
+
+### Requirement: The note element is never edited in place
+The note element SHALL NOT become an editable text field when tapped: no text cursor, software keyboard or in-place
+editing SHALL appear on the log event form, and the element SHALL NOT show the "Discard" action; every edit SHALL go
+through the full-screen note editor.
+
+#### Scenario: Tapping with a note pending
+- **WHEN** a note is pending and the user taps the note element
+- **THEN** the full-screen note editor opens with that note, and no keyboard appears on the log event form
+
+### Requirement: An event photo is added without a crop
+A photo chosen through the log event form's "Add photo" SHALL be added to the strip without a crop step: unlike a
+vehicle's picture, an event photo is looked at for its content, and cropping it to a square risks cutting off what it
+was meant to capture.
+
+#### Scenario: A photo is attached uncropped
+- **WHEN** the user adds a portrait (3:4) photo through "Add photo"
+- **THEN** no crop screen is shown, and the photo is attached as it is, 3:4, not cut to a square

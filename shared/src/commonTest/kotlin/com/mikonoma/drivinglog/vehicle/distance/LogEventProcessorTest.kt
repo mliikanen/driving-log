@@ -2415,4 +2415,120 @@ class LogEventProcessorTest {
         assertEquals(FuelType.DIESEL, restored.state.fuelType)
         assertFalse(restored.state.filledUp)
     }
+
+    // ---- split-long-requirements-c: the scenarios of the requirements split out of distance-logging
+
+    @Test
+    fun aScannedOdometerReadingReplacesTheTypedCount() {
+        // distance-logging, "Accepting a scanned reading switches the way", scenario "A scanned reading replaces the typed number".
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 5, 2, 5, 0)
+
+        processor.scan()
+        processor.accept("45260")
+
+        assertEquals(LogWay.NEW_ODOMETER, processor.state.way)
+        assertEquals(45_260L, processor.state.newOdometer.steps)
+    }
+
+    @Test
+    fun aConfirmedLowerCountAddsNoDistance() = runTest {
+        // distance-logging, "A confirmed lower count is saved as an odometer anchor".
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 4, 0, 0, 0)
+        processor.dispatch(LogEventIntent.Save)
+
+        processor.test {
+            dispatch(LogEventIntent.LowerOdometerConfirmed)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(Distance(44_000_000), repository.anchorCalls.single().reading)
+        assertEquals(emptyList(), repository.distanceCalls)
+    }
+
+    @Test
+    fun aMomentLastYearIsAccepted() = runTest {
+        // distance-logging, "An entry's moment can be in the past but not in the future".
+        seedVehicle()
+        val processor = processor()
+        processor.type(1, 0)
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2025, 9, 20)))
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(Instant.parse("2025-09-20T13:30:00Z"), repository.distanceCalls.single().occurredAt.instant)
+    }
+
+    @Test
+    fun aStartingPointOfZeroIsSavedAsAnAnchor() = runTest {
+        // distance-logging, "An odometer starting point is entered like any count".
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(0)
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
+
+        processor.test {
+            dispatch(LogEventIntent.Save)
+            expectSideEffect(LogEventEffect.Saved)
+        }
+
+        assertEquals(Distance(0), repository.anchorCalls.single().reading)
+    }
+
+    @Test
+    fun theStartingPointExplanationGoesAwayAtAKnownTime() {
+        // distance-logging, "The form explains a new odometer starting point": with no known odometer there is none and no
+        // distance (what the form's explanation is shown for); at a time with one, both are back.
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.type(4, 5, 2, 5, 0)
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 12)))
+        assertNull(processor.state.knownOdometer)
+        assertNull(processor.state.previewDistance)
+
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 20)))
+
+        assertEquals(Distance(45_230_000), processor.state.knownOdometer)
+        assertEquals(Distance(20_000), processor.state.previewDistance)
+    }
+
+    @Test
+    fun theDateAndTimeSurviveAVehicleChange() {
+        // distance-logging, "Changing the vehicle keeps what was entered".
+        seedRemembered("aaa-van", OdometerUnit.KILOMETERS, remembered = null)
+        seedRemembered("zzz-bike", OdometerUnit.MILES, remembered = null)
+        val processor = chooser()
+        processor.dispatch(LogEventIntent.DateChanged(LocalDate(2026, 9, 19)))
+        val chosen = processor.state.moment
+
+        processor.dispatch(LogEventIntent.VehicleSelected("zzz-bike"))
+
+        assertEquals(chosen, processor.state.moment)
+    }
+
+    @Test
+    fun theLogEventFormsOdometerFieldKeepsAFirstZero() {
+        // vehicles, "Every odometer field behaves the same": the log event form's "New odometer" field, with tenths, as on the
+        // add vehicle form.
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.WayChanged(LogWay.NEW_ODOMETER))
+        processor.dispatch(LogEventIntent.TenthsChanged(included = true))
+
+        processor.type(0)
+        assertEquals(0L, processor.state.newOdometer.steps)
+        processor.type(5)
+        assertEquals(5L, processor.state.newOdometer.steps) // 0.5
+        assertEquals("05", processor.state.newOdometer.digits) // the first zero kept as a prefix
+    }
 }

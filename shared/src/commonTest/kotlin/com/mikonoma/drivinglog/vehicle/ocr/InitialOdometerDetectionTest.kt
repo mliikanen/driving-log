@@ -59,6 +59,15 @@ class InitialOdometerDetectionTest {
     }
 
     @Test
+    fun anUnlabeledUnitlessReadingJustAbove2000IsOffered() {
+        // vehicles, "Which readings are offered when adding a vehicle": 2000 or less is a dial's scale or a clock, 2001 is not.
+        val k = kinds(line("2001@499,716,575,744"), line("2000@499,816,575,844"))
+
+        assertEquals(ReadingKind.ODOMETER, k["2001"])
+        assertNull(k["2000"])
+    }
+
+    @Test
     fun rpmScalesAndClocksAreNotOffered() {
         val detections = detectInitialOdometer(photo(line("RPMx@340,652,361,665", "1000@363,654,381,667"), line("1621@491,520,560,540")))
 
