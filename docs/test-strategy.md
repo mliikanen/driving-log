@@ -77,27 +77,18 @@ A change's tasks therefore name the manifests to run, and do not ask for the who
 
 ## Spec validation
 
-`scripts/validate-specs.sh` is the spec validation, in the final regression run and in CI's `spec-validation` job (which
-runs its tests first: `node --test 'scripts/*.test.mjs'`). OpenSpec warns about any requirement over 500 characters, and
-86 of the main specs' requirements were over it when this was set up. OpenSpec has no baseline for existing warnings, so
-the script validates in three steps, and fails if any fails:
+`scripts/validate-specs.sh` is the spec validation, in the final regression run and in CI's `spec-validation` job
+(which first runs the repository scripts' own tests, `node --test 'scripts/*.test.mjs'`). It runs
+`openspec validate --all --strict`: every main spec and every active change, where any error or warning fails, a
+requirement over 500 characters or an unknown `.openspec.yaml` key included.
 
-- **Changes, strictly** (`openspec validate --changes --strict`): any error or warning in an active change fails it, a
-  new requirement over 500 characters or an unknown `.openspec.yaml` key included.
-- **The main specs, leniently** (`openspec validate --specs`): errors fail it; the existing long-requirement warnings
-  are shown and pass.
-- **No long requirement is new or grows** (`scripts/check-requirement-length.mjs`), checked twice:
-  - in an active change: OpenSpec does not length-check a MODIFIED requirement, so this fails one that is over 500
-    characters and longer than in the main spec;
-  - in the main specs against the base (`main`): once a change is archived its deltas are in the main specs and the
-    change is no longer active, so this fails any main-spec requirement over 500 characters that is new or longer than
-    on `main`. A renamed long requirement counts as new. The base is `SPEC_BASE` when set; on `origin/main`'s tip (a
-    push to `main`), its previous commit; anywhere else, the merge base with `origin/main` (fetch first), so a checkout
-    behind `main` has nothing new to judge. CI checks out full history for it.
+OpenSpec length-checks a change's ADDED requirements and the main specs, but not a MODIFIED requirement in a change
+that is not archived yet. A change that makes a requirement too long therefore passes until its archive commit, and
+fails there: the archive is the last commit of its pull request, so the pull request can't merge with it. When a
+change rewords a requirement, keep it at 500 characters or fewer; split it into requirements that each state one
+behavior when it would grow past that.
 
-  Unchanged or shorter text passes: adding a scenario to a long requirement does not force splitting it, but adding
-  words to one does. A change that rewords a long requirement splits it (or shortens it) in the same change.
-
-So a long requirement can only get shorter. Issue #13 splits the existing ones; its last change replaces the script's
-steps with `openspec validate --all --strict` and deletes the length check.
+Issue #13 split the long requirements the main specs had when OpenSpec 1.14 added the warning (76 of them), in four
+batches (`split-long-requirements-a` to `-d`). Until the last, a ratchet (`ratchet-spec-validation`) kept them from
+growing.
 
