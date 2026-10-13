@@ -37,8 +37,8 @@ On the change's branch, in this order:
 4. **`/opsx:archive` as the last commit**, once review is done: it syncs the deltas into `openspec/specs/` and moves the
    change into `archive/`. Archiving earlier would mean editing the main specs and archived artifacts by hand when
    review changes something. The checks must pass again after it.
-5. **Merge** the PR into `main`. The branch must be up to date with `main` to merge (the ruleset requires it), so
-   merge `main` into it first if `main` has moved on.
+5. **Squash-merge** the PR into `main`, the only merge method the repository allows. The branch doesn't need to be up
+   to date with `main` first; CI on `main` runs again after the merge.
 
 ## With the herd
 
@@ -93,11 +93,17 @@ within a minute without waiting for the others. CI builds and tests the Android 
 informational one, `release-notes` (`release-notes.yml`), shows what merging would publish and updates when you edit
 the description.
 
-The ruleset on `main` (`main-is-pr-only`, exported in `.github/rulesets/main.json`) blocks the merge until all three
-pass on the PR's latest commit, with the branch up to date with `main`. `main` takes changes only through PRs, from
-everyone: there is no bypass, the administrator included, and no approving review is required. A second ruleset
-(`main-retain`, `.github/rulesets/main-retain.json`) stops `main` from being deleted or force-pushed. Merging publishes
-to the testers (`docs/distribution.md`).
+What protects `main` lives in GitHub's settings, not in this repository; this is what they are meant to say:
+
+- **Ruleset `main-is-pr-only`:** `main` takes changes only through PRs, from everyone: there is no bypass, the
+  administrator included. The merge waits until all three checks pass on the PR's latest commit and every review
+  thread is resolved. No approving review is required, and the branch doesn't have to be up to date with `main`.
+- **Ruleset `main-retain`:** `main` can't be deleted or force-pushed.
+- **Repository merge settings:** squash merges only (merge commits and rebase merges are off), so `main`'s history is
+  one commit per PR. The release scripts rely on that: a skip tag is on the commit that brought the change.
+
+To see what is live: `gh api repos/mliikanen/driving-log/rulesets`, then `gh api repos/mliikanen/driving-log/rulesets/<id>`.
+Merging publishes to the testers (`docs/distribution.md`).
 
 ## Cleaning up after merge
 
