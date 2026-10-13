@@ -8,11 +8,11 @@ mileage reading — as the log event form's second kind, alongside "Distance."
 ## Requirements
 
 ### Requirement: Refueling can be logged from the log event form
-The system SHALL offer "Refueling" as a second choice in the log event form's "Kind" selector (`distance-logging`,
-"The kind of event is chosen"), alongside "Distance." Choosing it SHALL show: a fuel amount field, a fuel type
-selector, a "filled up" checkbox, an optional mileage section (the same "Trip distance"/"New odometer" choice a
-"Distance" entry offers), the note element and the photo strip. The date, time, time zone, vehicle selector (from
-the Home screen) and the form's save/leave mechanics are unchanged from a "Distance" entry's.
+The system SHALL offer "Refueling" as a second choice in the log event form's "Kind" selector (`distance-logging`),
+alongside "Distance." Choosing it SHALL show a fuel amount field, a fuel type selector, a "filled up" checkbox, an
+optional mileage section (the "Trip distance"/"New odometer" choice a "Distance" entry offers), the note element and
+the photo strip. The date, time, time zone, vehicle selector (from the Home screen), saving and leaving SHALL work as
+for a "Distance" entry.
 
 #### Scenario: Choosing Refueling shows its fields
 - **WHEN** the user opens the log event form and chooses "Refueling" in the Kind selector
@@ -26,11 +26,9 @@ the Home screen) and the form's save/leave mechanics are unchanged from a "Dista
 
 ### Requirement: The fuel amount must be entered and above zero
 The system SHALL require a number in the fuel amount field: while it is empty, the form's Save action SHALL be
-disabled and SHALL NOT be tappable, independent of whether the refueling's optional mileage section has anything
-typed in it. The fuel amount SHALL be more than zero: once the field is non-empty, the system SHALL show an error on
-the field and SHALL NOT save the entry when a typed amount is zero. The fuel amount field's label SHALL carry a
-trailing "*", matching the required-field convention `distance-logging`'s "A trip distance must be entered and above
-zero" already establishes; the optional mileage section's fields carry no such asterisk.
+disabled (not tappable), whatever the optional mileage section holds. The amount SHALL be more than zero: for a typed
+zero, the system SHALL show an error on the field and SHALL NOT save the entry. The fuel amount field's label SHALL
+carry a trailing "*", the required-field mark `distance-logging` uses; the mileage section's fields SHALL NOT.
 
 #### Scenario: Empty fuel amount disables Save
 - **WHEN** the user has chosen "Refueling" and the fuel amount field is empty
@@ -49,11 +47,10 @@ zero" already establishes; the optional mileage section's fields carry no such a
 - **THEN** the fuel amount field's label carries a trailing "*", and the optional mileage section's fields do not
 
 ### Requirement: The fuel amount's unit remembers the last choice, independent of the vehicle
-The system SHALL let the user choose the fuel amount's unit on the form: liters or gallons. The choice SHALL default
-to whichever the user chose last, anywhere in the application, regardless of which vehicle is being logged for or
-what unit any previously logged event used — a single, global preference, stored separately from any vehicle or
-event and never derived from the log. Changing the unit SHALL keep the digits typed, as changing the distance unit
-already does. Saving a refueling SHALL update the remembered choice to the unit used.
+The system SHALL let the user choose the fuel amount's unit on the form: liters or gallons. It SHALL default to the
+unit the user chose last, anywhere in the application, whatever the vehicle or the units of logged events: one global
+preference, stored apart from any vehicle or event and never derived from the log. Changing the unit SHALL keep the
+digits typed. Saving a refueling SHALL make its unit the remembered choice.
 
 #### Scenario: Defaults to the last choice
 - **WHEN** the user last chose gallons while logging a refueling for any vehicle, and opens the log event form for a
@@ -78,14 +75,11 @@ already does. Saving a refueling SHALL update the remembered choice to the unit 
 - **THEN** the log event form's fuel amount field still starts in that unit
 
 ### Requirement: The fuel type remembers the last choice, independent of the vehicle
-The system SHALL let the user choose a fuel type from a fixed list: Regular petrol/gasoline, Premium petrol/gasoline,
-Diesel, Premium diesel, Biodiesel, E85/flex fuel, LPG, CNG, Hydrogen, Other — narrowed to what the vehicle being
-logged for offers (`vehicle-fuel-type`'s "The fuel type filters which refueling fuel types are offered"). The
-remembered choice itself SHALL remain a single, global preference, stored separately from any vehicle or event and
-never derived from the log — not a separate remembered value per vehicle. The choice SHALL default to whichever the
-user chose last, anywhere in the application, when the current vehicle offers it; when it does not (the vehicle's
-fuel type filters it out), the first fuel type that vehicle offers SHALL be preselected instead, without changing
-the remembered global choice. Saving a refueling SHALL update the remembered global choice to the fuel type used.
+The system SHALL preselect the fuel type the user chose last, anywhere in the application, when the vehicle being
+logged for offers it. The remembered choice SHALL be one global preference, stored apart from any vehicle or event,
+never derived from the log and never kept per vehicle. When the vehicle does not offer it, the first fuel type the
+vehicle offers SHALL be preselected instead, leaving the remembered choice unchanged. Saving a refueling SHALL make
+its fuel type the remembered choice.
 
 #### Scenario: Defaults to the last choice
 - **WHEN** the user last chose Diesel while logging a refueling for a vehicle whose fuel type offers Diesel, and
@@ -131,16 +125,11 @@ previous one was saved with.
 - **THEN** the "filled up" checkbox is checked again, not remembering the previous entry's unchecked state
 
 ### Requirement: Mileage is optional for a refueling
-The system SHALL show the same "Trip distance"/"New odometer" choice on a refueling form that a "Distance" entry
-offers, but SHALL NOT require a value in it to save: the form's Save action is gated by the fuel amount alone
-(`refueling-logging`, "The fuel amount must be entered and above zero"), never by the mileage section being empty.
-When the user does type a mileage value, it is validated exactly as a "Distance" entry's would be
-(`distance-logging`'s "A distance is logged as a trip distance or as a new odometer count," "The previous known
-odometer," "The new odometer must be higher than the previous known odometer," and both lower-odometer-confirmation
-requirements all apply unchanged), and it is saved as its own event in the refueling's entry (`vehicle-log`, "The
-log stores one fact per event, grouped into entries"): the same "Distance" or "Odometer reading" event a "Distance"
-entry with that mileage would have saved, which sets or advances the vehicle's odometer. The "Refueling" event itself
-never does. A refueling saved with no mileage typed SHALL NOT change the vehicle's odometer at all.
+A refueling form SHALL offer the "Trip distance"/"New odometer" choice a "Distance" entry offers, but SHALL NOT
+require a value in it: Save is gated by the fuel amount alone. A typed mileage SHALL be validated as a "Distance"
+entry's is (`distance-logging`) and saved in the refueling's entry as the "Distance" or "Odometer reading" event such
+an entry would save, which sets or advances the odometer; the "Refueling" event never does. With no mileage, a
+refueling SHALL NOT change the odometer.
 
 #### Scenario: Saving with a trip distance
 - **WHEN** the user chooses "Refueling," types a trip distance of 30 km, a fuel amount and saves
@@ -163,12 +152,11 @@ never does. A refueling saved with no mileage typed SHALL NOT change the vehicle
 - **THEN** the system refuses it the same way it would for a "Distance" entry, and saves nothing
 
 ### Requirement: Attached fuel data is saved with the event, or discarded with the rest of the form
-Saving a valid refueling SHALL store its fuel amount, fuel type and "filled up" state as a "Refueling" event, its
-mileage (if any) as a second event, and its note (if any) and photos (if any) once, shared by both events, all
-together as one new entry, or nothing at all. Leaving the form without saving SHALL discard all of it, the same way
-leaving a "Distance" entry's form discards everything typed. The fuel amount, fuel type and "filled up" state SHALL
-be kept across a rotation or a process restart while the form is open, the same way a pending note or an attached
-photo already is.
+Saving a valid refueling SHALL store, as one new entry or not at all: its fuel amount, fuel type and "filled up"
+state as a "Refueling" event, its mileage (if any) as a second event, and its note and photos (if any) once, shared
+by both. Leaving the form without saving SHALL discard all of it, as for a "Distance" entry. The fuel amount, fuel
+type and "filled up" state SHALL be kept across a rotation or a process restart while the form is open, as a pending
+note is.
 
 #### Scenario: Everything is saved together
 - **WHEN** the user fills in the fuel amount, fuel type, unchecks "filled up," adds a note and a photo, and saves
@@ -189,3 +177,12 @@ photo already is.
 #### Scenario: Fields survive a rotation
 - **WHEN** the user has typed a fuel amount and chosen a fuel type, and rotates the device before saving
 - **THEN** the form still shows that amount and fuel type
+
+### Requirement: The fuel type is chosen from a fixed list
+The system SHALL let the user choose a refueling's fuel type from a fixed list: Regular petrol/gasoline, Premium
+petrol/gasoline, Diesel, Premium diesel, Biodiesel, E85/flex fuel, LPG, CNG, Hydrogen, Other, narrowed to what the
+vehicle being logged for offers (`vehicle-fuel-type`, "The fuel type filters which refueling fuel types are offered").
+
+#### Scenario: The whole list for an unfiltered vehicle
+- **WHEN** the user chooses "Refueling" for a vehicle of the fuel type "Other"
+- **THEN** the fuel type selector offers all ten fuel types of the list, and no other

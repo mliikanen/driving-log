@@ -389,6 +389,35 @@ class EventDetailsProcessorTest {
     }
 
     @Test
+    fun aRefuelingsDetailsShowOnlyItsAttachedPhotos() {
+        // odometer-ocr-capture, "A stored scan is never shown and outlives its event": the photos shown are the entry's own,
+        // never the stored scan's, even though the refueling has one.
+        repository.captures["e2"] = com.mikonoma.drivinglog.vehicle.domain.StoredCapture(
+            "scan-photo",
+            com.mikonoma.drivinglog.vehicle.ocr.ScanResult(
+                1280,
+                720,
+                listOf(
+                    com.mikonoma.drivinglog.vehicle.ocr.Detection(
+                        "42.30L",
+                        "42.30",
+                        com.mikonoma.drivinglog.vehicle.ocr.TextBox(100, 100, 200, 140),
+                        com.mikonoma.drivinglog.vehicle.ocr.ReadingKind.FUEL_AMOUNT,
+                        com.mikonoma.drivinglog.vehicle.ocr.DetectionBasis.LABEL,
+                        "L",
+                    ),
+                ),
+                acceptedIndex = 0,
+            ),
+        )
+        eventPictures.pictures["scan-photo"] = FakePictureStore.Versions(FakePictureStore.image(3), FakePictureStore.image(4))
+        val processor = refuelingEventProcessor(photoIds = listOf("p1"))
+
+        assertEquals(listOf("p1"), processor.state.photoThumbnailUris.map { it.first })
+        assertNull(processor.state.viewingPhotoId)
+    }
+
+    @Test
     fun editClickedOnARefuelingSeedsTheEditScreenWithItsNoteAndPhotos() {
         val processor = refuelingEventProcessor(note = "cheap gas today", photoIds = listOf("p1"))
 

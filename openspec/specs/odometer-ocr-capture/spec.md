@@ -9,13 +9,11 @@ one (if any) to accept. The photo and every detection are kept privately for deb
 ## Requirements
 
 ### Requirement: A photo is chosen to scan for a reading
-The system SHALL offer a "Scan a reading" action on the log event form. Tapping it SHALL open the live scanner ("The
-live scanner shows readings as the camera sees them"). The live scanner SHALL offer a photo action that opens the same
-system photo chooser already used for a vehicle's picture (including the device's camera app, through the system's own
-intent or source sheet — no permission of this application's own is requested for it). Choosing a photo SHALL proceed
-to detection and the photo review; cancelling the chooser SHALL return to the live scanner, and leaving the photo review
-without accepting a candidate SHALL return to the live scanner too. On iOS, which has no on-device recognizer yet, the
-action SHALL NOT be shown.
+The log event form SHALL offer a "Scan a reading" action that opens the live scanner, which SHALL offer a photo action
+opening the system photo chooser used for a vehicle's picture (the camera app included; this application requests no
+permission for it). Choosing a photo SHALL lead to detection and the photo review; cancelling the chooser, or leaving
+the review without accepting, SHALL return to the live scanner. On iOS, with no on-device recognizer yet, the action
+SHALL NOT be shown.
 
 #### Scenario: Open the scanner
 - **WHEN** the user taps "Scan a reading" on the log event form
@@ -65,13 +63,11 @@ candidate. A photo with no plausible candidate SHALL say so and let the user cho
 - **THEN** the system says no reading was found, and the user can choose another photo or leave
 
 ### Requirement: A detected reading is classified as an odometer or a trip-meter reading
-The system SHALL classify each candidate as odometer-like or trip-meter-like using, in order: a recognized text label
-next to it in the photo ("ODO", "ODOMETER" or "TOTAL DISTANCE" read as odometer-like, "TRIP", "TRIP A", "TRIP B"
-or "T" as trip-like), and, when no such label is recognized next to it, the candidate's magnitude against the vehicle's
-current known odometer at the entry's date and time (already defined by `distance-logging`, "The previous known
-odometer"): a value at or plausibly above the known odometer reads as odometer-like, and a value clearly smaller,
-plausible as a trip distance, reads as trip-meter-like. A candidate with neither a recognized label nor a plausible
-magnitude either way SHALL NOT be presented to the user.
+The system SHALL classify each candidate by a recognized label next to it in the photo: "ODO", "ODOMETER" or "TOTAL
+DISTANCE" as odometer-like, "TRIP", "TRIP A", "TRIP B" or "T" as trip-like. With no such label, it SHALL use the
+candidate's magnitude against the odometer known at the entry's time (`distance-logging`, "The previous known
+odometer"): at or plausibly above it is odometer-like, clearly smaller and plausible as a trip is trip-like. A
+candidate with neither SHALL NOT be presented.
 
 #### Scenario: Classified by label
 - **WHEN** a candidate has the recognized text "ODO" next to it in the photo
@@ -94,17 +90,11 @@ magnitude either way SHALL NOT be presented to the user.
 - **THEN** it is not presented as a candidate
 
 ### Requirement: A detected reading is classified as a fuel amount, by label only
-The system SHALL classify a candidate as a fuel-amount reading when a recognized text label for a volume is next to
-it in the photo ("LITRAA", "LITARA", "LITROV", "dm³", "L", "LITERS", "LITRES", "GAL", "GALLON" or "GALLONS"), using
-the same label-adjacency rule odometer/trip classification uses ("A detected reading is classified as an odometer or
-a trip-meter reading"). Unlike an odometer or trip reading, a fuel amount SHALL NOT be classified by magnitude: a
-fuel pump or receipt display typically shows the amount dispensed and its total price as two numbers of similar size
-with nothing but their labels to tell them apart, so there is no magnitude fallback and no plausible-range check. A
-candidate with no recognized volume label next to it SHALL NOT be presented as a fuel-amount candidate. On a display
-where a price or an amount sits as close to the one recognized volume label as the real reading does, that number
-MAY also be classified as a fuel-amount candidate alongside it — the same adjacency rule that finds the real reading
-does not distinguish them by what else they mean, only by which recognized label is nearest; this capability's own
-"Several candidates" is how the user resolves this.
+The system SHALL classify a candidate as a fuel-amount reading when a recognized volume label is next to it in the
+photo ("LITRAA", "LITARA", "LITROV", "dm³", "L", "LITERS", "LITRES", "GAL", "GALLON" or "GALLONS"), by the adjacency
+rule odometer and trip classification use. It SHALL NOT use magnitude: a pump or receipt shows the amount and the
+price as similar numbers told apart only by their labels. A candidate with no volume label next to it SHALL NOT be
+presented as a fuel-amount candidate.
 
 #### Scenario: Classified by a volume label
 - **WHEN** a candidate has the recognized text "LITRAA" or "GAL" next to it in the photo
@@ -120,11 +110,10 @@ does not distinguish them by what else they mean, only by which recognized label
 - **THEN** both are presented as fuel-amount candidates, and the user picks the correct one by its value
 
 ### Requirement: The user picks a candidate to accept, or leaves without picking one
-The system SHALL show the chosen photo with a box drawn around every candidate and its classification ("ODO",
-"TRIP" or "FUEL") shown as text next to the box, every box and its text in a neutral color until the user taps it,
-and in a distinct, confirmable color once tapped. Tapping a candidate SHALL select it in place of whichever was
-selected before, if any. The system SHALL let the user confirm the selected candidate, or navigate back without
-confirming one, in which case the log event form is unchanged and nothing is kept.
+The system SHALL show the chosen photo with a box around every candidate and its classification ("ODO", "TRIP" or
+"FUEL") as text next to it, in a neutral color until tapped and in a distinct, confirmable color once tapped. Tapping
+a candidate SHALL select it in place of any earlier selection. The user SHALL be able to confirm the selected
+candidate, or navigate back without confirming one, leaving the log event form unchanged and keeping nothing.
 
 #### Scenario: One candidate
 - **WHEN** the photo has exactly one candidate
@@ -166,13 +155,10 @@ return to the log event form.
 - **THEN** the scanner closes, the form switches to "New odometer" and the field shows the reading's value
 
 ### Requirement: Accepting a fuel-amount candidate sets the fuel amount field and its unit
-The system SHALL, when the user confirms a selected fuel-amount candidate on the photo review, or taps one in the
-live scanner, set the log event form's fuel amount field to the candidate's value, replacing whatever it held
-before, and SHALL return to the log event form. Unlike accepting an odometer or trip candidate, this SHALL NOT
-change the mileage section's way or field: the fuel amount field and the mileage section are independent, each with
-its own scan action. When the label that classified the candidate names a unit (a liter word or symbol, or a
-gallon word), the system SHALL also set the fuel amount's unit to match, replacing whatever it held before; when
-the label names neither, the unit SHALL be left as it was.
+When the user confirms a selected fuel-amount candidate on the photo review, or taps one in the live scanner, the
+system SHALL set the fuel amount field to its value, replacing what it held, and return to the log event form,
+without changing the mileage section's way or field. When the label that classified it names a unit (a liter word
+or symbol, or a gallon word), the fuel amount's unit SHALL be set to match; otherwise the unit SHALL stay as it was.
 
 #### Scenario: Accept a fuel-amount reading from the review screen
 - **WHEN** the user confirms a candidate classified as a fuel-amount reading
@@ -187,18 +173,11 @@ the label names neither, the unit SHALL be left as it was.
 - **THEN** the fuel amount's unit is set to liters
 
 ### Requirement: An accepted scan's photo and detections are kept only if the entry is saved
-The system SHALL keep the scanned photo and the full detection result (every candidate found: its position in the
-photo, its recognized text and its classification, not only the accepted one) once the user accepts a candidate, and
-SHALL store them under the resulting event only once the log event form is saved. When the form saves more than one
-event (a refueling with mileage, `vehicle-log`'s "The log stores one fact per event, grouped into entries"), the
-scan SHALL be stored under the event whose number it filled: a fuel-amount scan under the "Refueling" event, a
-mileage scan under the "Distance" or "Odometer reading" event. A mileage scan whose mileage was cleared before the
-refueling was saved filled nothing that is saved, and SHALL NOT be stored. For a reading tapped in the live scanner, the photo SHALL be the camera frame the reading was detected in, and the detection result that frame's.
-Leaving the form without saving, after accepting a scan, SHALL discard the kept photo and detections along with the
-rest of the unsaved entry. Scanning again before saving SHALL keep only the latest accepted scan. Neither the photo nor
-the detections SHALL appear in any user-facing screen; they exist only to review a misdetection after the fact. Once
-stored, the photo and detections SHALL be kept until they themselves are removed: removing the event they belong to
-SHALL NOT remove them.
+Once the user accepts a candidate, the system SHALL keep the scanned photo and the full detection result (every
+candidate's position, recognized text and classification, not only the accepted one), and SHALL store them under the
+resulting event only when the form is saved. For a reading tapped in the live scanner, they SHALL be that camera frame
+and its detections. Leaving the form unsaved SHALL discard them; scanning again before saving SHALL keep only the
+latest accepted scan.
 
 #### Scenario: Saved together with the event
 - **WHEN** the user accepts a candidate and saves the entry
@@ -237,12 +216,10 @@ SHALL NOT remove them.
 - **THEN** neither the photo nor any detection is shown
 
 ### Requirement: Readings in seven-segment digits are detected
-The system SHALL detect, in the scanned photo, numeric readings shown in seven-segment (LCD) digits as well as those
-shown in ordinary printed digits, both offline and on the device, and SHALL treat a reading detected either way the
-same: it SHALL become a candidate by the same rules, be classified by the same label and magnitude rules, and be
-presented for review in the same way. A reading SHALL be presented once even when both kinds of recognition find it.
-On iOS the scan action is not offered (`odometer-ocr-capture`, "A photo is chosen to scan for a reading"), so none of
-this applies there.
+The system SHALL detect, offline and on the device, readings shown in seven-segment (LCD) digits as well as in
+ordinary printed digits, and SHALL treat both alike: the same candidate, classification and review rules. A reading
+found by both kinds of recognition SHALL be presented once. On iOS the scan action is not offered
+(`odometer-ocr-capture`, "A photo is chosen to scan for a reading"), so none of this applies there.
 
 #### Scenario: An LCD odometer reading is found
 - **WHEN** the user scans a photo of a motorcycle's LCD display showing "ODO 5034 Km"
@@ -261,13 +238,11 @@ this applies there.
 - **THEN** it is presented as one candidate, not two
 
 ### Requirement: The live scanner shows readings as the camera sees them
-The system SHALL show, in the live scanner, the back camera's live preview filling the screen, and SHALL draw over it a
-box around every candidate reading detected in the recent camera frames, with its classification and value as text
-("ODO 71140", "TRIP 168.1"), detected offline and on the device, and classified by the same rules as a scanned photo's
-candidates. The boxes SHALL follow the view as it changes, and a reading SHALL stay shown briefly after the camera loses
-it rather than flicker on and off between frames. Tapping a reading's box or text SHALL accept it ("Accepting a
-candidate sets the field and the way"). The live scanner SHALL offer a close action, and it and back navigation SHALL
-leave the scanner without accepting anything: the log event form is then unchanged and nothing is kept.
+The live scanner SHALL show the back camera's preview full screen, boxing every candidate reading recently detected,
+with its classification and value as text, detected offline on the device and classified as a scanned photo's are. The
+boxes SHALL follow the view; a reading SHALL stay shown briefly after the camera loses it without flickering. Tapping
+a reading SHALL accept it. It SHALL offer a close action; it and back navigation SHALL accept and keep nothing,
+leaving the form unchanged.
 
 #### Scenario: Readings are boxed live
 - **WHEN** the camera is pointed at a dashboard showing "ODO 71140 km"
@@ -282,11 +257,10 @@ leave the scanner without accepting anything: the log event form is then unchang
 - **THEN** the preview is shown without boxes, and the close and photo actions remain available
 
 ### Requirement: The camera permission is asked for when the scanner is first opened
-The system SHALL ask for the camera permission when the user taps "Scan a reading" and it has not been granted, and not
-before. When it is refused, the live scanner SHALL open without a preview, SHALL say that the live scanner needs camera
-access and that it can be allowed in the device settings, and SHALL keep its photo and close actions working. When it is
-granted later (in the device settings, or by being asked again), the next time the scanner opens it SHALL show the
-preview. On iOS the scan action is not offered, so none of this applies there.
+The system SHALL ask for the camera permission when the user taps "Scan a reading" and it has not been granted, and
+not before. If refused, the live scanner SHALL open without a preview, say that it needs camera access and that it
+can be allowed in the device settings, and keep its photo and close actions working. Once it is granted later, the
+scanner SHALL show the preview the next time it opens. On iOS the scan action is not offered.
 
 #### Scenario: Asked on first use
 - **WHEN** the user taps "Scan a reading" and has never been asked for the camera
@@ -301,11 +275,10 @@ preview. On iOS the scan action is not offered, so none of this applies there.
 - **THEN** the live scanner shows the camera's preview
 
 ### Requirement: A scan accepted when adding a vehicle is kept with its initial odometer
-The system SHALL keep the photo (or, from the live scanner, the camera frame) and the full detection result of a reading
-accepted on the add-vehicle form, and SHALL store them with the vehicle's initial odometer event when the vehicle is
-saved, under the same rules as a scan accepted on the log event form: leaving the add-vehicle form without saving SHALL
-discard them, scanning again before saving SHALL keep only the latest accepted scan, they SHALL NOT appear in any
-user-facing screen, and removing the event SHALL NOT remove them.
+The system SHALL keep the photo (or live scanner frame) and the full detection result of a reading accepted on the
+add-vehicle form, and SHALL store them with the vehicle's initial odometer event when the vehicle is saved, under
+the rules of a scan accepted on the log event form: leaving without saving discards them, scanning again keeps only
+the latest accepted scan, no user-facing screen shows them, and removing the event does not remove them.
 
 #### Scenario: Saved with the new vehicle
 - **WHEN** the user accepts a scanned reading on the add-vehicle form and saves the vehicle
@@ -318,3 +291,35 @@ user-facing screen, and removing the event SHALL NOT remove them.
 #### Scenario: A typed odometer keeps no scan
 - **WHEN** the user types the odometer by hand and saves the vehicle
 - **THEN** no scan is stored with its initial odometer event
+
+### Requirement: A number as near the volume label may also be a fuel-amount candidate
+The system SHALL tell fuel-amount candidates apart only by which recognized label is nearest, not by what else a
+number means: on a display where a price or another amount sits as close to the one recognized volume label as the
+real reading does, that number MAY also be classified as a fuel-amount candidate. The system SHALL let the user
+resolve this by picking a candidate ("The user picks a candidate to accept, or leaves without picking one").
+
+#### Scenario: The user picks the amount over the price
+- **WHEN** a photo's fuel amount 42.30 and total price 75.12 are both presented as fuel-amount candidates, and the
+  user selects 42.30 and confirms
+- **THEN** the fuel amount field shows 42.30
+
+### Requirement: A scan is stored under the event whose number it filled
+When the log event form saves more than one event (a refueling with mileage, `vehicle-log`'s "The log stores one
+fact per event, grouped into entries"), the system SHALL store an accepted scan under the event whose number it
+filled: a fuel-amount scan under the "Refueling" event, a mileage scan under the "Distance" or "Odometer reading"
+event. A mileage scan whose mileage was cleared before saving filled nothing saved, and SHALL NOT be stored.
+
+#### Scenario: A mileage scan that set a first odometer
+- **WHEN** the user types a fuel amount, accepts a scanned odometer reading for the mileage at a time when no
+  odometer is known yet, and saves the refueling
+- **THEN** the photo and its detections are linked to the entry's "Odometer reading" event
+
+### Requirement: A stored scan is never shown and outlives its event
+The system SHALL NOT show a stored scan's photo or detections on any user-facing screen; they exist only to review a
+misdetection after the fact. Once stored, they SHALL be kept until they themselves are removed: removing the event
+they belong to SHALL NOT remove them.
+
+#### Scenario: A scanned refueling's details show no scan
+- **WHEN** the user opens the details of a refueling whose fuel amount was accepted from a scan and that has one
+  attached photo
+- **THEN** the details screen shows that one attached photo and neither the scanned photo nor any detection

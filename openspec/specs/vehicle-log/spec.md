@@ -10,12 +10,10 @@ locale rules of the `vehicles` capability.
 ## Requirements
 
 ### Requirement: Initial odometer event
-The system SHALL record exactly one "Initial odometer" event in a vehicle's log when the vehicle is added, holding the
-odometer reading entered in the vehicle's unit (a typed 0 is a valid reading), kept exactly as entered, and the date and
-time the vehicle was added, to the minute (the seconds are dropped, so the time is on the same footing as a time chosen with a
-picker), together with the device's time zone at that moment. Adding a vehicle SHALL either save the vehicle together with this event or save neither. The
-initial odometer event is an odometer-setting event: it establishes an odometer reading. Other kinds of log event are
-specified by the capabilities that create them.
+When a vehicle is added, the system SHALL record exactly one "Initial odometer" event in its log: the odometer reading
+in the vehicle's unit, exactly as entered (0 is valid), dated when the vehicle was added, to the minute (seconds
+dropped, as for a picked time), in the device's time zone then. The vehicle and this event SHALL be saved together or
+not at all. It is an odometer-setting event; other kinds of event are specified by the capabilities that create them.
 
 #### Scenario: Event created with the vehicle
 - **WHEN** the user adds a vehicle with the unit "Kilometers" and types 45200 in the odometer field
@@ -42,12 +40,11 @@ specified by the capabilities that create them.
 - **THEN** neither a vehicle nor a log event is created
 
 ### Requirement: Current odometer is derived from the log
-The system SHALL show a vehicle's current odometer, in the vehicle's unit, as the reading of its latest
-odometer-setting event plus the distances of all "Distance" events after that event, and SHALL NOT keep a
-separately edited total. Events are ordered as "Events at the same time are ordered by entry, then by kind"
-describes. A "Distance" event dated before the latest odometer-setting event SHALL NOT count. A "Refueling" event
-does not participate in this calculation at all — it neither sets nor adds to the odometer; a refueling logged with
-mileage takes part only through its entry's own "Distance" or "Odometer reading" event.
+The system SHALL show a vehicle's current odometer, in its unit, as the reading of its latest odometer-setting event
+plus the distances of all "Distance" events after it, ordered as "Events at the same time are ordered by entry, then
+by kind" describes, and SHALL NOT keep a separately edited total. A "Distance" event before it SHALL NOT count. A
+"Refueling" event SHALL neither set nor add to the odometer; a refueling's mileage counts through its entry's own
+mileage event.
 
 #### Scenario: Only the initial event
 - **WHEN** a vehicle's log contains only an initial odometer event of 45200 km
@@ -78,17 +75,11 @@ mileage takes part only through its entry's own "Distance" or "Odometer reading"
 - **THEN** the vehicle's current odometer is still 45200 km
 
 ### Requirement: Recent events on the details screen
-The system SHALL show at most the 5 most recent log events of the vehicle on its details screen, newest first by their date
-and time, each with its type and its date and time, shown in the time zone the event was entered in and followed by that zone's
-name when it is not the device's current time zone. The date is written year-month-day and the time follows the system's
-12-hour or 24-hour setting (the examples below use a 24-hour setting). An "Initial odometer" event SHALL show its reading in the vehicle's
-unit. An "Odometer reading" event (an odometer anchor) SHALL show its reading in the vehicle's unit, without a plus sign. A
-"Distance" event SHALL show its distance in the vehicle's unit with a plus sign and, when it was logged as a new
-odometer count, the count that was typed. A "Refueling" event SHALL show its fuel amount, in the unit it was
-entered in (e.g. "42.3 L"), as its figure; it carries no plus sign, since a refueling is not itself a distance.
-Each event is its own row: a refueling logged with mileage shows a "Refueling" row and a row for its mileage event,
-each counting toward the 5. Events that share the same time SHALL be shown in the order "Events at the same time are
-ordered by entry, then by kind" gives, newest first. The system SHALL provide an action to open the full log.
+The system SHALL show at most the 5 most recent log events of the vehicle on its details screen, newest first by date
+and time, each as its own row with its type, date and time, and figure (the scenarios use a 24-hour setting). A
+refueling logged with mileage SHALL show as two rows, each counting toward the 5. Events at the same time SHALL be in
+the order "Events at the same time are ordered by entry, then by kind" gives, newest first. The system SHALL provide
+an action to open the full log.
 
 #### Scenario: One event
 - **WHEN** the user opens the details of a newly added vehicle
@@ -169,11 +160,10 @@ The system SHALL make every event row tappable, in the recent events on the vehi
 
 ### Requirement: The log is not changed by editing the vehicle
 The system SHALL leave a vehicle's log unchanged when the vehicle's name, license plate or picture is edited.
-Existing log events SHALL NOT be modified or removed by any action, **except the one explicit edit action
-`event-details`'s "A 'Distance' or 'Odometer reading' event's note can be edited" requirement adds**: changing or
-clearing a "Distance" or "Odometer reading" event's note from its details screen. That action SHALL change only the
-note of the one event being edited and SHALL NOT alter any other field of it or any other event. Every other action
-still leaves the log exactly as it is; the log is otherwise only ever added to.
+Existing log events SHALL NOT be modified or removed by any action except one: changing or clearing a "Distance" or
+"Odometer reading" event's note from its details screen (`event-details`, "A 'Distance' or 'Odometer reading'
+event's note can be edited"), which SHALL change only that one event's note and nothing else. The log is otherwise
+only ever added to.
 
 #### Scenario: Editing does not add events
 - **WHEN** the user edits the name and plate of a vehicle and saves
@@ -194,11 +184,11 @@ still leaves the log exactly as it is; the log is otherwise only ever added to.
 **Platform note:** the behavior is the same on iOS; it is verified on Android now and on iOS once the Xcode project exists.
 
 ### Requirement: Event times keep the time zone they were entered in
-The system SHALL store the date and time of every log event together with the time zone it was entered in, and SHALL show it in
-that time zone, whatever the device's time zone is later, until the user chooses otherwise. The stored form SHALL NOT depend on
-the device locale. The date and time of every event SHALL have minute precision: the seconds are dropped, whether the time was
-chosen by the user or taken from the clock. Events are ordered by the instant they mean, not by the wall-clock time shown. An event written before time
-zones were stored has no zone and SHALL be shown in the device's current time zone.
+The system SHALL store every log event's date and time with the time zone it was entered in, and SHALL show it in that
+zone, whatever the device's zone is later, until the user chooses otherwise. The stored form SHALL NOT depend on the
+device locale. Event times SHALL have minute precision, the seconds dropped, whether picked or taken from the clock.
+Events are ordered by the instant they mean, not the wall-clock time. An event stored without a zone SHALL be shown in
+the device's current zone.
 
 #### Scenario: The device zone changes later
 - **WHEN** a distance entry was entered as 18:30 on 2026-09-20 in Europe/Helsinki, and later the device time zone is America/New_York
@@ -235,11 +225,10 @@ the baseline of the odometer known at that time.
 - **THEN** its row is labelled "Odometer reading" and shows "44,000 km"
 
 ### Requirement: Distance and odometer-anchor events can carry a note
-The system SHALL let a "Distance" event or an "Odometer reading" (anchor) event carry an optional note, entered on
-the log event form when the event is logged (`distance-logging`, "A pending note is saved with the event"), kept
-exactly as entered. Once an event is saved, its note SHALL only be changed through the details screen's "Edit"
-action (`event-details`, "A 'Distance' or 'Odometer reading' event's note can be edited"); no other action changes
-it. The "Initial odometer" event created when a vehicle is added SHALL NOT carry a note.
+The system SHALL let a "Distance" or an "Odometer reading" (anchor) event carry an optional note, entered on the log
+event form (`distance-logging`, "A pending note is saved with the event") and kept exactly as entered. Once the event
+is saved, its note SHALL change only through the details screen's "Edit" action (`event-details`, "A 'Distance' or
+'Odometer reading' event's note can be edited"). The "Initial odometer" event SHALL NOT carry a note.
 
 #### Scenario: A distance entry with a note
 - **WHEN** the user logs a trip distance with the note "borrowed to Sam"
@@ -272,12 +261,10 @@ delta of `event-details`). The "Initial odometer" event created when a vehicle i
 - **THEN** the log's new event holds no photo
 
 ### Requirement: A refueling event can carry a note and photos
-The system SHALL let a "Refueling" event carry an optional note and from 0 to 5 photos, the same as a "Distance"
-event or an odometer anchor (`vehicle-log`, "Distance and odometer-anchor events can carry a note," "Distance and
-odometer-anchor events can carry photos"), entered on the log event form when the refueling is logged
-(`refueling-logging`, "Attached fuel data is saved with the event, or discarded with the rest of the form"). Once
-saved, a refueling's note and photos can only be changed through the details screen's "Edit" action
-(`event-details`, "A 'Distance' or 'Odometer reading' event's note can be edited"); no other action changes them.
+The system SHALL let a "Refueling" event carry an optional note and from 0 to 5 photos, as a "Distance" event or an
+odometer anchor can, entered on the log event form when the refueling is logged (`refueling-logging`, "Attached fuel
+data is saved with the event, or discarded with the rest of the form"). Once saved, they SHALL change only through
+the details screen's "Edit" action (`event-details`); no other action changes them.
 
 #### Scenario: A refueling with a note
 - **WHEN** the user logs a refueling with the note "cheap gas today"
@@ -292,14 +279,11 @@ saved, a refueling's note and photos can only be changed through the details scr
 - **THEN** the log's new event holds neither
 
 ### Requirement: A note's presence is shown as an icon on the event row
-The system SHALL show a small icon cluster, anchored at the bottom-end (bottom-trailing) corner of the row, in the
-recent events on the vehicle's details screen (`vehicle-log`, "Recent events on the details screen") and in the full
-log (`vehicle-log`, "Full log"), for any event whose entry has a non-empty note, one or more photos, or both — on
-every row of that entry. The note icon
-SHALL be shown first (when the event has a note), followed by the photo icon (when the event has at least one
-photo); an event with neither SHALL show neither icon, and the row SHALL show no other, larger indicator (no
-thumbnail, no "hero" image) — the icons are presence-only. The row SHALL NOT show the note's text or a photo's
-content; reading either back is done from the event's details screen (`event-details`).
+The system SHALL show a small icon cluster at the bottom-end corner of every row, in the recent events and the full
+log, of an entry with a non-empty note, photos, or both: the note icon first (when there is a note), then the photo
+icon (when there are photos). A row with neither SHALL show neither. The icons are presence-only: the row SHALL NOT
+show the note's text, a photo, a thumbnail or any larger image; those are read on the details screen
+(`event-details`).
 
 #### Scenario: A row with a note
 - **WHEN** the recent events or the full log include a "Distance" event that has a note
@@ -428,3 +412,24 @@ zone. Every vehicle's current odometer, every note, every photo and every kept s
 #### Scenario: Other events are unchanged
 - **WHEN** the app is updated with a log holding distance entries, odometer readings and refuelings with no mileage
 - **THEN** each is still one event of its own entry, with the same values, note and photos
+
+### Requirement: An event row shows when it happened
+The system SHALL show an event row's date and time, in the recent events and the full log, in the time zone the
+event was entered in, followed by that zone's name when it is not the device's current time zone. The date SHALL be
+written year-month-day, and the time SHALL follow the system's 12-hour or 24-hour setting.
+
+#### Scenario: A refueling from another time zone in the full log
+- **WHEN** the system uses the 24-hour format, the device time zone is Europe/Helsinki, and the full log has a
+  refueling entered as 08:30 on 2026-09-20 in America/New_York
+- **THEN** its row shows "2026-09-20 08:30 (America/New_York)"
+
+### Requirement: An event row shows its figure by kind
+The system SHALL show an event row's figure, in the recent events and the full log: an "Initial odometer" event's
+reading in the vehicle's unit; an "Odometer reading" event's reading in that unit, without a plus sign; a "Distance"
+event's distance in that unit with a plus sign, and the typed count when it was logged as a new odometer count; a
+"Refueling" event's fuel amount in the unit it was entered in (e.g. "42.3 L"), without a plus sign.
+
+#### Scenario: An odometer reading's row has no plus sign
+- **WHEN** the user logs a new odometer count of 44000 a week before the initial odometer of a vehicle with the unit
+  "Kilometers", with an English (United States) device locale
+- **THEN** its "Odometer reading" row shows "44,000 km", with no plus sign

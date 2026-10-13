@@ -341,9 +341,12 @@ class FakeVehicleRepository : VehicleRepository {
 
     private fun fakePhotoId(photo: PendingPicture) = "photo-${photo.pendingId}"
 
-    override suspend fun captureOf(eventId: String): StoredCapture? = null
+    /** Stored scans by event id, seeded by a test; none unless one is. */
+    val captures = mutableMapOf<String, StoredCapture>()
 
-    override suspend fun capturePhotoIds(): Set<String> = emptySet()
+    override suspend fun captureOf(eventId: String): StoredCapture? = captures[eventId]
+
+    override suspend fun capturePhotoIds(): Set<String> = captures.values.map { it.photoId }.toSet()
 
     override suspend fun updateVehicle(
         id: String,
