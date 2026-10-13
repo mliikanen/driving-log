@@ -34,7 +34,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   `openspec/specs/`). Read the relevant file here before touching an area it covers, e.g. `docs/test-strategy.md`
   before changing tests, `docs/test-fixtures.md` before adding a Maestro fixture or a `.sqm` migration (a migration
   makes every checked-in fixture stale; that file says exactly what to run), `docs/color-palette.md` before a color
-  change, `docs/change-workflow.md` before proposing or merging a change, `docs/code-quality.md` before changing lint configuration or adding a suppression, `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
+  change, `docs/change-workflow.md` before proposing or merging a change, `docs/code-quality.md` before changing lint configuration or adding a suppression, `docs/licensing.md` before adding third-party material (an icon, model, font or vendored code), `docs/app-distribution.md` before touching signing, versioning or the Firebase App Distribution wiring
   (`docs/distribution.md` is the day-to-day "cut a release" runbook for the same area).
 
 ## Commands
