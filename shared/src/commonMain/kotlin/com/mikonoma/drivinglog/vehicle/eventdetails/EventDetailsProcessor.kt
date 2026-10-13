@@ -89,6 +89,10 @@ class EventDetailsProcessor(
             copy(edit = edit?.let { it.copy(newPhotos = photoEditor.removeCancelled(it.newPhotos)) })
         }
 
+        EventDetailsIntent.EditPhotoErrorDismissed -> reduce {
+            copy(edit = edit?.let { it.copy(newPhotos = photoEditor.errorDismissed(it.newPhotos)) })
+        }
+
         is EventDetailsIntent.EditSavedPhotoRemoveRequested -> reduce { copy(edit = edit?.copy(savedPhotoRemovalPendingId = intent.photoId)) }
 
         EventDetailsIntent.EditSavedPhotoRemoveConfirmed -> reduce {

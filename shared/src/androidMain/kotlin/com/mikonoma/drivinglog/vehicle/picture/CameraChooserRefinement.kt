@@ -53,8 +53,7 @@ internal fun cameraRefinement(context: Context): IntentSender = PendingIntent.ge
     PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
 ).intentSender
 
-private fun hasCamera(context: Context) =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+private fun hasCamera(context: Context) = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
 private fun Intent.chosen(): Intent? = IntentCompat.getParcelableExtra(this, Intent.EXTRA_INTENT, Intent::class.java)
 

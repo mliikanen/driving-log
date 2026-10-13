@@ -1,5 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
@@ -80,13 +81,14 @@ private fun chooser(context: Context, cameraFile: File): Intent {
  * One chooser entry per camera app, each aimed at that app, so the chooser shows every camera app under its own name and icon. The camera
  * apps are visible to the app through the manifest's `<queries>` entry for `ACTION_IMAGE_CAPTURE`.
  */
+// The <queries> entry is in the app's manifest (androidApp), which lint of this library module does not see.
+@SuppressLint("QueryPermissionsNeeded")
 private fun cameraApps(context: Context, output: Uri): Array<Intent> =
     context.packageManager.queryIntentActivities(captureIntent(output), PackageManager.MATCH_DEFAULT_ONLY)
         .map { captureIntent(output).setComponent(ComponentName(it.activityInfo.packageName, it.activityInfo.name)) }
         .toTypedArray()
 
-private fun cameraUri(context: Context, cameraFile: File): Uri =
-    FileProvider.getUriForFile(context, "${context.packageName}.pictures", cameraFile)
+private fun cameraUri(context: Context, cameraFile: File): Uri = FileProvider.getUriForFile(context, "${context.packageName}.pictures", cameraFile)
 
 /** An image the user chose (a Uri) or took (the file the camera wrote), or [PhotoResult.Cancelled] when there is none. */
 // A failure here is "the photo can't be read" (PhotoResult.Unreadable, which the screen reports); its cause has nothing more for the

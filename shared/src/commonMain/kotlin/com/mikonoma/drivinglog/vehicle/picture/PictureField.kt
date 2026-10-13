@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.mikonoma.drivinglog.ui.CAMERA_PHOTO_MISSING
+import com.mikonoma.drivinglog.ui.PermissionMissingMessage
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.VehiclePicture
 import com.mikonoma.drivinglog.vehicle.domain.Rgb
@@ -51,6 +53,8 @@ fun PictureField(
     onCropCancelled: () -> Unit,
     onRemove: () -> Unit,
     onRefresh: () -> Unit,
+    /** The error goes away: camera access was allowed while the missing-permission message was shown. */
+    onErrorDismissed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val picker = rememberPhotoPicker(onPhotoPicked)
@@ -80,16 +84,17 @@ fun PictureField(
                 TextButton(onClick = onRemove, modifier = Modifier.testTag("remove_picture")) { Text("Remove picture") }
             }
         }
-        picture.error?.let { error ->
-            Text(
-                when (error) {
-                    PictureError.COULD_NOT_OPEN -> "The picture could not be opened"
-                    PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
-                },
+        when (picture.error) {
+            PictureError.COULD_NOT_OPEN -> Text(
+                "The picture could not be opened",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag("picture_error"),
             )
+
+            PictureError.CAMERA_DENIED -> PermissionMissingMessage(CAMERA_PHOTO_MISSING, onAllowed = onErrorDismissed)
+
+            null -> Unit
         }
     }
 

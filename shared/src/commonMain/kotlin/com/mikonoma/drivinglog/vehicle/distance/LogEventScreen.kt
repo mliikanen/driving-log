@@ -105,7 +105,7 @@ fun LogEventContent(
         state.isScanning -> ScanProgressContent()
 
         // The photo review opens on top of the live scanner and returns to it when left (add-live-scanner).
-        review != null -> ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
+        review != null -> ScanReviewContent(review, state.scanPhotoUri, state.scan.error, scanCallbacks)
 
         state.scan.scannerOpen -> LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
 
@@ -239,6 +239,7 @@ private fun LogEventFormFields(
         previewUris = state.photoPreviewUris,
         onPhotoPicked = { onIntent(LogEventIntent.PhotoPicked(it)) },
         onRemoveRequested = { onIntent(LogEventIntent.PhotoRemoveRequested(it)) },
+        onErrorDismissed = { onIntent(LogEventIntent.PhotoErrorDismissed) },
     )
     RequiredFieldNote()
 }

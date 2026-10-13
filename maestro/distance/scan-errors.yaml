@@ -1,0 +1,88 @@
+# What isn't a missing permission never shows the missing-permission message on the live scanner or the photo review
+# (ask-camera-for-camera-app): leaving the chooser from either changes nothing, and a photo that can't be opened shows its own error
+# without "Open settings". launchApp grants the camera here: whether access is allowed has nothing to do with these cases. Needs
+# setup.yaml's photos (a decorative car photo, the third, has no reading; the broken one is the sixth).
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Scan error car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "71000"
+- tapOn: Scan error car
+- tapOn:
+    id: log_event
+- tapOn:
+    id: scan_reading
+- extendedWaitUntil:
+    visible:
+      id: scanner
+    timeout: 10000
+# Leaving the scanner's chooser: the scanner as it was, no message.
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- pressKey: back
+- waitForAnimationToEnd
+- assertVisible:
+    id: scanner
+- assertNotVisible:
+    id: permission_missing
+- assertNotVisible:
+    id: scan_error
+# A photo that can't be opened: its own error, no "Open settings".
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 5
+- extendedWaitUntil:
+    visible:
+      id: scan_error
+    timeout: 20000
+- assertVisible: "The photo could not be opened"
+- assertNotVisible:
+    id: permission_missing
+- assertNotVisible:
+    id: permission_open_settings
+# From the review of a photo with no reading, leaving the chooser: the review as it was, no message.
+- tapOn:
+    id: scanner_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 2
+- extendedWaitUntil:
+    visible:
+      id: scan_no_reading
+    timeout: 30000
+- tapOn:
+    id: scan_choose_another
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- pressKey: back
+- waitForAnimationToEnd
+- assertVisible:
+    id: scan_no_reading
+- assertNotVisible:
+    id: permission_missing

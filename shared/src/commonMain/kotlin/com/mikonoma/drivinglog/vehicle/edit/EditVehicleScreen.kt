@@ -119,6 +119,7 @@ private fun EditVehicleFields(state: EditVehicleState, onIntent: (EditVehicleInt
         onCropCancelled = { onIntent(EditVehicleIntent.CropCancelled) },
         onRemove = { onIntent(EditVehicleIntent.PictureRemoved) },
         onRefresh = { onIntent(EditVehicleIntent.PictureRefresh) },
+        onErrorDismissed = { onIntent(EditVehicleIntent.PictureErrorDismissed) },
     )
     OutlinedTextField(
         value = state.name,

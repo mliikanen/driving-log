@@ -12,6 +12,7 @@ import com.mikonoma.drivinglog.vehicle.initialEvent
 import com.mikonoma.drivinglog.vehicle.picture.FakeImageCodec
 import com.mikonoma.drivinglog.vehicle.picture.FakePictureStore
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -581,5 +582,43 @@ class EventDetailsProcessorTest {
 
         assertEquals(added, fromMileage.state.mileage!!.photoIds)
         assertEquals(added, fromMileage.state.event!!.photoIds)
+    }
+
+    // ---- Permission and non-permission results of the edit screen's photo chooser (ask-camera-for-camera-app)
+
+    @Test
+    fun aRefusedCameraInTheEditScreenShowsTheCameraErrorAndKeepsThePhotos() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.edit?.newPhotos?.error)
+        assertEquals(1, processor.state.edit?.newPhotos?.pendingIds?.size)
+        processor.dispatch(EventDetailsIntent.EditPhotoErrorDismissed)
+        assertNull(processor.state.edit?.newPhotos?.error)
+    }
+
+    @Test
+    fun leavingTheEditScreensChooserShowsNoMessage() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+        val before = processor.state.edit
+
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Cancelled))
+
+        assertEquals(before, processor.state.edit)
+        assertNull(processor.state.edit?.newPhotos?.error)
+    }
+
+    @Test
+    fun anUnreadablePhotoInTheEditScreenShowsTheCouldNotOpenErrorNotTheCameraOne() {
+        val processor = distanceEventProcessor()
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.edit?.newPhotos?.error)
     }
 }

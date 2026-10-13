@@ -2,10 +2,12 @@
 # scan-reading reads a reading from: a motorcycle's LCD (add-seven-segment-ocr), a car cluster (add-odometer-ocr-capture)
 # and a fuel pump display (add-fuel-amount-ocr). The picker lists the newest first, so the car cluster, uploaded
 # last, is its first photo, the LCD its second, and the fuel pump photo (uploaded first, oldest of the five) its
-# last — the two decorative car photos fall in between, newer than the fuel photo but older than the LCD.
+# last but one — the two decorative car photos fall in between, newer than the fuel photo but older than the LCD. The photo that
+# can't be opened (photo-errors, scan-errors) is uploaded before all of them: the oldest, the picker's sixth photo.
 appId: com.mikonoma.drivinglog
 ---
 - addMedia:
+    - ../assets/photo-broken.jpg
     - ../assets/ocr/fuel/DSC_0896.jpg
     - ../assets/photo-car-red.jpg
     - ../assets/photo-car-blue.jpg

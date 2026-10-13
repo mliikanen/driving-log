@@ -1,0 +1,70 @@
+# The log event form's "Add photo" with the camera chosen and camera access refused (ask-camera-for-camera-app): no camera, the attached
+# photo kept, and the missing-permission message below the strip, whose "Open settings" opens the app's page in the device settings; back
+# without allowing, it is still shown. Launched with the camera permission unset, as a fresh install has it (Maestro's launchApp grants
+# every permission by default, docs/test-strategy.md). The settings round trip that clears the message is in picture/camera-permission.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    permissions:
+      camera: unset
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Photo car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "71000"
+- tapOn: Photo car
+- tapOn:
+    id: log_event
+- scrollUntilVisible:
+    element:
+      id: add_photo
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "event_photo_.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: add_photo
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: "Don.t allow"
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn: "Don.t allow"
+- scrollUntilVisible:
+    element:
+      id: permission_missing
+    timeout: 10000
+- assertVisible: "A photo can't be taken because camera access is turned off."
+- assertVisible:
+    id: "event_photo_.*"
+- tapOn:
+    id: permission_open_settings
+- extendedWaitUntil:
+    visible: "App info"
+    timeout: 10000
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000

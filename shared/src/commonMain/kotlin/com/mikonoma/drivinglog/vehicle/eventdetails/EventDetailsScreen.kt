@@ -296,6 +296,7 @@ private fun EventEditContent(edit: EventEditState, onIntent: (EventDetailsIntent
                 error = edit.newPhotos.error,
                 previewUris = previewUris,
                 onPhotoPicked = { onIntent(EventDetailsIntent.EditPhotoPicked(it)) },
+                onErrorDismissed = { onIntent(EventDetailsIntent.EditPhotoErrorDismissed) },
                 onRemoveRequested = { id ->
                     if (id in keptIds) {
                         onIntent(EventDetailsIntent.EditSavedPhotoRemoveRequested(id))

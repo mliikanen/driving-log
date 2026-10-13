@@ -1,0 +1,52 @@
+# What isn't a missing permission never shows the missing-permission message on the log event form's photos (ask-camera-for-camera-app):
+# leaving the chooser changes nothing, and a photo that can't be opened shows its own error without "Open settings". Needs setup.yaml's
+# photos (the broken one is the sixth).
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/add-vehicle.yaml
+    env:
+      NAME: Error car
+      PLATE: ""
+      UNIT: unit_KILOMETERS
+      ODOMETER: "71000"
+- tapOn: Error car
+- tapOn:
+    id: log_event
+- scrollUntilVisible:
+    element:
+      id: add_photo
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- pressKey: back
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: permission_missing
+- assertNotVisible:
+    id: photo_error
+- tapOn:
+    id: add_photo
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- extendedWaitUntil:
+    visible: "Photo taken on.*"
+    timeout: 12000
+- tapOn:
+    text: "Photo taken on.*"
+    index: 5
+- scrollUntilVisible:
+    element:
+      id: photo_error
+    timeout: 20000
+- assertVisible: "The photo could not be opened"
+- assertNotVisible:
+    id: permission_missing
+- assertNotVisible:
+    id: permission_open_settings

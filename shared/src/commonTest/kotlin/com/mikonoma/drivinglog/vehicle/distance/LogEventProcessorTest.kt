@@ -2531,4 +2531,95 @@ class LogEventProcessorTest {
         assertEquals(5L, processor.state.newOdometer.steps) // 0.5
         assertEquals("05", processor.state.newOdometer.digits) // the first zero kept as a prefix
     }
+
+    // ---- Permission and non-permission results of the photo strip's and the scan's choosers (ask-camera-for-camera-app)
+
+    @Test
+    fun aRefusedCameraOnThePhotoStripShowsTheCameraErrorAndKeepsThePhotos() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+        val photos = processor.state.photos.pendingIds
+
+        processor.dispatch(LogEventIntent.PhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.photos.error)
+        assertEquals(photos, processor.state.photos.pendingIds)
+        processor.dispatch(LogEventIntent.PhotoErrorDismissed)
+        assertNull(processor.state.photos.error)
+    }
+
+    @Test
+    fun leavingThePhotoStripsChooserShowsNoMessage() {
+        seedVehicle()
+        val processor = processor()
+        val before = processor.state.photos
+
+        processor.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Cancelled))
+
+        assertEquals(before, processor.state.photos)
+        assertNull(processor.state.photos.error)
+    }
+
+    @Test
+    fun anUnreadableStripPhotoShowsTheCouldNotOpenErrorNotTheCameraOne() {
+        seedVehicle()
+        val processor = processor()
+
+        processor.dispatch(LogEventIntent.PhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.photos.error)
+    }
+
+    @Test
+    fun aRefusedCameraOnTheScannerShowsTheCameraErrorAndKeepsItOpen() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.scan.error)
+        assertTrue(processor.state.scan.scannerOpen)
+        processor.dispatch(LogEventIntent.ScanErrorDismissed)
+        assertNull(processor.state.scan.error)
+    }
+
+    @Test
+    fun aRefusedCameraOnTheReviewKeepsTheReview() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+        val review = processor.state.scan.review
+        assertNotNull(review)
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.scan.error)
+        assertEquals(review, processor.state.scan.review)
+    }
+
+    @Test
+    fun leavingTheScansChooserShowsNoMessage() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+        val before = processor.state.scan
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(PhotoResult.Cancelled))
+
+        assertEquals(before, processor.state.scan)
+    }
+
+    @Test
+    fun anUnreadableScanPhotoShowsTheCouldNotOpenErrorNotTheCameraOne() {
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.MILEAGE))
+
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.scan.error)
+    }
 }
