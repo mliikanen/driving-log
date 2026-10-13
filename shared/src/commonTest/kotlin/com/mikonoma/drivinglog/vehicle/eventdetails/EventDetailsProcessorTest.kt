@@ -554,4 +554,32 @@ class EventDetailsProcessorTest {
         val refueling = processor.state.event as com.mikonoma.drivinglog.vehicle.domain.VehicleEvent.Refueling
         assertEquals(1, refueling.photoIds.size)
     }
+
+    @Test
+    fun anEventWithFivePhotosTakesNoMoreOnItsEditScreen() {
+        // event-details, "The edit screen uses the log event form's note and photo elements": the same 5-photo cap.
+        val processor = distanceEventProcessor(photoIds = listOf("p1", "p2", "p3", "p4", "p5"))
+        processor.dispatch(EventDetailsIntent.EditClicked)
+
+        assertTrue(processor.state.edit!!.isFull)
+        processor.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+
+        assertEquals(emptyList(), processor.state.edit!!.newPhotos.pendingIds)
+    }
+
+    @Test
+    fun aPhotoAddedFromTheRefuelingRowIsSeenFromItsMileageRow() {
+        // event-details, "Editing changes the entry's shared note and photos".
+        val fromRefueling = refuelingWithMileage(tripMileage, openedFrom = "e2")
+        fromRefueling.dispatch(EventDetailsIntent.EditClicked)
+        fromRefueling.dispatch(EventDetailsIntent.EditPhotoPicked(PhotoResult.Chosen(byteArrayOf(1))))
+        fromRefueling.dispatch(EventDetailsIntent.EditSaved)
+        val added = fromRefueling.state.event!!.photoIds
+        assertEquals(1, added.size)
+
+        val fromMileage = processor(eventId = "e2-mileage")
+
+        assertEquals(added, fromMileage.state.mileage!!.photoIds)
+        assertEquals(added, fromMileage.state.event!!.photoIds)
+    }
 }

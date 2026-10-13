@@ -264,9 +264,9 @@ intents, needing no storage, photo or camera permission. On iOS, camera access S
 chooses Take Photo; if refused, the system SHALL show that camera access is turned off and can be allowed in the
 settings, and change nothing else.
 
-#### Scenario: Taking a photo on Android asks for nothing
-- **WHEN** on Android the user chooses the camera app in the chooser and takes a photo
-- **THEN** the app asks for no permission at any point, and the crop screen opens with the new photo
+#### Scenario: Opening the chooser on Android asks for nothing
+- **WHEN** on Android the user taps "Add picture" on the add vehicle screen
+- **THEN** the system chooser opens directly, with no permission prompt before or after it
 
 ### Requirement: The crop is confirmed or cancelled from the top app bar
 The crop screen SHALL confirm the crop with "Use photo", a text action in its top app bar, and SHALL cancel by back
@@ -302,7 +302,7 @@ system bars, while its buttons SHALL stay clear of them.
 
 #### Scenario: The buttons stay clear of the navigation bar
 - **WHEN** the crop screen is open in portrait on a device with a navigation bar
-- **THEN** the photo's dimmed part reaches behind the navigation bar, and the zoom and "Reset" buttons are above it
+- **THEN** the black background reaches behind the navigation bar, and the zoom, turn and "Reset" buttons are above it
 
 ### Requirement: The crop survives a rotation and a process restart
 The zoom and the position of the photo under the frame SHALL survive a rotation of the device and a restart of the
