@@ -8,10 +8,10 @@ that has no picture.
 ## Requirements
 
 ### Requirement: A vehicle has a type from a fixed set
-The system SHALL give every vehicle a type from this fixed set, each with a name and its own icon, shown in this order: "Car",
-"SUV", "Van", "Truck", "Bus", "Motorcycle", "Scooter" and "Other". The system SHALL store the type as a code that does not depend on the
-language or the device (`CAR`, `SUV`, `VAN`, `TRUCK`, `BUS`, `MOTORCYCLE`, `SCOOTER`, `OTHER`), and SHALL treat a code it does not
-know, such as one written by a newer version of the app, as the type "Other". Every vehicle SHALL always have exactly one type: the data model SHALL NOT allow a vehicle without one. The names are English for now, like the rest of the app.
+The system SHALL give every vehicle a type from this fixed set, each with a name and its own icon, shown in this
+order: "Car", "SUV", "Van", "Truck", "Bus", "Motorcycle", "Scooter" and "Other". Every vehicle SHALL always have
+exactly one type: the data model SHALL NOT allow a vehicle without one. The names are English for now, like the rest
+of the app.
 
 #### Scenario: The eight types are offered
 - **WHEN** the user opens the type choice on the add vehicle screen
@@ -90,11 +90,11 @@ screen like any other.
 - **THEN** the vehicle is saved with the new name and the type "Car"
 
 ### Requirement: The placeholder icon follows the type
-Wherever the system shows a vehicle that has no picture (the vehicle list, the vehicle details screen, and the picture preview on the add
-and edit screens, and any later picker of vehicles), it SHALL show the icon of the vehicle's type in place of the picture, and SHALL follow the choice live on the add
-screen (which starts as "Car"). A picture, when the vehicle has one, SHALL be shown instead of the icon. The icon SHALL carry the accessibility
-label "Vehicle type: " followed by the type's name (for example "Vehicle type: Van"). The icons of the eight types SHALL be
-different from one another.
+Wherever the system shows a vehicle without a picture (the vehicle list, the details screen, the add and edit screens'
+picture preview, any later vehicle picker), it SHALL show its type's icon instead, following the choice live on the
+add screen (Car at first). A picture, when there is one, SHALL be shown instead of the icon. The icon SHALL carry the
+accessibility label "Vehicle type: " and the type's name (e.g. "Vehicle type: Van"). The eight types' icons SHALL all
+differ.
 
 #### Scenario: The list shows the icon of the type
 - **WHEN** the vehicle list contains a vehicle of the type "Motorcycle" without a picture
@@ -133,3 +133,13 @@ and SHALL offer choosing and changing it without a network connection.
 #### Scenario: Offline use
 - **WHEN** the device has no network connection and the user adds a vehicle and changes its type
 - **THEN** every step succeeds and no network error is shown
+
+### Requirement: A type is stored as a code that does not depend on the language
+The system SHALL store a vehicle's type as a code that does not depend on the language or the device: `CAR`, `SUV`,
+`VAN`, `TRUCK`, `BUS`, `MOTORCYCLE`, `SCOOTER` or `OTHER`. It SHALL treat a code it does not know, such as one written
+by a newer version of the app, as the type "Other".
+
+#### Scenario: Every type's code
+- **WHEN** vehicles of each of the eight types are saved and read back
+- **THEN** their stored codes are `CAR`, `SUV`, `VAN`, `TRUCK`, `BUS`, `MOTORCYCLE`, `SCOOTER` and `OTHER`, and each
+  reads back as the type it was saved with

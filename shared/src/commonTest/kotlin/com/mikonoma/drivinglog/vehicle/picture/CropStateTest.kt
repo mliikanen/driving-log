@@ -281,6 +281,23 @@ class CropStateTest {
     }
 
     @Test
+    fun twoQuarterTurnsShowThePhotoUpsideDownWithTheFrameOverTheSameContent() {
+        // vehicle-picture, "The photo can be turned on the crop screen", scenario "Two turns".
+        for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(3f, 500f, 3500f))) {
+            val before = start.rect()
+            val turned = start.rotatedClockwise().rotatedClockwise()
+            assertEquals(start.imageWidth, turned.imageWidth)
+            assertEquals(start.imageHeight, turned.imageHeight)
+            // Upside down, a point (x, y) of the photo is at (width - x, height - y).
+            assertRectsWithinAPixel(
+                CropRect(start.imageWidth - before.x - before.side, start.imageHeight - before.y - before.side, before.side),
+                turned.rect(),
+            )
+            assertInside(turned)
+        }
+    }
+
+    @Test
     fun fourQuarterTurnsReturnTheFrame() {
         for (start in listOf(landscape(), aZoomedFrame(), portrait().zoomBy(3f, 500f, 3500f))) {
             val back = start.rotatedClockwise().rotatedClockwise().rotatedClockwise().rotatedClockwise()

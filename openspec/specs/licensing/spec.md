@@ -9,12 +9,10 @@ do with each file.
 
 ### Requirement: The project is licensed under Apache-2.0
 The project SHALL be licensed under the Apache License, Version 2.0. The repository root SHALL hold the license's
-complete, unmodified text in a file named `LICENSE`, which hosting services and license scanners identify as
-`Apache-2.0`. The root SHALL also hold a `NOTICE` file, as section 4(d) of the license describes, naming the project
-and its copyright holder and pointing to the third-party notices. The README SHALL have a "License" section that
-names the license and links to `LICENSE`, `NOTICE` and the third-party notices. Everything in the repository that is
-not listed as third-party material is the project's own work and is covered by this license, media included (images,
-test photos, fixtures).
+complete, unmodified text as `LICENSE` (identified as `Apache-2.0`) and a `NOTICE` file (section 4(d)) naming the
+project and its copyright holder and pointing to the third-party notices. The README SHALL have a "License" section
+naming the license and linking to those three. Everything not listed as third-party material, media included, is the
+project's own and under this license.
 
 #### Scenario: The repository page shows the license
 - **WHEN** someone opens the repository on GitHub
@@ -52,15 +50,11 @@ license agreement or adding a sign-off line.
 - **THEN** it is not merged
 
 ### Requirement: Third-party material is listed with its license
-The project SHALL list in `THIRD_PARTY_NOTICES.md`, at the repository root, every piece of third-party material
-checked into the repository or bundled into the app from the repository's own files (icons, models, fonts, images,
-vendored code, generated files whose generator imposes terms). Each entry SHALL name what the material is and
-where it is, where it comes from, its license, and its copyright line, and SHALL say what was changed when it is not
-the original. Where the license requires its text or notice to accompany copies of the material, a copy of that text
-SHALL be checked into the repository (next to the material, or the project's own `LICENSE` when it is the same
-license), and the entry SHALL link to that copy; a link to an external site alone is not enough. A change that adds third-party material SHALL add its entry in the
-same change. Libraries the build downloads as dependencies are not checked into the repository and are outside this
-list: they need not be listed, and an entry MAY name one only where checked-in material needs it to be used.
+The project SHALL list in `THIRD_PARTY_NOTICES.md`, at the repository root, all third-party material checked in or
+bundled into the app from the repository's files (icons, models, fonts, images, vendored code, generated files whose
+generator imposes terms). Each entry SHALL name what the material is and where, where it comes from, its license and
+its copyright line, and what was changed when it is not the original. A change adding third-party material SHALL add
+its entry in the same change.
 
 #### Scenario: Material that is already listed
 - **WHEN** someone looks up the Phosphor icons or the PaddleOCR models in the third-party notices
@@ -81,3 +75,21 @@ list: they need not be listed, and an entry MAY name one only where checked-in m
 - **WHEN** the build downloads a library through the version catalog
 - **THEN** `THIRD_PARTY_NOTICES.md` need not list it, and lists it only where checked-in material needs it to be
   used, as ONNX Runtime runs the checked-in PaddleOCR models
+
+### Requirement: A license that must accompany copies is checked in
+Where the license of third-party material requires its text or notice to accompany copies of the material, a copy of
+that text SHALL be checked into the repository, next to the material or as the project's own `LICENSE` when it is the
+same license, and the material's entry in `THIRD_PARTY_NOTICES.md` SHALL link to that copy. A link to an external site
+alone SHALL NOT be enough.
+
+#### Scenario: Material under the project's own license
+- **WHEN** someone opens the entry of checked-in material under the Apache License 2.0, such as the PaddleOCR models
+- **THEN** the entry links to the project's own `LICENSE` as the license text
+
+### Requirement: Downloaded dependencies are outside the list
+Libraries the build downloads as dependencies are not checked into the repository and SHALL NOT be listed in
+`THIRD_PARTY_NOTICES.md`, except that an entry MAY name one where checked-in material needs it to be used.
+
+#### Scenario: A dependency no checked-in material needs
+- **WHEN** the build downloads a library that no checked-in material needs, such as the Coil image loader
+- **THEN** `THIRD_PARTY_NOTICES.md` has no entry for it

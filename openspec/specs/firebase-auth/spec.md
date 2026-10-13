@@ -21,11 +21,11 @@ action: "Sign in with Google."
 - **THEN** the Home screen is shown directly; the sign-in screen is not shown
 
 ### Requirement: Signing in uses Google, through the system's own account picker
-The system SHALL sign the user in with their Google account using Android's Credential Manager API (not a
+The system SHALL sign the user in with their Google account through Android's Credential Manager API (not a
 browser-based or embedded web view flow), which shows the device's own account picker. A successful sign-in SHALL
-proceed to the Home screen. The system SHALL require a network connection to sign in. Dismissing the account picker
-without choosing an account SHALL leave the user on the sign-in screen with no error; any other sign-in failure
-SHALL show an error, without crashing, leaving the user on the sign-in screen.
+proceed to the Home screen. Signing in SHALL require a network connection. Dismissing the picker without choosing an
+account SHALL leave the user on the sign-in screen with no error; any other failure SHALL show an error, without
+crashing, on the sign-in screen.
 
 #### Scenario: Successful sign-in reaches the Home screen
 - **WHEN** the user taps "Sign in with Google" and completes it by choosing an account

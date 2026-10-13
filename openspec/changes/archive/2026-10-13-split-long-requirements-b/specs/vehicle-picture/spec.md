@@ -1,0 +1,314 @@
+## MODIFIED Requirements
+
+### Requirement: A vehicle can have one optional picture
+The system SHALL let a vehicle have at most one, optional, picture. A vehicle without one SHALL be shown with its
+type's icon as a placeholder wherever its picture would be (`vehicle-type`); the add vehicle screen shows the icon of
+the type chosen there (Car at first). The add and edit vehicle screens SHALL show a preview of the picture, or the
+placeholder, labelled "Add picture" without a picture and "Change picture" with one, and SHALL offer "Remove picture"
+only when there is a picture.
+
+#### Scenario: A vehicle without a picture
+- **WHEN** the user opens the add vehicle screen
+- **THEN** the screen shows the placeholder as the preview (the icon of the type currently chosen, which is the car icon at first), labelled "Add picture", and offers no "Remove picture"
+
+#### Scenario: The placeholder is a generic car icon
+- **WHEN** the user opens the add vehicle screen and has not changed the preselected type
+- **THEN** the picture preview shows the car icon in the place of the picture
+
+#### Scenario: The placeholder follows the vehicle's type
+- **WHEN** the vehicle list contains a vehicle of the type "Van" without a picture
+- **THEN** its item shows the van icon in the place of the picture
+
+#### Scenario: A vehicle with a picture
+- **WHEN** the user opens the edit screen of a vehicle that has a picture
+- **THEN** the screen shows that picture as the preview, labelled "Change picture", and offers "Remove picture"
+
+#### Scenario: Tapping the picture starts choosing
+- **WHEN** the user taps the preview on the add or edit screen
+- **THEN** the system chooser of where the photo comes from is shown, and there is no other button that does so
+
+#### Scenario: The preview shows a camera mark
+- **WHEN** the user opens the add vehicle screen, and again the edit screen of a vehicle that has a picture
+- **THEN** the corner of the preview shows a camera mark in both cases, and no pen mark
+
+#### Scenario: The mark is not a separate control
+- **WHEN** the user taps the camera mark
+- **THEN** the system chooser is shown, as when tapping anywhere else on the preview, and the screen reader announces the preview as "Add picture" or "Change picture" and not the mark separately
+
+### Requirement: The photo comes from an app the user chooses through the system
+The system SHALL let the user choose where the photo comes from with the system's own mechanism for providing an
+image, opened by "Add picture" or "Change picture": on Android the intent chooser of the apps that can supply an image
+(the camera app included); on iOS the source sheet with Take Photo, Photo Library and Choose File. It SHALL NOT draw
+its own picker or camera screen, SHALL accept any still image the chosen app returns, and SHALL NOT change or remove a
+photo the user chose.
+
+#### Scenario: The system asks which app provides the image
+- **WHEN** the user taps "Add picture"
+- **THEN** the system's chooser (on iOS the source sheet) is shown, listing the apps or sources that can provide an image, and the app draws no picker of its own
+
+#### Scenario: Choose a photo
+- **WHEN** the user chooses a photo in the app they picked
+- **THEN** the crop screen opens with that photo
+
+#### Scenario: Take a new photo
+- **WHEN** the user chooses the camera app in the chooser and takes a photo
+- **THEN** the crop screen opens with the new photo
+
+#### Scenario: No permission is asked before it is needed
+- **WHEN** the user opens the add vehicle screen, and again when the user chooses a photo from the library
+- **THEN** no permission prompt is shown
+
+#### Scenario: Camera access is asked for when taking a photo
+- **WHEN** on iOS the user chooses Take Photo for the first time
+- **THEN** the system asks for camera access at that moment, and the camera opens when it is allowed
+
+#### Scenario: Camera access refused
+- **WHEN** on iOS the user has refused camera access and chooses Take Photo
+- **THEN** the system shows a message that camera access is turned off and can be allowed in the settings, opens no camera and keeps the vehicle's picture as it was
+
+#### Scenario: Leave the chooser
+- **WHEN** the user opens the chooser and leaves it, or leaves the camera without taking a photo
+- **THEN** the form is unchanged
+
+#### Scenario: A file that is not an image
+- **WHEN** the chosen app returns a file that cannot be decoded as an image
+- **THEN** the system shows that the picture could not be opened, does not open the crop screen and keeps the vehicle's picture as it was
+
+#### Scenario: The photo's orientation is respected
+- **WHEN** the user chooses or takes a photo that is stored rotated and marked with an orientation
+- **THEN** the crop screen shows it the right way up
+
+**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with the camera app's `ACTION_IMAGE_CAPTURE` as an initial
+intent. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files, offered in a source sheet.
+
+### Requirement: The photo must be cropped to a square
+After a photo is chosen, the system SHALL open a crop screen showing the photo under a fixed square frame, and SHALL
+NOT use the photo before the user confirms a crop. The user SHALL be able to move and zoom the photo, and the frame
+SHALL stay inside it at all times: the smallest zoom makes the photo's shorter side fill the frame. The crop SHALL
+start at the smallest zoom, centered, with the part outside the frame shown dimmed. There SHALL be no way to keep a
+photo without cropping it.
+
+#### Scenario: The crop starts centered
+- **WHEN** the crop screen opens with a landscape photo
+- **THEN** the frame covers the largest centered square of the photo
+
+#### Scenario: The frame stays inside the photo
+- **WHEN** the user drags the photo so that far more than its width would pass the frame
+- **THEN** the photo stops at the frame's edge and no part of the frame is empty
+
+#### Scenario: Zoom in and out
+- **WHEN** the user pinches to zoom in and then pinches to zoom out past the start
+- **THEN** the zoom never goes below the smallest zoom and the frame stays inside the photo
+
+#### Scenario: Confirm
+- **WHEN** the user moves and zooms the photo and taps "Use photo"
+- **THEN** the form shows the part of the photo inside the frame as its picture
+
+#### Scenario: Cancel the crop
+- **WHEN** the user taps the back arrow on the crop screen, or uses the system's back
+- **THEN** the form's picture is what it was before and nothing is stored
+
+#### Scenario: The crop cannot be skipped
+- **WHEN** the crop screen is displayed
+- **THEN** besides the controls that move, zoom and turn the photo it offers only "Use photo" and back navigation (which cancels), and no way to use the photo without a crop
+
+#### Scenario: Zoom with the buttons
+- **WHEN** the user taps the zoom-in button and then the zoom-out button
+- **THEN** the frame first covers a smaller part of the photo and then the part it covered before, and the buttons stop having an effect at the zoom limits
+
+#### Scenario: Move with the keyboard
+- **WHEN** the user has zoomed in and presses the left arrow key on a hardware keyboard
+- **THEN** the photo moves under the frame by a step and stops at the photo's edge
+
+#### Scenario: The crop screen is edge to edge
+- **WHEN** the crop screen is open, in portrait or in landscape
+- **THEN** its black background and the photo reach every edge of the screen behind the system bars, and its buttons are not covered by the status bar, the navigation bar or a display cutout
+
+#### Scenario: Reset
+- **WHEN** the user has moved and zoomed the photo and taps "Reset"
+- **THEN** the frame covers the largest centered square again
+
+#### Scenario: The controls are labelled
+- **WHEN** a screen reader reads the crop screen
+- **THEN** every control has a name ("Back", "Zoom in", "Zoom out", "Rotate photo", "Reset", "Use photo")
+
+#### Scenario: Rotate the photo
+- **WHEN** the user taps "Rotate photo" once
+- **THEN** the photo is shown turned a quarter turn clockwise with the frame over the same part of it, and the frame still lies inside the photo
+
+#### Scenario: Four turns are no turn
+- **WHEN** the user taps "Rotate photo" four times
+- **THEN** the photo and the frame are as they were
+
+#### Scenario: The picture is made from the turned photo
+- **WHEN** the user turns a sideways photo upright, and taps "Use photo"
+- **THEN** the form's picture shows the photo upright, and the vehicle's color is taken from that picture
+
+#### Scenario: The buttons are laid out by orientation
+- **WHEN** the crop screen is shown in portrait, and then in landscape
+- **THEN** in portrait "Zoom out" is to the left of "Zoom in" in a row under the photo, and in landscape "Zoom in" is above "Zoom out" in a column beside it
+
+#### Scenario: The rest of the photo is visible, dimmed
+- **WHEN** the crop screen shows a landscape photo at the smallest zoom
+- **THEN** the parts of the photo left and right of the frame are drawn dimmed, not black
+
+#### Scenario: The crop survives a rotation
+- **WHEN** the user has zoomed in and moved the photo, and then rotates the device with the crop screen open
+- **THEN** the crop screen shows the same part of the photo under the frame, turned as it was
+
+### Requirement: A small and a large version are stored
+The system SHALL store two versions of the cropped picture, both square and showing the same crop: a small one of at
+most 256 x 256 pixels and a large one of at most 1024 x 1024 pixels. Each is scaled down to its target size and SHALL
+NOT be enlarged: when the crop's side is shorter than the target, the version has the crop's size. Both SHALL be
+stored as lossy WebP at quality 80 with transparency kept, so that the large version of a typical photo is well under
+200 kilobytes.
+
+#### Scenario: Sizes of a large photo
+- **WHEN** the user crops a 4000 x 3000 photo to a 3000 x 3000 square and confirms
+- **THEN** the stored small version is 256 x 256 pixels and the stored large version is 1024 x 1024 pixels
+
+#### Scenario: A small photo is not enlarged
+- **WHEN** the user crops a 600 x 400 photo to a 400 x 400 square and confirms
+- **THEN** the stored large version is 400 x 400 pixels and the small version is 256 x 256 pixels
+
+#### Scenario: A tiny crop is not enlarged at all
+- **WHEN** the user crops a photo to a 200 x 200 square and confirms
+- **THEN** both stored versions are 200 x 200 pixels
+
+#### Scenario: Both versions show the same crop
+- **WHEN** the user confirms a crop
+- **THEN** the small and the large version show the same part of the photo
+
+#### Scenario: Efficient format
+- **WHEN** a picture is stored on Android
+- **THEN** both files are WebP images and the large one is smaller than the same picture would be as a PNG
+
+**Platform note:** iOS can read WebP but its image APIs cannot write it, so on iOS the versions are stored as PNG until a WebP encoder is added.
+Every platform reads either format whatever platform wrote it.
+
+### Requirement: Pictures are stored in the application's local file system
+The system SHALL store picture files in the application's private storage, never in the photo library or another
+shared location, and SHALL keep only a picture identifier with the vehicle's data, never a file path. Pictures SHALL
+survive closing and reopening the app, and SHALL be shown and changed without a network connection. Replacing or
+removing a picture SHALL delete its old files, and files no vehicle refers to (left by an interrupted save, say) SHALL
+be deleted when the app starts.
+
+#### Scenario: Survives a restart
+- **WHEN** the user saves a vehicle with a picture, closes the app completely and opens it again
+- **THEN** the vehicle's picture is still shown, in the list and on the details screen
+
+#### Scenario: Offline use
+- **WHEN** the device has no network connection and the user adds a picture to a vehicle
+- **THEN** every step succeeds and no network error is shown
+
+#### Scenario: Not in the photo library
+- **WHEN** the user saves a vehicle with a picture
+- **THEN** no new photo appears in the device's photo library
+
+#### Scenario: Replaced pictures are deleted
+- **WHEN** the user changes a vehicle's picture and saves
+- **THEN** the files of the earlier picture no longer exist
+
+#### Scenario: Unused files are cleaned up
+- **WHEN** the app starts and the picture storage holds files that no vehicle refers to
+- **THEN** those files are deleted and the pictures of vehicles are kept
+
+### Requirement: A picture is saved with the vehicle or not at all
+The system SHALL save a new vehicle's picture together with the vehicle and its initial odometer event, or none of
+them, and SHALL apply a changed or removed picture together with the edit's other changes, or none of them. A
+confirmed but unsaved picture SHALL be kept when the screen is rotated or recreated, and discarded with its files when
+the user leaves the add or edit screen without saving. A failed save SHALL leave no unused picture files, and the
+vehicle's saved picture as it was.
+
+#### Scenario: Add a vehicle with a picture
+- **WHEN** the user adds a vehicle, adds and crops a picture and saves
+- **THEN** the vehicle appears in the list with that picture and its details screen shows it
+
+#### Scenario: Cancel adding
+- **WHEN** the user adds and crops a picture on the add screen and leaves the screen without saving
+- **THEN** no vehicle is added and no picture files are left
+
+#### Scenario: Rotate with an unsaved picture
+- **WHEN** the user has confirmed a crop on the add or edit screen and rotates the device
+- **THEN** the form still shows that picture
+
+#### Scenario: A failed save
+- **WHEN** saving a vehicle with a new picture fails
+- **THEN** no vehicle is added or changed, the vehicle's earlier picture is still in use and no unused picture files are left
+
+## ADDED Requirements
+
+### Requirement: Tapping the picture preview starts choosing a picture
+Tapping the picture preview on the add or edit vehicle screen SHALL start choosing a picture; the system SHALL offer no
+separate button for it. The preview SHALL show a small camera mark in its corner, the same camera with or without a
+picture, on top of the picture or the placeholder, and SHALL NOT show an edit (pen) mark.
+
+#### Scenario: Changing a picture by tapping it
+- **WHEN** the user taps the preview showing a vehicle's picture on its edit screen
+- **THEN** the system chooser of where the photo comes from is shown, as when adding a picture
+
+### Requirement: An image that can't be used changes nothing
+Leaving the system chooser, or the app chosen in it, without providing an image SHALL change nothing. When the image
+returned cannot be read as an image, the system SHALL show a message that the picture could not be opened and SHALL
+keep the vehicle's picture as it was.
+
+#### Scenario: A file that is not an image when changing a picture
+- **WHEN** on the edit screen of a vehicle with a picture, the user taps "Change picture" and the chosen app returns a
+  file that cannot be decoded as an image
+- **THEN** the system shows that the picture could not be opened, and the preview still shows the vehicle's picture
+
+### Requirement: Permissions are asked for only when needed
+The system SHALL ask for a permission only when the user triggers an action that needs it, at that moment, and SHALL
+NOT ask for permissions the chosen way does not need. On Android the chooser and the camera app are used through
+intents, needing no storage, photo or camera permission. On iOS, camera access SHALL be asked for when the user first
+chooses Take Photo; if refused, the system SHALL show that camera access is turned off and can be allowed in the
+settings, and change nothing else.
+
+#### Scenario: Opening the chooser on Android asks for nothing
+- **WHEN** on Android the user taps "Add picture" on the add vehicle screen
+- **THEN** the system chooser opens directly, with no permission prompt before or after it
+
+### Requirement: The crop is confirmed or cancelled from the top app bar
+The crop screen SHALL confirm the crop with "Use photo", a text action in its top app bar, and SHALL cancel by back
+navigation (the app bar's back arrow or the system's back), which SHALL discard the chosen photo and leave the form as
+it was. The top app bar SHALL follow the app's theme like the other screens' and be laid out as Material Design
+specifies: a navigation icon, a title and a text action.
+
+#### Scenario: The crop screen's app bar
+- **WHEN** the crop screen is open
+- **THEN** its top app bar shows the back arrow, a title and "Use photo" as a text action, in the app bar colors the
+  other screens use
+
+### Requirement: The crop can be adjusted without gestures
+The crop screen SHALL let the user zoom without a gesture, with labelled buttons for zooming in and out, and return to
+the start with a labelled "Reset" button; each button SHALL act once per tap. A hardware keyboard SHALL move the photo
+with the arrow keys and zoom it with plus and minus. There SHALL be no buttons for moving the photo: the user drags it.
+
+#### Scenario: Zoom with the keyboard
+- **WHEN** the user presses plus and then minus on a hardware keyboard
+- **THEN** the frame first covers a smaller part of the photo and then the part it covered before
+
+### Requirement: The photo can be turned on the crop screen
+The crop screen SHALL let the user turn the photo a quarter turn clockwise with a labelled "Rotate photo" button, which
+SHALL keep the frame over the same part of the photo, and the picture SHALL be made from the photo as turned.
+
+#### Scenario: Two turns
+- **WHEN** the user taps "Rotate photo" twice
+- **THEN** the photo is shown upside down, with the frame over the same part of it, still inside the photo
+
+### Requirement: The crop screen is edge to edge
+The crop screen SHALL fill the whole window, edge to edge: its black background and the photo SHALL reach behind the
+system bars, while its buttons SHALL stay clear of them.
+
+#### Scenario: The buttons stay clear of the navigation bar
+- **WHEN** the crop screen is open in portrait on a device with a navigation bar
+- **THEN** the black background reaches behind the navigation bar, and the zoom, turn and "Reset" buttons are above it
+
+### Requirement: The crop survives a rotation and a process restart
+The zoom and the position of the photo under the frame SHALL survive a rotation of the device and a restart of the
+app's process while the crop screen is open.
+
+#### Scenario: The crop survives a process restart
+- **WHEN** the user has zoomed in and moved the photo, and the app's process is stopped and restored with the crop
+  screen open
+- **THEN** the crop screen shows the same part of the photo under the frame
