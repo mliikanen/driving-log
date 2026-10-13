@@ -17,14 +17,27 @@ but that holds only for an app that doesn't declare CAMERA. The `MediaStore.ACTI
 - When the user picks a camera app and the app doesn't hold the camera permission, the system asks for it right then, before the camera opens.
   - Allowed: the chosen camera app opens, and taking a photo continues to the crop screen as today.
   - Refused (including a refusal Android remembers and no longer asks about): no camera opens. The user is back on the screen they came
-    from with its picture or photos unchanged, and the existing message "Camera access is turned off. You can allow it in the device
-    settings." is shown. This is the message iOS already shows.
+    from with its picture or photos unchanged, and the screen shows the missing-permission message (below).
   - Already held: the camera opens with no prompt.
   - Granted earlier and later revoked in the device settings: the next time the camera is chosen, the system asks again.
 - Choosing a photo, file or other image app still asks for nothing. Opening the chooser asks for nothing.
-- This covers every screen that uses this chooser: the vehicle picture (add and edit), an event's photos, and the photo action of the
-  live scanner and the scan review.
-- `vehicle-picture` and `app-shell` stop claiming that the Android camera app needs no permission. They state the rule above instead.
+- **New: one missing-permission message.** Whenever something the user asked for can't be done because a permission is missing, the
+  screen shows the same message component. It says what can't be done and which access is turned off ("A photo can't be taken because
+  camera access is turned off"). Its "Open settings" button opens the app's own page in the device settings. When the user comes back
+  with the access allowed, the message goes away. The message appears only when a permission is missing. Leaving the chooser, the
+  camera or a photo app without a photo is not a permission case: it changes nothing and shows no message, as today. Other failures,
+  such as a photo that can't be opened, keep their plain error text.
+  This replaces the three copies of the text-only "Camera access is turned off…" line and the live scanner's own "needs camera access"
+  view.
+- This covers every screen that uses this chooser or the camera, on both platforms:
+  - the vehicle picture (add and edit);
+  - an event's photos (log event form and event edit), through `EventPhotoDraft`;
+  - the live scanner, both its photo action and its no-preview state, and the scan review's "choose another photo", through
+    `ScanDraft`. The scan review drops a refusal today without showing anything.
+- The live scanner shows its preview as soon as the user is back from the settings with camera access allowed. Before, it waited until
+  the scanner was opened again.
+- `vehicle-picture`, `app-shell` and `odometer-ocr-capture` stop claiming that the Android camera app needs no permission. They state
+  the rule above instead.
 
 Out of scope:
 - iOS, which already asks for camera access at Take Photo and shows the same message.
@@ -44,18 +57,32 @@ None.
 - `vehicle-picture`: the chooser requirement's camera scenarios and platform note. "Permissions are asked for only when needed" changes: on
   Android, choosing the camera app asks for the camera permission when the app doesn't hold it, a refusal shows the camera-access message,
   and opening the chooser or choosing any other app still asks for nothing.
-- `app-shell`: "The application requests the minimum set of permissions". The platform note and the scenario "A permission is asked for at
-  the action" now name taking a photo with the camera app on Android as a function that asks for the camera permission, which the app
-  declares for the live scanner anyway.
+- `app-shell`: adds two requirements. "A missing permission is explained with a way to the settings" is the shared message with "Open
+  settings". "The missing-permission message is shown only for a missing permission" counts a refusal, an earlier refusal or a
+  dismissed prompt, and nothing else: leaving a chooser or the camera, or another failure, never shows it. Also changes
+  "The application requests the minimum set of permissions":
+  - the platform note and the scenario "A permission is asked for at the action" now name taking a photo with the camera app on Android
+    as a function that asks for the camera permission, which the app declares for the live scanner anyway;
+  - the refusal scenario now points to the shared message.
+- `distance-logging`: adds "A refused camera is shown on the photo element" (log event form and event edit).
+- `odometer-ocr-capture`: "A photo is chosen to scan for a reading" drops "this application requests no permission for it". It adds "A
+  refused camera is shown on the scan screen it was chosen from", for the scanner's photo action and the review. "The camera permission is asked for when the scanner is first
+  opened" uses the shared message, and its preview returns when the user comes back with access allowed.
 
 ## Impact
 
 - `shared/src/androidMain/.../vehicle/picture/PhotoPicker.android.kt`: the chooser's camera entries go through the app first, and the
-  result maps a refusal to `PhotoResult.CameraDenied`. The common `PhotoResult.CameraDenied` doc changes too. The screens already show its
-  message (`PictureField`, `EventNoteAndPhotos`, `LiveScannerContent`).
+  result maps a refusal to `PhotoResult.CameraDenied`. The common `PhotoResult.CameraDenied` doc changes too.
+- A new common composable for the missing-permission message, with an `expect` for opening the app's settings page. Android has that
+  already in `LiveCamera.android.kt`; iOS gets it. The message is used by:
+  - `PictureField`, `EventNoteAndPhotos` and `LiveScannerContent`, in place of their `CAMERA_DENIED` text and `NoCamera`;
+  - `ScanReviewContent`, which shows no error today.
+- Back from the settings, the screens re-check camera access and clear the message (existing `…ErrorDismissed` intents, plus one for
+  event photos if it is missing). `rememberCameraPermission` re-checks on resume.
 - A new small, non-exported activity in the Android app. It asks for the permission and then hands over to the chosen camera app.
   `androidApp/src/main/AndroidManifest.xml` gains it, and the FileProvider comment changes. No permission is added: CAMERA is already
   declared, so `maestro/check-permissions.sh` is unaffected.
-- Maestro: a new flow in the `picture` device-state group covers the permission paths. The existing `picture/camera.yaml` keeps covering
-  the already-granted path.
+- Maestro: a new flow in the `picture` device-state group covers the permission paths and the "Open settings" button. The existing
+  `picture/camera.yaml` keeps covering the already-granted path. The `distance` flows of the live scanner's refused state follow the new
+  message.
 - No data, migration or dependency change.

@@ -29,11 +29,11 @@ photo the user chose.
 
 #### Scenario: Camera access refused
 - **WHEN** the user refuses camera access when asked, or has refused it before and chooses the camera again
-- **THEN** the system shows a message that camera access is turned off and can be allowed in the settings, opens no camera and keeps the vehicle's picture as it was
+- **THEN** the system opens no camera, keeps the vehicle's picture as it was, and shows below the picture the missing-permission message (`app-shell`): a photo can't be taken because camera access is turned off, with "Open settings"
 
 #### Scenario: Leave the chooser
 - **WHEN** the user opens the chooser and leaves it, or leaves the camera without taking a photo
-- **THEN** the form is unchanged
+- **THEN** the form is unchanged, and no missing-permission message is shown
 
 #### Scenario: A file that is not an image
 - **WHEN** the chosen app returns a file that cannot be decoded as an image
@@ -53,8 +53,8 @@ offered in a source sheet.
 The system SHALL ask for a permission only when the user triggers an action that needs it, at that moment, and SHALL
 NOT ask for permissions the chosen way does not need: choosing a photo, file or other image app needs none. Taking a
 photo with the camera needs camera access on both platforms. It SHALL be asked for when the user chooses the camera
-and the app does not hold it. If it is refused, the system SHALL show that camera access is turned off and can be
-allowed in the settings, and change nothing else.
+and the app does not hold it. If it is refused, the system SHALL show the missing-permission message (`app-shell`)
+and change nothing else.
 
 #### Scenario: Opening the chooser on Android asks for nothing
 - **WHEN** on Android the user taps "Add picture" on the add vehicle screen
@@ -70,15 +70,23 @@ allowed in the settings, and change nothing else.
 
 #### Scenario: Camera access refused on Android
 - **WHEN** on Android the user refuses camera access after choosing a camera app
-- **THEN** no camera app opens, the screen the user came from is shown as it was, with the message that camera access is turned off and can be allowed in the device settings
+- **THEN** no camera app opens, and the screen the user came from is shown as it was, with the missing-permission message and its "Open settings" action
+
+#### Scenario: Camera prompt dismissed on Android
+- **WHEN** on Android the user chooses a camera app and leaves the camera-access prompt without allowing it
+- **THEN** no camera app opens, and the screen the user came from shows the missing-permission message, as for a refusal
 
 #### Scenario: A refusal Android remembers
 - **WHEN** on Android the user has refused camera access so that the system no longer asks, and chooses a camera app
-- **THEN** no prompt is shown and no camera app opens, and the screen shows the message that camera access is turned off and can be allowed in the device settings
+- **THEN** no prompt is shown and no camera app opens, and the screen shows the missing-permission message and its "Open settings" action
 
 #### Scenario: Camera access already allowed on Android
 - **WHEN** on Android camera access has been allowed (for example for the live scanner) and the user chooses a camera app
 - **THEN** the camera app opens with no permission prompt
+
+#### Scenario: Camera access allowed from the message
+- **WHEN** the missing-permission message is shown, the user taps "Open settings", allows camera access there and comes back
+- **THEN** the message is gone, and choosing a camera app in the chooser opens it with no permission prompt
 
 #### Scenario: Camera access withdrawn on Android
 - **WHEN** on Android the user allowed camera access, then turned it off in the device settings, and chooses a camera app again
