@@ -67,9 +67,10 @@ mileage event.
 
 ### Requirement: Recent events on the details screen
 The system SHALL show at most the 5 most recent log events of the vehicle on its details screen, newest first by date
-and time, each as its own row with its type, date and time, and figure. A refueling logged with mileage SHALL show as
-two rows, each counting toward the 5. Events at the same time SHALL be in the order "Events at the same time are
-ordered by entry, then by kind" gives, newest first. The system SHALL provide an action to open the full log.
+and time, each as its own row with its type, date and time, and figure (the scenarios use a 24-hour setting). A
+refueling logged with mileage SHALL show as two rows, each counting toward the 5. Events at the same time SHALL be in
+the order "Events at the same time are ordered by entry, then by kind" gives, newest first. The system SHALL provide
+an action to open the full log.
 
 #### Scenario: One event
 - **WHEN** the user opens the details of a newly added vehicle

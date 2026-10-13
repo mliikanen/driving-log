@@ -189,6 +189,15 @@ class EventRowContentTest {
     }
 
     @Test
+    fun aRefuelingFromAnotherZoneShowsItsZone() {
+        // vehicle-log, "An event row shows when it happened": a refueling's row follows the same rule as a distance's.
+        val entered = ZonedMoment.of(Instant.parse("2026-09-20T12:30:00Z"), newYork) // 08:30 in New York
+        val refueling = VehicleEvent.Refueling("r", entered, Volume(42_300), FuelUnit.LITERS, FuelType.DIESEL, filledUp = true)
+
+        assertEquals("2026-09-20 08:30 (America/New_York)", row(refueling, zone = helsinki).moment)
+    }
+
+    @Test
     fun aRefuelingShowsItsAmountInTheUnitItWasEnteredInWithNoPlusSign() {
         assertEquals("42.30 L", row(refueling(42_300, FuelUnit.LITERS)).trailing)
         assertEquals(null, row(refueling(42_300)).loggedOdometer)

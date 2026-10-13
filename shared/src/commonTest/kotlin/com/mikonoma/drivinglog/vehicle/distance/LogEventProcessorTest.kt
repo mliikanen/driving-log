@@ -1526,6 +1526,36 @@ class LogEventProcessorTest {
         assertTrue(processor.state.tripDistance.isEmpty)
     }
 
+    /** A pump display: the volume label on its own line, the price just above it and the amount just below, both as near to it. */
+    private val pumpWithAmountAndPrice = com.mikonoma.drivinglog.vehicle.ocr.RecognizedPhoto(
+        1280,
+        720,
+        listOf(
+            line(element("75.12", 100, 270, 170, 295)),
+            line(element("LITRAA", 100, 300, 180, 320)),
+            line(element("42.30", 100, 325, 170, 350)),
+        ),
+    )
+
+    @Test
+    fun theUserPicksTheAmountOverAPriceThatSharesTheVolumeLabel() = runTest {
+        // odometer-ocr-capture, "A number as near the volume label may also be a fuel-amount candidate": both are offered,
+        // and the one the user picks is what fills the field.
+        seedVehicle()
+        val processor = processor()
+        processor.dispatch(LogEventIntent.KindSelected(LogKind.REFUELING))
+        processor.dispatch(LogEventIntent.ScannerOpened(ScanTarget.FUEL_AMOUNT))
+        recognizer.photo = pumpWithAmountAndPrice
+        processor.dispatch(LogEventIntent.ScanPhotoPicked(com.mikonoma.drivinglog.vehicle.picture.PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+
+        val candidates = processor.state.scan.review!!.detections.filter { it.kind != null }
+        assertEquals(setOf("75.12", "42.30"), candidates.map { it.value }.toSet())
+
+        processor.accept("42.30")
+
+        assertEquals(4230L, processor.state.fuelAmount.steps)
+    }
+
     @Test
     fun tappingALiveFuelAmountReadingFillsTheFieldAndSetsTheUnit() {
         seedVehicle()

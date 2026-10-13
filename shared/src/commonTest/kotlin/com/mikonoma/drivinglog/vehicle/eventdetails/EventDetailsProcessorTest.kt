@@ -389,6 +389,15 @@ class EventDetailsProcessorTest {
     }
 
     @Test
+    fun aRefuelingsDetailsShowOnlyItsAttachedPhotos() {
+        // odometer-ocr-capture, "A stored scan is never shown and outlives its event": the photos shown are the entry's own,
+        // never a scan's (no screen reads a stored scan back; only the repository and its tests call captureOf).
+        val processor = refuelingEventProcessor(photoIds = listOf("p1"))
+
+        assertEquals(listOf("p1"), processor.state.photoThumbnailUris.map { it.first })
+    }
+
+    @Test
     fun editClickedOnARefuelingSeedsTheEditScreenWithItsNoteAndPhotos() {
         val processor = refuelingEventProcessor(note = "cheap gas today", photoIds = listOf("p1"))
 

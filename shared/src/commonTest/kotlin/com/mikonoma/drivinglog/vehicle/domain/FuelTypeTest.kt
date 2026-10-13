@@ -12,6 +12,18 @@ class FuelTypeTest {
     }
 
     @Test
+    fun theListIsTheTenFuelTypesInOrder() {
+        // refueling-logging, "The fuel type is chosen from a fixed list": the choice offers these, in this order.
+        assertEquals(
+            listOf(
+                "Regular petrol/gasoline", "Premium petrol/gasoline", "Diesel", "Premium diesel", "Biodiesel",
+                "E85/flex fuel", "LPG", "CNG", "Hydrogen", "Other",
+            ),
+            FuelType.entries.map { it.label },
+        )
+    }
+
+    @Test
     fun unknownOrNullCodeIsNoType() {
         assertNull(FuelType.fromCode("SOMETHING_ELSE"))
         assertNull(FuelType.fromCode(null))

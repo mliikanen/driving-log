@@ -4,8 +4,8 @@
 The system SHALL offer "Refueling" as a second choice in the log event form's "Kind" selector (`distance-logging`),
 alongside "Distance." Choosing it SHALL show a fuel amount field, a fuel type selector, a "filled up" checkbox, an
 optional mileage section (the "Trip distance"/"New odometer" choice a "Distance" entry offers), the note element and
-the photo strip. The date, time, time zone and vehicle selector, and saving and leaving the form, SHALL work as they
-do for a "Distance" entry.
+the photo strip. The date, time, time zone, vehicle selector (from the Home screen), saving and leaving SHALL work as
+for a "Distance" entry.
 
 #### Scenario: Choosing Refueling shows its fields
 - **WHEN** the user opens the log event form and chooses "Refueling" in the Kind selector
@@ -19,9 +19,9 @@ do for a "Distance" entry.
 
 ### Requirement: The fuel amount must be entered and above zero
 The system SHALL require a number in the fuel amount field: while it is empty, the form's Save action SHALL be
-disabled (not tappable), whatever the optional mileage section holds. The amount SHALL be more than zero: a typed
-zero SHALL show an error on the field and SHALL NOT be saved. The fuel amount field's label SHALL carry a trailing
-"*", the required-field mark `distance-logging` uses; the mileage section's fields SHALL NOT.
+disabled (not tappable), whatever the optional mileage section holds. The amount SHALL be more than zero: for a typed
+zero, the system SHALL show an error on the field and SHALL NOT save the entry. The fuel amount field's label SHALL
+carry a trailing "*", the required-field mark `distance-logging` uses; the mileage section's fields SHALL NOT.
 
 #### Scenario: Empty fuel amount disables Save
 - **WHEN** the user has chosen "Refueling" and the fuel amount field is empty
@@ -102,9 +102,9 @@ its fuel type the remembered choice.
 ### Requirement: Mileage is optional for a refueling
 A refueling form SHALL offer the "Trip distance"/"New odometer" choice a "Distance" entry offers, but SHALL NOT
 require a value in it: Save is gated by the fuel amount alone. A typed mileage SHALL be validated as a "Distance"
-entry's is (`distance-logging`) and saved as its own "Distance" or "Odometer reading" event in the refueling's entry,
-which sets or advances the odometer; the "Refueling" event never does. With no mileage, a refueling SHALL NOT change
-the odometer.
+entry's is (`distance-logging`) and saved in the refueling's entry as the "Distance" or "Odometer reading" event such
+an entry would save, which sets or advances the odometer; the "Refueling" event never does. With no mileage, a
+refueling SHALL NOT change the odometer.
 
 #### Scenario: Saving with a trip distance
 - **WHEN** the user chooses "Refueling," types a trip distance of 30 km, a fuel amount and saves
