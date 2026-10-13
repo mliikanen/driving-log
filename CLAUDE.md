@@ -57,7 +57,7 @@ Project context and artifact rules live in `openspec/config.yaml`.
   `codeQuality` is ktlint, detekt and Android lint (`docs/code-quality.md`); `./gradlew ktlintFormat` fixes formatting. There are no baselines: fix a finding or suppress it with a reason.
   Compiler and Gradle warnings fail the build too (Kotlin warnings are errors, `org.gradle.warning.mode=fail`); fix one, or suppress it with a reason.
   CI (`.github/workflows/pr-check.yml`) runs the same final regression run on every PR and push to `main`, as three required checks
-  (`tests-and-build`, `code-quality`, `spec-validation`); with the ruleset on `main` (`.github/rulesets/main.json`), a PR
+  (`tests-and-build`, `code-quality`, `spec-validation`); with the ruleset on `main` (`docs/change-workflow.md`, Merging), a PR
   can't merge until all three pass. `release-notes` (`release-notes.yml`) previews what merging would publish. Merging to `main` publishes to the testers (`docs/distribution.md`).
   **A PR that changes what testers get always has a `## Release notes` section in its description**, written when it is marked ready for review:
   short bullets in plain language about what a tester will notice (what changed on screen, what to try, what an update does to their data), not how
