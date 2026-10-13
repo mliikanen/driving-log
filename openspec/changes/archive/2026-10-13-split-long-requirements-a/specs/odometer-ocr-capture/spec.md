@@ -186,9 +186,9 @@ found by both kinds of recognition SHALL be presented once. On iOS the scan acti
 ### Requirement: The live scanner shows readings as the camera sees them
 The live scanner SHALL show the back camera's preview full screen, boxing every candidate reading recently detected,
 with its classification and value as text, detected offline on the device and classified as a scanned photo's are. The
-boxes SHALL follow the view; a reading SHALL stay shown briefly after the camera loses it instead of flickering.
-Tapping a reading SHALL accept it. It SHALL offer a close action; that and back navigation SHALL accept nothing: the
-form unchanged, nothing kept.
+boxes SHALL follow the view; a reading SHALL stay shown briefly after the camera loses it without flickering. Tapping
+a reading SHALL accept it. It SHALL offer a close action; it and back navigation SHALL accept and keep nothing,
+leaving the form unchanged.
 
 #### Scenario: Readings are boxed live
 - **WHEN** the camera is pointed at a dashboard showing "ODO 71140 km"
