@@ -20,15 +20,10 @@ user is not signed in, and on the Home screen, without requiring network access 
 - **THEN** the Home screen is displayed and no error is shown
 
 ### Requirement: Material Design 3 theming
-The system SHALL render all screens using Material Design 3 with the Petroleum color theme (the palette in `docs/color-palette.md`), and SHALL use its light or
-dark color scheme according to the device's system setting. The theme SHALL be the same on every screen and SHALL NOT take colors from the device's wallpaper.
-In the light scheme the app background is Cool Platinum (`#F4F7F6`) with Asphalt (`#12181B`) text, primary buttons and active elements are Oil Slick Blue
-(`#203A43`) with white text, interactive accents such as switches and secondary actions are Refinery Teal (`#2C5364`), and dividers are Exhaust Fog (`#E0E6ED`).
-In the dark scheme the app background is Asphalt Dark (`#12181B`) and the primary and secondary colors are lighter tints of the palette's blue-greens, so that
-buttons, icons and switches stand out from it. In both schemes the top app bar of every screen is Petroleum Deep (`#0F2027`) with light text and icons.
-Every text color SHALL have a contrast ratio of at least 4.5:1 against the color it is drawn on, and every outline, icon and control at least 3:1 against
-its surroundings, in both schemes. On Android the launch window and the system bars SHALL match the theme: the window background before the first frame is the
-scheme's background, the status bar's icons are light over the header, and the navigation bar's icons are light or dark to suit the scheme.
+The system SHALL render all screens using Material Design 3 with the Petroleum color theme (the palette in
+`docs/color-palette.md`), in its light or dark color scheme according to the device's system setting. The theme SHALL
+be the same on every screen and SHALL NOT take colors from the device's wallpaper. In both schemes the top app bar of
+every screen SHALL be Petroleum Deep (`#0F2027`) with light text and icons.
 
 #### Scenario: Device in light mode
 - **WHEN** the app is opened while the device is set to light mode
@@ -92,11 +87,9 @@ Behavior on iOS SHALL match Android unless a difference is recorded in a feature
 not by Android builds or Linux CI.
 
 ### Requirement: The application requests the minimum set of permissions
-The system SHALL request only the minimum set of permissions it needs to fulfil the required functionality. Where the platform offers a way
-to provide a function without a permission (a system picker, chooser, camera app or source sheet in which the user chooses the provider),
-the system SHALL use it and SHALL NOT declare a permission for that function. A permission that is needed SHALL be declared for that
-function only, SHALL be requested at the moment the user triggers the action that needs it and never at start-up or on entering a
-screen, and a refusal SHALL be explained to the user and SHALL NOT stop the application or block any function that does not need it.
+The system SHALL request only the minimum set of permissions it needs to fulfil the required functionality. Where the
+platform offers a way to provide a function without a permission (a system picker, chooser, camera app or source sheet
+in which the user chooses the provider), the system SHALL use it and SHALL NOT declare a permission for that function.
 
 #### Scenario: No permission prompt at start
 - **WHEN** the application is installed and opened for the first time
@@ -119,10 +112,11 @@ one exception is the live scanner (`odometer-ocr-capture`), whose in-app camera 
 the camera permission when "Scan a reading" is tapped. On iOS only the camera needs one.
 
 ### Requirement: Screens respect the system bars and the keyboard
-The system SHALL keep the content of every screen out from under the status bar, the gesture bar or the three-button navigation bar, the display
-cutout and the keyboard, and SHALL let the user reach all of a screen's content while the keyboard is shown: content that does not fit SHALL scroll,
-and it SHALL scroll far enough that its last item ends clear of the navigation bar or the keyboard by the inset and a little more, so nothing is
-left half hidden at the end. The system SHALL NOT add the same inset twice, which would leave a gap.
+The system SHALL keep every screen's content out from under the status bar, the gesture or three-button navigation
+bar, the display cutout and the keyboard, and SHALL let the user reach all of it while the keyboard is shown: content
+that does not fit SHALL scroll, far enough that its last item ends clear of the navigation bar or the keyboard by the
+inset and a little more, so nothing is left half hidden. The system SHALL NOT add the same inset twice, which would
+leave a gap.
 
 #### Scenario: The end of a screen clears a three-button navigation bar
 - **WHEN** the device uses three-button navigation and the user scrolls the vehicle details screen to its end
@@ -141,10 +135,11 @@ left half hidden at the end. The system SHALL NOT add the same inset twice, whic
 - **THEN** every screen's content can be scrolled to its end, clear of the system bars and the keyboard
 
 ### Requirement: Distances and fuel have their own accent colors
-The system SHALL draw logged distances in the Road Trip Emerald accent (`#06D6A0`) in the dark scheme and in a deeper shade of it in the light scheme, where the
-bright emerald is too pale to read as text (a text contrast of at least 4.5:1 on the background and on a card). The system SHALL reserve Fuel Gauge Gold
-(`#FFB703`) for fuel and refueling, and SHALL use it only as a fill with dark text or as a mark, never as text on a light background. Anything that is not a
-distance (an odometer reading, a name, a date) SHALL NOT use the distance accent.
+The system SHALL draw logged distances in the Road Trip Emerald accent (`#06D6A0`) in the dark scheme and in a deeper
+shade of it in the light scheme, where the bright emerald is too pale to read as text (a contrast of at least 4.5:1 on
+the background and on a card). It SHALL reserve Fuel Gauge Gold (`#FFB703`) for fuel and refueling, as a fill with
+dark text or as a mark, never as text on a light background. Nothing that is not a distance SHALL use the distance
+accent.
 
 #### Scenario: A distance entry in the log
 - **WHEN** the log or the recent events show a distance entry
@@ -159,9 +154,11 @@ distance (an odometer reading, a name, a date) SHALL NOT use the distance accent
 - **THEN** no text is drawn in Fuel Gauge Gold on the light background
 
 ### Requirement: Home screen offers the main actions
-The system SHALL show on the Home screen the application name "Driving Log" in a top app bar, and below it a grid of four actions in two rows of two, each an icon with no visible text. The icons are a car (vehicles), a pencil on a note ("Log event"), a route ("Trip") and a question mark ("Placeholder"), and every action SHALL have a name for a screen reader: "Vehicles", "Log event", "Trip" and "Placeholder". The grid SHALL stay two by two in
-portrait and in landscape, and every action SHALL be at least 48 dp square with its whole area tappable. The first action SHALL always show the car icon; it SHALL open the vehicle list, or, when the user has no vehicle, the add vehicle screen, and only its name for a screen reader changes with that ("Add vehicle" instead of "Vehicles"). An action that is not available
-yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be disabled Material 3 components: shown in Material's disabled colors and not in the colors of an available action, not reacting to a tap, and exposed to a screen reader as disabled (with their names still readable). The vehicle list SHALL NOT be shown on the Home screen.
+The system SHALL show on the Home screen the application name "Driving Log" in a top app bar and, below it, a grid of
+four actions in two rows of two, each an icon with no visible text: a car (vehicles), a pencil on a note ("Log
+event"), a route ("Trip") and a question mark ("Placeholder"), named for a screen reader "Vehicles", "Log event",
+"Trip" and "Placeholder". The grid SHALL stay two by two in portrait and in landscape. The vehicle list SHALL NOT be
+shown on the Home screen.
 
 #### Scenario: Home screen with vehicles
 - **WHEN** the Home screen is displayed and the user has added a vehicle
@@ -190,3 +187,65 @@ yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SH
 #### Scenario: The first action waits for the vehicles
 - **WHEN** the application starts and the vehicles are not yet loaded
 - **THEN** the first action does not react to a tap until it is known whether the user has vehicles, so it cannot open the wrong screen
+
+### Requirement: The light and dark schemes use the palette
+In the light scheme the app background SHALL be Cool Platinum (`#F4F7F6`) with Asphalt (`#12181B`) text, primary
+buttons and active elements Oil Slick Blue (`#203A43`) with white text, interactive accents such as switches and
+secondary actions Refinery Teal (`#2C5364`), and dividers Exhaust Fog (`#E0E6ED`). In the dark scheme the background
+SHALL be Asphalt Dark (`#12181B`), with lighter tints of the palette's blue-greens as primary and secondary, so that buttons, icons and switches stand out.
+
+#### Scenario: The light scheme's accents and dividers
+- **WHEN** the app is opened in light mode
+- **THEN** its secondary color is Refinery Teal (`#2C5364`) and its divider color is Exhaust Fog (`#E0E6ED`)
+
+### Requirement: Text and controls meet a contrast minimum
+Every text color SHALL have a contrast ratio of at least 4.5:1 against the color it is drawn on, and every outline,
+icon and control at least 3:1 against its surroundings, in both color schemes.
+
+#### Scenario: A primary button in light mode
+- **WHEN** a primary button is shown in light mode
+- **THEN** its white text has a contrast of at least 4.5:1 against its Oil Slick Blue fill
+
+### Requirement: The launch window and the system bars match the theme
+On Android the launch window and the system bars SHALL match the theme: the window background before the first frame
+SHALL be the scheme's background, the status bar's icons SHALL be light over the header, and the navigation bar's icons
+SHALL be light or dark to suit the scheme.
+
+#### Scenario: System bar icons in dark mode
+- **WHEN** a screen is shown on Android in dark mode
+- **THEN** the status bar's icons are light over the header and the navigation bar's icons are light over the dark
+  background
+
+### Requirement: A permission is asked for only at the action that needs it
+A permission that is needed SHALL be declared for that function only and SHALL be requested at the moment the user
+triggers the action that needs it, never at start-up or on entering a screen. A refusal SHALL be explained to the user
+and SHALL NOT stop the application or block any function that does not need it.
+
+#### Scenario: Opening a form that can scan asks nothing
+- **WHEN** the user opens the log event form, which offers "Scan a reading", without tapping it
+- **THEN** no permission prompt is shown
+
+### Requirement: Home screen actions are large and tappable
+Every Home screen action SHALL be at least 48 dp square, with its whole area tappable.
+
+#### Scenario: Tapping the edge of a tile
+- **WHEN** the user taps the first action near the edge of its tile, away from the icon
+- **THEN** the action reacts as it does to a tap on its icon
+
+### Requirement: The first Home screen action follows whether there are vehicles
+The first Home screen action SHALL always show the car icon. It SHALL open the vehicle list or, when the user has no
+vehicle, the add vehicle screen, and only its name for a screen reader changes with that ("Add vehicle" instead of
+"Vehicles").
+
+#### Scenario: After the first vehicle is added
+- **WHEN** the user with no vehicle adds one and returns to the Home screen
+- **THEN** the first action's name for a screen reader is "Vehicles", and tapping it opens the vehicle list
+
+### Requirement: Home screen actions that are not available are disabled
+An action that is not available yet ("Log event", "Trip" and "Placeholder" until the changes that build them) SHALL be a
+disabled Material 3 component: shown in Material's disabled colors and not in an available action's, not reacting to a
+tap, and exposed to a screen reader as disabled, with its name still readable.
+
+#### Scenario: A screen reader reads a disabled action
+- **WHEN** a screen reader reaches the "Trip" action
+- **THEN** it reads its name, "Trip", and that it is disabled

@@ -10,12 +10,11 @@ is specified by `distance-logging`; this capability covers the storage facts the
 ## Requirements
 
 ### Requirement: A photo is scaled down when it is larger than this capability's size caps
-The system SHALL store two versions of each photo, both keeping its original aspect ratio and neither cropped: a
-small version of at most 256 pixels on its longer side, and a large version of at most 2048 pixels on its longer
-side. A version SHALL be scaled down only when the photo's longer side exceeds its cap, and SHALL NOT be enlarged: a
-photo already smaller than a cap is stored at its own size. Both versions SHALL be stored in a size-efficient image
-format, matching `vehicle-picture`'s own format choice (lossy WebP; PNG on iOS until a WebP encoder is added), and
-the stored photo SHALL respect the orientation the original was marked with.
+The system SHALL store two versions of each photo, both keeping its aspect ratio and neither cropped: a small one of
+at most 256 pixels on its longer side and a large one of at most 2048. A version SHALL be scaled down only when the
+photo's longer side exceeds its cap, and SHALL NOT be enlarged. Both SHALL be stored in `vehicle-picture`'s
+size-efficient format (lossy WebP; PNG on iOS until a WebP encoder is added), the right way up for the orientation the
+original was marked with.
 
 #### Scenario: A large photo is downscaled
 - **WHEN** the user attaches a 4000 x 3000 photo
@@ -34,12 +33,10 @@ the stored photo SHALL respect the orientation the original was marked with.
 - **THEN** the stored versions are the right way up
 
 ### Requirement: Photos are stored in the application's local file system
-The system SHALL store photo files in the application's private storage, SHALL NOT store them in the device's photo
-library or another shared location, and SHALL keep only an id with each photo, never a file path — the same
-convention `vehicle-picture`'s "Pictures are stored in the application's local file system" requirement already
-establishes. Every photo's id SHALL be unique and, once written, SHALL NOT be reused for different content, whether
-the id belongs to an event's photo or a vehicle's picture. The system SHALL keep photos after the app is closed and
-reopened, and SHALL show and change them without a network connection.
+The system SHALL store photo files in the application's private storage, never in the photo library or another shared
+location, and SHALL keep only an id with each photo, never a file path, as `vehicle-picture` does. Every photo id, of
+an event's photo or a vehicle's picture, SHALL be unique and SHALL NOT be reused for different content once written.
+Photos SHALL survive closing and reopening the app, and SHALL be shown and changed without a network connection.
 
 #### Scenario: Survives a restart
 - **WHEN** the user saves an event with photos, closes the app completely and reopens it
