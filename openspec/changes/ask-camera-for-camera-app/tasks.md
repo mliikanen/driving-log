@@ -1,35 +1,34 @@
 # Tasks
 
-## 1. Spike: the chooser and a trampoline of our own
+## 1. Spike: asking for the permission between the choice and the launch
 
-- [ ] 1.1 On `dl34`, with a throwaway build: add one `LabeledIntent` initial entry aimed at a non-exported activity of the app that starts the camera with `FLAG_ACTIVITY_FORWARD_RESULT`. Verify these and record the outcome in design.md (Risks):
-  - the chooser lists it as "Camera" with the camera app's icon;
-  - choosing it starts our activity, with no `SecurityException` in logcat;
+- [x] 1.1 On `dl34`, check how to ask for CAMERA between choosing a camera app in the chooser and its launch, and record the outcome in design.md (Risks). Check that:
+  - the chooser lists the camera apps as themselves;
+  - the chosen app opens with no `SecurityException` in logcat;
   - the photo reaches the picker's launcher with `RESULT_OK`;
-  - that `RequestPermission` reports "not granted" when the dialog is left with back (the spec counts this as a refusal).
+  - `RequestPermission` reports "not granted" when the dialog is left with back (the spec counts this as a refusal).
 
-  If forwarding or the non-exported start fails, switch to that risk's fallback before group 2.
+  Outcome: a `LabeledIntent` aimed at an app activity fails the first check, so the design uses the chooser's refinement step instead (Decision 1).
 
 ## 2. The camera entries ask for the permission
 
-- [ ] 2.1 Add `CameraCaptureActivity` in `shared/src/androidMain/.../vehicle/picture/`:
-  - CAMERA held: start the given camera component with `ACTION_IMAGE_CAPTURE`, `EXTRA_OUTPUT`, the grant flags, `ClipData` and `FLAG_ACTIVITY_FORWARD_RESULT`, then finish.
-  - Not held: ask with `RequestPermission`. Allowed does the same; refused sets `RESULT_CAMERA_DENIED` and finishes.
-  - Keep a pending request across rotation.
+- [x] 2.1 In `shared/src/androidMain/.../vehicle/picture/CameraChooserRefinement.kt`, add:
+  - `CameraRefinementReceiver`: launch any non-camera choice, or a camera while CAMERA is held, as chosen; otherwise start `CameraPermissionActivity`;
+  - `CameraPermissionActivity`: ask with `RequestPermission`. Allowed launches the chosen camera app. Refused notes the refusal by output Uri and cancels. Restored across rotation without asking twice.
 
-  Verify that the shared Android sources compile (`./gradlew :androidApp:assembleFakeDebug`).
-- [ ] 2.2 Update `androidApp/src/main/AndroidManifest.xml`:
-  - declare the activity (`exported="false"`, translucent no-title theme);
+  Verify that `./gradlew :androidApp:assembleFakeDebug` succeeds.
+- [x] 2.2 Update `androidApp/src/main/AndroidManifest.xml`:
+  - declare the receiver and the activity (`exported="false"`, the activity translucent and without a title);
   - add `<queries>` for `android.media.action.IMAGE_CAPTURE`;
   - rewrite the FileProvider comment, which says the camera app holds its own permission.
 
   Verify that `./gradlew :androidApp:assembleFakeDebug` succeeds and that `maestro/check-permissions.sh` still lists only CAMERA.
-- [ ] 2.3 In `PhotoPicker.android.kt`:
-  - replace the single `ACTION_IMAGE_CAPTURE` initial intent with one `LabeledIntent` per resolved camera activity, aimed at `CameraCaptureActivity`;
-  - map only `RESULT_CAMERA_DENIED` to `PhotoResult.CameraDenied`, delete the unused camera file, and keep every cancel `Cancelled`;
+- [x] 2.3 In `PhotoPicker.android.kt`:
+  - add one explicit `ACTION_IMAGE_CAPTURE` initial intent per installed camera app, and set `EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER`;
+  - map a cancel with a noted refusal (`consumeDenial`) to `PhotoResult.CameraDenied`, and every other cancel to `Cancelled`, deleting the unused camera file;
   - update the KDoc of `rememberPhotoPicker` (Android and common) and of `PhotoResult.CameraDenied`, which say Android needs no permission.
 
-  Verify by hand on `dl34` after a fresh install: choosing Camera asks for access, Allow opens the camera, and leaving the chooser shows no error.
+  Verify by hand on `dl34` after a fresh install: the chooser shows the real "Camera"; choosing it asks for access; Allow opens the camera; Don't allow and back on the prompt show the camera-denied error; leaving the chooser shows nothing.
 
 ## 3. Which message each result calls for: unit and processor tests
 

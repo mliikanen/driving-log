@@ -13,7 +13,8 @@ but that holds only for an app that doesn't declare CAMERA. The `MediaStore.ACTI
 
 ## What Changes
 
-- The chooser still lists every app that can provide an image, the camera apps included, as it does today.
+- The chooser lists every app that can provide an image, with every installed camera app listed as itself (its own name and icon),
+  whether or not camera access has been allowed.
 - When the user picks a camera app and the app doesn't hold the camera permission, the system asks for it right then, before the camera opens.
   - Allowed: the chosen camera app opens, and taking a photo continues to the crop screen as today.
   - Refused (including a refusal Android remembers and no longer asks about): no camera opens. The user is back on the screen they came
@@ -79,8 +80,12 @@ None.
   - `ScanReviewContent`, which shows no error today.
 - Back from the settings, the screens re-check camera access and clear the message (existing `…ErrorDismissed` intents, plus one for
   event photos if it is missing). `rememberCameraPermission` re-checks on resume.
-- A new small, non-exported activity in the Android app. It asks for the permission and then hands over to the chosen camera app.
-  `androidApp/src/main/AndroidManifest.xml` gains it, and the FileProvider comment changes. No permission is added: CAMERA is already
+- New in the Android app (`CameraChooserRefinement.kt`):
+  - a non-exported receiver for the chooser's refinement step, which runs after the user picks an app and before it is launched;
+  - a translucent, non-exported activity that asks for the permission when a camera app was picked without it.
+
+  `androidApp/src/main/AndroidManifest.xml` gains both and a `<queries>` entry for `IMAGE_CAPTURE`, and the FileProvider comment
+  changes. No permission is added: CAMERA is already
   declared, so `maestro/check-permissions.sh` is unaffected.
 - Maestro: a new flow in the `picture` device-state group covers the permission paths and the "Open settings" button. The existing
   `picture/camera.yaml` keeps covering the already-granted path. The `distance` flows of the live scanner's refused state follow the new

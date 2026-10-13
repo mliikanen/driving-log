@@ -33,6 +33,11 @@ Several flows per feature are fine; two flows that follow the same journey are n
 - A case idea ("saving without a name is refused", "a future date is refused") is a unit test of the rule or of the processor. Before an assertion is taken out of a flow, the test that owns it exists and passes.
 - What only a flow can show may stay: that the app works with the network off and after being closed and reopened, that a screen survives a rotation, the system's photo chooser and the camera app.
 - Flows read the screen the way the user does: text, and the test tags of the app's own screens (`id:`). System dialogs and other apps' windows have no tags and are driven by text.
+- **Maestro's `launchApp` grants every permission the app declares**, which a fresh install never has. A flow that reaches a function needing a
+  permission, whether the app's own (the live scanner) or another app opened as this one (a camera app chosen in the photo chooser), launches
+  with that permission unset (`permissions: { camera: unset }`) and goes through the system prompt, as a user does. A flow may rely on the
+  default grant only when the permission has nothing to do with what it checks. Lesson of #29: once the app declared CAMERA, the camera app
+  could not open from the chooser until CAMERA was granted. Every flow passed, because `launchApp` had granted it.
 
 ### Manifests and setup
 

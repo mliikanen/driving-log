@@ -16,13 +16,15 @@ The common side already handles a refusal. `PhotoResult.CameraDenied` → `Pictu
 can allow it in the device settings." is wired in `PictureDraftEditor`, `EventPhotoDraft` and `ScanDraft`, and shown by `PictureField`,
 `EventNoteAndPhotos` and `LiveScannerContent`. Only iOS produces it today.
 
-The system chooser can't be told to check a permission before it launches a target, and it gives no hook between the choice and the
-launch. `EXTRA_CHOOSER_RESULT_INTENT_SENDER` reports the choice only after the launch.
+The system chooser has one hook between the user's choice and the launch: `EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER` (API 24). When the
+user picks a target, the chooser sends that `IntentSender` the chosen intent (`EXTRA_INTENT`) and a `ResultReceiver`
+(`EXTRA_RESULT_RECEIVER`). It waits for the answer: `RESULT_OK` with an intent to launch, or `RESULT_CANCELED` to launch nothing.
+`EXTRA_CHOSEN_COMPONENT_INTENT_SENDER` reports the choice only after a successful launch, so it doesn't help.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Keep the system chooser and its full list, with each camera app shown under its own name and icon.
+- Keep the system chooser and its full list, with every installed camera app shown as itself, under its own name and icon.
 - Ask for CAMERA between choosing a camera app and opening it. Do this only then, and every time it isn't held.
 - One fix in the shared Android picker, so every screen that uses it gets it.
 
@@ -32,49 +34,57 @@ launch. `EXTRA_CHOOSER_RESULT_INTENT_SENDER` reports the choice only after the l
 
 ## Decisions
 
-### 1. Camera entries in the chooser point at a small activity of the app
+### 1. Real camera entries, and the permission is asked in the chooser's refinement step
 
-For each activity that resolves `ACTION_IMAGE_CAPTURE` (`PackageManager.queryIntentActivities`), the chooser gets one initial intent: a
-`LabeledIntent` with that app's package, label and icon, aimed at a new activity of ours, `CameraCaptureActivity`. It carries the chosen
-camera component and the output file. The chooser lists it like any app, so the user still sees "Camera" with the camera app's icon. When it
-is chosen, the chooser starts our activity, not the camera. Our activity then does the permission step:
+For each activity that resolves `ACTION_IMAGE_CAPTURE` (`PackageManager.queryIntentActivities`), the chooser gets one initial intent:
+`ACTION_IMAGE_CAPTURE` aimed at that camera component, with `EXTRA_OUTPUT`, the grant flags and `ClipData`. The chooser lists each as
+the camera app itself, under its own name and icon. That means every camera app the device has, not just the emulator's, and whether or
+not CAMERA is held. The chooser's refinement step goes to `CameraRefinementReceiver`, a non-exported broadcast receiver reached through the
+app's own mutable `PendingIntent`:
 
-- CAMERA held: start the chosen camera component with `ACTION_IMAGE_CAPTURE`, `EXTRA_OUTPUT`, the grant flags and `ClipData`, and
-  `FLAG_ACTIVITY_FORWARD_RESULT`. Then `finish()`. The camera's result goes straight to the picker's launcher, as it does today.
-- Not held: `ActivityResultContracts.RequestPermission`.
-  - Allowed: do the same as when CAMERA is held.
-  - Refused: `setResult(RESULT_CAMERA_DENIED)` (a `RESULT_FIRST_USER`-based code) and `finish()`. This includes the remembered refusal,
-    where Android answers "denied" with no dialog, so it needs no code of its own.
+- **Not a camera app** (a photo or file app), **or a camera app while CAMERA is held:** answer `RESULT_OK` with the chosen intent at
+  once. No UI, no prompt; the chooser launches it as today.
+- **A camera app without CAMERA:** start `CameraPermissionActivity` (non-exported, translucent, no UI of its own) with the chosen intent
+  and the `ResultReceiver`. It asks with `RequestPermission`, and the system prompt shows over the chooser.
+  - Allowed: answer `RESULT_OK` with the chosen intent. The chooser launches the camera app the user picked, now that CAMERA is held, and
+    the camera's result comes to the picker's launcher as before.
+  - Refused (now, a refusal Android remembers and answers at once, or the prompt left with back, which `RequestPermission` reports as
+    not granted): note the refusal for that photo's output Uri, then answer `RESULT_CANCELED`. The chooser closes and the picker gets
+    `RESULT_CANCELED`. `photoOf` reads and forgets the note (`consumeDenial`), and returns `PhotoResult.CameraDenied` for a noted
+    refusal and `PhotoResult.Cancelled` otherwise.
 
-The activity has no UI of its own: it uses a translucent no-title theme, so the system permission dialog appears over the screen the user
-came from. On rotation it keeps the pending request (`savedInstanceState`) and doesn't ask twice.
+The note is needed because the chooser accepts a refined intent only for the target the user picked. The first build answered a refusal
+with `RESULT_OK` and an intent for an activity of the app that returns a "denied" result code; the chooser launched nothing. The note is
+kept in memory, in the one process both run in, and keyed by the output Uri, which is new for every launch of the picker. A refusal lost
+to a process restart reads as a cancel.
 
-`photoOf` checks `RESULT_CAMERA_DENIED` before anything else. It deletes the unused camera file and returns `PhotoResult.CameraDenied`.
-`RESULT_CAMERA_DENIED` is the only path to `CameraDenied`. A cancel anywhere stays `RESULT_CANCELED`, so it stays
-`PhotoResult.Cancelled`, which changes nothing and shows no message. That covers:
+`CameraDenied` comes only from a noted refusal. Every other way of leaving stays `PhotoResult.Cancelled`, which changes nothing and shows
+no message:
 - leaving the chooser;
-- leaving our activity before it decides. Back during the permission dialog is not a cancel: `app-shell` specifies it as a refusal.
-  `RequestPermission` reports it as "not granted", so it ends in `RESULT_CAMERA_DENIED`;
+- leaving a photo app;
 - leaving the camera app.
 
 Alternatives considered:
+- **Route camera entries through an activity of the app (`LabeledIntent`).** This was the first design. The spike showed that the chooser
+  shows such an entry under the app's own name and icon ("Driving Log", with the label as a subtitle), not the camera app's. That holds
+  even with a label and icon on the activity, so the user would not see their camera apps as themselves.
 - **Ask for CAMERA before opening the chooser.** Rejected: it prompts users who then pick a photo, and the spec forbids asking for a
   permission the chosen way doesn't need.
-- **Leave camera apps out of the chooser while CAMERA isn't held (#29, option 2).** Rejected by the owner's desired flow on #29: the chooser
-  lists everything, and the user is asked at the choice.
+- **Leave camera apps out of the chooser while CAMERA isn't held (#29, option 2).** Rejected by the owner: the chooser always lists the
+  real camera apps.
 - **`ACTION_PICK_ACTIVITY`.** It returns the chosen activity without launching it, but it can't merge `GET_CONTENT` targets with
   initial intents into one list, and its UI is the old Settings picker, not the system chooser.
 - **An in-app chooser or an in-app camera (CameraX capture).** Rejected: `vehicle-picture` forbids drawing our own picker or camera screen.
 - **Not declaring CAMERA.** Not possible: the live scanner's preview needs it.
-- **Relaying the result instead of `FLAG_ACTIVITY_FORWARD_RESULT`** (the trampoline starts the camera for a result and passes it on). This
-  is the fallback if forwarding turns out unreliable through the chooser (see Risks). It costs keeping the trampoline alive under the camera.
 
-### 2. The trampoline is not exported, and it lives in `shared/androidMain`
+None of this is a Kotlin Multiplatform limit. The chooser, the launch as the app's uid and the permission check are Android's; an
+Android-only app would face the same.
 
-The class goes next to the picker in `vehicle/picture/`, because the picker is its only user. It is declared in
-`androidApp/src/main/AndroidManifest.xml` next to the `.pictures` FileProvider, with `android:exported="false"`. The chooser starts it with
-the app's own uid (`startActivityAsCaller`), so it doesn't need to be exported. No other app can drive it to grant write access to our
-FileProvider.
+### 2. The receiver and the activity are not exported, and live in `shared/androidMain`
+
+They are in `vehicle/picture/CameraChooserRefinement.kt`, next to the picker, which is their only user. They are declared in
+`androidApp/src/main/AndroidManifest.xml` next to the `.pictures` FileProvider, with `android:exported="false"`. Only the chooser reaches
+the receiver, through the app's own `PendingIntent`, and the receiver starts the activity, so no other app can drive them.
 
 ### 3. Camera apps are found with a `<queries>` entry
 
@@ -120,16 +130,27 @@ Every surface gets tests for both the permission case and the non-permission cas
 
 ## Risks / Trade-offs
 
-- [The spec counts a prompt left without an answer as a refusal (`app-shell`); this relies on `RequestPermission` reporting "not granted"
-  for it] → the spike (1.1) checks this. If Android reports nothing, the trampoline treats an empty answer as a refusal too.
+**Spike outcome (task 1.1, `dl34`, API 34, fake debug build):**
+- First design (an activity of the app as each camera's chooser entry): the start, the result forwarding and the prompt all worked, but the
+  entry showed as "Driving Log" with the app's icon, not as the camera app. That failed the owner's requirement that the real camera apps
+  are listed. Replaced by Decision 1.
+- Refinement design: the chooser calls the refinement step for the real camera entry before launching it, with the chosen
+  `IMAGE_CAPTURE` intent, and waits for the answer. Verified paths:
+  - refuse → camera-denied error;
+  - photo app after a refusal → no prompt;
+  - prompt left with back → camera-denied error;
+  - allow → the real camera app → crop screen;
+  - already allowed → camera with no prompt.
+- The chooser ignores a refined intent for a different activity than the one the user picked. Hence the noted refusal in Decision 1.
+- Not checked on the emulator: a device with several camera apps (the emulator has one). Each is its own initial intent, so each is listed.
 
-- [The chooser might not forward our trampoline's result, or might not start a non-exported activity of ours] → task 1 is a spike on
-  `dl34` that checks both before the rest is built. Fallbacks:
-  - result: relaying the result (Decision 1, last alternative);
-  - export: an exported trampoline that accepts only a file under `cacheDir/camera` and builds the Uri itself.
-- [A `LabeledIntent` label or icon may differ from the camera app's own entry in the chooser] → the label comes from `loadLabel(pm)`, so
-  "Camera" stays "Camera" for the existing flows. The spike compares a screenshot of the chooser.
-- [Several camera apps on a device each get an entry] → this is wanted (the chooser lists every matching app). Each entry targets its own
+- [The spec counts a prompt left without an answer as a refusal (`app-shell`); this relies on `RequestPermission` reporting "not granted"
+  for it] → verified in the spike (1.1).
+- [The refinement step depends on the system chooser honoring `EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER` (verified on API 34's
+  IntentResolver; an OEM chooser might not)] → without it, a camera app picked without CAMERA fails as in #29, and every other path is
+  unaffected. The permission flows on a real device are the check.
+
+- [Several camera apps on a device each get an entry] → this is wanted (the chooser lists every camera app). Each entry targets its own
   component, so no second resolver appears.
 - [Revoking CAMERA in the settings kills the app's process] → the next choice of a camera app asks again; nothing is cached in the app.
   The revoked-path flow checks it.

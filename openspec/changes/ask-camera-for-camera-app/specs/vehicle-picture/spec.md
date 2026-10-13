@@ -11,6 +11,10 @@ photo the user chose.
 - **WHEN** the user taps "Add picture"
 - **THEN** the system's chooser (on iOS the source sheet) is shown, listing the apps or sources that can provide an image, and the app draws no picker of its own
 
+#### Scenario: Every camera app is listed as itself on Android
+- **WHEN** on Android the user taps "Add picture", whether or not camera access has been allowed
+- **THEN** the chooser lists every installed camera app under its own name and icon
+
 #### Scenario: Choose a photo
 - **WHEN** the user chooses a photo in the app they picked
 - **THEN** the crop screen opens with that photo
@@ -43,10 +47,11 @@ photo the user chose.
 - **WHEN** the user chooses or takes a photo that is stored rotated and marked with an orientation
 - **THEN** the crop screen shows it the right way up
 
-**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with one initial entry per camera app (its own name
-and icon). The camera entries go through the app, which asks for the camera permission when needed and then opens the chosen camera app with
-`ACTION_IMAGE_CAPTURE`. Because the app declares the camera permission (for the live scanner), Android refuses that intent while the
-permission isn't held. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files,
+**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with every installed camera app's own
+`ACTION_IMAGE_CAPTURE` as an initial intent, so each is listed under its own name and icon. The chooser's refinement step
+(`EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER`), which runs after the user picks an app and before its launch, asks for the camera permission
+when a camera app was picked and the permission isn't held. Because the app declares the camera permission (for the live scanner), Android
+refuses `ACTION_IMAGE_CAPTURE` from the app while the permission isn't held. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files,
 offered in a source sheet.
 
 ### Requirement: Permissions are asked for only when needed
