@@ -29,8 +29,8 @@ import java.io.IOException
 
 /**
  * The system's chooser: one `createChooser` over "get an image" whose extra initial intents are the camera apps, so the system lists
- * every app that can provide an image (photo and file apps, other apps that offer images) and each camera app, and the user picks the
- * one. Choosing a photo or file app needs no permission. Choosing a camera app asks for the camera permission first when the app doesn't
+ * every app that can provide an image (photo and file apps, other apps that offer images) and up to two camera apps, and the user picks
+ * the one. Choosing a photo or file app needs no permission. Choosing a camera app asks for the camera permission first when the app doesn't
  * hold it ([CameraRefinementReceiver], `ask-camera-for-camera-app`); a refusal comes back as [PhotoResult.CameraDenied].
  */
 @Composable
@@ -78,15 +78,20 @@ private fun chooser(context: Context, cameraFile: File): Intent {
 }
 
 /**
- * One chooser entry per camera app, each aimed at that app, so the chooser shows every camera app under its own name and icon. The camera
- * apps are visible to the app through the manifest's `<queries>` entry for `ACTION_IMAGE_CAPTURE`.
+ * One chooser entry per camera app, each aimed at that app, so the chooser shows the camera apps under their own names and icons: at most
+ * [MAX_CAMERA_APPS], the most the system chooser shows of initial intents. The camera apps are visible to the app through the manifest's
+ * `<queries>` entry for `ACTION_IMAGE_CAPTURE`.
  */
 // The <queries> entry is in the app's manifest (androidApp), which lint of this library module does not see.
 @SuppressLint("QueryPermissionsNeeded")
 private fun cameraApps(context: Context, output: Uri): Array<Intent> =
-    context.packageManager.queryIntentActivities(captureIntent(output), PackageManager.MATCH_DEFAULT_ONLY)
+    context.packageManager.queryIntentActivities(captureIntent(output), PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        .take(MAX_CAMERA_APPS)
         .map { captureIntent(output).setComponent(ComponentName(it.activityInfo.packageName, it.activityInfo.name)) }
         .toTypedArray()
+
+/** The system chooser keeps only the first two initial intents (`MAX_INITIAL_INTENTS` in IntentResolver) and drops the rest. */
+private const val MAX_CAMERA_APPS = 2
 
 private fun cameraUri(context: Context, cameraFile: File): Uri = FileProvider.getUriForFile(context, "${context.packageName}.pictures", cameraFile)
 

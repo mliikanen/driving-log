@@ -92,6 +92,10 @@ permission flows launch with `permissions: { camera: unset }` and say why in the
 
 - [x] 6.1 Run `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh` (no Maestro), and verify both pass.
 
+## 7. PR review: the chooser's two-entry cap
+
+- [x] 7.1 The system chooser keeps only two initial intents, so list at most two camera apps, explicitly (`PhotoPicker.android.kt`), and say so in the `vehicle-picture` scenario and platform note and in design.md. Verify that `./gradlew :shared:allTests :androidApp:assembleDebug codeQuality` and `scripts/validate-specs.sh` pass, and that `maestro/picture/camera.yaml` and `camera-permission.yaml` pass.
+
 ## Workflow follow-up
 
 - Mark the PR ready with a `## Release notes` section. For example: "Taking a photo with the camera (Add picture, an event's photos, the

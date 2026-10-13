@@ -38,9 +38,14 @@ user picks a target, the chooser sends that `IntentSender` the chosen intent (`E
 
 For each activity that resolves `ACTION_IMAGE_CAPTURE` (`PackageManager.queryIntentActivities`), the chooser gets one initial intent:
 `ACTION_IMAGE_CAPTURE` aimed at that camera component, with `EXTRA_OUTPUT`, the grant flags and `ClipData`. The chooser lists each as
-the camera app itself, under its own name and icon. That means every camera app the device has, not just the emulator's, and whether or
-not CAMERA is held. The chooser's refinement step goes to `CameraRefinementReceiver`, a non-exported broadcast receiver reached through the
-app's own mutable `PendingIntent`:
+the camera app itself, under its own name and icon. That means the device's own camera apps, not just the emulator's, and whether or
+not CAMERA is held. At most two: the system chooser keeps only the first two initial intents (`MAX_INITIAL_INTENTS = 2`, `take(2)` in
+IntentResolver's `ChooserRequestReader`), so the app passes the first two it resolves and says so, rather than leaving the cut to the
+chooser. The image apps (`GET_CONTENT` targets) are the chooser's own and are not capped; the owner judged more than two image apps far
+likelier than more than two camera apps.
+
+The chooser's refinement step goes to `CameraRefinementReceiver`, a non-exported broadcast receiver reached through the app's own mutable
+`PendingIntent`:
 
 - **Not a camera app** (a photo or file app), **or a camera app while CAMERA is held:** answer `RESULT_OK` with the chosen intent at
   once. No UI, no prompt; the chooser launches it as today.
@@ -72,6 +77,10 @@ Alternatives considered:
   permission the chosen way doesn't need.
 - **Leave camera apps out of the chooser while CAMERA isn't held (#29, option 2).** Rejected by the owner: the chooser always lists the
   real camera apps.
+- **Camera apps as `EXTRA_ALTERNATE_INTENTS` (to avoid the two-entry cap).** IntentResolver reads that extra uncapped, but on `dl34` the
+  camera was not listed at all: the photo picker was the only target and opened at once.
+- **The camera as the chooser's target and the image apps as initial intents (to avoid the cap).** Rejected by the owner: it would cap
+  the image apps at two instead, and a device far more often has more than two image apps than camera apps.
 - **`ACTION_PICK_ACTIVITY`.** It returns the chosen activity without launching it, but it can't merge `GET_CONTENT` targets with
   initial intents into one list, and its UI is the old Settings picker, not the system chooser.
 - **An in-app chooser or an in-app camera (CameraX capture).** Rejected: `vehicle-picture` forbids drawing our own picker or camera screen.
@@ -142,7 +151,8 @@ Every surface gets tests for both the permission case and the non-permission cas
   - allow → the real camera app → crop screen;
   - already allowed → camera with no prompt.
 - The chooser ignores a refined intent for a different activity than the one the user picked. Hence the noted refusal in Decision 1.
-- Not checked on the emulator: a device with several camera apps (the emulator has one). Each is its own initial intent, so each is listed.
+- Not checked on the emulator: a device with several camera apps (the emulator has one). Each of the first two is its own initial
+  intent, so each is listed; a third is not (the chooser's cap, Decision 1).
 
 - [The spec counts a prompt left without an answer as a refusal (`app-shell`); this relies on `RequestPermission` reporting "not granted"
   for it] → verified in the spike (1.1).
@@ -150,8 +160,8 @@ Every surface gets tests for both the permission case and the non-permission cas
   IntentResolver; an OEM chooser might not)] → without it, a camera app picked without CAMERA fails as in #29, and every other path is
   unaffected. The permission flows on a real device are the check.
 
-- [Several camera apps on a device each get an entry] → this is wanted (the chooser lists every camera app). Each entry targets its own
-  component, so no second resolver appears.
+- [Several camera apps on a device each get an entry, but at most two (the chooser's initial-intent cap, found in PR review)] →
+  accepted by the owner. Each entry targets its own component, so no second resolver appears.
 - [Revoking CAMERA in the settings kills the app's process] → the next choice of a camera app asks again; nothing is cached in the app.
   The revoked-path flow checks it.
 - [Maestro's `launchApp` grants every permission by default (the cause of #29 going unnoticed)] → the new flow sets

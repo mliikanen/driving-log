@@ -13,8 +13,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Lets the photo chooser list each camera app under its own name (ask-camera-for-camera-app): on API 30+ the camera apps are
-         visible only through this. Not a permission. -->
+    <!-- Lets the photo chooser list the camera apps (up to two) under their own names (ask-camera-for-camera-app): on API 30+ the
+         camera apps are visible only through this. Not a permission. -->
     <queries>
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />
