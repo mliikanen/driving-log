@@ -9,13 +9,10 @@ the fuel type narrows which of refueling-logging's own fuel types are offered wh
 ## Requirements
 
 ### Requirement: A vehicle has a fuel type from a fixed set
-The system SHALL give every vehicle a fuel type from this fixed set, shown in this order: "Petrol", "Diesel", "LPG",
-"CNG", "Hydrogen" and "Other". The system SHALL store the fuel type as a code that does not depend on the language
-or the device (`PETROL`, `DIESEL`, `LPG`, `CNG`, `HYDROGEN`, `OTHER`), and SHALL treat a code it does not know, such
-as one written by a newer version of the app, as the fuel type "Other". Every vehicle SHALL always have exactly one
-fuel type: the data model SHALL NOT allow a vehicle without one. This is the vehicle's own coarse fuel/engine
-category, distinct from and coarser than the specific fuel type chosen each time a refueling is logged for it
-(`refueling-logging`'s own, more precise list). The names are English for now, like the rest of the app.
+The system SHALL give every vehicle a fuel type from this fixed set, in this order: "Petrol", "Diesel", "LPG", "CNG",
+"Hydrogen" and "Other". Every vehicle SHALL have exactly one fuel type; the data model SHALL NOT allow a vehicle
+without one. It is the vehicle's own coarse fuel/engine category, coarser than and separate from the fuel type chosen
+each time a refueling is logged (`refueling-logging`). The names are English for now, like the rest of the app.
 
 #### Scenario: The six fuel types are offered
 - **WHEN** the user opens the fuel type choice on the add vehicle screen
@@ -55,11 +52,10 @@ one choice is selected at all times, and choosing another SHALL replace it.
 - **THEN** the same fuel type is still selected
 
 ### Requirement: The fuel type can be changed later but not cleared
-The system SHALL let the user change a vehicle's fuel type on its edit screen, showing the vehicle's current fuel
-type as selected and applying the change when the edit is saved. The system SHALL NOT let the user remove a fuel
-type: the choice has no "none" option, so a vehicle that has a fuel type always has one, and the edit SHALL NOT be
-saved without one. Changing the fuel type SHALL NOT change the vehicle's odometer, unit, picture, type, color or
-log, and SHALL NOT change any refueling already logged for it.
+The system SHALL let the user change a vehicle's fuel type on its edit screen, showing the current fuel type as
+selected and applying the change when the edit is saved. It SHALL NOT let the user remove a fuel type: the choice has
+no "none" option, and the edit SHALL NOT be saved without one. Changing the fuel type SHALL NOT change the vehicle's
+odometer, unit, picture, type, color or log, nor any refueling already logged for it.
 
 #### Scenario: The current fuel type is selected
 - **WHEN** the user opens the edit screen of a vehicle of the fuel type "CNG"
@@ -99,11 +95,11 @@ updated. The user SHALL be able to change that fuel type on the vehicle's edit s
 - **THEN** the vehicle is saved with the new name and the fuel type "Petrol"
 
 ### Requirement: The fuel type filters which refueling fuel types are offered
-The system SHALL use a vehicle's fuel type to narrow which of refueling-logging's fuel types are offered when
+The system SHALL use a vehicle's fuel type to narrow which of `refueling-logging`'s fuel types are offered when
 logging a refueling for it: "Petrol" offers Regular petrol/gasoline, Premium petrol/gasoline and E85/flex fuel;
-"Diesel" offers Diesel, Premium diesel and Biodiesel; "LPG" offers LPG; "CNG" offers CNG; "Hydrogen" offers Hydrogen.
-Every one of those groups SHALL also offer "Other" (refueling-logging's own catch-all). A vehicle whose fuel type is
-"Other" SHALL offer every refueling fuel type, unfiltered.
+"Diesel" offers Diesel, Premium diesel and Biodiesel; "LPG", "CNG" and "Hydrogen" each offer the fuel of that name.
+Each of these groups SHALL also offer "Other". A vehicle whose fuel type is "Other" SHALL offer every refueling fuel
+type, unfiltered.
 
 #### Scenario: A Petrol vehicle's refueling choices
 - **WHEN** the user logs a refueling for a vehicle of the fuel type "Petrol"
@@ -136,3 +132,13 @@ exists.
 #### Scenario: Offline use
 - **WHEN** the device has no network connection and the user adds a vehicle and changes its fuel type
 - **THEN** every step succeeds and no network error is shown
+
+### Requirement: A fuel type is stored as a code that does not depend on the language
+The system SHALL store a vehicle's fuel type as a code that does not depend on the language or the device: `PETROL`,
+`DIESEL`, `LPG`, `CNG`, `HYDROGEN` or `OTHER`. It SHALL treat a code it does not know, such as one written by a newer
+version of the app, as the fuel type "Other".
+
+#### Scenario: Every fuel type's code
+- **WHEN** vehicles of each of the six fuel types are saved and read back
+- **THEN** their stored codes are `PETROL`, `DIESEL`, `LPG`, `CNG`, `HYDROGEN` and `OTHER`, and each reads back as the
+  fuel type it was saved with
