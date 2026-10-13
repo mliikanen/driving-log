@@ -71,7 +71,26 @@ jobs:
             echo "publish=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Every pull request merged since the last distribution: its `## Release notes` section, or what it archived.
+          # Record which merges since the last distribution changed nothing in the app (docs, specs, tests, tooling): each
+          # gets a dist-skip-v* tag, pushed, so the decision is explicit and made once (release-only-app-changes; the paths
+          # are in scripts/ci/app-changed.sh). The notes leave out exactly those merges.
+          last_tag="$(git tag -l 'dist-v*' --merged HEAD --sort=-v:refname | sed -n 1p)"
+          skips="$(scripts/ci/release-skips.sh "$last_tag" HEAD)"
+          if [ -n "$skips" ]; then
+            # shellcheck disable=SC2086 # one tag per word
+            git push origin $skips
+            { echo "Recorded as skipped (no change to the app):"; echo; sed 's/^/- /' <<< "$skips"; echo; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # Every merge since the last distribution is a recorded skip: testers would get the same app again.
+          unreleased="$(git rev-list --first-parent HEAD ${last_tag:+"^$last_tag"} | while read -r sha; do
+            [ -n "$(git tag --points-at "$sha" -l 'dist-skip-v*')" ] || echo "$sha"; done)"
+          if [ -z "$unreleased" ]; then
+            echo "Nothing to release: no change to the app since ${last_tag:-the first commit}." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Every merge since the last distribution not recorded as skipped: its `## Release notes` section, or what it
+          # archived, a merge that should have been released before but wasn't included.
           scripts/ci/choose-release-notes.sh HEAD > "$RUNNER_TEMP/release-notes.txt"
           if [ ! -s "$RUNNER_TEMP/release-notes.txt" ]; then
             echo "Nothing to release: no change archived since the last distribution, and no release notes in a merged pull request." >> "$GITHUB_STEP_SUMMARY"
@@ -119,6 +138,15 @@ jobs:
           tag="dist-v$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
           git tag "$tag"
           git push origin "$tag"
+          # The skip tags this release covers are never read again (notes only look since the last release): delete them,
+          # so only the skips since the last release exist. Release tags are kept. The build is already out, so a failed
+          # deletion only warns; the next release deletes them again.
+          pruned="$(scripts/ci/prune-release-skips.sh "$tag")"
+          if [ -n "$pruned" ]; then
+            # shellcheck disable=SC2046 # one ref per word
+            git push origin $(sed 's#^#:refs/tags/#' <<< "$pruned") \
+              || echo "::warning::Could not delete the skip tags this release covers: $(tr '\n' ' ' <<< "$pruned")"
+          fi
           {
             echo "Published $tag with these notes:"
             echo
