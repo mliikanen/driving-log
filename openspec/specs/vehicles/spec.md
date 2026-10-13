@@ -12,20 +12,11 @@ odometer field, so "entering the odometer 45200" means typing the digits 4, 5, 2
 ## Requirements
 
 ### Requirement: Add a vehicle
-The system SHALL allow the user to add a vehicle by entering a name (required), choosing the vehicle's odometer unit
-and entering its current odometer reading in the odometer field (required: the user SHALL type at least one digit,
-and a typed 0 is a valid reading), a license plate (optional), the vehicle's type (preselected as Car, changeable, as
-specified in the `vehicle-type` capability), and the vehicle's color (preselected as the application's main theme
-color, changeable, as specified in the `vehicle-color` capability). The form SHALL present these fields in that
-order: picture, name, license plate, unit, odometer, type, color — the two required fields (name, odometer) grouped
-with the identity fields ahead of type and color, both of which always have a default and can never be left empty.
-Every required field's label SHALL carry a trailing "*", and the form SHALL show a line near its actions explaining
-the convention: "* indicates a required field". While the name is blank (after trimming) or the odometer field is
-empty, the add screen's Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system
-SHALL return to the vehicle list showing the new vehicle. The system SHALL allow several vehicles to share the same
-name or license plate. The add screen's dismiss action, in the top-left of its top app bar, SHALL be a close "X" (a
-Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always discards whatever was
-entered.
+The system SHALL let the user add a vehicle with a name (required), an odometer unit, the current odometer reading in
+the odometer field (required: at least one digit; a typed 0 is valid), a license plate (optional), a type (preselected
+as Car, `vehicle-type`) and a color (preselected as the main theme color, `vehicle-color`). After a successful save
+the system SHALL return to the vehicle list showing the new vehicle. Several vehicles SHALL be allowed to share a name
+or a license plate.
 
 #### Scenario: Add a vehicle with all fields
 - **WHEN** the user enters the name "Family car" and the plate "ABC-123", chooses the type "Car" and the unit "Kilometers", types the odometer 45200 and saves
@@ -82,14 +73,11 @@ entered.
 - **THEN** the fields appear in the order picture, name, license plate, unit, odometer, type, color
 
 ### Requirement: Odometer unit is a per-vehicle setting with a default from the device region
-The system SHALL let the user choose one of four odometer units for each vehicle when adding it: "Kilometers" (a
-kilometer odometer shown in whole kilometers), "Kilometers with 100 m" (a kilometer odometer that also shows tenths
-of a kilometer, that is, hundreds of meters), "Miles" (shown in whole miles) or "Miles with tenths" (a mile odometer
-that also shows tenths of a mile). The add screen SHALL preselect a default unit derived from the device's region:
-"Miles" when the region is the United States, the United Kingdom, Liberia or Myanmar, and "Kilometers" for every other
-or unknown region. The user SHALL be able to change the selection before saving. The unit SHALL determine how the
-vehicle's odometer readings are shown everywhere in the app, and SHALL NOT be changed after the vehicle has been added
-in this change.
+The system SHALL let the user choose one of four odometer units when adding a vehicle: "Kilometers", "Kilometers with
+100 m", "Miles" or "Miles with tenths". The add screen SHALL preselect "Miles" for a device region of the United
+States, the United Kingdom, Liberia or Myanmar, and "Kilometers" for any other or unknown region; the user SHALL be
+able to change it before saving. The unit SHALL decide how the vehicle's readings are shown everywhere, and SHALL NOT
+change once the vehicle is added.
 
 #### Scenario: Default unit in the United States
 - **WHEN** the device region is the United States and the user opens the add vehicle screen
@@ -134,29 +122,11 @@ no license plate.
 - **THEN** the vehicle name is "My  old car", with both inner spaces intact
 
 ### Requirement: Odometer readings are entered in a microwave-style number field
-The system SHALL let the user enter an odometer reading, wherever the app asks for one (today when adding a vehicle),
-in a field that uses the device's number keyboard (digits only) and works like a microwave oven's timer: each digit typed enters at the right-hand end of the
-displayed value and shifts the earlier digits one place to the left. For the units "Kilometers" and "Miles" the last
-digit is a whole unit. For the units "Kilometers with 100 m" and "Miles with tenths" the last digit is a tenth, and
-the decimal separator is added automatically. The field SHALL always show the current value in the vehicle's unit as
-specified for odometer readings, so it SHALL show the decimal separator, and any thousands separator, of the device's
-current locale (for example a comma in Finnish and a period in English (United States)), even though the user never
-types a separator. The value SHALL be right-aligned in the field: new digits appear at the right edge of the field
-and push the earlier digits to the left, with the unit abbreviation kept fixed at the end of the field so that the
-right-hand end of the number does not move. The field starts empty: while no digit has been entered it SHALL NOT show
-0 or 0.0 or any other number, only its label. Deleting a digit with the keyboard's backspace SHALL remove the last digit
-entered, so that typing then deleting a digit restores the earlier value, and deleting the only digit SHALL make the
-field empty again. A clear control in the field SHALL make it empty. A typed 0 SHALL be shown as 0 (0.0 for the tenths
-units) and counts as an entered reading; in the tenths units that first 0 is the tenth. When more digits are typed after
-a first 0, that 0 SHALL be kept as a prefix digit that is not drawn as an extra digit (the reading shows 0.5, never 00.5),
-and backspace SHALL remove it only after the digits typed after it, so that backspace restores exactly the earlier
-value and the field goes back through the typed zero to empty. Typing 0 while the entry is only the typed 0 SHALL leave
-it unchanged, so an entry has at most one prefix zero. The prefix zero SHALL NOT count towards the digit limit.
-Characters that are not digits, such as a comma, a period or a minus sign, whether typed or pasted, SHALL
-be ignored. The value SHALL have at most 7 whole digits, and digits that would exceed that SHALL be ignored. Because
-only digits can be entered, an invalid reading cannot be entered. Every field in the app where an odometer reading is
-entered, on any screen, SHALL follow every rule of this requirement, so that entering an odometer works identically
-everywhere; a screen MAY decide whether an empty field can be saved, but not how the field behaves.
+The system SHALL let the user enter an odometer reading in a field that uses the device's number keyboard (digits
+only) and works like a microwave's timer: each digit typed enters at the right end, shifting the earlier ones left.
+For "Kilometers" and "Miles" the last digit is a whole unit; for "Kilometers with 100 m" and "Miles with tenths" it is
+a tenth, with the decimal separator added automatically. The field SHALL start empty, showing no number (not even 0 or
+0.0) until a digit is entered.
 
 #### Scenario: Whole-number unit
 - **WHEN** the unit is "Kilometers" and the user types 1, then 2, then 3
@@ -283,12 +253,11 @@ everywhere; a screen MAY decide whether an empty field can be saved, but not how
 - **THEN** the field shows 13 km
 
 ### Requirement: Odometer readings are shown in the vehicle's unit using the device locale
-The system SHALL show every odometer reading in the vehicle's unit, followed by the unit abbreviation "km" or "mi",
-using the decimal separator and the thousands separator of the device's current locale. "Kilometers" and "Miles"
-readings SHALL be rounded to the nearest whole number, halves rounding up, and SHALL have no decimal digits.
-"Kilometers with 100 m" and "Miles with tenths" readings SHALL be rounded to the nearest tenth of the unit and always
-show exactly one decimal digit.
-Readings SHALL be shown again with the new locale's separators when the device locale changes.
+The system SHALL show every odometer reading in the vehicle's unit followed by "km" or "mi", with the decimal and
+thousands separators of the device's current locale, and SHALL show it again with the new separators when the locale
+changes. "Kilometers" and "Miles" readings SHALL be rounded to the nearest whole number, halves up, with no decimals;
+"Kilometers with 100 m" and "Miles with tenths" readings SHALL be rounded to the nearest tenth and always show exactly
+one decimal digit.
 
 #### Scenario: English (US) locale
 - **WHEN** a vehicle with the unit "Kilometers with 100 m" has a reading of 45200.3 and the device locale is English (United States)
@@ -332,9 +301,10 @@ same stored value.
 - **THEN** the reading is shown as "123.5 km" with the English (United States) separators, the same value that was shown as "123,5 km"
 
 ### Requirement: Vehicle list
-The system SHALL show every vehicle the user has added on the vehicle list screen, which the Home screen's "Vehicles" action opens and which is titled "Vehicles" with a back arrow that returns to the Home screen. The list is ordered by name without regard to letter
-case, and SHALL show each vehicle's small picture (or the placeholder when it has none), its name and, when it has one, its license plate. When there are no vehicles the
-system SHALL show an empty state that invites the user to add a vehicle. The vehicle list screen SHALL offer an action to
+The system SHALL show every vehicle the user has added on the vehicle list screen, which the Home screen's "Vehicles"
+action opens, titled "Vehicles", with a back arrow to the Home screen. The list is ordered by name, ignoring letter
+case, and SHALL show each vehicle's small picture (or the placeholder), its name and its license plate when it has
+one. With no vehicles it SHALL show an empty state inviting the user to add one. The screen SHALL offer an action to
 add a vehicle.
 
 #### Scenario: Vehicles are listed alphabetically
@@ -380,16 +350,11 @@ Going back SHALL return to the vehicle list.
 - **THEN** the vehicle list is displayed
 
 ### Requirement: Edit a vehicle
-The system SHALL allow the user to change a vehicle's name, license plate, type (as specified in the `vehicle-type` capability), color (as specified in the `vehicle-color` capability), picture (as specified in the `vehicle-picture` capability) from its details screen. The edit screen
-SHALL start with the current values, SHALL apply the same trimming and name validation as adding a vehicle, and SHALL
-NOT allow changing the odometer reading or the odometer unit. The name label SHALL carry a trailing "*" (its one
-required field, matching the add form's convention), the license plate field's `(optional)` suffix SHALL be dropped
-(redundant once the required field carries its own mark, same as the add form), and the form SHALL show the same
-"* indicates a required field" line near its actions. While the name is blank (after trimming), the edit screen's
-Save action SHALL be disabled and SHALL NOT be tappable. After a successful save the system SHALL return to the details screen showing the new values,
-and the vehicle list SHALL show them too. The edit screen's dismiss action, in the top-left of its top app bar, SHALL
-be a close "X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving the screen always
-discards whatever was changed.
+The system SHALL let the user change a vehicle's name, license plate, type (`vehicle-type`), color (`vehicle-color`)
+and picture (`vehicle-picture`) from its details screen. The edit screen SHALL start with the current values, SHALL
+apply the same trimming and name validation as adding, and SHALL NOT allow changing the odometer reading or the
+odometer unit. After a successful save the system SHALL return to the details screen showing the new values, and the
+vehicle list SHALL show them too.
 
 #### Scenario: Change name and plate
 - **WHEN** the user edits "Family car" to the name " Estate car " and the plate "XYZ-789 " and saves
@@ -448,16 +413,10 @@ and SHALL provide all vehicle functionality without a network connection.
 
 ### Requirement: The current odometer can be scanned when adding a vehicle
 The system SHALL offer a "Scan a reading" action under the add-vehicle form's odometer field that opens the same live
-scanner, with the same camera permission and the same photo flow from it, as the log event form's
-(`odometer-ocr-capture`). A new vehicle has no known odometer to tell readings apart by size, so on this form the system
-SHALL offer, as the vehicle's odometer and labeled "ODO", a number labeled as the odometer, and an unlabeled number with a
-distance unit after it whatever its size; it SHALL NOT offer a number labeled as a trip ("TRIP", "TRIP A", "TRIP B" or
-"T"), nor an unlabeled number without a unit of 2000 or less (a dial's scale, a clock). Accepting a reading (tapping it in the live scanner, or confirming it on
-the photo review) SHALL set the odometer field to its value, SHALL switch the odometer unit to the one with tenths of the
-same family (kilometers or miles) when the reading has a tenth, SHALL NOT change the unit's family, and SHALL return to
-the add-vehicle form with every other field as it was. Leaving the scanner without accepting a reading SHALL leave the
-form unchanged. The edit-vehicle form, whose odometer cannot be changed, SHALL NOT offer the action. On iOS the action
-SHALL NOT be shown, as on the log event form.
+scanner, with the same camera permission and photo flow as the log event form's (`odometer-ocr-capture`). Accepting a
+reading, in the scanner or on the photo review, SHALL set the odometer field to its value and return to the form with
+every other field as it was; leaving the scanner without one SHALL leave the form unchanged. Neither the edit form nor
+iOS SHALL offer the action.
 
 #### Scenario: Scan the current odometer
 - **WHEN** the user adding a vehicle taps "Scan a reading", and taps the reading "ODO 71140" in the scanner
@@ -486,3 +445,106 @@ SHALL NOT be shown, as on the log event form.
 #### Scenario: Not offered when editing
 - **WHEN** the user opens the edit-vehicle form
 - **THEN** no "Scan a reading" action is shown
+
+### Requirement: The add vehicle form's fields come in a fixed order
+The add vehicle form SHALL present its fields in this order: picture, name, license plate, unit, odometer, type,
+color. The two required fields (name, odometer) are grouped with the identity fields ahead of type and color, which
+always have a default and can never be left empty.
+
+#### Scenario: Color is the last field
+- **WHEN** the user scrolls the add vehicle form to its end
+- **THEN** the color choice is the last field
+
+### Requirement: The add vehicle form marks its required fields
+Every required field's label on the add vehicle form SHALL carry a trailing "*", and the form SHALL show a line near
+its actions explaining the convention: "* indicates a required field". While the name is blank (after trimming) or the
+odometer field is empty, the add screen's Save action SHALL be disabled and SHALL NOT be tappable.
+
+#### Scenario: A name of only spaces keeps Save disabled
+- **WHEN** the user types only spaces as the name and types an odometer
+- **THEN** the add screen's Save action is disabled
+
+### Requirement: The add and edit vehicle screens are dismissed with a close icon
+The dismiss action of the add vehicle and the edit vehicle screens, top-left in their top app bar, SHALL be a close
+"X" (a Material full-screen dialog's dismiss icon), not a back arrow, since leaving either screen always discards
+whatever was entered or changed.
+
+#### Scenario: Closing the add screen discards what was typed
+- **WHEN** the user types a name on the add vehicle screen and taps the close "X"
+- **THEN** no vehicle is added, and the add screen opened again starts with an empty name
+
+### Requirement: The odometer field shows its value right-aligned in the device locale
+The odometer field SHALL always show its value in the vehicle's unit as odometer readings are shown, with the decimal
+separator, and any thousands separator, of the device's current locale, though the user never types a separator. The
+value SHALL be right-aligned: new digits appear at the right edge and push the earlier ones left, with the unit
+abbreviation fixed at the end of the field so that the number's right-hand end does not move.
+
+#### Scenario: A thousands separator appears while typing
+- **WHEN** the unit is "Kilometers", the device locale is English (United States) and the user types 1, 2, 3, 4
+- **THEN** the field shows 1 km, 12 km, 123 km, then 1,234 km
+
+### Requirement: Backspace and clear in the odometer field
+Deleting a digit with the keyboard's backspace SHALL remove the last digit entered, so that typing and then deleting a
+digit restores the earlier value, and deleting the only digit SHALL make the odometer field empty again. A clear
+control in the field SHALL make it empty.
+
+#### Scenario: Clear after a typed zero
+- **WHEN** the field shows only a typed 0 and the user uses the clear control
+- **THEN** the field is empty
+
+### Requirement: A first typed zero in the odometer field
+A typed 0 SHALL be shown as 0 (0.0 in the tenths units) and counts as an entered reading; in the tenths units it is the tenth. When more digits are typed after a first 0, that 0 SHALL be kept as a prefix digit that is not
+drawn as an extra digit (0.5, never 00.5), and backspace SHALL remove it only after the digits typed after it. Typing 0
+while the entry is only the typed 0 SHALL leave it unchanged, so an entry has at most one prefix zero, which SHALL NOT
+count towards the digit limit.
+
+#### Scenario: Two zeros and a digit in a whole-number unit
+- **WHEN** the unit is "Kilometers" and the user types 0, 0, then 7
+- **THEN** the field shows 0 km, 0 km, then 7 km, and two backspaces show 0 km and then an empty field
+
+### Requirement: The odometer field accepts only up to seven whole digits
+The odometer field SHALL ignore characters that are not digits, such as a comma, a period or a minus sign, whether
+typed or pasted, and SHALL ignore digits that would exceed 7 whole digits. Because only digits can be entered, an
+invalid reading cannot be entered.
+
+#### Scenario: Pasting more than seven digits
+- **WHEN** the unit is "Kilometers", the field is empty and the user pastes "123456789"
+- **THEN** the field shows 1,234,567 km with an English (United States) device locale
+
+### Requirement: Every odometer field behaves the same
+Every field in the app where an odometer reading is entered, on any screen, SHALL follow every rule of the odometer
+field (the microwave-style entry, how it shows its value, backspace and clear, a first typed zero, and what it
+accepts), so that entering an odometer works identically everywhere. A screen MAY decide whether an empty field can be
+saved, but not how the field behaves.
+
+#### Scenario: The log event form's odometer field
+- **WHEN** the user chooses "New odometer" on the log event form with tenths included and types 0, then 5
+- **THEN** the field shows 0.0, then 0.5, as the add vehicle form's odometer field does
+
+### Requirement: The edit vehicle form marks its required field
+The edit vehicle form's name label SHALL carry a trailing "*" (its one required field, matching the add form's
+convention), the license plate field SHALL have no "(optional)" suffix, and the form SHALL show the same "* indicates a
+required field" line near its actions. While the name is blank (after trimming), the edit screen's Save action SHALL
+be disabled and SHALL NOT be tappable.
+
+#### Scenario: Typing a name again enables Save
+- **WHEN** the user clears a vehicle's name on the edit screen and then types "Van"
+- **THEN** the edit screen's Save action is enabled again
+
+### Requirement: Which readings are offered when adding a vehicle
+A new vehicle has no known odometer to tell readings apart by size, so on the add-vehicle form the system SHALL offer
+as its odometer, labeled "ODO", a number labeled as the odometer, and an unlabeled number with a distance unit after it
+whatever its size. It SHALL NOT offer a number labeled as a trip ("TRIP", "TRIP A", "TRIP B" or "T"), nor an unlabeled
+number without a unit of 2000 or less (a dial's scale, a clock).
+
+#### Scenario: An unlabeled number just above 2000
+- **WHEN** the scanned view on the add-vehicle form shows an unlabeled "2001" with no unit
+- **THEN** it is offered as "ODO 2001"
+
+### Requirement: A scanned reading with a tenth switches the new vehicle's unit to tenths
+Accepting a reading on the add-vehicle form SHALL switch the odometer unit to the one with tenths of the same family
+(kilometers or miles) when the reading has a tenth, and SHALL NOT change the unit's family.
+
+#### Scenario: A tenth in miles
+- **WHEN** the unit is "Miles" and the user accepts a scanned reading of 45200.3
+- **THEN** the unit becomes "Miles with tenths" and the field shows 45200.3
