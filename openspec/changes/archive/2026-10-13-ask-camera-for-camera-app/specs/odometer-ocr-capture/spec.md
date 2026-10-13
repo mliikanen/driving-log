@@ -3,8 +3,8 @@
 ### Requirement: A photo is chosen to scan for a reading
 The log event form SHALL offer a "Scan a reading" action that opens the live scanner, which SHALL offer a photo action
 opening the system photo chooser used for a vehicle's picture (the camera app included, which asks for camera access
-when chosen, as for a vehicle's picture). Choosing a photo SHALL lead to detection and the photo review; cancelling the chooser, or leaving
-the review without accepting, SHALL return to the live scanner. On iOS, with no on-device recognizer yet, the action
+when chosen). Choosing a photo SHALL lead to detection and the photo review; cancelling the chooser, or leaving the
+review without accepting, SHALL return to the live scanner. On iOS, with no on-device recognizer yet, the action
 SHALL NOT be shown.
 
 #### Scenario: Open the scanner
