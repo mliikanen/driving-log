@@ -12,9 +12,9 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
-    # Maestro grants every permission by default; unset, the camera is asked for when "Scan a reading" is tapped.
+    # Every permission unset, as a fresh install has it: the camera is asked for when "Scan a reading" is tapped.
     permissions:
-      camera: unset
+      all: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

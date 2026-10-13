@@ -3,6 +3,8 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

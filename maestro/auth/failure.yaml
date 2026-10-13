@@ -5,6 +5,8 @@ appId: com.mikonoma.drivinglog
     clearState: true
     arguments:
       testingStartUser: "none"
+    permissions:
+      all: unset
 - tapOn:
     id: sign_in_google
 - tapOn:

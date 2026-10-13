@@ -1,13 +1,13 @@
 # The log event form's "Add photo" with the camera chosen and camera access refused (ask-camera-for-camera-app): no camera, the attached
 # photo kept, and the missing-permission message below the strip, whose "Open settings" opens the app's page in the device settings; back
-# without allowing, it is still shown. Launched with the camera permission unset, as a fresh install has it (Maestro's launchApp grants
+# without allowing, it is still shown. Launched with every permission unset, as a fresh install has it (Maestro's launchApp grants
 # every permission by default, docs/test-strategy.md). The settings round trip that clears the message is in picture/camera-permission.
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
     permissions:
-      camera: unset
+      all: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

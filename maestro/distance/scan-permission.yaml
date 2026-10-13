@@ -1,14 +1,14 @@
 # The live scanner and the photo review with camera access refused (ask-camera-for-camera-app): refused at "Scan a reading", the scanner
 # shows the missing-permission message in place of the preview; the camera chosen from its photo action is not opened and the message
 # stays; and from the review of a photo with no reading, "Choose another photo" with the camera shows the message on the review, which
-# stays open. Launched with the camera permission unset (docs/test-strategy.md). Needs setup.yaml's photos (a decorative car photo, the
+# stays open. Launched with every permission unset (docs/test-strategy.md). Needs setup.yaml's photos (a decorative car photo, the
 # third, has no reading).
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
     permissions:
-      camera: unset
+      all: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

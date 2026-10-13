@@ -4,6 +4,8 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
 - assertVisible: Driving Log
 - assertVisible: Add vehicle
 - assertVisible: Log event

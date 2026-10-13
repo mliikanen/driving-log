@@ -1,7 +1,9 @@
 # Step 2 of run.sh: the picture of the vehicle is changed.
 appId: com.mikonoma.drivinglog
 ---
-- launchApp
+- launchApp:
+    permissions:
+      all: unset
 - runFlow: ../subflows/open-vehicles.yaml
 - tapOn: Family car
 - tapOn:

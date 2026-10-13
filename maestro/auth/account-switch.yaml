@@ -8,6 +8,8 @@ appId: com.mikonoma.drivinglog
     clearState: true
     arguments:
       testingStartUser: "A"
+    permissions:
+      all: unset
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

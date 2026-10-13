@@ -1,11 +1,14 @@
 # Taking a new photo with the camera app: the system chooser lists the camera app next to the media picker, the photo is taken in it, and
-# the crop screen opens with it. Written for the emulator's camera app ("Shutter" and "Done" are its labels). launchApp grants the camera
-# permission, so this is the path where camera access is already allowed and nothing is asked; the cases without it are
+# the crop screen opens with it. Written for the emulator's camera app ("Shutter" and "Done" are its labels). The flow allows the camera
+# permission at launch, so this is the path where camera access is already allowed and nothing is asked; the cases without it are
 # camera-permission.yaml (ask-camera-for-camera-app).
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
+      camera: allow
 # A fresh start is the Home screen with no vehicle: its first tile, "Add vehicle", opens the add screen.
 - tapOn:
     id: landing_vehicles

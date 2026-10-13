@@ -1,7 +1,9 @@
 # Step 3 of run.sh: the picture of the vehicle is removed.
 appId: com.mikonoma.drivinglog
 ---
-- launchApp
+- launchApp:
+    permissions:
+      all: unset
 - runFlow: ../subflows/open-vehicles.yaml
 - assertVisible: Family car
 - tapOn: Family car

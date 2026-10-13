@@ -6,6 +6,8 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
 - assertVisible:
     id: landing_log_event
     enabled: false

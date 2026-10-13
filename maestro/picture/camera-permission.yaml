@@ -1,5 +1,5 @@
 # The camera app chosen on the add vehicle screen without camera access (ask-camera-for-camera-app): the permission cases, one after the
-# other. Launched with the camera permission unset, as a fresh install has it: Maestro's launchApp grants every permission by default,
+# other. Launched with every permission unset, as a fresh install has it: Maestro's launchApp grants every permission by default,
 # which is how #29 (the camera app failing silently without CAMERA) went unnoticed (docs/test-strategy.md). In order:
 # refuse → the missing-permission message; "Open settings" → the app's settings page, and back the message is still there; the prompt left
 # with back → a refusal; refused twice → remembered, no prompt; allowed in the settings → the message goes, and the camera opens with no
@@ -10,7 +10,7 @@ appId: com.mikonoma.drivinglog
 - launchApp:
     clearState: true
     permissions:
-      camera: unset
+      all: unset
 - tapOn:
     id: landing_vehicles
 # Refused when asked: no camera, no picture, the message with "Open settings".
@@ -140,6 +140,7 @@ appId: com.mikonoma.drivinglog
 - launchApp:
     clearState: true
     permissions:
+      all: unset
       camera: deny
 - tapOn:
     id: landing_vehicles

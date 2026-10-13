@@ -1,11 +1,14 @@
 # What isn't a missing permission never shows the missing-permission message on the live scanner or the photo review
 # (ask-camera-for-camera-app): leaving the chooser from either changes nothing, and a photo that can't be opened shows its own error
-# without "Open settings". launchApp grants the camera here: whether access is allowed has nothing to do with these cases. Needs
+# without "Open settings". The flow allows the camera at launch: whether access is allowed has nothing to do with these cases. Needs
 # setup.yaml's photos (a decorative car photo, the third, has no reading; the broken one is the sixth).
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
+      camera: allow
 - runFlow:
     file: ../subflows/add-vehicle.yaml
     env:

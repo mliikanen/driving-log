@@ -1,10 +1,13 @@
 # What isn't a missing permission never shows the missing-permission message (ask-camera-for-camera-app): leaving the chooser, leaving the
-# camera app without a photo, and a photo that can't be opened, which shows its own error without "Open settings". launchApp grants the
-# camera here: whether access is allowed has nothing to do with these cases. Needs setup.yaml's photos (the broken one is the second).
+# camera app without a photo, and a photo that can't be opened, which shows its own error without "Open settings". The flow allows the
+# camera at launch: whether access is allowed has nothing to do with these cases. Needs setup.yaml's photos (the broken one is the second).
 appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
+      camera: allow
 - tapOn:
     id: landing_vehicles
 # Leaving the chooser: nothing changes, no message.
