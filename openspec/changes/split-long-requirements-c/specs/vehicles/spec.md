@@ -377,7 +377,7 @@ always have a default and can never be left empty.
 
 #### Scenario: Color is the last field
 - **WHEN** the user scrolls the add vehicle form to its end
-- **THEN** the color choice is the last field, directly after the type choice
+- **THEN** the color choice is the last field
 
 ### Requirement: The add vehicle form marks its required fields
 Every required field's label on the add vehicle form SHALL carry a trailing "*", and the form SHALL show a line near

@@ -488,9 +488,9 @@ sets the field and the way") SHALL set the active field's number and SHALL switc
 classification, the same as if the user had switched by hand and typed it.
 
 #### Scenario: A scanned reading replaces the typed number
-- **WHEN** the form is on "New odometer" with 45250 typed, and the user accepts a scanned candidate of 45300
+- **WHEN** the form is on "New odometer" with 45250 typed, and the user accepts a scanned candidate of 45260
   classified as an odometer reading
-- **THEN** the form stays on "New odometer" and the field shows 45300
+- **THEN** the form stays on "New odometer" and the field shows 45260
 
 ### Requirement: A confirmed lower count is saved as an odometer anchor
 Confirming a lower new odometer count SHALL save it as an odometer anchor (`vehicle-log`, "Odometer anchor events"),
@@ -609,6 +609,6 @@ A photo chosen through the log event form's "Add photo" SHALL be added to the st
 vehicle's picture, an event photo is looked at for its content, and cropping it to a square risks cutting off what it
 was meant to capture.
 
-#### Scenario: A landscape photo is attached whole
-- **WHEN** the user adds a landscape photo through "Add photo"
-- **THEN** the photo is attached as it is, landscape, without a crop screen
+#### Scenario: A photo is attached uncropped
+- **WHEN** the user adds a portrait (3:4) photo through "Add photo"
+- **THEN** no crop screen is shown, and the photo is attached as it is, 3:4, not cut to a square

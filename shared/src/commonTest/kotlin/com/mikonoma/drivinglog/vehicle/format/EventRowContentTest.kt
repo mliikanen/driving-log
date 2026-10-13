@@ -61,6 +61,12 @@ class EventRowContentTest {
     }
 
     @Test
+    fun tenMilesForAWholeKilometerVehicleIsShownInKilometers() {
+        // distance-logging, "An entry in another unit is converted": 10 mi is 16,093 m, "+16 km" in whole kilometers.
+        assertEquals("+16 km", row(distance(16_093), OdometerUnit.KILOMETERS).trailing)
+    }
+
+    @Test
     fun anEntryLoggedByOdometerShowsTheTypedCount() {
         val row = row(distance(50_000, logged = 45_250_000))
 

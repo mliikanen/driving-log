@@ -30,7 +30,7 @@ None.
 
 ### Modified Capabilities
 
-- `distance-logging`: 17 requirements shortened, 10 of them split into 14 new requirements.
+- `distance-logging`: 17 requirements shortened, 11 of them split into 14 new requirements.
 - `vehicles`: 7 requirements shortened, 4 of them split into 11 new requirements.
 
 ## Impact
