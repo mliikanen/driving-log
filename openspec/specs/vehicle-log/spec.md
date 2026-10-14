@@ -115,11 +115,11 @@ an action to open the full log.
 
 #### Scenario: A refueling's row
 - **WHEN** the user logs a refueling of 42.3 L for a vehicle
-- **THEN** the recent events show a "Refueling" event with "42.3 L" and its date and time
+- **THEN** the recent events show a "Refueling" event with "42.30 L" and its date and time
 
 #### Scenario: A refueling with mileage shows two rows
 - **WHEN** the user logs a refueling of 42.3 L with a trip-distance mileage of 30 km for a vehicle with the unit "Kilometers"
-- **THEN** the recent events show a "Refueling" row with "42.3 L" and, directly below it, a "Distance" row with "+30 km", both with the same date and time
+- **THEN** the recent events show a "Refueling" row with "42.30 L" and, directly below it, a "Distance" row with "+30 km", both with the same date and time
 
 ### Requirement: Full log
 The system SHALL show the vehicle's complete log on a separate screen opened from the details screen, listing every event
@@ -427,7 +427,7 @@ written year-month-day, and the time SHALL follow the system's 12-hour or 24-hou
 The system SHALL show an event row's figure, in the recent events and the full log: an "Initial odometer" event's
 reading in the vehicle's unit; an "Odometer reading" event's reading in that unit, without a plus sign; a "Distance"
 event's distance in that unit with a plus sign, and the typed count when it was logged as a new odometer count; a
-"Refueling" event's fuel amount in the unit it was entered in (e.g. "42.3 L"), without a plus sign.
+"Refueling" event's fuel amount in the unit it was entered in (e.g. "42.30 L"), without a plus sign.
 
 #### Scenario: An odometer reading's row has no plus sign
 - **WHEN** the user logs a new odometer count of 44000 a week before the initial odometer of a vehicle with the unit
