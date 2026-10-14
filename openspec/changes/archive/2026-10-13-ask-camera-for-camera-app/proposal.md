@@ -13,7 +13,7 @@ but that holds only for an app that doesn't declare CAMERA. The `MediaStore.ACTI
 
 ## What Changes
 
-- The chooser lists every app that can provide an image, with every installed camera app listed as itself (its own name and icon),
+- The chooser lists every app that can provide an image, with the installed camera apps, up to two, each listed as itself (its own name and icon),
   whether or not camera access has been allowed.
 - When the user picks a camera app and the app doesn't hold the camera permission, the system asks for it right then, before the camera opens.
   - Allowed: the chosen camera app opens, and taking a photo continues to the crop screen as today.

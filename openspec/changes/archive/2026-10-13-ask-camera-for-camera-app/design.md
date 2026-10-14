@@ -24,7 +24,7 @@ user picks a target, the chooser sends that `IntentSender` the chosen intent (`E
 ## Goals / Non-Goals
 
 **Goals:**
-- Keep the system chooser and its full list, with every installed camera app shown as itself, under its own name and icon.
+- Keep the system chooser and its full list, with the installed camera apps, up to two (the chooser's cap, Decision 1), each shown as itself, under its own name and icon.
 - Ask for CAMERA between choosing a camera app and opening it. Do this only then, and every time it isn't held.
 - One fix in the shared Android picker, so every screen that uses it gets it.
 
