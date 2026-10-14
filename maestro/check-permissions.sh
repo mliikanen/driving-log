@@ -2,8 +2,8 @@
 # The application requests the minimum set of permissions it needs (see the project context). This lists what the installed debug app
 # requests on a running emulator or device and fails when it asks for any other system permission: the only ones allowed are the app's own
 # (`com.mikonoma.drivinglog.*`, added by AndroidX for internal receivers) and the camera, which the live scanner's in-app preview needs
-# (add-live-scanner; no chooser or intent can provide one). The other image functions use the system chooser and the camera app
-# through intents, which need none.
+# (add-live-scanner; no chooser or intent can provide one). Since the app declares it, a camera app chosen in the photo chooser needs it
+# too (ask-camera-for-camera-app); the photo and file apps need none.
 set -euo pipefail
 ADB="${ADB:-adb}"
 APP=com.mikonoma.drivinglog

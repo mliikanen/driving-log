@@ -249,6 +249,8 @@ class LogEventProcessor(
 
         LogEventIntent.PhotoRemoveCancelled -> reduce { copy(photos = photoEditor.removeCancelled(photos)) }
 
+        LogEventIntent.PhotoErrorDismissed -> reduce { copy(photos = photoEditor.errorDismissed(photos)) }
+
         is LogEventIntent.ScanPhotoPicked -> scanPicked(intent.result)
 
         is LogEventIntent.ScanCandidateSelected -> reduce { copy(scan = scanEditor.selected(scan, intent.index)) }

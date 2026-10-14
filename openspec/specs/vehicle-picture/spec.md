@@ -53,6 +53,10 @@ photo the user chose.
 - **WHEN** the user taps "Add picture"
 - **THEN** the system's chooser (on iOS the source sheet) is shown, listing the apps or sources that can provide an image, and the app draws no picker of its own
 
+#### Scenario: The camera apps are listed as themselves on Android
+- **WHEN** on Android the user taps "Add picture", whether or not camera access has been allowed
+- **THEN** the chooser lists the installed camera apps, up to two, each under its own name and icon, next to every app that can provide an image
+
 #### Scenario: Choose a photo
 - **WHEN** the user chooses a photo in the app they picked
 - **THEN** the crop screen opens with that photo
@@ -66,16 +70,16 @@ photo the user chose.
 - **THEN** no permission prompt is shown
 
 #### Scenario: Camera access is asked for when taking a photo
-- **WHEN** on iOS the user chooses Take Photo for the first time
+- **WHEN** the user chooses the camera (Take Photo on iOS, a camera app in the chooser on Android) and the app has not been allowed camera access
 - **THEN** the system asks for camera access at that moment, and the camera opens when it is allowed
 
 #### Scenario: Camera access refused
-- **WHEN** on iOS the user has refused camera access and chooses Take Photo
-- **THEN** the system shows a message that camera access is turned off and can be allowed in the settings, opens no camera and keeps the vehicle's picture as it was
+- **WHEN** the user refuses camera access when asked, or has refused it before and chooses the camera again
+- **THEN** the system opens no camera, keeps the vehicle's picture as it was, and shows below the picture the missing-permission message (`app-shell`): a photo can't be taken because camera access is turned off, with "Open settings"
 
 #### Scenario: Leave the chooser
 - **WHEN** the user opens the chooser and leaves it, or leaves the camera without taking a photo
-- **THEN** the form is unchanged
+- **THEN** the form is unchanged, and no missing-permission message is shown
 
 #### Scenario: A file that is not an image
 - **WHEN** the chosen app returns a file that cannot be decoded as an image
@@ -85,8 +89,14 @@ photo the user chose.
 - **WHEN** the user chooses or takes a photo that is stored rotated and marked with an orientation
 - **THEN** the crop screen shows it the right way up
 
-**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with the camera app's `ACTION_IMAGE_CAPTURE` as an initial
-intent. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files, offered in a source sheet.
+**Platform note:** Android: `Intent.createChooser` over `ACTION_GET_CONTENT` for images, with up to two installed camera apps' own
+`ACTION_IMAGE_CAPTURE` as initial intents, so each is listed under its own name and icon. The system chooser shows at most two initial
+intents (`MAX_INITIAL_INTENTS` in IntentResolver); the image apps are its own targets and are not capped, and a device is far more likely
+to have more than two image apps than more than two camera apps. The chooser's refinement step
+(`EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER`), which runs after the user picks an app and before its launch, asks for the camera permission
+when a camera app was picked and the permission isn't held. Because the app declares the camera permission (for the live scanner), Android
+refuses `ACTION_IMAGE_CAPTURE` from the app while the permission isn't held. iOS: `PHPicker` for the library, `UIImagePickerController` for the camera and the document picker for files,
+offered in a source sheet.
 
 ### Requirement: The photo must be cropped to a square
 After a photo is chosen, the system SHALL open a crop screen showing the photo under a fixed square frame, and SHALL
@@ -316,14 +326,46 @@ keep the vehicle's picture as it was.
 
 ### Requirement: Permissions are asked for only when needed
 The system SHALL ask for a permission only when the user triggers an action that needs it, at that moment, and SHALL
-NOT ask for permissions the chosen way does not need. On Android the chooser and the camera app are used through
-intents, needing no storage, photo or camera permission. On iOS, camera access SHALL be asked for when the user first
-chooses Take Photo; if refused, the system SHALL show that camera access is turned off and can be allowed in the
-settings, and change nothing else.
+NOT ask for permissions the chosen way does not need: choosing a photo, file or other image app needs none. Taking a
+photo with the camera needs camera access on both platforms. It SHALL be asked for when the user chooses the camera
+and the app does not hold it. If it is refused, the system SHALL show the missing-permission message (`app-shell`)
+and change nothing else.
 
 #### Scenario: Opening the chooser on Android asks for nothing
 - **WHEN** on Android the user taps "Add picture" on the add vehicle screen
-- **THEN** the system chooser opens directly, with no permission prompt before or after it
+- **THEN** the system chooser opens directly, with no permission prompt before it
+
+#### Scenario: Choosing a photo app on Android asks for nothing
+- **WHEN** on Android the user chooses a photo or file app in the chooser, whether or not camera access has been allowed
+- **THEN** that app opens with no permission prompt
+
+#### Scenario: Choosing the camera app without camera access on Android
+- **WHEN** on Android the user chooses a camera app in the chooser and the app has not been allowed camera access
+- **THEN** the system asks for camera access before the camera app opens, and the chosen camera app opens when it is allowed
+
+#### Scenario: Camera access refused on Android
+- **WHEN** on Android the user refuses camera access after choosing a camera app
+- **THEN** no camera app opens, and the screen the user came from is shown as it was, with the missing-permission message and its "Open settings" action
+
+#### Scenario: Camera prompt dismissed on Android
+- **WHEN** on Android the user chooses a camera app and leaves the camera-access prompt without allowing it
+- **THEN** no camera app opens, and the screen the user came from shows the missing-permission message, as for a refusal
+
+#### Scenario: A refusal Android remembers
+- **WHEN** on Android the user has refused camera access so that the system no longer asks, and chooses a camera app
+- **THEN** no prompt is shown and no camera app opens, and the screen shows the missing-permission message and its "Open settings" action
+
+#### Scenario: Camera access already allowed on Android
+- **WHEN** on Android camera access has been allowed (for example for the live scanner) and the user chooses a camera app
+- **THEN** the camera app opens with no permission prompt
+
+#### Scenario: Camera access allowed from the message
+- **WHEN** the missing-permission message is shown, the user taps "Open settings", allows camera access there and comes back
+- **THEN** the message is gone, and choosing a camera app in the chooser opens it with no permission prompt
+
+#### Scenario: Camera access withdrawn on Android
+- **WHEN** on Android the user allowed camera access, then turned it off in the device settings, and chooses a camera app again
+- **THEN** the system asks for camera access again before the camera app opens
 
 ### Requirement: The crop is confirmed or cancelled from the top app bar
 The crop screen SHALL confirm the crop with "Use photo", a text action in its top app bar, and SHALL cancel by back

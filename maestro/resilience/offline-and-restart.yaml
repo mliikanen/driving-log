@@ -3,6 +3,8 @@ appId: com.mikonoma.drivinglog
 ---
 - launchApp:
     clearState: true
+    permissions:
+      all: unset
 - setAirplaneMode: enabled
 - runFlow:
     file: ../subflows/add-vehicle.yaml
@@ -40,7 +42,9 @@ appId: com.mikonoma.drivinglog
     text: Estate car
 # Close the app completely and open it again, without clearing its data.
 - stopApp
-- launchApp
+- launchApp:
+    permissions:
+      all: unset
 # The app starts on the Home screen: the vehicles are one tap away.
 - runFlow: ../subflows/open-vehicles.yaml
 - assertVisible:

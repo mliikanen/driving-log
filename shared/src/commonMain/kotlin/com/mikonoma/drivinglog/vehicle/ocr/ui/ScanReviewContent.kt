@@ -43,6 +43,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import coil3.compose.AsyncImage
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CAMERA_PHOTO_MISSING
+import com.mikonoma.drivinglog.ui.PermissionMissingMessage
 import com.mikonoma.drivinglog.ui.ScreenBottomSpace
 import com.mikonoma.drivinglog.ui.theme.DrivingLogTheme
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
@@ -51,6 +53,7 @@ import com.mikonoma.drivinglog.ui.theme.headerTextButtonColors
 import com.mikonoma.drivinglog.vehicle.ocr.ReadingKind
 import com.mikonoma.drivinglog.vehicle.ocr.ScanReview
 import com.mikonoma.drivinglog.vehicle.picture.PhotoResult
+import com.mikonoma.drivinglog.vehicle.picture.PictureError
 import com.mikonoma.drivinglog.vehicle.picture.rememberPhotoPicker
 
 /** Shown in place of the form while a chosen photo is being recognized. */
@@ -72,7 +75,7 @@ fun ScanProgressContent() {
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun ScanReviewContent(review: ScanReview, photoUri: String?, callbacks: ScanCallbacks) {
+fun ScanReviewContent(review: ScanReview, photoUri: String?, error: PictureError?, callbacks: ScanCallbacks) {
     val cancel = callbacks.onCancel
     NavigationBackHandler(state = rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = cancel)
     val picker = rememberPhotoPicker(callbacks.onPhotoPicked)
@@ -113,6 +116,18 @@ fun ScanReviewContent(review: ScanReview, photoUri: String?, callbacks: ScanCall
                     OutlinedButton(onClick = picker.launch, modifier = Modifier.testTag("scan_choose_another")) { Text("Choose another photo") }
                     TextButton(onClick = cancel, modifier = Modifier.testTag("scan_leave")) { Text("Leave") }
                 }
+            }
+            when (error) {
+                PictureError.COULD_NOT_OPEN -> Text(
+                    "The photo could not be opened",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("scan_error"),
+                )
+
+                PictureError.CAMERA_DENIED -> PermissionMissingMessage(CAMERA_PHOTO_MISSING, onAllowed = callbacks.onErrorDismissed)
+
+                null -> Unit
             }
             ScannedPhoto(review, photoUri, callbacks.onCandidateSelected)
         }

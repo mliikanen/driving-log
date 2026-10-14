@@ -55,6 +55,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import coil3.compose.SubcomposeAsyncImage
 import com.mikonoma.drivinglog.ui.BackButton
+import com.mikonoma.drivinglog.ui.CAMERA_PHOTO_MISSING
+import com.mikonoma.drivinglog.ui.PermissionMissingMessage
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
@@ -139,12 +141,14 @@ internal fun PhotoStripField(
     previewUris: List<Pair<String, String>>,
     onPhotoPicked: (PhotoResult) -> Unit,
     onRemoveRequested: (String) -> Unit,
+    onErrorDismissed: () -> Unit,
 ) = PhotoStripField(
     isFull = photos.isFull,
     error = photos.error,
     previewUris = previewUris,
     onPhotoPicked = onPhotoPicked,
     onRemoveRequested = onRemoveRequested,
+    onErrorDismissed = onErrorDismissed,
 )
 
 /**
@@ -160,6 +164,8 @@ internal fun PhotoStripField(
     previewUris: List<Pair<String, String>>,
     onPhotoPicked: (PhotoResult) -> Unit,
     onRemoveRequested: (String) -> Unit,
+    /** The error goes away: camera access was allowed while the missing-permission message was shown. */
+    onErrorDismissed: () -> Unit,
 ) {
     val picker = rememberPhotoPicker(onPhotoPicked)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -182,16 +188,17 @@ internal fun PhotoStripField(
                 }
             }
         }
-        error?.let {
-            Text(
-                when (it) {
-                    PictureError.COULD_NOT_OPEN -> "The photo could not be opened"
-                    PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
-                },
+        when (error) {
+            PictureError.COULD_NOT_OPEN -> Text(
+                "The photo could not be opened",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag("photo_error"),
             )
+
+            PictureError.CAMERA_DENIED -> PermissionMissingMessage(CAMERA_PHOTO_MISSING, onAllowed = onErrorDismissed)
+
+            null -> Unit
         }
     }
 }

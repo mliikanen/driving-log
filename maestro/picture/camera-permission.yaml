@@ -1,0 +1,173 @@
+# The camera app chosen on the add vehicle screen without camera access (ask-camera-for-camera-app): the permission cases, one after the
+# other. Launched with every permission unset, as a fresh install has it: Maestro's launchApp grants every permission by default,
+# which is how #29 (the camera app failing silently without CAMERA) went unnoticed (docs/test-strategy.md). In order:
+# refuse → the missing-permission message; "Open settings" → the app's settings page, and back the message is still there; the prompt left
+# with back → a refusal; refused twice → remembered, no prompt; allowed in the settings → the message goes, and the camera opens with no
+# prompt; revoked → asked again, and allowed, a photo is taken. Written for the emulator's camera app ("Shutter" and "Done") and the
+# English system dialogs.
+appId: com.mikonoma.drivinglog
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+- tapOn:
+    id: landing_vehicles
+# Refused when asked: no camera, no picture, the message with "Open settings".
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: "Don.t allow"
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn: "Don.t allow"
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000
+- assertVisible: "A photo can't be taken because camera access is turned off."
+- assertVisible: Add picture
+- assertNotVisible:
+    id: remove_picture
+# "Open settings" opens the app's own page in the device settings; back without allowing, the message is still shown.
+- tapOn:
+    id: permission_open_settings
+- extendedWaitUntil:
+    visible: "App info"
+    timeout: 10000
+- assertVisible: "Driving Log"
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000
+# The prompt left with back is a refusal: the message again.
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: "Don.t allow"
+    timeout: 15000
+- waitForAnimationToEnd
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000
+# Refused once more: Android remembers it and asks no more; choosing the camera shows the message at once.
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: "Don.t allow"
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn: "Don.t allow"
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible:
+      id: permission_missing
+    timeout: 10000
+- assertNotVisible: "Don.t allow"
+# Choosing a photo app asks for nothing and leaves no new message: the chooser is left without a photo.
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Media
+    timeout: 20000
+- tapOn: Media
+- waitForAnimationToEnd
+- assertNotVisible: "Don.t allow"
+- pressKey: back
+- waitForAnimationToEnd
+# Allowed in the settings: back in the app, the message is gone, and the camera opens with no prompt.
+- tapOn:
+    id: permission_open_settings
+- extendedWaitUntil:
+    visible: "Permissions"
+    timeout: 10000
+- tapOn: "Permissions"
+- extendedWaitUntil:
+    visible: "Camera"
+    timeout: 10000
+- tapOn: "Camera"
+- extendedWaitUntil:
+    visible: "Allow only while using the app"
+    timeout: 10000
+- tapOn: "Allow only while using the app"
+- pressKey: back
+- pressKey: back
+- pressKey: back
+- extendedWaitUntil:
+    visible: Add picture
+    timeout: 10000
+- assertNotVisible:
+    id: permission_missing
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: Shutter
+    timeout: 30000
+- assertNotVisible: "Don.t allow"
+- pressKey: back
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: permission_missing
+# Revoked (as turning it off in the settings does): asked again; allowed, the photo is taken and cropped.
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+      camera: deny
+- tapOn:
+    id: landing_vehicles
+- tapOn:
+    id: picture_preview
+- extendedWaitUntil:
+    visible: Camera
+    timeout: 20000
+- tapOn: Camera
+- extendedWaitUntil:
+    visible: "While using the app"
+    timeout: 15000
+- waitForAnimationToEnd
+- tapOn: "While using the app"
+- extendedWaitUntil:
+    visible: Shutter
+    timeout: 30000
+- tapOn: Shutter
+- extendedWaitUntil:
+    visible: Done
+    timeout: 30000
+- tapOn: Done
+- extendedWaitUntil:
+    visible: Use photo
+    timeout: 30000
+- tapOn: Use photo
+- assertVisible:
+    id: remove_picture
+- assertNotVisible:
+    id: permission_missing

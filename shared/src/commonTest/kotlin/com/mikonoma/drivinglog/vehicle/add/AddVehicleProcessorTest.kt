@@ -1332,4 +1332,68 @@ class AddVehicleProcessorTest {
 
         assertNull(repository.addCalls.single().capture)
     }
+
+    // ---- Permission and non-permission results of the scan's photo chooser (ask-camera-for-camera-app)
+
+    private fun AddVehicleProcessor.openReview() {
+        dispatch(AddVehicleIntent.ScannerOpened)
+        dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.Chosen(byteArrayOf(1, 2, 3))))
+    }
+
+    @Test
+    fun aRefusedCameraOnTheScannerShowsTheCameraErrorAndKeepsItOpen() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+
+        processor.dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.scan.error)
+        assertTrue(processor.state.scan.scannerOpen)
+        processor.dispatch(AddVehicleIntent.ScanErrorDismissed)
+        assertNull(processor.state.scan.error)
+    }
+
+    @Test
+    fun aRefusedCameraOnTheReviewKeepsTheReview() {
+        val processor = processor()
+        processor.openReview()
+        val review = processor.state.scan.review
+
+        processor.dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.scan.error)
+        assertEquals(review, processor.state.scan.review)
+    }
+
+    @Test
+    fun leavingTheScansChooserShowsNoMessage() {
+        val processor = processor()
+        processor.openReview()
+        val before = processor.state.scan
+
+        processor.dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.Cancelled))
+
+        assertEquals(before, processor.state.scan)
+        assertNull(processor.state.scan.error)
+    }
+
+    @Test
+    fun anUnreadableScanPhotoShowsTheCouldNotOpenErrorNotTheCameraOne() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.ScannerOpened)
+
+        processor.dispatch(AddVehicleIntent.ScanPhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.scan.error)
+    }
+
+    @Test
+    fun theVehiclePicturesCameraErrorGoesWhenDismissed() {
+        val processor = processor()
+        processor.dispatch(AddVehicleIntent.PhotoPicked(PhotoResult.CameraDenied))
+
+        processor.dispatch(AddVehicleIntent.PictureErrorDismissed)
+
+        assertNull(processor.state.picture.error)
+    }
 }

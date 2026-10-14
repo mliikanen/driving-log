@@ -1,10 +1,6 @@
 package com.mikonoma.drivinglog.vehicle.ocr
 
 import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +25,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.mikonoma.drivinglog.ui.OnCameraAllowed
+import com.mikonoma.drivinglog.ui.cameraAllowed
+import com.mikonoma.drivinglog.ui.openAppSettings
 import com.mikonoma.drivinglog.vehicle.ocr.ppocr.RgbImage
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
@@ -38,9 +37,9 @@ private const val DEGREES_PER_QUARTER_TURN = 90
 @Composable
 actual fun rememberCameraPermission(): CameraPermission {
     val context = LocalContext.current
-    var granted by remember {
-        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
-    }
+    var granted by remember { mutableStateOf(cameraAllowed(context)) }
+    // Read again whenever the app comes back (from the device settings, say), so an allowed camera shows its preview at once.
+    OnCameraAllowed { granted = true }
     var pending by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { answer ->
         granted = answer
@@ -57,12 +56,7 @@ actual fun rememberCameraPermission(): CameraPermission {
                 launcher.launch(Manifest.permission.CAMERA)
             }
         },
-        openSettings = {
-            context.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
-        },
+        openSettings = { openAppSettings(context) },
     )
 }
 

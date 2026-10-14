@@ -91,6 +91,9 @@ sealed interface EventDetailsIntent : ViewIntent {
     data object EditNewPhotoRemoveConfirmed : EventDetailsIntent
     data object EditNewPhotoRemoveCancelled : EventDetailsIntent
 
+    /** The edit screen's photo error goes away: camera access was allowed meanwhile (`ask-camera-for-camera-app`). */
+    data object EditPhotoErrorDismissed : EventDetailsIntent
+
     /** An already-saved photo's remove action: asks for confirmation (the file is kept until Save). */
     data class EditSavedPhotoRemoveRequested(val photoId: String) : EventDetailsIntent
     data object EditSavedPhotoRemoveConfirmed : EventDetailsIntent

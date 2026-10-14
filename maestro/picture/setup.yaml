@@ -1,5 +1,7 @@
-# Once per run of run.sh: the photo the picture flows choose.
+# Once per run of run.sh: the photo the picture flows choose, and a photo that can't be opened (photo-errors). The picker lists the newest
+# first, so the broken one, uploaded first, is its second photo and the landscape photo stays its first.
 appId: com.mikonoma.drivinglog
 ---
 - addMedia:
+    - ../assets/photo-broken.jpg
     - ../assets/photo-landscape.png

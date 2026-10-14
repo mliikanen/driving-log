@@ -107,7 +107,7 @@ fun AddVehicleContent(
     val review = state.scan.review
     when {
         state.isScanning -> ScanProgressContent()
-        review != null -> ScanReviewContent(review, state.scanPhotoUri, scanCallbacks)
+        review != null -> ScanReviewContent(review, state.scanPhotoUri, state.scan.error, scanCallbacks)
         state.scan.scannerOpen -> LiveScannerContent(state.scan.error, newLiveScanner, scanCallbacks)
         else -> AddVehicleForm(state, deviceLocale, onIntent, onBack)
     }
@@ -198,6 +198,7 @@ private fun AddVehicleIdentityFields(state: AddVehicleState, animatedColor: Rgb,
         onCropCancelled = { onIntent(AddVehicleIntent.CropCancelled) },
         onRemove = { onIntent(AddVehicleIntent.PictureRemoved) },
         onRefresh = { onIntent(AddVehicleIntent.PictureRefresh) },
+        onErrorDismissed = { onIntent(AddVehicleIntent.PictureErrorDismissed) },
     )
     OutlinedTextField(
         value = state.name,

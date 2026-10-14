@@ -732,4 +732,40 @@ class EditVehicleProcessorTest {
         assertEquals(Rgb(0x00796B), restored.state.savedColor)
         assertEquals(blue, restored.state.color)
     }
+
+    // ---- Permission and non-permission results of the picture's chooser (ask-camera-for-camera-app)
+
+    @Test
+    fun aRefusedCameraShowsTheCameraErrorAndKeepsThePicture() {
+        val processor = processor()
+        val before = processor.state.picture.draft
+
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.CameraDenied))
+
+        assertEquals(PictureError.CAMERA_DENIED, processor.state.picture.error)
+        assertEquals(before, processor.state.picture.draft)
+        assertFalse(processor.state.picture.isCropping)
+        processor.dispatch(EditVehicleIntent.PictureErrorDismissed)
+        assertNull(processor.state.picture.error)
+    }
+
+    @Test
+    fun leavingThePictureChooserShowsNoMessage() {
+        val processor = processor()
+        val before = processor.state.picture
+
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Cancelled))
+
+        assertEquals(before, processor.state.picture)
+        assertNull(processor.state.picture.error)
+    }
+
+    @Test
+    fun anUnreadablePictureShowsTheCouldNotOpenErrorNotTheCameraOne() {
+        val processor = processor()
+
+        processor.dispatch(EditVehicleIntent.PhotoPicked(PhotoResult.Unreadable))
+
+        assertEquals(PictureError.COULD_NOT_OPEN, processor.state.picture.error)
+    }
 }

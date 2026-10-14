@@ -249,6 +249,9 @@ sealed interface LogEventIntent : ViewIntent {
     /** Cancels or dismisses the removal dialog: the photo stays attached. */
     data object PhotoRemoveCancelled : LogEventIntent
 
+    /** The photo strip's error goes away: camera access was allowed meanwhile (`ask-camera-for-camera-app`). */
+    data object PhotoErrorDismissed : LogEventIntent
+
     /** The system chooser gave back a photo, or nothing, to scan for a reading (`odometer-ocr-capture`). */
     data class ScanPhotoPicked(val result: PhotoResult) : LogEventIntent
 

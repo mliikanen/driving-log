@@ -13,6 +13,14 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Lets the photo chooser list the camera apps (up to two) under their own names (ask-camera-for-camera-app): on API 30+ the
+         camera apps are visible only through this. Not a permission. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- No icon yet: update-app-icon sets android:icon and removes this suppression (clean-up-lint-baselines). -->
     <application
         android:name=".DrivingLogApplication"
@@ -29,7 +37,21 @@
             </intent-filter>
         </activity>
 
-        <!-- Lets the camera app write a new photo to the app's cache. No permission is declared: the camera app holds its own. -->
+        <!-- The camera apps in the photo chooser (ask-camera-for-camera-app). Because CAMERA is declared above, Android opens a camera app for
+             the app only while it holds CAMERA. The chooser's refinement step, run after the user picks an app and before its launch, goes
+             to the receiver, which asks for CAMERA first (the activity, no UI of its own: the prompt shows over the chooser) when a camera
+             app was picked without it; a refusal launches nothing, and the picker reports it. Neither is exported: only the chooser, through the
+             app's own PendingIntent and as the app, starts them. -->
+        <receiver
+            android:name="com.mikonoma.drivinglog.vehicle.picture.CameraRefinementReceiver"
+            android:exported="false" />
+        <activity
+            android:name="com.mikonoma.drivinglog.vehicle.picture.CameraPermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Lets the camera app write a new photo to the app's cache. The camera app holds its own camera permission; the app asks for
+             its own only to open it (CameraRefinementReceiver). -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.pictures"

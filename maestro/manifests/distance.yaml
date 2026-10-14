@@ -1,4 +1,5 @@
-# Logging distances: a trip distance, a new odometer count, another day and time zone, a reading scanned from a photo. Run with: maestro/run.sh distance
+# Logging distances: a trip distance, a new odometer count, another day and time zone, a reading scanned from a photo, and the camera
+# refused or a photo unusable on the photo strip, the scanner and the review (ask-camera-for-camera-app). Run with: maestro/run.sh distance
 #
 # Explicit flow paths, not a "distance/*.yaml" glob: distance/view-existing-log.yaml needs a fixture seeded before
 # it runs (see its .fixture file, docs/test-fixtures.md), which only run.sh's single-flow path
@@ -9,6 +10,10 @@ flows:
   - "distance/log-distance.yaml"
   - "distance/log-from-home.yaml"
   - "distance/scan-reading.yaml"
+  - "distance/photo-permission.yaml"
+  - "distance/photo-errors.yaml"
+  - "distance/scan-permission.yaml"
+  - "distance/scan-errors.yaml"
 executionOrder:
   continueOnFailure: false
   flowsOrder:
@@ -16,3 +21,7 @@ executionOrder:
     - log-distance
     - log-from-home
     - scan-reading
+    - photo-permission
+    - photo-errors
+    - scan-permission
+    - scan-errors

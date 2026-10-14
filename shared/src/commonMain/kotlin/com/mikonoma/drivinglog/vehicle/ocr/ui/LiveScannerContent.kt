@@ -21,6 +21,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -40,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.mikonoma.drivinglog.ui.CAMERA_PHOTO_MISSING
 import com.mikonoma.drivinglog.ui.CloseButton
+import com.mikonoma.drivinglog.ui.PermissionMissingMessage
 import com.mikonoma.drivinglog.ui.PhotoIcons
 import com.mikonoma.drivinglog.ui.theme.HeaderDivider
 import com.mikonoma.drivinglog.ui.theme.drivingLogTopAppBarColors
@@ -92,20 +95,26 @@ fun LiveScannerContent(error: PictureError?, newLiveScanner: () -> LiveScanner, 
             if (permission.granted) {
                 LiveView(newLiveScanner, callbacks.onReadingTapped)
             } else {
-                NoCamera(onOpenSettings = permission.openSettings)
+                // Also what a camera refused from the photo action shows: camera access is off, so this is on screen already.
+                NoCamera(onAllowed = callbacks.onErrorDismissed)
             }
-            error?.let {
-                Text(
-                    when (it) {
-                        PictureError.COULD_NOT_OPEN -> "The photo could not be opened"
-                        PictureError.CAMERA_DENIED -> "Camera access is turned off. You can allow it in the device settings."
-                    },
+            when (error) {
+                PictureError.COULD_NOT_OPEN -> Text(
+                    "The photo could not be opened",
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
                         .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp)
                         .testTag("scan_error"),
                 )
+
+                PictureError.CAMERA_DENIED -> if (permission.granted) {
+                    Surface(Modifier.align(Alignment.BottomCenter).padding(16.dp), shape = RoundedCornerShape(8.dp)) {
+                        PermissionMissingMessage(CAMERA_PHOTO_MISSING, onAllowed = callbacks.onErrorDismissed, Modifier.padding(12.dp))
+                    }
+                }
+
+                null -> Unit
             }
         }
     }
@@ -185,18 +194,13 @@ private fun LiveReadingMark(reading: LiveReading, left: Float, top: Float, right
 
 /** Without the camera permission: why there is no preview, and the way to the settings; the photo button still works. */
 @Composable
-private fun NoCamera(onOpenSettings: () -> Unit) {
+private fun NoCamera(onAllowed: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(24.dp).testTag("scanner_no_camera"),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            "The live scanner needs camera access. You can allow it in the device settings.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
-        Button(onClick = onOpenSettings, modifier = Modifier.testTag("scanner_open_settings")) { Text("Open settings") }
+        PermissionMissingMessage("The live scanner can't show the camera because camera access is turned off.", onAllowed = onAllowed)
         Text(
             "You can still scan a photo with the button below.",
             style = MaterialTheme.typography.bodyMedium,

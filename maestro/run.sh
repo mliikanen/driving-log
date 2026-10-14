@@ -38,6 +38,9 @@ else
   for area in "${areas[@]}"; do is_plain "$area" || is_device_state "$area" || { echo "unknown area: $area"; usage; }; done
 fi
 
+# Every launchApp starts with all permissions unset, so a function needing one is tested as a fresh install meets it.
+./check-launch-permissions.sh
+
 ADB="${ADB:-adb}"
 if ! command -v "$ADB" >/dev/null 2>&1 && [ -x "$HOME/Android/Sdk/platform-tools/adb" ]; then ADB="$HOME/Android/Sdk/platform-tools/adb"; fi
 if command -v "$ADB" >/dev/null 2>&1; then

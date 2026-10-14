@@ -1,12 +1,13 @@
 package com.mikonoma.drivinglog.vehicle.picture
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.ClipData
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,9 +28,10 @@ import java.io.File
 import java.io.IOException
 
 /**
- * The system's chooser: one `createChooser` over "get an image" whose extra initial intent is the camera app, so the system lists
- * every app that can provide an image (photo and file apps, other apps that offer images) and the camera, and the user picks the
- * one. The app declares no permission: the camera app takes the picture through the intent and holds the camera permission itself.
+ * The system's chooser: one `createChooser` over "get an image" whose extra initial intents are the camera apps, so the system lists
+ * every app that can provide an image (photo and file apps, other apps that offer images) and up to two camera apps, and the user picks
+ * the one. Choosing a photo or file app needs no permission. Choosing a camera app asks for the camera permission first when the app doesn't
+ * hold it ([CameraRefinementReceiver], `ask-camera-for-camera-app`); a refusal comes back as [PhotoResult.CameraDenied].
  */
 @Composable
 // A failure here is "the photo can't be read" (PhotoResult.Unreadable, which the screen reports); its cause has nothing more for the
@@ -68,14 +70,30 @@ private fun newCameraFile(context: Context): File {
 }
 
 private fun chooser(context: Context, cameraFile: File): Intent {
-    val cameraUri = FileProvider.getUriForFile(context, "${context.packageName}.pictures", cameraFile)
-    val camera = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        .putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
-        .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        .apply { clipData = ClipData.newRawUri("", cameraUri) } // carries the grant to the camera app through the chooser
+    val cameraUri = cameraUri(context, cameraFile)
     val pick = Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE)
-    return Intent.createChooser(pick, "Add picture").putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(camera))
+    return Intent.createChooser(pick, "Add picture")
+        .putExtra(Intent.EXTRA_INITIAL_INTENTS, cameraApps(context, cameraUri))
+        .putExtra(Intent.EXTRA_CHOOSER_REFINEMENT_INTENT_SENDER, cameraRefinement(context))
 }
+
+/**
+ * One chooser entry per camera app, each aimed at that app, so the chooser shows the camera apps under their own names and icons: at most
+ * [MAX_CAMERA_APPS], the most the system chooser shows of initial intents. The camera apps are visible to the app through the manifest's
+ * `<queries>` entry for `ACTION_IMAGE_CAPTURE`.
+ */
+// The <queries> entry is in the app's manifest (androidApp), which lint of this library module does not see.
+@SuppressLint("QueryPermissionsNeeded")
+private fun cameraApps(context: Context, output: Uri): Array<Intent> =
+    context.packageManager.queryIntentActivities(captureIntent(output), PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        .take(MAX_CAMERA_APPS)
+        .map { captureIntent(output).setComponent(ComponentName(it.activityInfo.packageName, it.activityInfo.name)) }
+        .toTypedArray()
+
+/** The system chooser keeps only the first two initial intents (`MAX_INITIAL_INTENTS` in IntentResolver) and drops the rest. */
+private const val MAX_CAMERA_APPS = 2
+
+private fun cameraUri(context: Context, cameraFile: File): Uri = FileProvider.getUriForFile(context, "${context.packageName}.pictures", cameraFile)
 
 /** An image the user chose (a Uri) or took (the file the camera wrote), or [PhotoResult.Cancelled] when there is none. */
 // A failure here is "the photo can't be read" (PhotoResult.Unreadable, which the screen reports); its cause has nothing more for the
@@ -83,8 +101,10 @@ private fun chooser(context: Context, cameraFile: File): Intent {
 @Suppress("SwallowedException")
 private fun photoOf(context: Context, result: ActivityResult, cameraFile: File?): PhotoResult {
     if (result.resultCode != Activity.RESULT_OK) {
+        // Only a refused camera permission is CameraDenied; leaving the chooser, the camera or any app is a cancel.
+        val refused = cameraFile != null && consumeDenial(cameraUri(context, cameraFile))
         cameraFile?.delete()
-        return PhotoResult.Cancelled
+        return if (refused) PhotoResult.CameraDenied else PhotoResult.Cancelled
     }
     val data = result.data
     val uri = data?.data ?: data?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri

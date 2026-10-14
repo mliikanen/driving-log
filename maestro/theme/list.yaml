@@ -1,7 +1,9 @@
 # Opens the vehicle list from wherever the app is.
 appId: com.mikonoma.drivinglog
 ---
-- launchApp
+- launchApp:
+    permissions:
+      all: unset
 - runFlow: ../subflows/open-vehicles.yaml
 - assertVisible:
     id: add_vehicle

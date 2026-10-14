@@ -1,7 +1,9 @@
 # Opens the details screen of the vehicle.
 appId: com.mikonoma.drivinglog
 ---
-- launchApp
+- launchApp:
+    permissions:
+      all: unset
 - runFlow: ../subflows/open-vehicles.yaml
 - tapOn: Family car
 - assertVisible:
