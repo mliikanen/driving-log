@@ -117,11 +117,14 @@ context: |
     picker and keeps events created within the same minute from being ordered by seconds nobody sees. A spec may state
     another precision. Timestamps the system keeps for itself (`created_at`, `updated_at`) keep their exact time.
   - The application requests the minimum set of permissions it needs to fulfil the required functionality. Where the platform
-    offers a way to do the thing that needs none (a system picker, chooser or camera app used through an intent or a system source
-    sheet, where the user picks the provider and the provider holds the access), that way is used and the app declares nothing.
-    A permission is declared only for functionality that cannot be provided otherwise, is asked for at the moment the user
-    triggers the action that needs it and never at start-up, and a refusal is explained and never a crash. A change that adds a
-    permission states why nothing lighter works, and `maestro/check-permissions.sh` lists what the installed app asks for.
+    offers a way to do the thing that needs none (a system picker, chooser or source sheet, where the user picks the provider and
+    the provider holds the access), that way is used and no permission is declared for it. A permission is declared only for
+    functionality that cannot be provided otherwise, is asked for at the moment the user triggers the action that needs it and
+    never at start-up, and a refusal shows the shared missing-permission message with "Open settings", never a crash.
+    A declared permission also guards the intents Android ties to it: the app declares CAMERA for the live scanner, so it can open
+    a camera app (chosen in the chooser) only while it holds CAMERA, and asks for it at that choice (#29). A change that adds a
+    permission states why nothing lighter works and which intents the permission starts to guard; `maestro/check-permissions.sh`
+    lists what the installed app asks for, and every Maestro flow launches with all permissions unset, as a fresh install has them.
   - System insets are handled the same way on every screen: the screen's `Scaffold` uses `contentWindowInsets = WindowInsets.safeDrawing`
     (system bars, display cutout and the keyboard, one mechanism, never `imePadding` on top of it), so nothing sits under the status bar,
     the gesture bar or the three-button navigation bar, or under the keyboard. Scrolling content ends with `ScreenBottomSpace` beyond the
